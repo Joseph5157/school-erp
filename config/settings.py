@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "accounts",
+    "core",
 ]
 
 MIDDLEWARE = [
@@ -52,7 +53,7 @@ ROOT_URLCONF = "config.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -98,6 +99,11 @@ else:
 
 # Custom user model (docs/adr/0004-phase-1-authorization-foundation.md)
 AUTH_USER_MODEL = "accounts.User"
+
+# Phase 1 administrative authorization (docs/adr/0004-phase-1-authorization-foundation.md)
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "core:school-detail"
+LOGOUT_REDIRECT_URL = "login"
 
 
 # Password validation

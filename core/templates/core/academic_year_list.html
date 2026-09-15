@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Academic Years{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Academic Years</h1>
+{% if perms.core.add_academicyear %}
+    <a class="btn btn-primary mb-3" href="{% url 'core:academic-year-create' %}">Create Academic Year</a>
+{% endif %}
+<table class="table">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Start date</th>
+            <th>End date</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for academic_year in academic_years %}
+        <tr>
+            <td>{{ academic_year.name }}</td>
+            <td>{{ academic_year.start_date }}</td>
+            <td>{{ academic_year.end_date }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="3">No Academic Years yet.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
