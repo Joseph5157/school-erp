@@ -102,8 +102,8 @@ Sections are explicit records associated with the appropriate class and academic
 
 Acceptance criteria:
 
-- An authorized administrator can create and view a Section in its appropriate Class/Grade and Academic Year context.
-- A Section cannot be created without the required valid Class/Grade and Academic Year relationship.
+- An authorized administrator can create and view a Section in its appropriate Class/Grade context.
+- A Section cannot be created without the required valid Class/Grade relationship.
 - Section membership shown for a Student comes from the relevant Academic Enrollment.
 - A Section used by historical Academic Enrollments is not casually hard-deleted or silently repurposed in a way that changes historical placement.
 - Unauthorized users cannot create or change Sections.
@@ -170,7 +170,7 @@ Acceptance criteria:
 
 - An authorized administrator can create and view an Academic Enrollment for a Student.
 - An Academic Enrollment requires valid relationships to a Student, Academic Year, Class/Grade, and Section, plus the required enrollment/status information.
-- The Section selected for an enrollment must belong to the enrollment's appropriate Class/Grade and Academic Year context.
+- The Section selected for an enrollment must belong to the enrollment's selected Class/Grade.
 - An enrollment missing required relationships, using incompatible class/section/year relationships, or otherwise conflicting with the approved placement rules is rejected without a partial enrollment.
 - A Student may accumulate multiple Academic Enrollments over time.
 - A later class, section, or Academic Year change creates or updates the appropriate enrollment without overwriting prior Academic Enrollment history.
