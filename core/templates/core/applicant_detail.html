@@ -33,6 +33,17 @@
 </div>
 {% endif %}
 
+{% if student %}
+<h2 class="h5">Student</h2>
+<p><a href="{% url 'core:student-detail' student.pk %}">View Student record</a></p>
+{% elif perms.core.add_student and applicant.admission_status == "ACCEPTED" %}
+<h2 class="h5">Student progression</h2>
+<form method="post" action="{% url 'core:applicant-progress' applicant.pk %}" class="mb-3">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-primary">Progress to Student</button>
+</form>
+{% endif %}
+
 <h2 class="h5">Guardians</h2>
 {% if perms.core.add_applicantguardian %}
     <a class="btn btn-primary mb-3" href="{% url 'core:applicant-guardian-create' applicant.pk %}">Associate Guardian</a>

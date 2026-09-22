@@ -14,7 +14,7 @@ from core.forms import (
     SchoolForm,
     SectionForm,
 )
-from core.models import AcademicYear, Applicant, ClassGrade, Guardian, School
+from core.models import AcademicYear, Applicant, ClassGrade, Guardian, School, Student
 
 
 @administrator_required("core.view_school")
@@ -155,10 +155,11 @@ def applicant_create(request):
 def applicant_detail(request, pk):
     applicant = get_object_or_404(Applicant, pk=pk)
     guardian_links = applicant.guardian_links.select_related("guardian")
+    student = Student.objects.filter(applicant=applicant).first()
     return render(
         request,
         "core/applicant_detail.html",
-        {"applicant": applicant, "guardian_links": guardian_links},
+        {"applicant": applicant, "guardian_links": guardian_links, "student": student},
     )
 
 
@@ -181,6 +182,22 @@ def applicant_admission_decision(request, pk):
 
     messages.success(request, f"Admission decision recorded: {applicant.admission_status}.")
     return redirect("core:applicant-detail", pk=applicant.pk)
+
+
+@administrator_required("core.add_student")
+def applicant_progress(request, pk):
+    applicant = get_object_or_404(Applicant, pk=pk)
+    if request.method != "POST":
+        return redirect("core:applicant-detail", pk=applicant.pk)
+
+    try:
+        student = applicant.progress_to_student()
+    except ValidationError as error:
+        messages.error(request, error.messages[0])
+        return redirect("core:applicant-detail", pk=applicant.pk)
+
+    messages.success(request, "Student created from Applicant.")
+    return redirect("core:student-detail", pk=student.pk)
 
 
 @administrator_required("core.add_applicantguardian")
@@ -228,4 +245,15 @@ def guardian_detail(request, pk):
         request,
         "core/guardian_detail.html",
         {"guardian": guardian, "applicant_links": applicant_links},
+    )
+
+
+@administrator_required("core.view_student")
+def student_detail(request, pk):
+    student = get_object_or_404(Student, pk=pk)
+    guardian_links = student.guardian_links.select_related("guardian")
+    return render(
+        request,
+        "core/student_detail.html",
+        {"student": student, "guardian_links": guardian_links},
     )

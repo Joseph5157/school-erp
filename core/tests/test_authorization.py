@@ -14,6 +14,7 @@ from core.models import (
     RelationshipType,
     School,
     Section,
+    Student,
 )
 
 User = get_user_model()
@@ -47,6 +48,12 @@ class SchoolAdministratorsGroupMigrationTests(TestCase):
                 "add_applicantguardian",
                 "change_applicantguardian",
                 "view_applicantguardian",
+                "add_student",
+                "change_student",
+                "view_student",
+                "add_studentguardian",
+                "change_studentguardian",
+                "view_studentguardian",
             },
         )
 
@@ -801,6 +808,117 @@ class ApplicantAdmissionDecisionAuthorizationTests(AuthorizationClientsMixin, Te
         response = self.administrator.post(
             reverse("core:applicant-admission-decision", args=[self.applicant.pk + 999]),
             {"decision": Applicant.AdmissionStatus.ACCEPTED},
+        )
+
+        self.assertEqual(response.status_code, 404)
+
+
+class ApplicantProgressAuthorizationTests(AuthorizationClientsMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.applicant = Applicant.objects.create(full_name="Ravi Rao")
+        self.applicant.record_admission_decision(Applicant.AdmissionStatus.ACCEPTED)
+        self.url = reverse("core:applicant-progress", args=[self.applicant.pk])
+
+    def test_anonymous_is_redirected_to_login(self):
+        response = self.anonymous.post(self.url)
+
+        self.assertRedirects(
+            response, f"{reverse('login')}?next={self.url}", fetch_redirect_response=False
+        )
+        self.assertFalse(Student.objects.exists())
+
+    def test_authenticated_non_admin_is_forbidden(self):
+        response = self.non_admin.post(self.url)
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Student.objects.exists())
+
+    def test_administrator_can_progress(self):
+        response = self.administrator.post(self.url)
+
+        student = Student.objects.get()
+        self.assertRedirects(response, reverse("core:student-detail", args=[student.pk]))
+        self.assertEqual(student.applicant, self.applicant)
+
+    def test_superuser_can_progress(self):
+        response = self.superuser_client.post(self.url)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Student.objects.count(), 1)
+
+    def test_pending_applicant_is_not_progressed(self):
+        pending = Applicant.objects.create(full_name="Meera Rao")
+
+        response = self.administrator.post(
+            reverse("core:applicant-progress", args=[pending.pk])
+        )
+
+        self.assertRedirects(response, reverse("core:applicant-detail", args=[pending.pk]))
+        self.assertFalse(Student.objects.exists())
+
+    def test_repeated_progression_does_not_create_another_student(self):
+        self.administrator.post(self.url)
+
+        response = self.administrator.post(self.url)
+
+        self.assertRedirects(
+            response, reverse("core:applicant-detail", args=[self.applicant.pk])
+        )
+        self.assertEqual(Student.objects.count(), 1)
+
+    def test_get_does_not_progress(self):
+        response = self.administrator.get(self.url)
+
+        self.assertRedirects(
+            response, reverse("core:applicant-detail", args=[self.applicant.pk])
+        )
+        self.assertFalse(Student.objects.exists())
+
+    def test_missing_applicant_is_not_found(self):
+        response = self.administrator.post(
+            reverse("core:applicant-progress", args=[self.applicant.pk + 999])
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(Student.objects.exists())
+
+
+class StudentDetailAuthorizationTests(AuthorizationClientsMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        applicant = Applicant.objects.create(full_name="Ravi Rao")
+        applicant.record_admission_decision(Applicant.AdmissionStatus.ACCEPTED)
+        self.student = applicant.progress_to_student()
+        self.url = reverse("core:student-detail", args=[self.student.pk])
+
+    def test_anonymous_is_redirected_to_login(self):
+        response = self.anonymous.get(self.url)
+
+        self.assertRedirects(
+            response, f"{reverse('login')}?next={self.url}", fetch_redirect_response=False
+        )
+
+    def test_authenticated_non_admin_is_forbidden(self):
+        response = self.non_admin.get(self.url)
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_administrator_can_view(self):
+        response = self.administrator.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Ravi Rao")
+
+    def test_superuser_can_view(self):
+        response = self.superuser_client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Ravi Rao")
+
+    def test_missing_student_is_not_found(self):
+        response = self.administrator.get(
+            reverse("core:student-detail", args=[self.student.pk + 999])
         )
 
         self.assertEqual(response.status_code, 404)

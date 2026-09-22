@@ -12,6 +12,8 @@ from core.models import (
     RelationshipType,
     School,
     Section,
+    Student,
+    StudentGuardian,
 )
 
 
@@ -398,3 +400,239 @@ class ApplicantGuardianModelTests(TestCase):
         with self.assertRaises(ProtectedError), transaction.atomic():
             self.applicant.delete()
         self.assertEqual(Applicant.objects.count(), 1)
+
+
+class StudentModelTests(TestCase):
+    def setUp(self):
+        self.applicant = Applicant.objects.create(full_name="Ravi Rao")
+
+    def test_valid_student_can_be_created(self):
+        student = Student(applicant=self.applicant, full_name="Ravi Rao")
+        student.full_clean()
+        student.save()
+
+        self.assertEqual(Student.objects.count(), 1)
+
+    def test_student_defaults_to_active(self):
+        student = Student.objects.create(applicant=self.applicant, full_name="Ravi Rao")
+
+        self.assertEqual(student.status, Student.Status.ACTIVE)
+
+    def test_applicant_requires_a_full_name(self):
+        student = Student(applicant=self.applicant, full_name="")
+
+        with self.assertRaises(ValidationError):
+            student.full_clean()
+        self.assertEqual(Student.objects.count(), 0)
+
+    def test_second_student_for_applicant_is_rejected(self):
+        Student.objects.create(applicant=self.applicant, full_name="Ravi Rao")
+        duplicate = Student(applicant=self.applicant, full_name="Ravi Rao")
+
+        with self.assertRaises(ValidationError):
+            duplicate.full_clean()
+        self.assertEqual(Student.objects.count(), 1)
+
+    def test_database_rejects_second_student_for_applicant(self):
+        Student.objects.create(applicant=self.applicant, full_name="Ravi Rao")
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            Student.objects.create(applicant=self.applicant, full_name="Ravi Rao")
+        self.assertEqual(Student.objects.count(), 1)
+
+    def test_applicant_with_student_cannot_be_deleted(self):
+        Student.objects.create(applicant=self.applicant, full_name="Ravi Rao")
+
+        with self.assertRaises(ProtectedError), transaction.atomic():
+            self.applicant.delete()
+        self.assertEqual(Applicant.objects.count(), 1)
+
+
+class ApplicantProgressionTests(TestCase):
+    def setUp(self):
+        self.applicant = Applicant.objects.create(
+            full_name="Ravi Rao",
+            date_of_birth="2015-04-01",
+            email="ravi@example.com",
+            phone="555-0101",
+        )
+
+    def _accept(self):
+        self.applicant.record_admission_decision(Applicant.AdmissionStatus.ACCEPTED)
+
+    def test_accepted_applicant_progresses_to_student(self):
+        self._accept()
+
+        student = self.applicant.progress_to_student()
+
+        self.assertEqual(Student.objects.count(), 1)
+        self.assertEqual(student.applicant, self.applicant)
+
+    def test_progression_copies_identity_fields(self):
+        self._accept()
+
+        student = self.applicant.progress_to_student()
+
+        self.assertEqual(student.full_name, self.applicant.full_name)
+        self.assertEqual(student.date_of_birth, self.applicant.date_of_birth)
+        self.assertEqual(student.email, self.applicant.email)
+        self.assertEqual(student.phone, self.applicant.phone)
+
+    def test_pending_applicant_cannot_progress(self):
+        with self.assertRaises(ValidationError):
+            self.applicant.progress_to_student()
+
+        self.assertFalse(Student.objects.exists())
+
+    def test_rejected_applicant_cannot_progress(self):
+        self.applicant.record_admission_decision(Applicant.AdmissionStatus.REJECTED)
+
+        with self.assertRaises(ValidationError):
+            self.applicant.progress_to_student()
+
+        self.assertFalse(Student.objects.exists())
+
+    def test_repeated_progression_does_not_create_another_student(self):
+        self._accept()
+        self.applicant.progress_to_student()
+
+        with self.assertRaises(ValidationError):
+            self.applicant.progress_to_student()
+
+        self.assertEqual(Student.objects.count(), 1)
+
+    def test_progression_carries_applicant_guardians_to_student(self):
+        guardian = Guardian.objects.create(full_name="Asha Rao")
+        ApplicantGuardian.objects.create(
+            applicant=self.applicant,
+            guardian=guardian,
+            relationship_type=RelationshipType.MOTHER,
+        )
+        self._accept()
+
+        student = self.applicant.progress_to_student()
+
+        link = StudentGuardian.objects.get(student=student)
+        self.assertEqual(link.guardian, guardian)
+        self.assertEqual(link.relationship_type, RelationshipType.MOTHER)
+
+    def test_progression_preserves_applicant_guardian_history(self):
+        guardian = Guardian.objects.create(full_name="Asha Rao")
+        applicant_link = ApplicantGuardian.objects.create(
+            applicant=self.applicant,
+            guardian=guardian,
+            relationship_type=RelationshipType.MOTHER,
+        )
+        self._accept()
+
+        self.applicant.progress_to_student()
+
+        self.assertTrue(ApplicantGuardian.objects.filter(pk=applicant_link.pk).exists())
+        self.assertEqual(ApplicantGuardian.objects.count(), 1)
+
+    def test_progression_without_guardians_creates_no_student_guardians(self):
+        self._accept()
+
+        self.applicant.progress_to_student()
+
+        self.assertEqual(StudentGuardian.objects.count(), 0)
+
+    def test_shared_guardian_is_reused_across_siblings(self):
+        guardian = Guardian.objects.create(full_name="Asha Rao")
+        ApplicantGuardian.objects.create(
+            applicant=self.applicant,
+            guardian=guardian,
+            relationship_type=RelationshipType.MOTHER,
+        )
+        sibling = Applicant.objects.create(full_name="Meera Rao")
+        ApplicantGuardian.objects.create(
+            applicant=sibling,
+            guardian=guardian,
+            relationship_type=RelationshipType.MOTHER,
+        )
+        self._accept()
+        sibling.record_admission_decision(Applicant.AdmissionStatus.ACCEPTED)
+
+        self.applicant.progress_to_student()
+        sibling.progress_to_student()
+
+        self.assertEqual(Guardian.objects.count(), 1)
+        self.assertEqual(guardian.student_links.count(), 2)
+
+
+class StudentGuardianModelTests(TestCase):
+    def setUp(self):
+        applicant = Applicant.objects.create(full_name="Ravi Rao")
+        self.student = Student.objects.create(applicant=applicant, full_name="Ravi Rao")
+        self.guardian = Guardian.objects.create(full_name="Asha Rao")
+
+    def test_valid_relationship_can_be_created(self):
+        link = StudentGuardian(
+            student=self.student,
+            guardian=self.guardian,
+            relationship_type=RelationshipType.MOTHER,
+        )
+        link.full_clean()
+        link.save()
+
+        self.assertEqual(StudentGuardian.objects.count(), 1)
+
+    def test_relationship_type_is_required(self):
+        link = StudentGuardian(student=self.student, guardian=self.guardian)
+
+        with self.assertRaises(ValidationError):
+            link.full_clean()
+        self.assertEqual(StudentGuardian.objects.count(), 0)
+
+    def test_duplicate_association_is_rejected(self):
+        StudentGuardian.objects.create(
+            student=self.student,
+            guardian=self.guardian,
+            relationship_type=RelationshipType.MOTHER,
+        )
+        duplicate = StudentGuardian(
+            student=self.student,
+            guardian=self.guardian,
+            relationship_type=RelationshipType.GUARDIAN,
+        )
+
+        with self.assertRaises(ValidationError):
+            duplicate.full_clean()
+        self.assertEqual(StudentGuardian.objects.count(), 1)
+
+    def test_database_rejects_duplicate_association(self):
+        StudentGuardian.objects.create(
+            student=self.student,
+            guardian=self.guardian,
+            relationship_type=RelationshipType.MOTHER,
+        )
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            StudentGuardian.objects.create(
+                student=self.student,
+                guardian=self.guardian,
+                relationship_type=RelationshipType.MOTHER,
+            )
+        self.assertEqual(StudentGuardian.objects.count(), 1)
+
+    def test_guardian_with_relationship_cannot_be_deleted(self):
+        StudentGuardian.objects.create(
+            student=self.student,
+            guardian=self.guardian,
+            relationship_type=RelationshipType.MOTHER,
+        )
+
+        with self.assertRaises(ProtectedError), transaction.atomic():
+            self.guardian.delete()
+        self.assertEqual(Guardian.objects.count(), 1)
+
+    def test_student_with_relationship_cannot_be_deleted(self):
+        StudentGuardian.objects.create(
+            student=self.student,
+            guardian=self.guardian,
+            relationship_type=RelationshipType.MOTHER,
+        )
+
+        with self.assertRaises(ProtectedError), transaction.atomic():
+            self.student.delete()
+        self.assertEqual(Student.objects.count(), 1)

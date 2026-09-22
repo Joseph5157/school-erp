@@ -1,5 +1,5 @@
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import IntegrityError, models, transaction
 from django.utils import timezone
 
 
@@ -208,6 +208,46 @@ class Applicant(models.Model):
         self.admission_decided_at = timezone.now()
         self.save(update_fields=["admission_status", "admission_decided_at", "updated_at"])
 
+    def progress_to_student(self):
+        """Explicitly create the one Student for an accepted Applicant.
+
+        Per docs/adr/0002-applicant-student-and-guardian-lifecycle.md and the
+        Requirements progression rules: only an ACCEPTED Applicant may
+        progress, one Applicant yields at most one Student, and the approved
+        ApplicantGuardian relationships are carried into the new
+        StudentGuardian relationships while the ApplicantGuardian history is
+        preserved intact. An invalid or repeated attempt raises
+        ValidationError without creating or changing anything.
+        """
+        if self.admission_status != self.AdmissionStatus.ACCEPTED:
+            raise ValidationError("Only an accepted Applicant can progress to a Student.")
+        if Student.objects.filter(applicant=self).exists():
+            raise ValidationError("This Applicant has already progressed to a Student.")
+
+        try:
+            with transaction.atomic():
+                student = Student.objects.create(
+                    applicant=self,
+                    full_name=self.full_name,
+                    date_of_birth=self.date_of_birth,
+                    email=self.email,
+                    phone=self.phone,
+                )
+                StudentGuardian.objects.bulk_create(
+                    StudentGuardian(
+                        student=student,
+                        guardian=link.guardian,
+                        relationship_type=link.relationship_type,
+                    )
+                    for link in self.guardian_links.all()
+                )
+        except IntegrityError:
+            # A concurrent progression won the race on the OneToOne link.
+            raise ValidationError(
+                "This Applicant has already progressed to a Student."
+            ) from None
+        return student
+
     def __str__(self):
         return self.full_name
 
@@ -243,3 +283,68 @@ class ApplicantGuardian(models.Model):
 
     def __str__(self):
         return f"{self.applicant} - {self.guardian} ({self.get_relationship_type_display()})"
+
+
+class Student(models.Model):
+    """The long-lived school identity created by explicit progression.
+
+    Distinct from Applicant (docs/DOMAIN_MODEL.md - Applicant and Student are
+    different concepts). The OneToOne link to the source Applicant enforces at
+    most one Student per Applicant and keeps the Student traceable back to its
+    application (docs/adr/0002-applicant-student-and-guardian-lifecycle.md).
+    Academic placement is deliberately absent here; it lives on Academic
+    Enrollment, which is out of scope for this milestone.
+    """
+
+    class Status(models.TextChoices):
+        ACTIVE = "ACTIVE", "Active"
+        INACTIVE = "INACTIVE", "Inactive"
+
+    applicant = models.OneToOneField(
+        Applicant, on_delete=models.PROTECT, related_name="student"
+    )
+    full_name = models.CharField(max_length=255)
+    date_of_birth = models.DateField(null=True, blank=True)
+    email = models.EmailField(blank=True)
+    phone = models.CharField(max_length=50, blank=True)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.ACTIVE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["full_name"]
+
+    def __str__(self):
+        return self.full_name
+
+
+class StudentGuardian(models.Model):
+    """An explicit Student-Guardian association carrying a relationship type.
+
+    Separate from ApplicantGuardian (docs/adr/0002-applicant-student-and-
+    guardian-lifecycle.md). During progression the ApplicantGuardian
+    relationships are copied here; the ApplicantGuardian history is left
+    intact. A given Guardian appears at most once per Student.
+    """
+
+    student = models.ForeignKey(
+        Student, on_delete=models.PROTECT, related_name="guardian_links"
+    )
+    guardian = models.ForeignKey(
+        Guardian, on_delete=models.PROTECT, related_name="student_links"
+    )
+    relationship_type = models.CharField(max_length=20, choices=RelationshipType.choices)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["student", "guardian"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["student", "guardian"],
+                name="studentguardian_unique_student_guardian",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.student} - {self.guardian} ({self.get_relationship_type_display()})"
