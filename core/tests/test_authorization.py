@@ -5,7 +5,16 @@ from django.contrib.auth.models import Group
 from django.test import TestCase
 from django.urls import reverse
 
-from core.models import AcademicYear, ClassGrade, School, Section
+from core.models import (
+    AcademicYear,
+    Applicant,
+    ApplicantGuardian,
+    ClassGrade,
+    Guardian,
+    RelationshipType,
+    School,
+    Section,
+)
 
 User = get_user_model()
 
@@ -29,6 +38,15 @@ class SchoolAdministratorsGroupMigrationTests(TestCase):
                 "add_section",
                 "change_section",
                 "view_section",
+                "add_applicant",
+                "change_applicant",
+                "view_applicant",
+                "add_guardian",
+                "change_guardian",
+                "view_guardian",
+                "add_applicantguardian",
+                "change_applicantguardian",
+                "view_applicantguardian",
             },
         )
 
@@ -409,3 +427,288 @@ class SectionCreateAuthorizationTests(AuthorizationClientsMixin, TestCase):
 
         self.assertEqual(response.status_code, 404)
         self.assertFalse(Section.objects.exists())
+
+
+class ApplicantCreateAuthorizationTests(AuthorizationClientsMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.url = reverse("core:applicant-create")
+
+    def test_anonymous_is_redirected_to_login(self):
+        response = self.anonymous.post(self.url, {"full_name": "Ravi Rao"})
+
+        self.assertRedirects(
+            response, f"{reverse('login')}?next={self.url}", fetch_redirect_response=False
+        )
+        self.assertFalse(Applicant.objects.exists())
+
+    def test_authenticated_non_admin_is_forbidden(self):
+        response = self.non_admin.post(self.url, {"full_name": "Ravi Rao"})
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Applicant.objects.exists())
+
+    def test_administrator_can_create(self):
+        response = self.administrator.post(self.url, {"full_name": "Ravi Rao"})
+
+        self.assertRedirects(response, reverse("core:applicant-list"))
+        self.assertEqual(Applicant.objects.count(), 1)
+
+    def test_superuser_can_create(self):
+        response = self.superuser_client.post(self.url, {"full_name": "Ravi Rao"})
+
+        self.assertRedirects(response, reverse("core:applicant-list"))
+        self.assertEqual(Applicant.objects.count(), 1)
+
+    def test_administrator_invalid_payload_leaves_no_partial_record(self):
+        response = self.administrator.post(self.url, {"full_name": ""})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Applicant.objects.exists())
+
+
+class ApplicantListAuthorizationTests(AuthorizationClientsMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        Applicant.objects.create(full_name="Ravi Rao")
+        self.url = reverse("core:applicant-list")
+
+    def test_anonymous_is_redirected_to_login(self):
+        response = self.anonymous.get(self.url)
+
+        self.assertRedirects(
+            response, f"{reverse('login')}?next={self.url}", fetch_redirect_response=False
+        )
+
+    def test_authenticated_non_admin_is_forbidden(self):
+        response = self.non_admin.get(self.url)
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_administrator_can_list(self):
+        response = self.administrator.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Ravi Rao")
+
+    def test_superuser_can_list(self):
+        response = self.superuser_client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Ravi Rao")
+
+
+class ApplicantDetailAuthorizationTests(AuthorizationClientsMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.applicant = Applicant.objects.create(full_name="Ravi Rao")
+        self.url = reverse("core:applicant-detail", args=[self.applicant.pk])
+
+    def test_anonymous_is_redirected_to_login(self):
+        response = self.anonymous.get(self.url)
+
+        self.assertRedirects(
+            response, f"{reverse('login')}?next={self.url}", fetch_redirect_response=False
+        )
+
+    def test_authenticated_non_admin_is_forbidden(self):
+        response = self.non_admin.get(self.url)
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_administrator_can_view(self):
+        response = self.administrator.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Ravi Rao")
+        self.assertContains(response, "Pending")
+
+    def test_superuser_can_view(self):
+        response = self.superuser_client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Ravi Rao")
+
+    def test_missing_applicant_is_not_found(self):
+        response = self.administrator.get(
+            reverse("core:applicant-detail", args=[self.applicant.pk + 999])
+        )
+
+        self.assertEqual(response.status_code, 404)
+
+
+class ApplicantGuardianCreateAuthorizationTests(AuthorizationClientsMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.applicant = Applicant.objects.create(full_name="Ravi Rao")
+        self.guardian = Guardian.objects.create(full_name="Asha Rao")
+        self.url = reverse("core:applicant-guardian-create", args=[self.applicant.pk])
+        self.valid_payload = {
+            "guardian": self.guardian.pk,
+            "relationship_type": RelationshipType.MOTHER,
+        }
+
+    def test_anonymous_is_redirected_to_login(self):
+        response = self.anonymous.post(self.url, self.valid_payload)
+
+        self.assertRedirects(
+            response, f"{reverse('login')}?next={self.url}", fetch_redirect_response=False
+        )
+        self.assertFalse(ApplicantGuardian.objects.exists())
+
+    def test_authenticated_non_admin_is_forbidden(self):
+        response = self.non_admin.post(self.url, self.valid_payload)
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(ApplicantGuardian.objects.exists())
+
+    def test_administrator_can_associate_guardian(self):
+        response = self.administrator.post(self.url, self.valid_payload)
+
+        self.assertRedirects(
+            response, reverse("core:applicant-detail", args=[self.applicant.pk])
+        )
+        self.assertEqual(ApplicantGuardian.objects.count(), 1)
+        self.assertEqual(ApplicantGuardian.objects.get().applicant, self.applicant)
+
+    def test_superuser_can_associate_guardian(self):
+        response = self.superuser_client.post(self.url, self.valid_payload)
+
+        self.assertRedirects(
+            response, reverse("core:applicant-detail", args=[self.applicant.pk])
+        )
+        self.assertEqual(ApplicantGuardian.objects.count(), 1)
+
+    def test_administrator_duplicate_association_leaves_no_partial_record(self):
+        ApplicantGuardian.objects.create(
+            applicant=self.applicant,
+            guardian=self.guardian,
+            relationship_type=RelationshipType.MOTHER,
+        )
+
+        response = self.administrator.post(self.url, self.valid_payload)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(ApplicantGuardian.objects.count(), 1)
+
+    def test_administrator_missing_relationship_type_leaves_no_partial_record(self):
+        response = self.administrator.post(self.url, {"guardian": self.guardian.pk})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(ApplicantGuardian.objects.exists())
+
+    def test_associate_for_missing_applicant_is_not_found(self):
+        response = self.administrator.post(
+            reverse("core:applicant-guardian-create", args=[self.applicant.pk + 999]),
+            self.valid_payload,
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(ApplicantGuardian.objects.exists())
+
+
+class GuardianCreateAuthorizationTests(AuthorizationClientsMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.url = reverse("core:guardian-create")
+
+    def test_anonymous_is_redirected_to_login(self):
+        response = self.anonymous.post(self.url, {"full_name": "Asha Rao"})
+
+        self.assertRedirects(
+            response, f"{reverse('login')}?next={self.url}", fetch_redirect_response=False
+        )
+        self.assertFalse(Guardian.objects.exists())
+
+    def test_authenticated_non_admin_is_forbidden(self):
+        response = self.non_admin.post(self.url, {"full_name": "Asha Rao"})
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Guardian.objects.exists())
+
+    def test_administrator_can_create(self):
+        response = self.administrator.post(self.url, {"full_name": "Asha Rao"})
+
+        self.assertRedirects(response, reverse("core:guardian-list"))
+        self.assertEqual(Guardian.objects.count(), 1)
+
+    def test_superuser_can_create(self):
+        response = self.superuser_client.post(self.url, {"full_name": "Asha Rao"})
+
+        self.assertRedirects(response, reverse("core:guardian-list"))
+        self.assertEqual(Guardian.objects.count(), 1)
+
+    def test_administrator_invalid_payload_leaves_no_partial_record(self):
+        response = self.administrator.post(self.url, {"full_name": ""})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Guardian.objects.exists())
+
+
+class GuardianListAuthorizationTests(AuthorizationClientsMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        Guardian.objects.create(full_name="Asha Rao")
+        self.url = reverse("core:guardian-list")
+
+    def test_anonymous_is_redirected_to_login(self):
+        response = self.anonymous.get(self.url)
+
+        self.assertRedirects(
+            response, f"{reverse('login')}?next={self.url}", fetch_redirect_response=False
+        )
+
+    def test_authenticated_non_admin_is_forbidden(self):
+        response = self.non_admin.get(self.url)
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_administrator_can_list(self):
+        response = self.administrator.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Asha Rao")
+
+    def test_superuser_can_list(self):
+        response = self.superuser_client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Asha Rao")
+
+
+class GuardianDetailAuthorizationTests(AuthorizationClientsMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.guardian = Guardian.objects.create(full_name="Asha Rao")
+        self.url = reverse("core:guardian-detail", args=[self.guardian.pk])
+
+    def test_anonymous_is_redirected_to_login(self):
+        response = self.anonymous.get(self.url)
+
+        self.assertRedirects(
+            response, f"{reverse('login')}?next={self.url}", fetch_redirect_response=False
+        )
+
+    def test_authenticated_non_admin_is_forbidden(self):
+        response = self.non_admin.get(self.url)
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_administrator_can_view(self):
+        response = self.administrator.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Asha Rao")
+
+    def test_superuser_can_view(self):
+        response = self.superuser_client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Asha Rao")
+
+    def test_missing_guardian_is_not_found(self):
+        response = self.administrator.get(
+            reverse("core:guardian-detail", args=[self.guardian.pk + 999])
+        )
+
+        self.assertEqual(response.status_code, 404)

@@ -3,7 +3,16 @@ from django.db import IntegrityError, transaction
 from django.db.models import ProtectedError
 from django.test import TestCase
 
-from core.models import AcademicYear, ClassGrade, School, Section
+from core.models import (
+    AcademicYear,
+    Applicant,
+    ApplicantGuardian,
+    ClassGrade,
+    Guardian,
+    RelationshipType,
+    School,
+    Section,
+)
 
 
 class SchoolModelTests(TestCase):
@@ -174,3 +183,154 @@ class SectionModelTests(TestCase):
         section.save()
 
         self.assertEqual(Section.objects.count(), 2)
+
+
+class GuardianModelTests(TestCase):
+    def test_valid_guardian_can_be_created(self):
+        guardian = Guardian(full_name="Asha Rao", phone="555-0100", email="asha@example.com")
+        guardian.full_clean()
+        guardian.save()
+
+        self.assertEqual(Guardian.objects.count(), 1)
+
+    def test_full_name_is_required(self):
+        guardian = Guardian(full_name="")
+
+        with self.assertRaises(ValidationError):
+            guardian.full_clean()
+        self.assertEqual(Guardian.objects.count(), 0)
+
+    def test_str_returns_full_name(self):
+        guardian = Guardian.objects.create(full_name="Asha Rao")
+
+        self.assertEqual(str(guardian), "Asha Rao")
+
+
+class ApplicantModelTests(TestCase):
+    def test_valid_applicant_can_be_created(self):
+        applicant = Applicant(full_name="Ravi Rao")
+        applicant.full_clean()
+        applicant.save()
+
+        self.assertEqual(Applicant.objects.count(), 1)
+
+    def test_full_name_is_required(self):
+        applicant = Applicant(full_name="")
+
+        with self.assertRaises(ValidationError):
+            applicant.full_clean()
+        self.assertEqual(Applicant.objects.count(), 0)
+
+    def test_new_applicant_defaults_to_pending(self):
+        applicant = Applicant.objects.create(full_name="Ravi Rao")
+
+        self.assertEqual(applicant.admission_status, Applicant.AdmissionStatus.PENDING)
+
+    def test_creating_an_applicant_creates_no_guardian_relationship(self):
+        Applicant.objects.create(full_name="Ravi Rao")
+
+        self.assertEqual(ApplicantGuardian.objects.count(), 0)
+
+
+class ApplicantGuardianModelTests(TestCase):
+    def setUp(self):
+        self.applicant = Applicant.objects.create(full_name="Ravi Rao")
+        self.guardian = Guardian.objects.create(full_name="Asha Rao")
+
+    def test_valid_relationship_can_be_created(self):
+        link = ApplicantGuardian(
+            applicant=self.applicant,
+            guardian=self.guardian,
+            relationship_type=RelationshipType.MOTHER,
+        )
+        link.full_clean()
+        link.save()
+
+        self.assertEqual(ApplicantGuardian.objects.count(), 1)
+
+    def test_relationship_type_is_required(self):
+        link = ApplicantGuardian(applicant=self.applicant, guardian=self.guardian)
+
+        with self.assertRaises(ValidationError):
+            link.full_clean()
+        self.assertEqual(ApplicantGuardian.objects.count(), 0)
+
+    def test_guardian_is_required(self):
+        link = ApplicantGuardian(
+            applicant=self.applicant, relationship_type=RelationshipType.MOTHER
+        )
+
+        with self.assertRaises(ValidationError):
+            link.full_clean()
+        self.assertEqual(ApplicantGuardian.objects.count(), 0)
+
+    def test_duplicate_association_is_rejected(self):
+        ApplicantGuardian.objects.create(
+            applicant=self.applicant,
+            guardian=self.guardian,
+            relationship_type=RelationshipType.MOTHER,
+        )
+        duplicate = ApplicantGuardian(
+            applicant=self.applicant,
+            guardian=self.guardian,
+            relationship_type=RelationshipType.GUARDIAN,
+        )
+
+        with self.assertRaises(ValidationError):
+            duplicate.full_clean()
+        self.assertEqual(ApplicantGuardian.objects.count(), 1)
+
+    def test_database_rejects_duplicate_association(self):
+        ApplicantGuardian.objects.create(
+            applicant=self.applicant,
+            guardian=self.guardian,
+            relationship_type=RelationshipType.MOTHER,
+        )
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            ApplicantGuardian.objects.create(
+                applicant=self.applicant,
+                guardian=self.guardian,
+                relationship_type=RelationshipType.MOTHER,
+            )
+        self.assertEqual(ApplicantGuardian.objects.count(), 1)
+
+    def test_guardian_can_be_reused_across_applicants(self):
+        sibling = Applicant.objects.create(full_name="Meera Rao")
+        ApplicantGuardian.objects.create(
+            applicant=self.applicant,
+            guardian=self.guardian,
+            relationship_type=RelationshipType.MOTHER,
+        )
+
+        link = ApplicantGuardian(
+            applicant=sibling,
+            guardian=self.guardian,
+            relationship_type=RelationshipType.MOTHER,
+        )
+        link.full_clean()
+        link.save()
+
+        self.assertEqual(self.guardian.applicant_links.count(), 2)
+
+    def test_guardian_with_relationship_cannot_be_deleted(self):
+        ApplicantGuardian.objects.create(
+            applicant=self.applicant,
+            guardian=self.guardian,
+            relationship_type=RelationshipType.MOTHER,
+        )
+
+        with self.assertRaises(ProtectedError), transaction.atomic():
+            self.guardian.delete()
+        self.assertEqual(Guardian.objects.count(), 1)
+
+    def test_applicant_with_relationship_cannot_be_deleted(self):
+        ApplicantGuardian.objects.create(
+            applicant=self.applicant,
+            guardian=self.guardian,
+            relationship_type=RelationshipType.MOTHER,
+        )
+
+        with self.assertRaises(ProtectedError), transaction.atomic():
+            self.applicant.delete()
+        self.assertEqual(Applicant.objects.count(), 1)

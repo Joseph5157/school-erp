@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Applicants{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Applicants</h1>
+{% if perms.core.add_applicant %}
+    <a class="btn btn-primary mb-3" href="{% url 'core:applicant-create' %}">Register Applicant</a>
+{% endif %}
+<table class="table">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Admission status</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for applicant in applicants %}
+        <tr>
+            <td><a href="{% url 'core:applicant-detail' applicant.pk %}">{{ applicant.full_name }}</a></td>
+            <td>{{ applicant.get_admission_status_display }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="2">No Applicants yet.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

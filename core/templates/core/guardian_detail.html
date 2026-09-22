@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}{{ guardian.full_name }}{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">{{ guardian.full_name }}</h1>
+<dl class="row">
+    <dt class="col-sm-3">Phone</dt>
+    <dd class="col-sm-9">{{ guardian.phone|default:"-" }}</dd>
+    <dt class="col-sm-3">Email</dt>
+    <dd class="col-sm-9">{{ guardian.email|default:"-" }}</dd>
+</dl>
+
+<h2 class="h5">Associated Applicants</h2>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Applicant</th>
+            <th>Relationship</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for link in applicant_links %}
+        <tr>
+            <td><a href="{% url 'core:applicant-detail' link.applicant.pk %}">{{ link.applicant.full_name }}</a></td>
+            <td>{{ link.get_relationship_type_display }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="2">Not associated with any Applicant.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<a class="btn btn-link" href="{% url 'core:guardian-list' %}">Back to Guardians</a>
+{% endblock %}

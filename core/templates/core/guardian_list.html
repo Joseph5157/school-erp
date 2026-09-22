@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Guardians{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Guardians</h1>
+{% if perms.core.add_guardian %}
+    <a class="btn btn-primary mb-3" href="{% url 'core:guardian-create' %}">Create Guardian</a>
+{% endif %}
+<table class="table">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Phone</th>
+            <th>Email</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for guardian in guardians %}
+        <tr>
+            <td><a href="{% url 'core:guardian-detail' guardian.pk %}">{{ guardian.full_name }}</a></td>
+            <td>{{ guardian.phone|default:"-" }}</td>
+            <td>{{ guardian.email|default:"-" }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="3">No Guardians yet.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

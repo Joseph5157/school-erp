@@ -15,6 +15,8 @@
                 <a class="nav-link" href="{% url 'core:school-detail' %}">School</a>
                 <a class="nav-link" href="{% url 'core:academic-year-list' %}">Academic Years</a>
                 <a class="nav-link" href="{% url 'core:class-grade-list' %}">Classes/Grades</a>
+                <a class="nav-link" href="{% url 'core:applicant-list' %}">Applicants</a>
+                <a class="nav-link" href="{% url 'core:guardian-list' %}">Guardians</a>
             </div>
             <div class="navbar-nav ms-auto">
                 {% if user.is_authenticated %}

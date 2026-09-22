@@ -14,4 +14,15 @@ urlpatterns = [
     path("classes/create/", views.class_grade_create, name="class-grade-create"),
     path("classes/<int:pk>/", views.class_grade_detail, name="class-grade-detail"),
     path("classes/<int:pk>/sections/create/", views.section_create, name="section-create"),
+    path("applicants/", views.applicant_list, name="applicant-list"),
+    path("applicants/create/", views.applicant_create, name="applicant-create"),
+    path("applicants/<int:pk>/", views.applicant_detail, name="applicant-detail"),
+    path(
+        "applicants/<int:pk>/guardians/add/",
+        views.applicant_guardian_create,
+        name="applicant-guardian-create",
+    ),
+    path("guardians/", views.guardian_list, name="guardian-list"),
+    path("guardians/create/", views.guardian_create, name="guardian-create"),
+    path("guardians/<int:pk>/", views.guardian_detail, name="guardian-detail"),
 ]

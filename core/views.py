@@ -3,8 +3,16 @@ from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404, redirect, render
 
 from core.authorization import administrator_required
-from core.forms import AcademicYearForm, ClassGradeForm, SchoolForm, SectionForm
-from core.models import AcademicYear, ClassGrade, School
+from core.forms import (
+    AcademicYearForm,
+    ApplicantForm,
+    ApplicantGuardianForm,
+    ClassGradeForm,
+    GuardianForm,
+    SchoolForm,
+    SectionForm,
+)
+from core.models import AcademicYear, Applicant, ClassGrade, Guardian, School
 
 
 @administrator_required("core.view_school")
@@ -119,4 +127,82 @@ def section_create(request, pk):
         request,
         "core/section_form.html",
         {"form": form, "class_grade": class_grade},
+    )
+
+
+@administrator_required("core.view_applicant")
+def applicant_list(request):
+    applicants = Applicant.objects.all()
+    return render(request, "core/applicant_list.html", {"applicants": applicants})
+
+
+@administrator_required("core.add_applicant")
+def applicant_create(request):
+    if request.method == "POST":
+        form = ApplicantForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Applicant registered.")
+            return redirect("core:applicant-list")
+    else:
+        form = ApplicantForm()
+    return render(request, "core/applicant_form.html", {"form": form})
+
+
+@administrator_required("core.view_applicant")
+def applicant_detail(request, pk):
+    applicant = get_object_or_404(Applicant, pk=pk)
+    guardian_links = applicant.guardian_links.select_related("guardian")
+    return render(
+        request,
+        "core/applicant_detail.html",
+        {"applicant": applicant, "guardian_links": guardian_links},
+    )
+
+
+@administrator_required("core.add_applicantguardian")
+def applicant_guardian_create(request, pk):
+    applicant = get_object_or_404(Applicant, pk=pk)
+    if request.method == "POST":
+        form = ApplicantGuardianForm(request.POST, applicant=applicant)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Guardian associated with Applicant.")
+            return redirect("core:applicant-detail", pk=applicant.pk)
+    else:
+        form = ApplicantGuardianForm(applicant=applicant)
+    return render(
+        request,
+        "core/applicant_guardian_form.html",
+        {"form": form, "applicant": applicant},
+    )
+
+
+@administrator_required("core.view_guardian")
+def guardian_list(request):
+    guardians = Guardian.objects.all()
+    return render(request, "core/guardian_list.html", {"guardians": guardians})
+
+
+@administrator_required("core.add_guardian")
+def guardian_create(request):
+    if request.method == "POST":
+        form = GuardianForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Guardian created.")
+            return redirect("core:guardian-list")
+    else:
+        form = GuardianForm()
+    return render(request, "core/guardian_form.html", {"form": form})
+
+
+@administrator_required("core.view_guardian")
+def guardian_detail(request, pk):
+    guardian = get_object_or_404(Guardian, pk=pk)
+    applicant_links = guardian.applicant_links.select_related("applicant")
+    return render(
+        request,
+        "core/guardian_detail.html",
+        {"guardian": guardian, "applicant_links": applicant_links},
     )

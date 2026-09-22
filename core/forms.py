@@ -1,7 +1,15 @@
 from django import forms
 from django.core.exceptions import ValidationError
 
-from core.models import AcademicYear, ClassGrade, School, Section
+from core.models import (
+    AcademicYear,
+    Applicant,
+    ApplicantGuardian,
+    ClassGrade,
+    Guardian,
+    School,
+    Section,
+)
 
 
 class SchoolForm(forms.ModelForm):
@@ -55,3 +63,60 @@ class SectionForm(forms.ModelForm):
         if duplicates.exists():
             raise ValidationError("A Section with this name already exists for this Class/Grade.")
         return name
+
+
+class ApplicantForm(forms.ModelForm):
+    """Register an Applicant.
+
+    `admission_status` is intentionally excluded: the admission state changes
+    only through the explicit admission-decision workflow
+    (docs/adr/0003-phase-1-status-and-transition-rules.md), so a new
+    Applicant is always created as PENDING.
+    """
+
+    class Meta:
+        model = Applicant
+        fields = ["full_name", "date_of_birth", "email", "phone"]
+        widgets = {
+            "date_of_birth": forms.DateInput(attrs={"type": "date"}),
+        }
+
+
+class GuardianForm(forms.ModelForm):
+    class Meta:
+        model = Guardian
+        fields = ["full_name", "phone", "email"]
+
+
+class ApplicantGuardianForm(forms.ModelForm):
+    """Associate a Guardian with a specific Applicant.
+
+    `applicant` is supplied by the view from the URL rather than taken from
+    the request, so a relationship cannot be created against an arbitrary or
+    missing Applicant. Because `applicant` is not a form field, Django's
+    automatic unique validation cannot see it, so the one-Guardian-per-
+    Applicant rule is checked explicitly here.
+    """
+
+    class Meta:
+        model = ApplicantGuardian
+        fields = ["guardian", "relationship_type"]
+
+    def __init__(self, *args, applicant=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.applicant = applicant
+        if applicant is not None:
+            self.instance.applicant = applicant
+
+    def clean(self):
+        cleaned_data = super().clean()
+        guardian = cleaned_data.get("guardian")
+        if self.applicant is not None and guardian is not None:
+            duplicates = ApplicantGuardian.objects.filter(
+                applicant=self.applicant, guardian=guardian
+            )
+            if self.instance.pk is not None:
+                duplicates = duplicates.exclude(pk=self.instance.pk)
+            if duplicates.exists():
+                raise ValidationError("This Guardian is already associated with this Applicant.")
+        return cleaned_data

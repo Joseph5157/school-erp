@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}{{ applicant.full_name }}{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">{{ applicant.full_name }}</h1>
+<dl class="row">
+    <dt class="col-sm-3">Admission status</dt>
+    <dd class="col-sm-9">{{ applicant.get_admission_status_display }}</dd>
+    <dt class="col-sm-3">Date of birth</dt>
+    <dd class="col-sm-9">{{ applicant.date_of_birth|default:"-" }}</dd>
+    <dt class="col-sm-3">Email</dt>
+    <dd class="col-sm-9">{{ applicant.email|default:"-" }}</dd>
+    <dt class="col-sm-3">Phone</dt>
+    <dd class="col-sm-9">{{ applicant.phone|default:"-" }}</dd>
+</dl>
+
+<h2 class="h5">Guardians</h2>
+{% if perms.core.add_applicantguardian %}
+    <a class="btn btn-primary mb-3" href="{% url 'core:applicant-guardian-create' applicant.pk %}">Associate Guardian</a>
+{% endif %}
+<table class="table">
+    <thead>
+        <tr>
+            <th>Guardian</th>
+            <th>Relationship</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for link in guardian_links %}
+        <tr>
+            <td><a href="{% url 'core:guardian-detail' link.guardian.pk %}">{{ link.guardian.full_name }}</a></td>
+            <td>{{ link.get_relationship_type_display }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="2">No Guardians associated yet.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<a class="btn btn-link" href="{% url 'core:applicant-list' %}">Back to Applicants</a>
+{% endblock %}
