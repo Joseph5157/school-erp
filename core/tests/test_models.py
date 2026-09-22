@@ -798,3 +798,67 @@ class StudentEnrollmentTests(TestCase):
 
     def test_current_enrollment_is_none_without_enrollment(self):
         self.assertIsNone(self.student.current_enrollment)
+
+
+class StudentStatusTests(TestCase):
+    def setUp(self):
+        self.applicant = Applicant.objects.create(full_name="Ravi Rao")
+        self.applicant.record_admission_decision(Applicant.AdmissionStatus.ACCEPTED)
+        self.student = self.applicant.progress_to_student()
+
+    def test_new_student_defaults_to_active(self):
+        self.assertEqual(self.student.status, Student.Status.ACTIVE)
+        self.assertIsNone(self.student.status_changed_at)
+
+    def test_deactivate_records_inactive_and_timestamp(self):
+        self.student.record_status_change(Student.Status.INACTIVE)
+
+        self.student.refresh_from_db()
+        self.assertEqual(self.student.status, Student.Status.INACTIVE)
+        self.assertIsNotNone(self.student.status_changed_at)
+
+    def test_reactivate_returns_student_to_active(self):
+        self.student.record_status_change(Student.Status.INACTIVE)
+
+        self.student.record_status_change(Student.Status.ACTIVE)
+
+        self.student.refresh_from_db()
+        self.assertEqual(self.student.status, Student.Status.ACTIVE)
+
+    def test_invalid_status_is_rejected(self):
+        with self.assertRaises(ValidationError):
+            self.student.record_status_change("GRADUATED")
+
+        self.student.refresh_from_db()
+        self.assertEqual(self.student.status, Student.Status.ACTIVE)
+
+    def test_repeat_status_is_rejected(self):
+        with self.assertRaises(ValidationError):
+            self.student.record_status_change(Student.Status.ACTIVE)
+
+        self.student.refresh_from_db()
+        self.assertEqual(self.student.status, Student.Status.ACTIVE)
+        self.assertIsNone(self.student.status_changed_at)
+
+    def test_status_change_does_not_alter_enrollment_history(self):
+        year = AcademicYear.objects.create(
+            name="2026-2027", start_date="2026-06-01", end_date="2027-04-30"
+        )
+        class_grade = ClassGrade.objects.create(name="Grade 1")
+        section = Section.objects.create(class_grade=class_grade, name="A")
+        enrollment = self.student.enroll(
+            academic_year=year, class_grade=class_grade, section=section
+        )
+
+        self.student.record_status_change(Student.Status.INACTIVE)
+
+        enrollment.refresh_from_db()
+        self.assertEqual(enrollment.status, AcademicEnrollment.Status.ACTIVE)
+        self.assertEqual(self.student.current_enrollment, enrollment)
+
+    def test_status_change_preserves_source_applicant(self):
+        self.student.record_status_change(Student.Status.INACTIVE)
+
+        self.applicant.refresh_from_db()
+        self.assertEqual(self.applicant.admission_status, Applicant.AdmissionStatus.ACCEPTED)
+        self.assertEqual(self.student.applicant, self.applicant)

@@ -5,6 +5,10 @@
 <dl class="row">
     <dt class="col-sm-3">Status</dt>
     <dd class="col-sm-9">{{ student.get_status_display }}</dd>
+    {% if student.status_changed_at %}
+    <dt class="col-sm-3">Status changed</dt>
+    <dd class="col-sm-9">{{ student.status_changed_at }}</dd>
+    {% endif %}
     <dt class="col-sm-3">Date of birth</dt>
     <dd class="col-sm-9">{{ student.date_of_birth|default:"-" }}</dd>
     <dt class="col-sm-3">Email</dt>
@@ -14,6 +18,25 @@
     <dt class="col-sm-3">Source Applicant</dt>
     <dd class="col-sm-9"><a href="{% url 'core:applicant-detail' student.applicant.pk %}">{{ student.applicant.full_name }}</a></dd>
 </dl>
+
+{% if perms.core.change_student %}
+<h2 class="h5">Change status</h2>
+<div class="mb-3">
+    {% if student.status == "ACTIVE" %}
+    <form method="post" action="{% url 'core:student-status-change' student.pk %}" class="d-inline">
+        {% csrf_token %}
+        <input type="hidden" name="status" value="INACTIVE">
+        <button type="submit" class="btn btn-warning">Deactivate</button>
+    </form>
+    {% else %}
+    <form method="post" action="{% url 'core:student-status-change' student.pk %}" class="d-inline">
+        {% csrf_token %}
+        <input type="hidden" name="status" value="ACTIVE">
+        <button type="submit" class="btn btn-success">Reactivate</button>
+    </form>
+    {% endif %}
+</div>
+{% endif %}
 
 <h2 class="h5">Current placement</h2>
 {% if current_enrollment %}

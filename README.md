@@ -17,6 +17,7 @@ Current status:
   - explicit admission decisions (accept/reject)
   - explicit Applicant-to-Student progression with carried-forward guardians
   - academic enrollment with historical placement (one ACTIVE per Student)
+  - student list, search, profile, and ACTIVE/INACTIVE status workflow
 
 ## Documentation
 

@@ -28,8 +28,10 @@ Foundation
 - admission decisions
 - student creation and enrollment
 - academic enrollment and assignment
-- student profiles and basic search
+- student profiles, listing, and basic search
+- student status changes (ACTIVE/INACTIVE)
 - admin authorization foundation
+- Phase 1 integration and hardening close-out
 
 ### Phase 2 Attendance
 - attendance capture and reporting

@@ -308,11 +308,32 @@ class Student(models.Model):
     email = models.EmailField(blank=True)
     phone = models.CharField(max_length=50, blank=True)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.ACTIVE)
+    status_changed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ["full_name"]
+
+    def record_status_change(self, new_status):
+        """Change the Student's lifecycle status between ACTIVE and INACTIVE.
+
+        Per docs/adr/0003-phase-1-status-and-transition-rules.md the frozen
+        Phase 1 Student status set is ACTIVE/INACTIVE. Phase 1 keeps the
+        lifecycle deliberately small: an administrator may deactivate an
+        active Student or reactivate an inactive one. An unknown status or a
+        no-op change is rejected without changing the record, and this only
+        touches the Student row so historical enrollment and application data
+        are never silently rewritten.
+        """
+        allowed = {self.Status.ACTIVE, self.Status.INACTIVE}
+        if new_status not in allowed:
+            raise ValidationError("Invalid Student status.")
+        if new_status == self.status:
+            raise ValidationError("Student already has this status.")
+        self.status = new_status
+        self.status_changed_at = timezone.now()
+        self.save(update_fields=["status", "status_changed_at", "updated_at"])
 
     def enroll(self, *, academic_year, class_grade, section):
         """Place the Student into a new academic placement.

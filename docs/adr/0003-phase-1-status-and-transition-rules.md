@@ -31,6 +31,13 @@ FROZEN — Student status minimum set:
 - INACTIVE
 - No additional status (Graduated, Transferred, Suspended, Withdrawn, or similar) is added until the corresponding workflow exists.
 
+FROZEN — Student status transitions:
+
+- ACTIVE → INACTIVE
+- INACTIVE → ACTIVE
+- Repeating the current status is not a transition and is rejected.
+- Changing Student status does not alter Applicant history or Academic Enrollment history.
+
 FROZEN — Academic Enrollment status minimum set:
 
 - ACTIVE

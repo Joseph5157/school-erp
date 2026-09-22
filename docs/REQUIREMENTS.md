@@ -179,7 +179,7 @@ Acceptance criteria:
 
 ## Student status
 
-Student status must support the approved student lifecycle without creating an expansive workflow. The exact Phase 1 status list is not frozen by approved documentation; the implementation plan must define only the minimum statuses necessary for that lifecycle.
+Student status must support the approved student lifecycle without creating an expansive workflow. Phase 1 Student statuses are ACTIVE and INACTIVE as defined by ADR 0003. The Phase 1 workflow permits explicit, validated changes between those two statuses without altering application or academic enrollment history.
 
 Acceptance criteria:
 

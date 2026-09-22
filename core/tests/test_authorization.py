@@ -1002,3 +1002,138 @@ class StudentEnrollAuthorizationTests(AuthorizationClientsMixin, TestCase):
         response = self.administrator.get(self.url)
 
         self.assertEqual(response.status_code, 200)
+
+
+class StudentListAuthorizationTests(AuthorizationClientsMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.ravi = self._student("Ravi Rao", "ravi@example.com", "111-222")
+        self.meera = self._student("Meera Iyer", "meera@example.com", "333-444")
+        self.url = reverse("core:student-list")
+
+    def _student(self, full_name, email, phone):
+        applicant = Applicant.objects.create(full_name=full_name, email=email, phone=phone)
+        applicant.record_admission_decision(Applicant.AdmissionStatus.ACCEPTED)
+        return applicant.progress_to_student()
+
+    def test_anonymous_is_redirected_to_login(self):
+        response = self.anonymous.get(self.url)
+
+        self.assertRedirects(
+            response, f"{reverse('login')}?next={self.url}", fetch_redirect_response=False
+        )
+
+    def test_authenticated_non_admin_is_forbidden(self):
+        response = self.non_admin.get(self.url)
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_administrator_sees_all_students(self):
+        response = self.administrator.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Ravi Rao")
+        self.assertContains(response, "Meera Iyer")
+
+    def test_superuser_can_list(self):
+        response = self.superuser_client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_search_by_name(self):
+        response = self.administrator.get(self.url, {"q": "Meera"})
+
+        self.assertEqual(list(response.context["students"]), [self.meera])
+
+    def test_search_by_email(self):
+        response = self.administrator.get(self.url, {"q": "ravi@example.com"})
+
+        self.assertEqual(list(response.context["students"]), [self.ravi])
+
+    def test_search_by_phone(self):
+        response = self.administrator.get(self.url, {"q": "333-444"})
+
+        self.assertEqual(list(response.context["students"]), [self.meera])
+
+    def test_search_with_no_match_returns_nothing(self):
+        response = self.administrator.get(self.url, {"q": "Nobody"})
+
+        self.assertEqual(list(response.context["students"]), [])
+
+
+class StudentStatusChangeAuthorizationTests(AuthorizationClientsMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        applicant = Applicant.objects.create(full_name="Ravi Rao")
+        applicant.record_admission_decision(Applicant.AdmissionStatus.ACCEPTED)
+        self.student = applicant.progress_to_student()
+        self.url = reverse("core:student-status-change", args=[self.student.pk])
+
+    def test_anonymous_is_redirected_to_login(self):
+        response = self.anonymous.post(self.url, {"status": Student.Status.INACTIVE})
+
+        self.assertRedirects(
+            response, f"{reverse('login')}?next={self.url}", fetch_redirect_response=False
+        )
+        self.student.refresh_from_db()
+        self.assertEqual(self.student.status, Student.Status.ACTIVE)
+
+    def test_authenticated_non_admin_is_forbidden(self):
+        response = self.non_admin.post(self.url, {"status": Student.Status.INACTIVE})
+
+        self.assertEqual(response.status_code, 403)
+        self.student.refresh_from_db()
+        self.assertEqual(self.student.status, Student.Status.ACTIVE)
+
+    def test_administrator_can_deactivate(self):
+        response = self.administrator.post(self.url, {"status": Student.Status.INACTIVE})
+
+        self.assertRedirects(response, reverse("core:student-detail", args=[self.student.pk]))
+        self.student.refresh_from_db()
+        self.assertEqual(self.student.status, Student.Status.INACTIVE)
+        self.assertIsNotNone(self.student.status_changed_at)
+
+    def test_administrator_can_reactivate(self):
+        self.student.record_status_change(Student.Status.INACTIVE)
+
+        response = self.administrator.post(self.url, {"status": Student.Status.ACTIVE})
+
+        self.assertRedirects(response, reverse("core:student-detail", args=[self.student.pk]))
+        self.student.refresh_from_db()
+        self.assertEqual(self.student.status, Student.Status.ACTIVE)
+
+    def test_superuser_can_change_status(self):
+        response = self.superuser_client.post(self.url, {"status": Student.Status.INACTIVE})
+
+        self.assertRedirects(response, reverse("core:student-detail", args=[self.student.pk]))
+        self.student.refresh_from_db()
+        self.assertEqual(self.student.status, Student.Status.INACTIVE)
+
+    def test_invalid_status_is_rejected(self):
+        response = self.administrator.post(self.url, {"status": "GRADUATED"})
+
+        self.assertRedirects(response, reverse("core:student-detail", args=[self.student.pk]))
+        self.student.refresh_from_db()
+        self.assertEqual(self.student.status, Student.Status.ACTIVE)
+
+    def test_repeat_status_is_rejected(self):
+        response = self.administrator.post(self.url, {"status": Student.Status.ACTIVE})
+
+        self.assertRedirects(response, reverse("core:student-detail", args=[self.student.pk]))
+        self.student.refresh_from_db()
+        self.assertEqual(self.student.status, Student.Status.ACTIVE)
+
+    def test_get_does_not_change_status(self):
+        response = self.administrator.get(self.url)
+
+        self.assertRedirects(response, reverse("core:student-detail", args=[self.student.pk]))
+        self.student.refresh_from_db()
+        self.assertEqual(self.student.status, Student.Status.ACTIVE)
+
+    def test_missing_student_is_not_found(self):
+        response = self.administrator.post(
+            reverse("core:student-status-change", args=[self.student.pk + 999]),
+            {"status": Student.Status.INACTIVE},
+        )
+
+        self.assertEqual(response.status_code, 404)

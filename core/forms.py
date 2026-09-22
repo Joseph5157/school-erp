@@ -10,6 +10,7 @@ from core.models import (
     Guardian,
     School,
     Section,
+    Student,
 )
 
 
@@ -123,6 +124,17 @@ class AdmissionDecisionForm(forms.Form):
             (Applicant.AdmissionStatus.REJECTED, "Rejected"),
         ]
     )
+
+
+class StudentStatusForm(forms.Form):
+    """The explicit Student status change permitted in Phase 1.
+
+    Only the frozen ACTIVE/INACTIVE set is offered
+    (docs/adr/0003-phase-1-status-and-transition-rules.md); the model workflow
+    rejects unknown values or no-op changes as a second line of defence.
+    """
+
+    status = forms.ChoiceField(choices=Student.Status.choices)
 
 
 class GuardianForm(forms.ModelForm):

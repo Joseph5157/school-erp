@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
 from core.authorization import administrator_required
@@ -14,6 +15,7 @@ from core.forms import (
     GuardianForm,
     SchoolForm,
     SectionForm,
+    StudentStatusForm,
 )
 from core.models import (
     AcademicEnrollment,
@@ -258,6 +260,23 @@ def guardian_detail(request, pk):
 
 
 @administrator_required("core.view_student")
+def student_list(request):
+    query = request.GET.get("q", "").strip()
+    students = Student.objects.all()
+    if query:
+        students = students.filter(
+            Q(full_name__icontains=query)
+            | Q(email__icontains=query)
+            | Q(phone__icontains=query)
+        )
+    return render(
+        request,
+        "core/student_list.html",
+        {"students": students, "query": query},
+    )
+
+
+@administrator_required("core.view_student")
 def student_detail(request, pk):
     student = get_object_or_404(Student, pk=pk)
     guardian_links = student.guardian_links.select_related("guardian")
@@ -299,3 +318,24 @@ def student_enroll(request, pk):
         "core/enrollment_form.html",
         {"form": form, "student": student},
     )
+
+
+@administrator_required("core.change_student")
+def student_status_change(request, pk):
+    student = get_object_or_404(Student, pk=pk)
+    if request.method != "POST":
+        return redirect("core:student-detail", pk=student.pk)
+
+    form = StudentStatusForm(request.POST)
+    if not form.is_valid():
+        messages.error(request, "Invalid Student status.")
+        return redirect("core:student-detail", pk=student.pk)
+
+    try:
+        student.record_status_change(form.cleaned_data["status"])
+    except ValidationError as error:
+        messages.error(request, error.messages[0])
+        return redirect("core:student-detail", pk=student.pk)
+
+    messages.success(request, f"Student status changed: {student.status}.")
+    return redirect("core:student-detail", pk=student.pk)
