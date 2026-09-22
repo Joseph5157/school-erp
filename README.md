@@ -2,13 +2,13 @@
 
 ## Project status
 
-This repository contains the documentation foundation and the in-progress
+This repository contains the documentation foundation and the completed
 Phase 1 implementation of the School ERP.
 
 Current status:
 - documentation foundation established; business and domain decisions are the source of truth
 - approved technology stack recorded in `docs/ARCHITECTURE.md` (Django + PostgreSQL)
-- Phase 1 implementation underway:
+- Phase 1 Student Lifecycle is complete:
   - custom User model (accounts)
   - school configuration
   - academic year management
@@ -18,6 +18,8 @@ Current status:
   - explicit Applicant-to-Student progression with carried-forward guardians
   - academic enrollment with historical placement (one ACTIVE per Student)
   - student list, search, profile, and ACTIVE/INACTIVE status workflow
+  - initial administrative authorization/permissions (School Administrators group)
+  - full acceptance journey verified end to end by automated tests
 
 ## Documentation
 
@@ -31,6 +33,6 @@ Current status:
 
 ## Important note
 
-The approved technology stack is recorded in `docs/ARCHITECTURE.md`. Remaining
-Phase 1 modules must follow the documented domain model, requirements, and
-ADRs. Out-of-scope modules must not be started.
+The approved technology stack is recorded in `docs/ARCHITECTURE.md`. Future
+phases must follow the documented domain model, requirements, and ADRs.
+Out-of-scope modules must not be started.

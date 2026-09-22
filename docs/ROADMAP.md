@@ -33,6 +33,8 @@ Foundation
 - admin authorization foundation
 - Phase 1 integration and hardening close-out
 
+Status: complete.
+
 ### Phase 2 Attendance
 - attendance capture and reporting
 - attendance history and operational corrections
