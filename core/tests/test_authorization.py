@@ -5,7 +5,7 @@ from django.contrib.auth.models import Group
 from django.test import TestCase
 from django.urls import reverse
 
-from core.models import AcademicYear, School
+from core.models import AcademicYear, ClassGrade, School, Section
 
 User = get_user_model()
 
@@ -17,7 +17,19 @@ class SchoolAdministratorsGroupMigrationTests(TestCase):
 
         self.assertEqual(
             codenames,
-            {"add_school", "change_school", "view_school", "add_academicyear", "view_academicyear"},
+            {
+                "add_school",
+                "change_school",
+                "view_school",
+                "add_academicyear",
+                "view_academicyear",
+                "add_classgrade",
+                "change_classgrade",
+                "view_classgrade",
+                "add_section",
+                "change_section",
+                "view_section",
+            },
         )
 
 
@@ -241,3 +253,159 @@ class AcademicYearListAuthorizationTests(AuthorizationClientsMixin, TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "2026-2027")
+
+
+class ClassGradeCreateAuthorizationTests(AuthorizationClientsMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.url = reverse("core:class-grade-create")
+
+    def test_anonymous_is_redirected_to_login(self):
+        response = self.anonymous.post(self.url, {"name": "Grade 1"})
+
+        self.assertRedirects(
+            response, f"{reverse('login')}?next={self.url}", fetch_redirect_response=False
+        )
+        self.assertFalse(ClassGrade.objects.exists())
+
+    def test_authenticated_non_admin_is_forbidden(self):
+        response = self.non_admin.post(self.url, {"name": "Grade 1"})
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(ClassGrade.objects.exists())
+
+    def test_administrator_can_create(self):
+        response = self.administrator.post(self.url, {"name": "Grade 1"})
+
+        self.assertRedirects(response, reverse("core:class-grade-list"))
+        self.assertEqual(ClassGrade.objects.count(), 1)
+
+    def test_superuser_can_create(self):
+        response = self.superuser_client.post(self.url, {"name": "Grade 1"})
+
+        self.assertRedirects(response, reverse("core:class-grade-list"))
+        self.assertEqual(ClassGrade.objects.count(), 1)
+
+    def test_administrator_duplicate_name_leaves_no_partial_record(self):
+        ClassGrade.objects.create(name="Grade 1")
+
+        response = self.administrator.post(self.url, {"name": "Grade 1"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(ClassGrade.objects.count(), 1)
+
+
+class ClassGradeListAuthorizationTests(AuthorizationClientsMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        ClassGrade.objects.create(name="Grade 1")
+        self.url = reverse("core:class-grade-list")
+
+    def test_anonymous_is_redirected_to_login(self):
+        response = self.anonymous.get(self.url)
+
+        self.assertRedirects(
+            response, f"{reverse('login')}?next={self.url}", fetch_redirect_response=False
+        )
+
+    def test_authenticated_non_admin_is_forbidden(self):
+        response = self.non_admin.get(self.url)
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_administrator_can_list(self):
+        response = self.administrator.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Grade 1")
+
+    def test_superuser_can_list(self):
+        response = self.superuser_client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Grade 1")
+
+
+class ClassGradeDetailAuthorizationTests(AuthorizationClientsMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.class_grade = ClassGrade.objects.create(name="Grade 1")
+        self.url = reverse("core:class-grade-detail", args=[self.class_grade.pk])
+
+    def test_anonymous_is_redirected_to_login(self):
+        response = self.anonymous.get(self.url)
+
+        self.assertRedirects(
+            response, f"{reverse('login')}?next={self.url}", fetch_redirect_response=False
+        )
+
+    def test_authenticated_non_admin_is_forbidden(self):
+        response = self.non_admin.get(self.url)
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_administrator_can_view(self):
+        response = self.administrator.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Grade 1")
+
+    def test_superuser_can_view(self):
+        response = self.superuser_client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Grade 1")
+
+
+class SectionCreateAuthorizationTests(AuthorizationClientsMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.class_grade = ClassGrade.objects.create(name="Grade 1")
+        self.url = reverse("core:section-create", args=[self.class_grade.pk])
+
+    def test_anonymous_is_redirected_to_login(self):
+        response = self.anonymous.post(self.url, {"name": "A"})
+
+        self.assertRedirects(
+            response, f"{reverse('login')}?next={self.url}", fetch_redirect_response=False
+        )
+        self.assertFalse(Section.objects.exists())
+
+    def test_authenticated_non_admin_is_forbidden(self):
+        response = self.non_admin.post(self.url, {"name": "A"})
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Section.objects.exists())
+
+    def test_administrator_can_create(self):
+        response = self.administrator.post(self.url, {"name": "A"})
+
+        self.assertRedirects(
+            response, reverse("core:class-grade-detail", args=[self.class_grade.pk])
+        )
+        self.assertEqual(Section.objects.count(), 1)
+        self.assertEqual(Section.objects.get().class_grade, self.class_grade)
+
+    def test_superuser_can_create(self):
+        response = self.superuser_client.post(self.url, {"name": "A"})
+
+        self.assertRedirects(
+            response, reverse("core:class-grade-detail", args=[self.class_grade.pk])
+        )
+        self.assertEqual(Section.objects.count(), 1)
+
+    def test_administrator_duplicate_section_name_leaves_no_partial_record(self):
+        Section.objects.create(class_grade=self.class_grade, name="A")
+
+        response = self.administrator.post(self.url, {"name": "A"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Section.objects.count(), 1)
+
+    def test_create_for_missing_class_grade_is_not_found(self):
+        response = self.administrator.post(
+            reverse("core:section-create", args=[self.class_grade.pk + 999]), {"name": "A"}
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(Section.objects.exists())

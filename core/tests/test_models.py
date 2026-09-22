@@ -1,8 +1,9 @@
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
+from django.db.models import ProtectedError
 from django.test import TestCase
 
-from core.models import AcademicYear, School
+from core.models import AcademicYear, ClassGrade, School, Section
 
 
 class SchoolModelTests(TestCase):
@@ -85,3 +86,91 @@ class AcademicYearModelTests(TestCase):
                 name="Invalid", start_date="2026-06-01", end_date="2026-01-01"
             )
         self.assertEqual(AcademicYear.objects.count(), 0)
+
+
+class ClassGradeModelTests(TestCase):
+    def test_valid_class_grade_can_be_created(self):
+        class_grade = ClassGrade(name="Grade 1")
+        class_grade.full_clean()
+        class_grade.save()
+
+        self.assertEqual(ClassGrade.objects.count(), 1)
+
+    def test_name_is_required(self):
+        class_grade = ClassGrade(name="")
+
+        with self.assertRaises(ValidationError):
+            class_grade.full_clean()
+        self.assertEqual(ClassGrade.objects.count(), 0)
+
+    def test_duplicate_name_is_rejected(self):
+        ClassGrade.objects.create(name="Grade 1")
+        duplicate = ClassGrade(name="Grade 1")
+
+        with self.assertRaises(ValidationError):
+            duplicate.full_clean()
+        self.assertEqual(ClassGrade.objects.count(), 1)
+
+    def test_database_rejects_duplicate_name(self):
+        ClassGrade.objects.create(name="Grade 1")
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            ClassGrade.objects.create(name="Grade 1")
+        self.assertEqual(ClassGrade.objects.count(), 1)
+
+    def test_class_grade_with_sections_cannot_be_deleted(self):
+        class_grade = ClassGrade.objects.create(name="Grade 1")
+        Section.objects.create(class_grade=class_grade, name="A")
+
+        with self.assertRaises(ProtectedError), transaction.atomic():
+            class_grade.delete()
+        self.assertEqual(ClassGrade.objects.count(), 1)
+
+
+class SectionModelTests(TestCase):
+    def setUp(self):
+        self.class_grade = ClassGrade.objects.create(name="Grade 1")
+
+    def test_valid_section_can_be_created(self):
+        section = Section(class_grade=self.class_grade, name="A")
+        section.full_clean()
+        section.save()
+
+        self.assertEqual(Section.objects.count(), 1)
+
+    def test_section_requires_class_grade(self):
+        section = Section(name="A")
+
+        with self.assertRaises(ValidationError):
+            section.full_clean()
+        self.assertEqual(Section.objects.count(), 0)
+
+    def test_database_rejects_section_without_class_grade(self):
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            Section.objects.create(name="A")
+        self.assertEqual(Section.objects.count(), 0)
+
+    def test_duplicate_name_within_class_grade_is_rejected(self):
+        Section.objects.create(class_grade=self.class_grade, name="A")
+        duplicate = Section(class_grade=self.class_grade, name="A")
+
+        with self.assertRaises(ValidationError):
+            duplicate.full_clean()
+        self.assertEqual(Section.objects.count(), 1)
+
+    def test_database_rejects_duplicate_name_within_class_grade(self):
+        Section.objects.create(class_grade=self.class_grade, name="A")
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            Section.objects.create(class_grade=self.class_grade, name="A")
+        self.assertEqual(Section.objects.count(), 1)
+
+    def test_same_section_name_allowed_in_different_class_grade(self):
+        other_class_grade = ClassGrade.objects.create(name="Grade 2")
+        Section.objects.create(class_grade=self.class_grade, name="A")
+
+        section = Section(class_grade=other_class_grade, name="A")
+        section.full_clean()
+        section.save()
+
+        self.assertEqual(Section.objects.count(), 2)

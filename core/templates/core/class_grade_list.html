@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Classes/Grades{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Classes/Grades</h1>
+{% if perms.core.add_classgrade %}
+    <a class="btn btn-primary mb-3" href="{% url 'core:class-grade-create' %}">Create Class/Grade</a>
+{% endif %}
+<table class="table">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Sections</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for class_grade in class_grades %}
+        <tr>
+            <td><a href="{% url 'core:class-grade-detail' class_grade.pk %}">{{ class_grade.name }}</a></td>
+            <td>{{ class_grade.sections.count }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="2">No Classes/Grades yet.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

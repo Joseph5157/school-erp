@@ -1,10 +1,10 @@
 from django.contrib import messages
 from django.db import IntegrityError, transaction
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 
 from core.authorization import administrator_required
-from core.forms import AcademicYearForm, SchoolForm
-from core.models import AcademicYear, School
+from core.forms import AcademicYearForm, ClassGradeForm, SchoolForm, SectionForm
+from core.models import AcademicYear, ClassGrade, School
 
 
 @administrator_required("core.view_school")
@@ -73,3 +73,50 @@ def academic_year_create(request):
     else:
         form = AcademicYearForm()
     return render(request, "core/academic_year_form.html", {"form": form})
+
+
+@administrator_required("core.view_classgrade")
+def class_grade_list(request):
+    class_grades = ClassGrade.objects.all()
+    return render(request, "core/class_grade_list.html", {"class_grades": class_grades})
+
+
+@administrator_required("core.view_classgrade")
+def class_grade_detail(request, pk):
+    class_grade = get_object_or_404(ClassGrade, pk=pk)
+    return render(
+        request,
+        "core/class_grade_detail.html",
+        {"class_grade": class_grade, "sections": class_grade.sections.all()},
+    )
+
+
+@administrator_required("core.add_classgrade")
+def class_grade_create(request):
+    if request.method == "POST":
+        form = ClassGradeForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Class/Grade created.")
+            return redirect("core:class-grade-list")
+    else:
+        form = ClassGradeForm()
+    return render(request, "core/class_grade_form.html", {"form": form})
+
+
+@administrator_required("core.add_section")
+def section_create(request, pk):
+    class_grade = get_object_or_404(ClassGrade, pk=pk)
+    if request.method == "POST":
+        form = SectionForm(request.POST, class_grade=class_grade)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Section created.")
+            return redirect("core:class-grade-detail", pk=class_grade.pk)
+    else:
+        form = SectionForm(class_grade=class_grade)
+    return render(
+        request,
+        "core/section_form.html",
+        {"form": form, "class_grade": class_grade},
+    )

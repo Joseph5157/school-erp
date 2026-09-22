@@ -71,3 +71,50 @@ class AcademicYear(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class ClassGrade(models.Model):
+    """A reusable, year-agnostic Class/Grade reference record.
+
+    Per docs/adr/0001-academic-structure-and-enrollment-history.md, Class/Grade
+    is not recreated per Academic Year and carries no year relationship. It is
+    referenced by Section, and later by Academic Enrollment.
+    """
+
+    name = models.CharField(max_length=100, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name = "Class/Grade"
+        verbose_name_plural = "Classes/Grades"
+
+    def __str__(self):
+        return self.name
+
+
+class Section(models.Model):
+    """A year-agnostic Section belonging to exactly one Class/Grade.
+
+    Per docs/adr/0001-academic-structure-and-enrollment-history.md, Academic
+    Year is not placed on Section in Phase 1; year scope lives only on
+    Academic Enrollment. Section names are unique within their Class/Grade.
+    """
+
+    class_grade = models.ForeignKey(ClassGrade, on_delete=models.PROTECT, related_name="sections")
+    name = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["class_grade", "name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["class_grade", "name"],
+                name="section_unique_name_per_class_grade",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.class_grade} - {self.name}"

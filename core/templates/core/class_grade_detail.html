@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}{{ class_grade.name }}{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">{{ class_grade.name }}</h1>
+<h2 class="h5">Sections</h2>
+{% if perms.core.add_section %}
+    <a class="btn btn-primary mb-3" href="{% url 'core:section-create' class_grade.pk %}">Create Section</a>
+{% endif %}
+<table class="table">
+    <thead>
+        <tr>
+            <th>Name</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for section in sections %}
+        <tr>
+            <td>{{ section.name }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td>No Sections yet.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<a class="btn btn-link" href="{% url 'core:class-grade-list' %}">Back to Classes/Grades</a>
+{% endblock %}
