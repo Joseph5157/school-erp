@@ -18,6 +18,11 @@ urlpatterns = [
     path("applicants/create/", views.applicant_create, name="applicant-create"),
     path("applicants/<int:pk>/", views.applicant_detail, name="applicant-detail"),
     path(
+        "applicants/<int:pk>/decision/",
+        views.applicant_admission_decision,
+        name="applicant-admission-decision",
+    ),
+    path(
         "applicants/<int:pk>/guardians/add/",
         views.applicant_guardian_create,
         name="applicant-guardian-create",

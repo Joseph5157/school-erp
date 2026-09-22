@@ -5,6 +5,10 @@
 <dl class="row">
     <dt class="col-sm-3">Admission status</dt>
     <dd class="col-sm-9">{{ applicant.get_admission_status_display }}</dd>
+    {% if applicant.admission_decided_at %}
+    <dt class="col-sm-3">Decision recorded</dt>
+    <dd class="col-sm-9">{{ applicant.admission_decided_at }}</dd>
+    {% endif %}
     <dt class="col-sm-3">Date of birth</dt>
     <dd class="col-sm-9">{{ applicant.date_of_birth|default:"-" }}</dd>
     <dt class="col-sm-3">Email</dt>
@@ -12,6 +16,22 @@
     <dt class="col-sm-3">Phone</dt>
     <dd class="col-sm-9">{{ applicant.phone|default:"-" }}</dd>
 </dl>
+
+{% if perms.core.change_applicant and applicant.admission_status == "PENDING" %}
+<h2 class="h5">Admission decision</h2>
+<div class="mb-3">
+    <form method="post" action="{% url 'core:applicant-admission-decision' applicant.pk %}" class="d-inline">
+        {% csrf_token %}
+        <input type="hidden" name="decision" value="ACCEPTED">
+        <button type="submit" class="btn btn-success">Accept</button>
+    </form>
+    <form method="post" action="{% url 'core:applicant-admission-decision' applicant.pk %}" class="d-inline">
+        {% csrf_token %}
+        <input type="hidden" name="decision" value="REJECTED">
+        <button type="submit" class="btn btn-danger">Reject</button>
+    </form>
+</div>
+{% endif %}
 
 <h2 class="h5">Guardians</h2>
 {% if perms.core.add_applicantguardian %}

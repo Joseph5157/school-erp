@@ -82,6 +82,22 @@ class ApplicantForm(forms.ModelForm):
         }
 
 
+class AdmissionDecisionForm(forms.Form):
+    """The explicit admission decision for a pending Applicant.
+
+    Only the two Phase 1 final decisions are offered; PENDING is not a
+    choosable value, so this form can never move an Applicant back to
+    pending (docs/adr/0003-phase-1-status-and-transition-rules.md).
+    """
+
+    decision = forms.ChoiceField(
+        choices=[
+            (Applicant.AdmissionStatus.ACCEPTED, "Accepted"),
+            (Applicant.AdmissionStatus.REJECTED, "Rejected"),
+        ]
+    )
+
+
 class GuardianForm(forms.ModelForm):
     class Meta:
         model = Guardian

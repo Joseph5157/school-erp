@@ -1,5 +1,6 @@
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils import timezone
 
 
 class School(models.Model):
@@ -179,11 +180,33 @@ class Applicant(models.Model):
         choices=AdmissionStatus.choices,
         default=AdmissionStatus.PENDING,
     )
+    admission_decided_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ["full_name"]
+
+    def record_admission_decision(self, decision):
+        """Record a final admission decision for a pending Applicant.
+
+        Per docs/adr/0003-phase-1-status-and-transition-rules.md the only
+        permitted Phase 1 transitions are PENDING -> ACCEPTED and
+        PENDING -> REJECTED, and ACCEPTED/REJECTED are final. Any other
+        request -- an unknown decision, a repeat, or a reversal -- is rejected
+        without changing the record, so the original application history is
+        never silently rewritten.
+        """
+        allowed = {self.AdmissionStatus.ACCEPTED, self.AdmissionStatus.REJECTED}
+        if decision not in allowed:
+            raise ValidationError("Invalid admission decision.")
+        if self.admission_status != self.AdmissionStatus.PENDING:
+            raise ValidationError(
+                "An admission decision has already been recorded for this Applicant."
+            )
+        self.admission_status = decision
+        self.admission_decided_at = timezone.now()
+        self.save(update_fields=["admission_status", "admission_decided_at", "updated_at"])
 
     def __str__(self):
         return self.full_name

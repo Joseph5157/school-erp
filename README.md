@@ -14,6 +14,7 @@ Current status:
   - academic year management
   - class/grade and section management
   - applicant registration and guardian records with Applicant–Guardian relationships
+  - explicit admission decisions (accept/reject)
 
 ## Documentation
 

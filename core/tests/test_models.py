@@ -231,6 +231,70 @@ class ApplicantModelTests(TestCase):
 
         self.assertEqual(ApplicantGuardian.objects.count(), 0)
 
+    def test_new_applicant_has_no_decision_timestamp(self):
+        applicant = Applicant.objects.create(full_name="Ravi Rao")
+
+        self.assertIsNone(applicant.admission_decided_at)
+
+    def test_pending_applicant_can_be_accepted(self):
+        applicant = Applicant.objects.create(full_name="Ravi Rao")
+
+        applicant.record_admission_decision(Applicant.AdmissionStatus.ACCEPTED)
+
+        applicant.refresh_from_db()
+        self.assertEqual(applicant.admission_status, Applicant.AdmissionStatus.ACCEPTED)
+        self.assertIsNotNone(applicant.admission_decided_at)
+
+    def test_pending_applicant_can_be_rejected(self):
+        applicant = Applicant.objects.create(full_name="Ravi Rao")
+
+        applicant.record_admission_decision(Applicant.AdmissionStatus.REJECTED)
+
+        applicant.refresh_from_db()
+        self.assertEqual(applicant.admission_status, Applicant.AdmissionStatus.REJECTED)
+        self.assertIsNotNone(applicant.admission_decided_at)
+
+    def test_invalid_decision_is_rejected_without_change(self):
+        applicant = Applicant.objects.create(full_name="Ravi Rao")
+
+        with self.assertRaises(ValidationError):
+            applicant.record_admission_decision("MAYBE")
+
+        applicant.refresh_from_db()
+        self.assertEqual(applicant.admission_status, Applicant.AdmissionStatus.PENDING)
+        self.assertIsNone(applicant.admission_decided_at)
+
+    def test_pending_cannot_be_set_as_a_decision(self):
+        applicant = Applicant.objects.create(full_name="Ravi Rao")
+
+        with self.assertRaises(ValidationError):
+            applicant.record_admission_decision(Applicant.AdmissionStatus.PENDING)
+
+        applicant.refresh_from_db()
+        self.assertEqual(applicant.admission_status, Applicant.AdmissionStatus.PENDING)
+
+    def test_second_decision_is_rejected_without_change(self):
+        applicant = Applicant.objects.create(full_name="Ravi Rao")
+        applicant.record_admission_decision(Applicant.AdmissionStatus.ACCEPTED)
+        decided_at = applicant.admission_decided_at
+
+        with self.assertRaises(ValidationError):
+            applicant.record_admission_decision(Applicant.AdmissionStatus.REJECTED)
+
+        applicant.refresh_from_db()
+        self.assertEqual(applicant.admission_status, Applicant.AdmissionStatus.ACCEPTED)
+        self.assertEqual(applicant.admission_decided_at, decided_at)
+
+    def test_rejected_decision_cannot_be_reversed_to_accepted(self):
+        applicant = Applicant.objects.create(full_name="Ravi Rao")
+        applicant.record_admission_decision(Applicant.AdmissionStatus.REJECTED)
+
+        with self.assertRaises(ValidationError):
+            applicant.record_admission_decision(Applicant.AdmissionStatus.ACCEPTED)
+
+        applicant.refresh_from_db()
+        self.assertEqual(applicant.admission_status, Applicant.AdmissionStatus.REJECTED)
+
 
 class ApplicantGuardianModelTests(TestCase):
     def setUp(self):

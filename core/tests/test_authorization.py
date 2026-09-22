@@ -712,3 +712,95 @@ class GuardianDetailAuthorizationTests(AuthorizationClientsMixin, TestCase):
         )
 
         self.assertEqual(response.status_code, 404)
+
+
+class ApplicantAdmissionDecisionAuthorizationTests(AuthorizationClientsMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.applicant = Applicant.objects.create(full_name="Ravi Rao")
+        self.url = reverse("core:applicant-admission-decision", args=[self.applicant.pk])
+
+    def _decide(self, client, decision):
+        return client.post(self.url, {"decision": decision})
+
+    def test_anonymous_is_redirected_to_login(self):
+        response = self._decide(self.anonymous, Applicant.AdmissionStatus.ACCEPTED)
+
+        self.assertRedirects(
+            response, f"{reverse('login')}?next={self.url}", fetch_redirect_response=False
+        )
+        self.applicant.refresh_from_db()
+        self.assertEqual(self.applicant.admission_status, Applicant.AdmissionStatus.PENDING)
+
+    def test_authenticated_non_admin_is_forbidden(self):
+        response = self._decide(self.non_admin, Applicant.AdmissionStatus.ACCEPTED)
+
+        self.assertEqual(response.status_code, 403)
+        self.applicant.refresh_from_db()
+        self.assertEqual(self.applicant.admission_status, Applicant.AdmissionStatus.PENDING)
+
+    def test_administrator_can_accept(self):
+        response = self._decide(self.administrator, Applicant.AdmissionStatus.ACCEPTED)
+
+        self.assertRedirects(
+            response, reverse("core:applicant-detail", args=[self.applicant.pk])
+        )
+        self.applicant.refresh_from_db()
+        self.assertEqual(self.applicant.admission_status, Applicant.AdmissionStatus.ACCEPTED)
+        self.assertIsNotNone(self.applicant.admission_decided_at)
+
+    def test_administrator_can_reject(self):
+        response = self._decide(self.administrator, Applicant.AdmissionStatus.REJECTED)
+
+        self.assertRedirects(
+            response, reverse("core:applicant-detail", args=[self.applicant.pk])
+        )
+        self.applicant.refresh_from_db()
+        self.assertEqual(self.applicant.admission_status, Applicant.AdmissionStatus.REJECTED)
+
+    def test_superuser_can_decide(self):
+        response = self._decide(self.superuser_client, Applicant.AdmissionStatus.ACCEPTED)
+
+        self.assertRedirects(
+            response, reverse("core:applicant-detail", args=[self.applicant.pk])
+        )
+        self.applicant.refresh_from_db()
+        self.assertEqual(self.applicant.admission_status, Applicant.AdmissionStatus.ACCEPTED)
+
+    def test_get_does_not_change_state(self):
+        response = self.administrator.get(self.url)
+
+        self.assertRedirects(
+            response, reverse("core:applicant-detail", args=[self.applicant.pk])
+        )
+        self.applicant.refresh_from_db()
+        self.assertEqual(self.applicant.admission_status, Applicant.AdmissionStatus.PENDING)
+
+    def test_invalid_decision_leaves_no_change(self):
+        response = self._decide(self.administrator, "MAYBE")
+
+        self.assertRedirects(
+            response, reverse("core:applicant-detail", args=[self.applicant.pk])
+        )
+        self.applicant.refresh_from_db()
+        self.assertEqual(self.applicant.admission_status, Applicant.AdmissionStatus.PENDING)
+        self.assertIsNone(self.applicant.admission_decided_at)
+
+    def test_repeat_conflicting_decision_is_not_applied(self):
+        self._decide(self.administrator, Applicant.AdmissionStatus.ACCEPTED)
+
+        response = self._decide(self.administrator, Applicant.AdmissionStatus.REJECTED)
+
+        self.assertRedirects(
+            response, reverse("core:applicant-detail", args=[self.applicant.pk])
+        )
+        self.applicant.refresh_from_db()
+        self.assertEqual(self.applicant.admission_status, Applicant.AdmissionStatus.ACCEPTED)
+
+    def test_missing_applicant_is_not_found(self):
+        response = self.administrator.post(
+            reverse("core:applicant-admission-decision", args=[self.applicant.pk + 999]),
+            {"decision": Applicant.AdmissionStatus.ACCEPTED},
+        )
+
+        self.assertEqual(response.status_code, 404)

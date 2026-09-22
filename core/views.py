@@ -1,10 +1,12 @@
 from django.contrib import messages
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404, redirect, render
 
 from core.authorization import administrator_required
 from core.forms import (
     AcademicYearForm,
+    AdmissionDecisionForm,
     ApplicantForm,
     ApplicantGuardianForm,
     ClassGradeForm,
@@ -158,6 +160,27 @@ def applicant_detail(request, pk):
         "core/applicant_detail.html",
         {"applicant": applicant, "guardian_links": guardian_links},
     )
+
+
+@administrator_required("core.change_applicant")
+def applicant_admission_decision(request, pk):
+    applicant = get_object_or_404(Applicant, pk=pk)
+    if request.method != "POST":
+        return redirect("core:applicant-detail", pk=applicant.pk)
+
+    form = AdmissionDecisionForm(request.POST)
+    if not form.is_valid():
+        messages.error(request, "Invalid admission decision.")
+        return redirect("core:applicant-detail", pk=applicant.pk)
+
+    try:
+        applicant.record_admission_decision(form.cleaned_data["decision"])
+    except ValidationError as error:
+        messages.error(request, error.messages[0])
+        return redirect("core:applicant-detail", pk=applicant.pk)
+
+    messages.success(request, f"Admission decision recorded: {applicant.admission_status}.")
+    return redirect("core:applicant-detail", pk=applicant.pk)
 
 
 @administrator_required("core.add_applicantguardian")
