@@ -29,6 +29,7 @@ urlpatterns = [
     ),
     path("applicants/<int:pk>/progress/", views.applicant_progress, name="applicant-progress"),
     path("students/<int:pk>/", views.student_detail, name="student-detail"),
+    path("students/<int:pk>/enroll/", views.student_enroll, name="student-enroll"),
     path("guardians/", views.guardian_list, name="guardian-list"),
     path("guardians/create/", views.guardian_create, name="guardian-create"),
     path("guardians/<int:pk>/", views.guardian_detail, name="guardian-detail"),

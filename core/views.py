@@ -5,6 +5,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from core.authorization import administrator_required
 from core.forms import (
+    AcademicEnrollmentForm,
     AcademicYearForm,
     AdmissionDecisionForm,
     ApplicantForm,
@@ -14,7 +15,15 @@ from core.forms import (
     SchoolForm,
     SectionForm,
 )
-from core.models import AcademicYear, Applicant, ClassGrade, Guardian, School, Student
+from core.models import (
+    AcademicEnrollment,
+    AcademicYear,
+    Applicant,
+    ClassGrade,
+    Guardian,
+    School,
+    Student,
+)
 
 
 @administrator_required("core.view_school")
@@ -252,8 +261,41 @@ def guardian_detail(request, pk):
 def student_detail(request, pk):
     student = get_object_or_404(Student, pk=pk)
     guardian_links = student.guardian_links.select_related("guardian")
+    enrollments = student.enrollments.select_related("academic_year", "class_grade", "section")
+    current_enrollment = enrollments.filter(status=AcademicEnrollment.Status.ACTIVE).first()
     return render(
         request,
         "core/student_detail.html",
-        {"student": student, "guardian_links": guardian_links},
+        {
+            "student": student,
+            "guardian_links": guardian_links,
+            "current_enrollment": current_enrollment,
+            "enrollments": enrollments,
+        },
+    )
+
+
+@administrator_required("core.add_academicenrollment")
+def student_enroll(request, pk):
+    student = get_object_or_404(Student, pk=pk)
+    if request.method == "POST":
+        form = AcademicEnrollmentForm(request.POST)
+        if form.is_valid():
+            try:
+                student.enroll(
+                    academic_year=form.cleaned_data["academic_year"],
+                    class_grade=form.cleaned_data["class_grade"],
+                    section=form.cleaned_data["section"],
+                )
+            except ValidationError as error:
+                messages.error(request, error.messages[0])
+            else:
+                messages.success(request, "Academic Enrollment recorded.")
+                return redirect("core:student-detail", pk=student.pk)
+    else:
+        form = AcademicEnrollmentForm()
+    return render(
+        request,
+        "core/enrollment_form.html",
+        {"form": form, "student": student},
     )

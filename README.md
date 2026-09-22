@@ -16,6 +16,7 @@ Current status:
   - applicant registration and guardian records with Applicant–Guardian relationships
   - explicit admission decisions (accept/reject)
   - explicit Applicant-to-Student progression with carried-forward guardians
+  - academic enrollment with historical placement (one ACTIVE per Student)
 
 ## Documentation
 

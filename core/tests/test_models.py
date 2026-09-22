@@ -4,6 +4,7 @@ from django.db.models import ProtectedError
 from django.test import TestCase
 
 from core.models import (
+    AcademicEnrollment,
     AcademicYear,
     Applicant,
     ApplicantGuardian,
@@ -636,3 +637,164 @@ class StudentGuardianModelTests(TestCase):
         with self.assertRaises(ProtectedError), transaction.atomic():
             self.student.delete()
         self.assertEqual(Student.objects.count(), 1)
+
+
+class AcademicEnrollmentModelTests(TestCase):
+    def setUp(self):
+        self.student = Student.objects.create(
+            applicant=Applicant.objects.create(full_name="Ravi Rao"), full_name="Ravi Rao"
+        )
+        self.year = AcademicYear.objects.create(
+            name="2026-2027", start_date="2026-06-01", end_date="2027-04-30"
+        )
+        self.class_grade = ClassGrade.objects.create(name="Grade 1")
+        self.section = Section.objects.create(class_grade=self.class_grade, name="A")
+
+    def _enrollment(self, **overrides):
+        values = {
+            "student": self.student,
+            "academic_year": self.year,
+            "class_grade": self.class_grade,
+            "section": self.section,
+        }
+        values.update(overrides)
+        return AcademicEnrollment(**values)
+
+    def test_valid_enrollment_defaults_to_active(self):
+        enrollment = self._enrollment()
+        enrollment.full_clean()
+        enrollment.save()
+
+        self.assertEqual(enrollment.status, AcademicEnrollment.Status.ACTIVE)
+
+    def test_clean_rejects_section_from_other_class_grade(self):
+        other_class_grade = ClassGrade.objects.create(name="Grade 2")
+        other_section = Section.objects.create(class_grade=other_class_grade, name="A")
+
+        enrollment = self._enrollment(class_grade=self.class_grade, section=other_section)
+
+        with self.assertRaises(ValidationError):
+            enrollment.full_clean()
+        self.assertEqual(AcademicEnrollment.objects.count(), 0)
+
+    def test_database_rejects_second_active_enrollment_for_student(self):
+        self._enrollment().save()
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            self._enrollment().save()
+        self.assertEqual(AcademicEnrollment.objects.count(), 1)
+
+    def test_completed_and_active_enrollment_can_coexist(self):
+        AcademicEnrollment.objects.create(
+            student=self.student,
+            academic_year=self.year,
+            class_grade=self.class_grade,
+            section=self.section,
+            status=AcademicEnrollment.Status.COMPLETED,
+        )
+
+        active = self._enrollment()
+        active.full_clean()
+        active.save()
+
+        self.assertEqual(AcademicEnrollment.objects.count(), 2)
+
+    def test_student_with_enrollment_cannot_be_deleted(self):
+        self._enrollment().save()
+
+        with self.assertRaises(ProtectedError), transaction.atomic():
+            self.student.delete()
+        self.assertEqual(Student.objects.count(), 1)
+
+
+class StudentEnrollmentTests(TestCase):
+    def setUp(self):
+        self.student = Student.objects.create(
+            applicant=Applicant.objects.create(full_name="Ravi Rao"), full_name="Ravi Rao"
+        )
+        self.year = AcademicYear.objects.create(
+            name="2026-2027", start_date="2026-06-01", end_date="2027-04-30"
+        )
+        self.next_year = AcademicYear.objects.create(
+            name="2027-2028", start_date="2027-06-01", end_date="2028-04-30"
+        )
+        self.class_grade = ClassGrade.objects.create(name="Grade 1")
+        self.section = Section.objects.create(class_grade=self.class_grade, name="A")
+        self.other_section = Section.objects.create(class_grade=self.class_grade, name="B")
+
+    def test_enroll_creates_active_enrollment(self):
+        enrollment = self.student.enroll(
+            academic_year=self.year, class_grade=self.class_grade, section=self.section
+        )
+
+        self.assertEqual(enrollment.status, AcademicEnrollment.Status.ACTIVE)
+        self.assertEqual(enrollment.student, self.student)
+        self.assertEqual(self.student.current_enrollment, enrollment)
+
+    def test_new_placement_completes_previous_enrollment(self):
+        first = self.student.enroll(
+            academic_year=self.year, class_grade=self.class_grade, section=self.section
+        )
+
+        second = self.student.enroll(
+            academic_year=self.next_year, class_grade=self.class_grade, section=self.section
+        )
+
+        first.refresh_from_db()
+        self.assertEqual(first.status, AcademicEnrollment.Status.COMPLETED)
+        self.assertEqual(second.status, AcademicEnrollment.Status.ACTIVE)
+        self.assertEqual(self.student.current_enrollment, second)
+
+    def test_previous_enrollment_is_preserved(self):
+        first = self.student.enroll(
+            academic_year=self.year, class_grade=self.class_grade, section=self.section
+        )
+        self.student.enroll(
+            academic_year=self.next_year, class_grade=self.class_grade, section=self.section
+        )
+
+        self.assertTrue(AcademicEnrollment.objects.filter(pk=first.pk).exists())
+        self.assertEqual(AcademicEnrollment.objects.count(), 2)
+
+    def test_history_accumulates_multiple_completed_enrollments(self):
+        self.student.enroll(
+            academic_year=self.year, class_grade=self.class_grade, section=self.section
+        )
+        self.student.enroll(
+            academic_year=self.next_year, class_grade=self.class_grade, section=self.other_section
+        )
+
+        self.assertEqual(
+            AcademicEnrollment.objects.filter(status=AcademicEnrollment.Status.COMPLETED).count(), 1
+        )
+        self.assertEqual(
+            AcademicEnrollment.objects.filter(status=AcademicEnrollment.Status.ACTIVE).count(), 1
+        )
+
+    def test_incompatible_section_is_rejected(self):
+        other_class_grade = ClassGrade.objects.create(name="Grade 2")
+        other_section = Section.objects.create(class_grade=other_class_grade, name="A")
+
+        with self.assertRaises(ValidationError):
+            self.student.enroll(
+                academic_year=self.year,
+                class_grade=self.class_grade,
+                section=other_section,
+            )
+
+        self.assertFalse(AcademicEnrollment.objects.exists())
+
+    def test_duplicate_active_placement_is_rejected(self):
+        self.student.enroll(
+            academic_year=self.year, class_grade=self.class_grade, section=self.section
+        )
+
+        with self.assertRaises(ValidationError):
+            self.student.enroll(
+                academic_year=self.year, class_grade=self.class_grade, section=self.section
+            )
+
+        self.assertEqual(AcademicEnrollment.objects.count(), 1)
+
+    def test_current_enrollment_is_none_without_enrollment(self):
+        self.assertIsNone(self.student.current_enrollment)

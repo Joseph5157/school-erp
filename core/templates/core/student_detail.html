@@ -15,6 +15,49 @@
     <dd class="col-sm-9"><a href="{% url 'core:applicant-detail' student.applicant.pk %}">{{ student.applicant.full_name }}</a></dd>
 </dl>
 
+<h2 class="h5">Current placement</h2>
+{% if current_enrollment %}
+<dl class="row">
+    <dt class="col-sm-3">Academic year</dt>
+    <dd class="col-sm-9">{{ current_enrollment.academic_year }}</dd>
+    <dt class="col-sm-3">Class/Grade</dt>
+    <dd class="col-sm-9">{{ current_enrollment.class_grade }}</dd>
+    <dt class="col-sm-3">Section</dt>
+    <dd class="col-sm-9">{{ current_enrollment.section }}</dd>
+</dl>
+{% else %}
+<p>No active placement.</p>
+{% endif %}
+{% if perms.core.add_academicenrollment %}
+    <a class="btn btn-primary mb-3" href="{% url 'core:student-enroll' student.pk %}">Record Enrollment</a>
+{% endif %}
+
+<h2 class="h5">Enrollment history</h2>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Academic year</th>
+            <th>Class/Grade</th>
+            <th>Section</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for enrollment in enrollments %}
+        <tr>
+            <td>{{ enrollment.academic_year }}</td>
+            <td>{{ enrollment.class_grade }}</td>
+            <td>{{ enrollment.section }}</td>
+            <td>{{ enrollment.get_status_display }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="4">No enrollments yet.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
 <h2 class="h5">Guardians</h2>
 <table class="table">
     <thead>

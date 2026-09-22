@@ -314,8 +314,108 @@ class Student(models.Model):
     class Meta:
         ordering = ["full_name"]
 
+    def enroll(self, *, academic_year, class_grade, section):
+        """Place the Student into a new academic placement.
+
+        Per docs/adr/0003-phase-1-status-and-transition-rules.md, a Student has
+        at most one ACTIVE Academic Enrollment. Recording a new placement
+        completes the previous ACTIVE enrollment and creates a new ACTIVE one,
+        preserving the earlier record rather than overwriting it. The Section
+        must belong to the enrollment's Class/Grade. An incompatible placement
+        or an exact repeat of the current one is rejected without changing
+        anything.
+        """
+        if section.class_grade_id != class_grade.pk:
+            raise ValidationError("Selected Section does not belong to the selected Class/Grade.")
+
+        try:
+            with transaction.atomic():
+                current = AcademicEnrollment.objects.filter(
+                    student=self, status=AcademicEnrollment.Status.ACTIVE
+                ).first()
+                if current is not None:
+                    if (
+                        current.academic_year_id == academic_year.pk
+                        and current.class_grade_id == class_grade.pk
+                        and current.section_id == section.pk
+                    ):
+                        raise ValidationError(
+                            "This Student already has an active enrollment for this placement."
+                        )
+                    AcademicEnrollment.objects.filter(pk=current.pk).update(
+                        status=AcademicEnrollment.Status.COMPLETED,
+                        updated_at=timezone.now(),
+                    )
+                return AcademicEnrollment.objects.create(
+                    student=self,
+                    academic_year=academic_year,
+                    class_grade=class_grade,
+                    section=section,
+                )
+        except IntegrityError:
+            raise ValidationError(
+                "This Student already has an active enrollment for this placement."
+            ) from None
+
+    @property
+    def current_enrollment(self):
+        return self.enrollments.filter(status=AcademicEnrollment.Status.ACTIVE).first()
+
     def __str__(self):
         return self.full_name
+
+
+class AcademicEnrollment(models.Model):
+    """A Student's academic placement for a specific Academic Year.
+
+    Connects Student, Academic Year, Class/Grade, Section, and a status
+    (docs/DOMAIN_MODEL.md - Academic Enrollment). Placement is historical:
+    changing placement completes the previous ACTIVE enrollment rather than
+    overwriting it, and a Student may accumulate many COMPLETED enrollments
+    (docs/adr/0001-academic-structure-and-enrollment-history.md,
+    docs/adr/0003-phase-1-status-and-transition-rules.md). The database
+    enforces at most one ACTIVE enrollment per Student.
+    """
+
+    class Status(models.TextChoices):
+        ACTIVE = "ACTIVE", "Active"
+        COMPLETED = "COMPLETED", "Completed"
+
+    student = models.ForeignKey(Student, on_delete=models.PROTECT, related_name="enrollments")
+    academic_year = models.ForeignKey(
+        AcademicYear, on_delete=models.PROTECT, related_name="enrollments"
+    )
+    class_grade = models.ForeignKey(
+        ClassGrade, on_delete=models.PROTECT, related_name="enrollments"
+    )
+    section = models.ForeignKey(Section, on_delete=models.PROTECT, related_name="enrollments")
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.ACTIVE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["student"],
+                condition=models.Q(status="ACTIVE"),
+                name="academicenrollment_one_active_per_student",
+            )
+        ]
+
+    def clean(self):
+        super().clean()
+        if (
+            self.section_id
+            and self.class_grade_id
+            and self.section.class_grade_id != self.class_grade_id
+        ):
+            raise ValidationError(
+                {"section": "Selected Section does not belong to the selected Class/Grade."}
+            )
+
+    def __str__(self):
+        return f"{self.student} - {self.academic_year} ({self.get_status_display()})"
 
 
 class StudentGuardian(models.Model):

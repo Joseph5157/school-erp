@@ -2,6 +2,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 
 from core.models import (
+    AcademicEnrollment,
     AcademicYear,
     Applicant,
     ApplicantGuardian,
@@ -63,6 +64,32 @@ class SectionForm(forms.ModelForm):
         if duplicates.exists():
             raise ValidationError("A Section with this name already exists for this Class/Grade.")
         return name
+
+
+class AcademicEnrollmentForm(forms.ModelForm):
+    """Create a new ACTIVE Academic Enrollment for a Student.
+
+    `status` is intentionally excluded: a new placement is always ACTIVE, and
+    the previous ACTIVE placement is completed by `Student.enroll` rather than
+    through this form (docs/adr/0003-phase-1-status-and-transition-rules.md).
+    The Section-must-belong-to-Class/Grade rule is checked here for a friendly
+    error and again in the model workflow.
+    """
+
+    class Meta:
+        model = AcademicEnrollment
+        fields = ["academic_year", "class_grade", "section"]
+
+    def clean(self):
+        cleaned_data = super().clean()
+        class_grade = cleaned_data.get("class_grade")
+        section = cleaned_data.get("section")
+        if class_grade is not None and section is not None:
+            if section.class_grade_id != class_grade.pk:
+                raise ValidationError(
+                    {"section": "Selected Section does not belong to the selected Class/Grade."}
+                )
+        return cleaned_data
 
 
 class ApplicantForm(forms.ModelForm):

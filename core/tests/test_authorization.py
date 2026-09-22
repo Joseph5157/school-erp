@@ -6,6 +6,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from core.models import (
+    AcademicEnrollment,
     AcademicYear,
     Applicant,
     ApplicantGuardian,
@@ -54,6 +55,9 @@ class SchoolAdministratorsGroupMigrationTests(TestCase):
                 "add_studentguardian",
                 "change_studentguardian",
                 "view_studentguardian",
+                "add_academicenrollment",
+                "change_academicenrollment",
+                "view_academicenrollment",
             },
         )
 
@@ -922,3 +926,79 @@ class StudentDetailAuthorizationTests(AuthorizationClientsMixin, TestCase):
         )
 
         self.assertEqual(response.status_code, 404)
+
+
+class StudentEnrollAuthorizationTests(AuthorizationClientsMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        applicant = Applicant.objects.create(full_name="Ravi Rao")
+        applicant.record_admission_decision(Applicant.AdmissionStatus.ACCEPTED)
+        self.student = applicant.progress_to_student()
+        self.year = AcademicYear.objects.create(
+            name="2026-2027", start_date="2026-06-01", end_date="2027-04-30"
+        )
+        self.class_grade = ClassGrade.objects.create(name="Grade 1")
+        self.section = Section.objects.create(class_grade=self.class_grade, name="A")
+        self.url = reverse("core:student-enroll", args=[self.student.pk])
+        self.valid_payload = {
+            "academic_year": self.year.pk,
+            "class_grade": self.class_grade.pk,
+            "section": self.section.pk,
+        }
+
+    def test_anonymous_is_redirected_to_login(self):
+        response = self.anonymous.post(self.url, self.valid_payload)
+
+        self.assertRedirects(
+            response, f"{reverse('login')}?next={self.url}", fetch_redirect_response=False
+        )
+        self.assertFalse(AcademicEnrollment.objects.exists())
+
+    def test_authenticated_non_admin_is_forbidden(self):
+        response = self.non_admin.post(self.url, self.valid_payload)
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(AcademicEnrollment.objects.exists())
+
+    def test_administrator_can_enroll(self):
+        response = self.administrator.post(self.url, self.valid_payload)
+
+        self.assertRedirects(
+            response, reverse("core:student-detail", args=[self.student.pk])
+        )
+        enrollment = AcademicEnrollment.objects.get()
+        self.assertEqual(enrollment.status, AcademicEnrollment.Status.ACTIVE)
+        self.assertEqual(enrollment.student, self.student)
+
+    def test_superuser_can_enroll(self):
+        response = self.superuser_client.post(self.url, self.valid_payload)
+
+        self.assertRedirects(
+            response, reverse("core:student-detail", args=[self.student.pk])
+        )
+        self.assertEqual(AcademicEnrollment.objects.count(), 1)
+
+    def test_incompatible_section_leaves_no_enrollment(self):
+        other_class_grade = ClassGrade.objects.create(name="Grade 2")
+        other_section = Section.objects.create(class_grade=other_class_grade, name="A")
+
+        response = self.administrator.post(
+            self.url,
+            {**self.valid_payload, "section": other_section.pk},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(AcademicEnrollment.objects.exists())
+
+    def test_missing_student_is_not_found(self):
+        response = self.administrator.post(
+            reverse("core:student-enroll", args=[self.student.pk + 999]), self.valid_payload
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(AcademicEnrollment.objects.exists())
+
+    def test_administrator_can_open_form(self):
+        response = self.administrator.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
