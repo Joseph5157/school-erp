@@ -48,11 +48,14 @@ FROZEN: Academic Enrollment connects:
 - Class/Grade
 - Section
 - Enrollment status
+- Effective start date and, when completed, effective end date
 
 Rules:
 - Changing class/year must preserve previous enrollment history.
 - Enrollment history is auditable and non-destructive.
 - A student may have multiple academic enrollments over time, but each enrollment belongs to a specific academic year and class/section context.
+- Effective enrollment periods for a Student do not overlap. Audit timestamps are not business-effective dates.
+- Transfers preserve the former enrollment period and create the later placement.
 
 ## Guardians
 
@@ -107,19 +110,21 @@ Detailed grading systems are intentionally undecided until the assessment module
 
 ## Attendance domain principles
 
-FROZEN: Attendance is a historical, enrollment-scoped record.
+FROZEN: Attendance is a historical, daily, enrollment-scoped record governed by
+ADR 0006 and ADR 0007. ADR 0005 remains historical evidence only.
 
 Rules:
-- Attendance is recorded against a Student's Academic Enrollment, not against a mutable field on Student.
-- Attendance is year-aware: an attendance date must fall within the associated Academic Year.
-- A Student cannot be marked for a Class/Grade + Section + Academic Year they are not enrolled in.
-- Attendance for a Section on a date is captured through an explicit register, not as ungrouped per-student rows.
-- The minimum attendance statuses are PRESENT, ABSENT, LATE, and EXCUSED; the set expands only with an explicit decision.
-- Attendance records are not hard-deleted; changes are recorded as explicit corrections that preserve the previous value, the actor, the timestamp, and a reason.
+- Attendance is attached to the AcademicEnrollment effective on the attendance date.
+- One Section/date AttendanceRegister has a DRAFT to SUBMITTED lifecycle and its submitted roster must be complete.
+- The only statuses are PRESENT and ABSENT; ABSENT may have an optional note.
+- The Academic-Year-aware calendar identifies instructional dates, including exceptional instructional days such as working Saturdays.
+- Future attendance is prohibited. Missing or unsubmitted attendance is not ABSENT.
+- Submitted attendance corrections preserve the previous value, new value, administrator, and timestamp.
+- Percentage is PRESENT / (PRESENT + ABSENT) over submitted eligible entries only.
 
-CURRENT: Attendance is administrator-facing in Phase 2. Teacher, Guardian, and Student attendance access is deferred to later phases.
+CURRENT: Attendance is administrator-facing in Phase 2. Teacher attendance is deferred to Phase 5; Guardian and Student attendance access is deferred to later phases.
 
-OPEN: Period/slot-level attendance, a formal holiday/non-instructional-day calendar, and attendance-based notifications are later work and are not part of the initial attendance phase.
+OPEN: Period/slot-level attendance, leave workflows, portals, notifications, and timetable integration are later work and are not part of Phase 2.
 
 ## Communication
 
@@ -173,16 +178,14 @@ Phase 1 explicitly excludes:
 ## Phase 2 domain focus
 
 Phase 2 includes these domain concepts:
-- attendance register for a Class/Grade + Section and date
-- per-enrollment attendance status capture
-- attendance history
-- attendance corrections with preserved history
-- attendance reporting over a date range
-- administrative authorization for attendance operations
+- effective-dated Academic Enrollment
+- minimal Academic-Year-aware calendar
+- daily Section/date attendance register and date-effective roster
+- DRAFT/SUBMITTED attendance capture and audited corrections
+- operational attendance reporting and administrator authorization
 
 Phase 2 explicitly excludes:
 - period/slot-level attendance
-- formal holiday/non-instructional-day calendar
 - teacher, parent/guardian, or student attendance portals
 - attendance-based notifications
 - biometric/RFID or device-based capture

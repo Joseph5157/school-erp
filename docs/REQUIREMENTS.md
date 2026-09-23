@@ -49,6 +49,7 @@ FROZEN:
 - An Applicant is an application record and is not a Student merely because the application exists or is reviewed.
 - **Student** is the separate, long-lived school identity created through the explicit progression workflow.
 - **Academic Enrollment** connects a Student, Academic Year, Class/Grade, Section, and enrollment/status information. It represents academic placement; Class/Grade and Section are not permanent mutable Student identity fields.
+- Academic Enrollment has business-effective start/end dates; audit timestamps are not effective dates.
 - School operational records are historical records. Important historical information must not be silently overwritten or casually hard-deleted.
 
 ## Administrative authorization
@@ -173,6 +174,7 @@ Acceptance criteria:
 - The Section selected for an enrollment must belong to the enrollment's selected Class/Grade.
 - An enrollment missing required relationships, using incompatible class/section/year relationships, or otherwise conflicting with the approved placement rules is rejected without a partial enrollment.
 - A Student may accumulate multiple Academic Enrollments over time.
+- Effective enrollment periods for one Student must not overlap.
 - A later class, section, or Academic Year change creates or updates the appropriate enrollment without overwriting prior Academic Enrollment history.
 - The Student's current academic placement is derived from the appropriate active/current Academic Enrollment, rather than by rewriting historical Student data.
 - Unauthorized users cannot create or change Academic Enrollments.
@@ -239,18 +241,17 @@ Successful completion requires that the Student was not created by application r
 
 ## Phase 2 scope
 
-Phase 2 contains only:
+Phase 2 is in reconciliation/implementation. It contains only:
 
-1. Attendance register creation for a Class/Grade + Section on a date
-2. Attendance status capture per enrolled Student
-3. Attendance history and operational corrections
-4. Attendance reporting over a date range
-5. Administrative authorization for attendance operations
+1. Effective-dated Academic Enrollment needed for date-correct attendance
+2. Minimal Academic-Year-aware instructional calendar
+3. Daily Section/date registers and date-effective roster capture
+4. DRAFT to SUBMITTED register workflow and audited corrections
+5. Administrator-facing attendance reporting and authorization
 
 ## Explicitly out of scope for Phase 2
 
 - period/slot-level attendance
-- formal holiday/non-instructional-day calendar
 - teacher, parent/guardian, or student attendance portals
 - attendance-based notifications or messaging
 - biometric/RFID or device-based capture
@@ -260,18 +261,21 @@ Phase 2 contains only:
 
 ## Attendance capture
 
-Attendance is recorded against a Student's Academic Enrollment for the relevant Academic Year, Class/Grade, and Section (see ADR 0005).
+Attendance is recorded against the AcademicEnrollment effective for the Student
+on the attendance date (see ADR 0006 and ADR 0007).
 
 Acceptance criteria:
 
-- An authorized administrator can create an attendance register for a Class/Grade + Section and a date.
-- An attendance date must fall within the date range of the relevant Academic Year.
-- An authorized administrator can capture an attendance status for each enrolled Student in the register.
-- A Student cannot be marked for a Class/Grade + Section + Academic Year they are not enrolled in.
-- The minimum attendance statuses are PRESENT, ABSENT, LATE, and EXCUSED; no additional status is added without an explicit decision.
-- A Student cannot have more than one effective attendance status for the same register.
-- Invalid or conflicting capture (missing register, out-of-range date, unenrolled Student, duplicate entry) is rejected without a partial record.
-- Unauthorized users cannot create registers or capture attendance.
+- An authorized administrator can open one daily register for a Section/date.
+- The date must be in the relevant Academic Year and be instructional according
+  to the minimal calendar. Future attendance cannot be recorded or submitted.
+- The roster contains only enrollments effective for that date in the Section.
+- The only statuses are PRESENT and ABSENT; an ABSENT entry may include an
+  optional note.
+- A register is DRAFT until submission. Submission requires exactly one entry
+  for every effective roster enrollment.
+- Missing or DRAFT attendance is not ABSENT.
+- Unauthorized users cannot create, capture, or submit attendance.
 
 ## Attendance history and operational corrections
 
@@ -280,20 +284,21 @@ Attendance records are historical records and are corrected rather than deleted.
 Acceptance criteria:
 
 - An authorized administrator can view the attendance history for a Student and for a register.
-- Changing a previously captured status records an explicit correction carrying the previous status, the new status, the correcting actor, the timestamp, and a reason.
+- Changing a submitted status records an explicit correction carrying the previous status, the new status, the correcting actor, and the timestamp. A reason may be required operationally.
 - Correction history is preserved; correcting a status never erases the prior value.
 - Attendance records are not hard-deleted through normal operation.
 - Unauthorized users cannot correct attendance.
 
 ## Attendance reporting
 
-Reporting is limited to attendance over a date range and does not include dashboards or analytics.
+Reporting is limited to operational attendance views and does not include dashboards or analytics.
 
 Acceptance criteria:
 
-- An authorized administrator can view a Student's attendance over a date range, including counts or a summary by status.
-- An authorized administrator can view a Section's attendance for a date or date range.
-- Reported values reflect captured and corrected attendance, not overwritten history.
+- An authorized administrator can view a daily Section register, absent-student list, Student history, missing-attendance view, and Class/Section summary.
+- Student percentage is PRESENT / (PRESENT + ABSENT) using submitted eligible entries only.
+- Reports exclude future, non-instructional, out-of-enrollment, missing, and DRAFT attendance from the percentage denominator.
+- Reported values reflect corrected accepted attendance without overwriting correction history.
 - Unauthorized users cannot access protected attendance reporting.
 
 ## Phase 2 authorization
@@ -312,13 +317,17 @@ Acceptance criteria:
 
 An authorized administrator can complete this journey:
 
-Create attendance register for a Class/Grade + Section and date
-→ capture statuses for enrolled Students
-→ view the register and a Student's attendance history
-→ correct a captured status with a recorded reason
-→ view attendance summary for the Student and Section over a date range
+Create date-effective Academic Enrollment
+→ configure an instructional or non-instructional calendar date
+→ open Section/date DRAFT attendance
+→ capture PRESENT/ABSENT for the date-effective roster
+→ submit the complete register
+→ correct a submitted status with preserved audit history
+→ view attendance history, percentage, and Section reporting
 
-Successful completion requires that attendance is tied to Academic Enrollment, out-of-range or unenrolled capture is rejected, and corrections preserve the previous value.
+Successful completion requires date-correct enrollment context, calendar-correct
+eligibility, explicit submission, no missing=ABSENT inference, and audited
+corrections.
 
 ## Definition of Done
 
