@@ -36,9 +36,23 @@ Foundation
 Status: complete.
 
 ### Phase 2 Attendance
-- attendance capture and reporting
+- attendance register and per-enrollment status capture
 - attendance history and operational corrections
-- role-appropriate attendance views
+- administrator-facing capture and reporting views
+- attendance authorization using the shared authorization foundation
+
+Status: planned (see `docs/adr/0005-phase-2-attendance-domain-model.md`).
+
+Planned scope:
+- attendance is enrollment-scoped and year-aware (ADR 0001, ADR 0005)
+- minimum statuses PRESENT, ABSENT, LATE, EXCUSED
+- corrections preserve history and are never destructive
+- reporting limited to date-range attendance summaries
+
+Out of scope for Phase 2:
+- period/slot-level attendance
+- teacher/parent/student attendance portals
+- holiday calendar, notifications, device-based capture, dashboards
 
 ### Phase 3 Fees
 - fee structures

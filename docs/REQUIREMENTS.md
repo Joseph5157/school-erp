@@ -237,6 +237,89 @@ Configure school
 
 Successful completion requires that the Student was not created by application registration alone, the Applicant remains accessible, and current placement is represented through Academic Enrollment.
 
+## Phase 2 scope
+
+Phase 2 contains only:
+
+1. Attendance register creation for a Class/Grade + Section on a date
+2. Attendance status capture per enrolled Student
+3. Attendance history and operational corrections
+4. Attendance reporting over a date range
+5. Administrative authorization for attendance operations
+
+## Explicitly out of scope for Phase 2
+
+- period/slot-level attendance
+- formal holiday/non-instructional-day calendar
+- teacher, parent/guardian, or student attendance portals
+- attendance-based notifications or messaging
+- biometric/RFID or device-based capture
+- staff/teacher attendance
+- dashboards, analytics, and scheduled reports
+- timetable integration
+
+## Attendance capture
+
+Attendance is recorded against a Student's Academic Enrollment for the relevant Academic Year, Class/Grade, and Section (see ADR 0005).
+
+Acceptance criteria:
+
+- An authorized administrator can create an attendance register for a Class/Grade + Section and a date.
+- An attendance date must fall within the date range of the relevant Academic Year.
+- An authorized administrator can capture an attendance status for each enrolled Student in the register.
+- A Student cannot be marked for a Class/Grade + Section + Academic Year they are not enrolled in.
+- The minimum attendance statuses are PRESENT, ABSENT, LATE, and EXCUSED; no additional status is added without an explicit decision.
+- A Student cannot have more than one effective attendance status for the same register.
+- Invalid or conflicting capture (missing register, out-of-range date, unenrolled Student, duplicate entry) is rejected without a partial record.
+- Unauthorized users cannot create registers or capture attendance.
+
+## Attendance history and operational corrections
+
+Attendance records are historical records and are corrected rather than deleted.
+
+Acceptance criteria:
+
+- An authorized administrator can view the attendance history for a Student and for a register.
+- Changing a previously captured status records an explicit correction carrying the previous status, the new status, the correcting actor, the timestamp, and a reason.
+- Correction history is preserved; correcting a status never erases the prior value.
+- Attendance records are not hard-deleted through normal operation.
+- Unauthorized users cannot correct attendance.
+
+## Attendance reporting
+
+Reporting is limited to attendance over a date range and does not include dashboards or analytics.
+
+Acceptance criteria:
+
+- An authorized administrator can view a Student's attendance over a date range, including counts or a summary by status.
+- An authorized administrator can view a Section's attendance for a date or date range.
+- Reported values reflect captured and corrected attendance, not overwritten history.
+- Unauthorized users cannot access protected attendance reporting.
+
+## Phase 2 authorization
+
+Attendance authorization reuses the shared administrative authorization foundation (ADR 0004) and does not introduce teacher/guardian/student roles.
+
+Acceptance criteria:
+
+- Every attendance mutation (register creation, status capture, correction) requires authenticated, authorized administrative access.
+- An unauthorized user cannot perform any attendance mutation.
+- Attendance reads respect the administrative boundary.
+- Authorization is verified by automated tests for the critical Phase 2 operations.
+- Teacher, Guardian, and Student attendance access is explicitly deferred and not assumed to be unrestricted.
+
+## Phase 2 acceptance journey
+
+An authorized administrator can complete this journey:
+
+Create attendance register for a Class/Grade + Section and date
+→ capture statuses for enrolled Students
+→ view the register and a Student's attendance history
+→ correct a captured status with a recorded reason
+→ view attendance summary for the Student and Section over a date range
+
+Successful completion requires that attendance is tied to Academic Enrollment, out-of-range or unenrolled capture is rejected, and corrections preserve the previous value.
+
 ## Definition of Done
 
 FROZEN: A feature or milestone is done when, where applicable:

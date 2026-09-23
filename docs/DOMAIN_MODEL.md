@@ -105,6 +105,22 @@ FROZEN: Assessment planning and student results are separate concepts.
 
 Detailed grading systems are intentionally undecided until the assessment module is designed.
 
+## Attendance domain principles
+
+FROZEN: Attendance is a historical, enrollment-scoped record.
+
+Rules:
+- Attendance is recorded against a Student's Academic Enrollment, not against a mutable field on Student.
+- Attendance is year-aware: an attendance date must fall within the associated Academic Year.
+- A Student cannot be marked for a Class/Grade + Section + Academic Year they are not enrolled in.
+- Attendance for a Section on a date is captured through an explicit register, not as ungrouped per-student rows.
+- The minimum attendance statuses are PRESENT, ABSENT, LATE, and EXCUSED; the set expands only with an explicit decision.
+- Attendance records are not hard-deleted; changes are recorded as explicit corrections that preserve the previous value, the actor, the timestamp, and a reason.
+
+CURRENT: Attendance is administrator-facing in Phase 2. Teacher, Guardian, and Student attendance access is deferred to later phases.
+
+OPEN: Period/slot-level attendance, a formal holiday/non-instructional-day calendar, and attendance-based notifications are later work and are not part of the initial attendance phase.
+
 ## Communication
 
 CURRENT: Potential channels include email, WhatsApp, Telegram, and in-app notifications.
@@ -153,3 +169,23 @@ Phase 1 explicitly excludes:
 - mobile applications
 - advanced analytics
 - AI features
+
+## Phase 2 domain focus
+
+Phase 2 includes these domain concepts:
+- attendance register for a Class/Grade + Section and date
+- per-enrollment attendance status capture
+- attendance history
+- attendance corrections with preserved history
+- attendance reporting over a date range
+- administrative authorization for attendance operations
+
+Phase 2 explicitly excludes:
+- period/slot-level attendance
+- formal holiday/non-instructional-day calendar
+- teacher, parent/guardian, or student attendance portals
+- attendance-based notifications
+- biometric/RFID or device-based capture
+- staff/teacher attendance
+- dashboards, analytics, and scheduled reports
+- timetable integration
