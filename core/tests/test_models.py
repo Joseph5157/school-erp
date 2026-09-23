@@ -1,3 +1,6 @@
+from datetime import date
+
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import ProtectedError
@@ -8,6 +11,10 @@ from core.models import (
     AcademicYear,
     Applicant,
     ApplicantGuardian,
+    AttendanceCorrection,
+    AttendanceEntry,
+    AttendanceRegister,
+    AttendanceStatus,
     ClassGrade,
     Guardian,
     RelationshipType,
@@ -16,6 +23,8 @@ from core.models import (
     Student,
     StudentGuardian,
 )
+
+User = get_user_model()
 
 
 class SchoolModelTests(TestCase):
@@ -862,3 +871,324 @@ class StudentStatusTests(TestCase):
         self.applicant.refresh_from_db()
         self.assertEqual(self.applicant.admission_status, Applicant.AdmissionStatus.ACCEPTED)
         self.assertEqual(self.student.applicant, self.applicant)
+
+
+class AttendanceFixtureMixin:
+    def build_attendance_fixture(self):
+        # Date objects (not strings) so the in-memory AcademicYear dates can be
+        # compared against the register date by AttendanceRegister.clean().
+        self.year = AcademicYear.objects.create(
+            name="2026-2027", start_date=date(2026, 6, 1), end_date=date(2027, 4, 30)
+        )
+        self.class_grade = ClassGrade.objects.create(name="Grade 1")
+        self.section = Section.objects.create(class_grade=self.class_grade, name="A")
+        self.student = Student.objects.create(
+            applicant=Applicant.objects.create(full_name="Ravi Rao"), full_name="Ravi Rao"
+        )
+        self.enrollment = self.student.enroll(
+            academic_year=self.year, class_grade=self.class_grade, section=self.section
+        )
+        self.register = AttendanceRegister.objects.create(
+            academic_year=self.year,
+            class_grade=self.class_grade,
+            section=self.section,
+            date="2026-07-01",
+        )
+
+
+class AttendanceRegisterModelTests(AttendanceFixtureMixin, TestCase):
+    def setUp(self):
+        self.build_attendance_fixture()
+
+    def test_valid_register_can_be_created(self):
+        register = AttendanceRegister(
+            academic_year=self.year,
+            class_grade=self.class_grade,
+            section=self.section,
+            date="2026-08-01",
+        )
+        register.full_clean()
+        register.save()
+
+        self.assertEqual(AttendanceRegister.objects.count(), 2)
+
+    def test_clean_rejects_section_from_other_class_grade(self):
+        other_class_grade = ClassGrade.objects.create(name="Grade 2")
+        other_section = Section.objects.create(class_grade=other_class_grade, name="A")
+
+        register = AttendanceRegister(
+            academic_year=self.year,
+            class_grade=self.class_grade,
+            section=other_section,
+            date="2026-08-01",
+        )
+
+        with self.assertRaises(ValidationError):
+            register.full_clean()
+        self.assertEqual(AttendanceRegister.objects.count(), 1)
+
+    def test_clean_rejects_date_before_academic_year(self):
+        register = AttendanceRegister(
+            academic_year=self.year,
+            class_grade=self.class_grade,
+            section=self.section,
+            date="2026-05-01",
+        )
+
+        with self.assertRaises(ValidationError):
+            register.full_clean()
+        self.assertEqual(AttendanceRegister.objects.count(), 1)
+
+    def test_clean_rejects_date_after_academic_year(self):
+        register = AttendanceRegister(
+            academic_year=self.year,
+            class_grade=self.class_grade,
+            section=self.section,
+            date="2027-05-01",
+        )
+
+        with self.assertRaises(ValidationError):
+            register.full_clean()
+        self.assertEqual(AttendanceRegister.objects.count(), 1)
+
+    def test_database_rejects_duplicate_register(self):
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            AttendanceRegister.objects.create(
+                academic_year=self.year,
+                class_grade=self.class_grade,
+                section=self.section,
+                date="2026-07-01",
+            )
+        self.assertEqual(AttendanceRegister.objects.count(), 1)
+
+    def test_database_rejects_same_section_and_date_in_overlapping_academic_year(self):
+        overlapping_year = AcademicYear.objects.create(
+            name="Overlapping session", start_date="2026-06-01", end_date="2027-04-30"
+        )
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            AttendanceRegister.objects.create(
+                academic_year=overlapping_year,
+                class_grade=self.class_grade,
+                section=self.section,
+                date="2026-07-01",
+            )
+        self.assertEqual(AttendanceRegister.objects.count(), 1)
+
+    def test_eligible_enrollments_includes_current_placement(self):
+        self.assertEqual(list(self.register.eligible_enrollments()), [self.enrollment])
+
+    def test_eligible_enrollments_excludes_other_section(self):
+        other_section = Section.objects.create(class_grade=self.class_grade, name="B")
+        other_student = Student.objects.create(
+            applicant=Applicant.objects.create(full_name="Meera Rao"), full_name="Meera Rao"
+        )
+        other_student.enroll(
+            academic_year=self.year, class_grade=self.class_grade, section=other_section
+        )
+
+        self.assertEqual(list(self.register.eligible_enrollments()), [self.enrollment])
+
+    def test_capture_creates_entry(self):
+        entry = self.register.capture(
+            enrollment=self.enrollment, status=AttendanceStatus.PRESENT
+        )
+
+        self.assertEqual(entry.status, AttendanceStatus.PRESENT)
+        self.assertEqual(entry.academic_enrollment, self.enrollment)
+        self.assertEqual(AttendanceEntry.objects.count(), 1)
+
+    def test_capture_rejects_unknown_status(self):
+        with self.assertRaises(ValidationError):
+            self.register.capture(enrollment=self.enrollment, status="HOLIDAY")
+
+        self.assertEqual(AttendanceEntry.objects.count(), 0)
+
+    def test_capture_rejects_enrollment_from_other_section(self):
+        other_section = Section.objects.create(class_grade=self.class_grade, name="B")
+        other_student = Student.objects.create(
+            applicant=Applicant.objects.create(full_name="Meera Rao"), full_name="Meera Rao"
+        )
+        other_enrollment = other_student.enroll(
+            academic_year=self.year, class_grade=self.class_grade, section=other_section
+        )
+
+        with self.assertRaises(ValidationError):
+            self.register.capture(enrollment=other_enrollment, status=AttendanceStatus.PRESENT)
+
+        self.assertEqual(AttendanceEntry.objects.count(), 0)
+
+    def test_capture_rejects_completed_enrollment(self):
+        other_section = Section.objects.create(class_grade=self.class_grade, name="B")
+        self.student.enroll(
+            academic_year=self.year, class_grade=self.class_grade, section=other_section
+        )
+        self.enrollment.refresh_from_db()
+
+        with self.assertRaises(ValidationError):
+            self.register.capture(enrollment=self.enrollment, status=AttendanceStatus.PRESENT)
+
+        self.assertEqual(self.enrollment.status, AcademicEnrollment.Status.COMPLETED)
+        self.assertEqual(AttendanceEntry.objects.count(), 0)
+
+    def test_capture_rejects_duplicate_entry(self):
+        self.register.capture(enrollment=self.enrollment, status=AttendanceStatus.PRESENT)
+
+        with self.assertRaises(ValidationError):
+            self.register.capture(enrollment=self.enrollment, status=AttendanceStatus.ABSENT)
+
+        self.assertEqual(AttendanceEntry.objects.count(), 1)
+
+    def test_register_with_entries_cannot_be_deleted(self):
+        self.register.capture(enrollment=self.enrollment, status=AttendanceStatus.PRESENT)
+
+        with self.assertRaises(ProtectedError), transaction.atomic():
+            self.register.delete()
+        self.assertEqual(AttendanceRegister.objects.count(), 1)
+
+
+class AttendanceEntryModelTests(AttendanceFixtureMixin, TestCase):
+    def setUp(self):
+        self.build_attendance_fixture()
+        self.actor = User.objects.create_user(username="administrator", password="pass-12345")
+
+    def test_entry_defaults_to_present(self):
+        entry = AttendanceEntry.objects.create(
+            register=self.register, academic_enrollment=self.enrollment
+        )
+
+        self.assertEqual(entry.status, AttendanceStatus.PRESENT)
+
+    def test_clean_rejects_enrollment_from_other_section(self):
+        other_section = Section.objects.create(class_grade=self.class_grade, name="B")
+        other_student = Student.objects.create(
+            applicant=Applicant.objects.create(full_name="Meera Rao"), full_name="Meera Rao"
+        )
+        other_enrollment = other_student.enroll(
+            academic_year=self.year, class_grade=self.class_grade, section=other_section
+        )
+
+        entry = AttendanceEntry(register=self.register, academic_enrollment=other_enrollment)
+
+        with self.assertRaises(ValidationError):
+            entry.full_clean()
+        self.assertEqual(AttendanceEntry.objects.count(), 0)
+
+    def test_database_rejects_duplicate_entry(self):
+        self.register.capture(enrollment=self.enrollment, status=AttendanceStatus.PRESENT)
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            AttendanceEntry.objects.create(
+                register=self.register,
+                academic_enrollment=self.enrollment,
+                status=AttendanceStatus.ABSENT,
+            )
+        self.assertEqual(AttendanceEntry.objects.count(), 1)
+
+    def test_correction_records_history_and_updates_status(self):
+        entry = self.register.capture(
+            enrollment=self.enrollment, status=AttendanceStatus.PRESENT
+        )
+
+        entry.record_status_change(
+            AttendanceStatus.ABSENT, actor=self.actor, reason="Guardian reported illness."
+        )
+
+        entry.refresh_from_db()
+        self.assertEqual(entry.status, AttendanceStatus.ABSENT)
+        correction = AttendanceCorrection.objects.get()
+        self.assertEqual(correction.previous_status, AttendanceStatus.PRESENT)
+        self.assertEqual(correction.new_status, AttendanceStatus.ABSENT)
+        self.assertEqual(correction.reason, "Guardian reported illness.")
+        self.assertEqual(correction.corrected_by, self.actor)
+
+    def test_correction_history_is_preserved_across_changes(self):
+        entry = self.register.capture(
+            enrollment=self.enrollment, status=AttendanceStatus.PRESENT
+        )
+
+        entry.record_status_change(
+            AttendanceStatus.ABSENT, actor=self.actor, reason="Marked absent."
+        )
+        entry.record_status_change(
+            AttendanceStatus.LATE, actor=self.actor, reason="Arrived later."
+        )
+
+        self.assertEqual(entry.corrections.count(), 2)
+        statuses = set(
+            entry.corrections.values_list("previous_status", "new_status")
+        )
+        self.assertIn((AttendanceStatus.PRESENT, AttendanceStatus.ABSENT), statuses)
+        self.assertIn((AttendanceStatus.ABSENT, AttendanceStatus.LATE), statuses)
+
+    def test_invalid_status_is_rejected_without_change(self):
+        entry = self.register.capture(
+            enrollment=self.enrollment, status=AttendanceStatus.PRESENT
+        )
+
+        with self.assertRaises(ValidationError):
+            entry.record_status_change("HOLIDAY", actor=self.actor, reason="Typo.")
+
+        entry.refresh_from_db()
+        self.assertEqual(entry.status, AttendanceStatus.PRESENT)
+        self.assertFalse(AttendanceCorrection.objects.exists())
+
+    def test_repeat_status_is_rejected_without_change(self):
+        entry = self.register.capture(
+            enrollment=self.enrollment, status=AttendanceStatus.PRESENT
+        )
+
+        with self.assertRaises(ValidationError):
+            entry.record_status_change(
+                AttendanceStatus.PRESENT, actor=self.actor, reason="No change."
+            )
+
+        self.assertFalse(AttendanceCorrection.objects.exists())
+
+    def test_missing_reason_is_rejected_without_change(self):
+        entry = self.register.capture(
+            enrollment=self.enrollment, status=AttendanceStatus.PRESENT
+        )
+
+        with self.assertRaises(ValidationError):
+            entry.record_status_change(AttendanceStatus.ABSENT, actor=self.actor, reason="  ")
+
+        entry.refresh_from_db()
+        self.assertEqual(entry.status, AttendanceStatus.PRESENT)
+        self.assertFalse(AttendanceCorrection.objects.exists())
+
+    def test_missing_actor_is_rejected_without_change(self):
+        entry = self.register.capture(
+            enrollment=self.enrollment, status=AttendanceStatus.PRESENT
+        )
+
+        with self.assertRaises(ValidationError):
+            entry.record_status_change(AttendanceStatus.ABSENT, actor=None, reason="Ill.")
+
+        entry.refresh_from_db()
+        self.assertEqual(entry.status, AttendanceStatus.PRESENT)
+        self.assertFalse(AttendanceCorrection.objects.exists())
+
+    def test_entry_with_correction_cannot_be_deleted(self):
+        entry = self.register.capture(
+            enrollment=self.enrollment, status=AttendanceStatus.PRESENT
+        )
+        entry.record_status_change(
+            AttendanceStatus.ABSENT, actor=self.actor, reason="Ill."
+        )
+
+        with self.assertRaises(ProtectedError), transaction.atomic():
+            entry.delete()
+        self.assertEqual(AttendanceEntry.objects.count(), 1)
+
+    def test_correcting_user_with_correction_cannot_be_deleted(self):
+        entry = self.register.capture(
+            enrollment=self.enrollment, status=AttendanceStatus.PRESENT
+        )
+        entry.record_status_change(
+            AttendanceStatus.ABSENT, actor=self.actor, reason="Ill."
+        )
+
+        with self.assertRaises(ProtectedError), transaction.atomic():
+            self.actor.delete()
+        self.assertEqual(User.objects.filter(pk=self.actor.pk).count(), 1)

@@ -5,11 +5,16 @@ from django.contrib.auth.models import Group
 from django.test import TestCase
 from django.urls import reverse
 
+from core.forms import AttendanceCaptureForm
 from core.models import (
     AcademicEnrollment,
     AcademicYear,
     Applicant,
     ApplicantGuardian,
+    AttendanceCorrection,
+    AttendanceEntry,
+    AttendanceRegister,
+    AttendanceStatus,
     ClassGrade,
     Guardian,
     RelationshipType,
@@ -58,6 +63,15 @@ class SchoolAdministratorsGroupMigrationTests(TestCase):
                 "add_academicenrollment",
                 "change_academicenrollment",
                 "view_academicenrollment",
+                "add_attendanceregister",
+                "change_attendanceregister",
+                "view_attendanceregister",
+                "add_attendanceentry",
+                "change_attendanceentry",
+                "view_attendanceentry",
+                "add_attendancecorrection",
+                "change_attendancecorrection",
+                "view_attendancecorrection",
             },
         )
 
@@ -281,6 +295,25 @@ class AcademicYearListAuthorizationTests(AuthorizationClientsMixin, TestCase):
         response = self.superuser_client.get(self.url)
 
         self.assertEqual(response.status_code, 200)
+
+    def test_section_date_range_includes_status_summary(self):
+        self.register.capture(enrollment=self.enrollment, status=AttendanceStatus.PRESENT)
+
+        response = self.administrator.get(
+            self.url,
+            {"section": self.section.pk, "start": "2026-07-01", "end": "2026-07-01"},
+        )
+
+        self.assertEqual(response.context["section_total"], 1)
+        self.assertEqual(
+            response.context["section_summary"],
+            [
+                {"label": "Present", "count": 1},
+                {"label": "Absent", "count": 0},
+                {"label": "Late", "count": 0},
+                {"label": "Excused", "count": 0},
+            ],
+        )
         self.assertContains(response, "2026-2027")
 
 
@@ -1134,6 +1167,381 @@ class StudentStatusChangeAuthorizationTests(AuthorizationClientsMixin, TestCase)
         response = self.administrator.post(
             reverse("core:student-status-change", args=[self.student.pk + 999]),
             {"status": Student.Status.INACTIVE},
+        )
+
+        self.assertEqual(response.status_code, 404)
+
+
+class AttendanceFixtureMixin:
+    """Builds an enrolled Student and an empty register for attendance tests."""
+
+    def build_attendance_fixture(self, *, date="2026-07-01"):
+        self.year = AcademicYear.objects.create(
+            name="2026-2027", start_date="2026-06-01", end_date="2027-04-30"
+        )
+        self.class_grade = ClassGrade.objects.create(name="Grade 1")
+        self.section = Section.objects.create(class_grade=self.class_grade, name="A")
+        applicant = Applicant.objects.create(full_name="Ravi Rao")
+        applicant.record_admission_decision(Applicant.AdmissionStatus.ACCEPTED)
+        self.student = applicant.progress_to_student()
+        self.enrollment = self.student.enroll(
+            academic_year=self.year, class_grade=self.class_grade, section=self.section
+        )
+        self.register = AttendanceRegister.objects.create(
+            academic_year=self.year,
+            class_grade=self.class_grade,
+            section=self.section,
+            date=date,
+        )
+        return self.register
+
+
+class AttendanceRegisterCreateAuthorizationTests(AuthorizationClientsMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.year = AcademicYear.objects.create(
+            name="2026-2027", start_date="2026-06-01", end_date="2027-04-30"
+        )
+        self.class_grade = ClassGrade.objects.create(name="Grade 1")
+        self.section = Section.objects.create(class_grade=self.class_grade, name="A")
+        self.url = reverse("core:attendance-register-create")
+        self.valid_payload = {
+            "academic_year": self.year.pk,
+            "class_grade": self.class_grade.pk,
+            "section": self.section.pk,
+            "date": "2026-07-01",
+        }
+
+    def test_anonymous_is_redirected_to_login(self):
+        response = self.anonymous.post(self.url, self.valid_payload)
+
+        self.assertRedirects(
+            response, f"{reverse('login')}?next={self.url}", fetch_redirect_response=False
+        )
+        self.assertFalse(AttendanceRegister.objects.exists())
+
+    def test_authenticated_non_admin_is_forbidden(self):
+        response = self.non_admin.post(self.url, self.valid_payload)
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(AttendanceRegister.objects.exists())
+
+    def test_administrator_can_create(self):
+        response = self.administrator.post(self.url, self.valid_payload)
+
+        register = AttendanceRegister.objects.get()
+        self.assertRedirects(
+            response, reverse("core:attendance-register-detail", args=[register.pk])
+        )
+
+    def test_superuser_can_create(self):
+        response = self.superuser_client.post(self.url, self.valid_payload)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(AttendanceRegister.objects.count(), 1)
+
+    def test_incompatible_section_leaves_no_register(self):
+        other_class_grade = ClassGrade.objects.create(name="Grade 2")
+        other_section = Section.objects.create(class_grade=other_class_grade, name="A")
+
+        response = self.administrator.post(
+            self.url, {**self.valid_payload, "section": other_section.pk}
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(AttendanceRegister.objects.exists())
+
+    def test_date_outside_academic_year_leaves_no_register(self):
+        response = self.administrator.post(
+            self.url, {**self.valid_payload, "date": "2027-05-01"}
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(AttendanceRegister.objects.exists())
+
+    def test_duplicate_register_leaves_one_record(self):
+        AttendanceRegister.objects.create(
+            academic_year=self.year,
+            class_grade=self.class_grade,
+            section=self.section,
+            date="2026-07-01",
+        )
+
+        response = self.administrator.post(self.url, self.valid_payload)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(AttendanceRegister.objects.count(), 1)
+
+
+class AttendanceRegisterListAuthorizationTests(
+    AuthorizationClientsMixin, AttendanceFixtureMixin, TestCase
+):
+    def setUp(self):
+        super().setUp()
+        self.build_attendance_fixture()
+        self.url = reverse("core:attendance-register-list")
+
+    def test_anonymous_is_redirected_to_login(self):
+        response = self.anonymous.get(self.url)
+
+        self.assertRedirects(
+            response, f"{reverse('login')}?next={self.url}", fetch_redirect_response=False
+        )
+
+    def test_authenticated_non_admin_is_forbidden(self):
+        response = self.non_admin.get(self.url)
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_administrator_can_list(self):
+        response = self.administrator.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Grade 1 - A")
+
+    def test_superuser_can_list(self):
+        response = self.superuser_client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+
+
+class AttendanceRegisterDetailAuthorizationTests(
+    AuthorizationClientsMixin, AttendanceFixtureMixin, TestCase
+):
+    def setUp(self):
+        super().setUp()
+        self.build_attendance_fixture()
+        self.url = reverse("core:attendance-register-detail", args=[self.register.pk])
+
+    def test_anonymous_is_redirected_to_login(self):
+        response = self.anonymous.get(self.url)
+
+        self.assertRedirects(
+            response, f"{reverse('login')}?next={self.url}", fetch_redirect_response=False
+        )
+
+    def test_authenticated_non_admin_is_forbidden(self):
+        response = self.non_admin.get(self.url)
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_administrator_can_view(self):
+        response = self.administrator.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Ravi Rao")
+
+    def test_missing_register_is_not_found(self):
+        response = self.administrator.get(
+            reverse("core:attendance-register-detail", args=[self.register.pk + 999])
+        )
+
+        self.assertEqual(response.status_code, 404)
+
+
+class AttendanceCaptureAuthorizationTests(
+    AuthorizationClientsMixin, AttendanceFixtureMixin, TestCase
+):
+    def setUp(self):
+        super().setUp()
+        self.build_attendance_fixture()
+        self.url = reverse("core:attendance-capture", args=[self.register.pk])
+        self.valid_payload = {
+            AttendanceCaptureForm.field_name(self.enrollment): AttendanceStatus.PRESENT,
+        }
+
+    def test_anonymous_is_redirected_to_login(self):
+        response = self.anonymous.post(self.url, self.valid_payload)
+
+        self.assertRedirects(
+            response, f"{reverse('login')}?next={self.url}", fetch_redirect_response=False
+        )
+        self.assertFalse(AttendanceEntry.objects.exists())
+
+    def test_authenticated_non_admin_is_forbidden(self):
+        response = self.non_admin.post(self.url, self.valid_payload)
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(AttendanceEntry.objects.exists())
+
+    def test_administrator_can_capture(self):
+        response = self.administrator.post(self.url, self.valid_payload)
+
+        self.assertRedirects(
+            response, reverse("core:attendance-register-detail", args=[self.register.pk])
+        )
+        entry = AttendanceEntry.objects.get()
+        self.assertEqual(entry.academic_enrollment, self.enrollment)
+        self.assertEqual(entry.status, AttendanceStatus.PRESENT)
+
+    def test_superuser_can_capture(self):
+        response = self.superuser_client.post(self.url, self.valid_payload)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(AttendanceEntry.objects.count(), 1)
+
+    def test_missing_status_leaves_no_entry(self):
+        response = self.administrator.post(self.url, {})
+
+        self.assertRedirects(
+            response, reverse("core:attendance-register-detail", args=[self.register.pk])
+        )
+        self.assertFalse(AttendanceEntry.objects.exists())
+
+    def test_repeated_capture_does_not_duplicate(self):
+        self.administrator.post(self.url, self.valid_payload)
+
+        self.administrator.post(self.url, self.valid_payload)
+
+        self.assertEqual(AttendanceEntry.objects.count(), 1)
+
+    def test_get_does_not_capture(self):
+        response = self.administrator.get(self.url)
+
+        self.assertRedirects(
+            response, reverse("core:attendance-register-detail", args=[self.register.pk])
+        )
+        self.assertFalse(AttendanceEntry.objects.exists())
+
+
+class AttendanceCorrectionAuthorizationTests(
+    AuthorizationClientsMixin, AttendanceFixtureMixin, TestCase
+):
+    def setUp(self):
+        super().setUp()
+        self.build_attendance_fixture()
+        self.entry = self.register.capture(
+            enrollment=self.enrollment, status=AttendanceStatus.PRESENT
+        )
+        self.url = reverse("core:attendance-entry-correct", args=[self.entry.pk])
+        self.valid_payload = {
+            "status": AttendanceStatus.ABSENT,
+            "reason": "Guardian reported illness.",
+        }
+
+    def test_anonymous_is_redirected_to_login(self):
+        response = self.anonymous.post(self.url, self.valid_payload)
+
+        self.assertRedirects(
+            response, f"{reverse('login')}?next={self.url}", fetch_redirect_response=False
+        )
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.status, AttendanceStatus.PRESENT)
+        self.assertFalse(AttendanceCorrection.objects.exists())
+
+    def test_authenticated_non_admin_is_forbidden(self):
+        response = self.non_admin.post(self.url, self.valid_payload)
+
+        self.assertEqual(response.status_code, 403)
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.status, AttendanceStatus.PRESENT)
+
+    def test_administrator_can_correct(self):
+        response = self.administrator.post(self.url, self.valid_payload)
+
+        self.assertRedirects(
+            response, reverse("core:attendance-register-detail", args=[self.register.pk])
+        )
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.status, AttendanceStatus.ABSENT)
+        correction = AttendanceCorrection.objects.get()
+        self.assertEqual(correction.previous_status, AttendanceStatus.PRESENT)
+        self.assertEqual(correction.new_status, AttendanceStatus.ABSENT)
+        self.assertEqual(correction.reason, "Guardian reported illness.")
+        self.assertEqual(correction.corrected_by, self.admin_user)
+
+    def test_superuser_can_correct(self):
+        response = self.superuser_client.post(self.url, self.valid_payload)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(AttendanceCorrection.objects.count(), 1)
+
+    def test_invalid_status_is_rejected(self):
+        response = self.administrator.post(
+            self.url, {"status": "HOLIDAY", "reason": "Typo."}
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.status, AttendanceStatus.PRESENT)
+        self.assertFalse(AttendanceCorrection.objects.exists())
+
+    def test_repeat_status_is_rejected(self):
+        response = self.administrator.post(
+            self.url, {"status": AttendanceStatus.PRESENT, "reason": "No change."}
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.status, AttendanceStatus.PRESENT)
+        self.assertFalse(AttendanceCorrection.objects.exists())
+
+    def test_missing_reason_is_rejected(self):
+        response = self.administrator.post(self.url, {"status": AttendanceStatus.ABSENT})
+
+        self.assertEqual(response.status_code, 200)
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.status, AttendanceStatus.PRESENT)
+        self.assertFalse(AttendanceCorrection.objects.exists())
+
+    def test_get_does_not_change_status(self):
+        response = self.administrator.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.status, AttendanceStatus.PRESENT)
+        self.assertFalse(AttendanceCorrection.objects.exists())
+
+    def test_missing_entry_is_not_found(self):
+        response = self.administrator.get(
+            reverse("core:attendance-entry-correct", args=[self.entry.pk + 999])
+        )
+
+        self.assertEqual(response.status_code, 404)
+
+
+class StudentAttendanceAuthorizationTests(
+    AuthorizationClientsMixin, AttendanceFixtureMixin, TestCase
+):
+    def setUp(self):
+        super().setUp()
+        self.build_attendance_fixture()
+        self.register.capture(enrollment=self.enrollment, status=AttendanceStatus.PRESENT)
+        self.url = reverse("core:student-attendance", args=[self.student.pk])
+
+    def test_anonymous_is_redirected_to_login(self):
+        response = self.anonymous.get(self.url)
+
+        self.assertRedirects(
+            response, f"{reverse('login')}?next={self.url}", fetch_redirect_response=False
+        )
+
+    def test_authenticated_non_admin_is_forbidden(self):
+        response = self.non_admin.get(self.url)
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_administrator_can_view(self):
+        response = self.administrator.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Ravi Rao")
+        self.assertContains(response, "Present")
+
+    def test_superuser_can_view(self):
+        response = self.superuser_client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_date_range_filter_excludes_entries(self):
+        response = self.administrator.get(self.url, {"start": "2026-08-01"})
+
+        self.assertEqual(response.context["total"], 0)
+        self.assertEqual(list(response.context["entries"]), [])
+
+    def test_missing_student_is_not_found(self):
+        response = self.administrator.get(
+            reverse("core:student-attendance", args=[self.student.pk + 999])
         )
 
         self.assertEqual(response.status_code, 404)

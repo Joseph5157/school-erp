@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, models, transaction
 from django.utils import timezone
@@ -469,3 +470,226 @@ class StudentGuardian(models.Model):
 
     def __str__(self):
         return f"{self.student} - {self.guardian} ({self.get_relationship_type_display()})"
+
+
+class AttendanceStatus(models.TextChoices):
+    """The minimum Phase 2 attendance status vocabulary.
+
+    Fixed to these four values by
+    docs/adr/0005-phase-2-attendance-domain-model.md; the set expands only
+    through an explicit decision, not by silently adding enum members.
+    """
+
+    PRESENT = "PRESENT", "Present"
+    ABSENT = "ABSENT", "Absent"
+    LATE = "LATE", "Late"
+    EXCUSED = "EXCUSED", "Excused"
+
+
+class AttendanceRegister(models.Model):
+    """One attendance register for a Class/Grade + Section on a single date.
+
+    Per docs/adr/0005-phase-2-attendance-domain-model.md, attendance is
+    enrollment-scoped and year-aware: the register fixes the Academic Year and
+    the Class/Grade + Section context, and every entry must reference an
+    Academic Enrollment from that same context. A Section may have at most one
+    register per date. Registers are historical records and are not hard
+    deleted through normal operation.
+    """
+
+    academic_year = models.ForeignKey(
+        AcademicYear, on_delete=models.PROTECT, related_name="attendance_registers"
+    )
+    class_grade = models.ForeignKey(
+        ClassGrade, on_delete=models.PROTECT, related_name="attendance_registers"
+    )
+    section = models.ForeignKey(
+        Section, on_delete=models.PROTECT, related_name="attendance_registers"
+    )
+    date = models.DateField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-date", "section"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["section", "date"],
+                name="attendanceregister_unique_section_date",
+            )
+        ]
+
+    def clean(self):
+        super().clean()
+        if (
+            self.section_id
+            and self.class_grade_id
+            and self.section.class_grade_id != self.class_grade_id
+        ):
+            raise ValidationError(
+                {"section": "Selected Section does not belong to the selected Class/Grade."}
+            )
+        if self.date and self.academic_year_id:
+            if not (self.academic_year.start_date <= self.date <= self.academic_year.end_date):
+                raise ValidationError(
+                    {"date": "Attendance date must fall within the selected Academic Year."}
+                )
+
+    def eligible_enrollments(self):
+        """The enrollments that may be marked in this register.
+
+        The Student's current (ACTIVE) placement for the register's Academic
+        Year, Class/Grade, and Section. A Student who has moved elsewhere is
+        represented by a COMPLETED enrollment and is not eligible here.
+        """
+        return AcademicEnrollment.objects.filter(
+            academic_year_id=self.academic_year_id,
+            class_grade_id=self.class_grade_id,
+            section_id=self.section_id,
+            status=AcademicEnrollment.Status.ACTIVE,
+        ).select_related("student")
+
+    def capture(self, *, enrollment, status):
+        """Capture an initial attendance status for an enrolled Student.
+
+        Rejects an unknown status or an enrollment outside the register's
+        Academic Year and Class/Grade + Section context, and a duplicate entry
+        for the same Student, without leaving a partial record. Correcting a
+        status that has already been captured goes through
+        `AttendanceEntry.record_status_change` instead.
+        """
+        if status not in AttendanceStatus.values:
+            raise ValidationError("Invalid attendance status.")
+        if (
+            enrollment.academic_year_id != self.academic_year_id
+            or enrollment.class_grade_id != self.class_grade_id
+            or enrollment.section_id != self.section_id
+            or enrollment.status != AcademicEnrollment.Status.ACTIVE
+        ):
+            raise ValidationError(
+                "This Student is not enrolled in this register's Class/Grade and Section."
+            )
+        try:
+            with transaction.atomic():
+                return AttendanceEntry.objects.create(
+                    register=self, academic_enrollment=enrollment, status=status
+                )
+        except IntegrityError:
+            raise ValidationError(
+                "This Student already has an attendance entry for this register."
+            ) from None
+
+    def __str__(self):
+        return f"{self.section} - {self.date}"
+
+
+class AttendanceEntry(models.Model):
+    """One Student's attendance status within a register.
+
+    Historical record (docs/adr/0005-phase-2-attendance-domain-model.md): the
+    current `status` is the effective value, and every later change is stored
+    as an AttendanceCorrection carrying the previous value, the actor, the
+    timestamp, and a reason. Entries are not hard deleted.
+    """
+
+    register = models.ForeignKey(
+        AttendanceRegister, on_delete=models.PROTECT, related_name="entries"
+    )
+    academic_enrollment = models.ForeignKey(
+        AcademicEnrollment, on_delete=models.PROTECT, related_name="attendance_entries"
+    )
+    status = models.CharField(
+        max_length=10, choices=AttendanceStatus.choices, default=AttendanceStatus.PRESENT
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["register__date", "academic_enrollment__student__full_name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["register", "academic_enrollment"],
+                name="attendanceentry_unique_register_enrollment",
+            )
+        ]
+
+    def clean(self):
+        super().clean()
+        if self.register_id and self.academic_enrollment_id:
+            enrollment = self.academic_enrollment
+            register = self.register
+            if (
+                enrollment.academic_year_id != register.academic_year_id
+                or enrollment.class_grade_id != register.class_grade_id
+                or enrollment.section_id != register.section_id
+            ):
+                raise ValidationError(
+                    {
+                        "academic_enrollment": (
+                            "The Student is not enrolled in this register's "
+                            "Class/Grade and Section."
+                        )
+                    }
+                )
+
+    def record_status_change(self, new_status, *, actor, reason):
+        """Correct a captured status, preserving the previous value.
+
+        An unknown status, a no-op change, a missing reason, or a missing actor
+        is rejected without changing anything. A valid correction writes an
+        immutable AttendanceCorrection and then updates the effective status,
+        so the prior value is never lost.
+        """
+        if new_status not in AttendanceStatus.values:
+            raise ValidationError("Invalid attendance status.")
+        if new_status == self.status:
+            raise ValidationError("Attendance already has this status.")
+        reason = (reason or "").strip()
+        if not reason:
+            raise ValidationError("A reason is required when correcting attendance.")
+        if actor is None or not getattr(actor, "pk", None):
+            raise ValidationError("A correcting user is required.")
+
+        with transaction.atomic():
+            AttendanceCorrection.objects.create(
+                entry=self,
+                previous_status=self.status,
+                new_status=new_status,
+                reason=reason,
+                corrected_by=actor,
+            )
+            self.status = new_status
+            self.save(update_fields=["status", "updated_at"])
+
+    @property
+    def student(self):
+        return self.academic_enrollment.student
+
+    def __str__(self):
+        return f"{self.academic_enrollment.student} - {self.register.date}"
+
+
+class AttendanceCorrection(models.Model):
+    """An immutable record of a correction to a captured attendance status.
+
+    Per docs/adr/0005-phase-2-attendance-domain-model.md, corrections preserve
+    history rather than overwriting it: each row captures the previous status,
+    the new status, the correcting actor, the timestamp, and the reason.
+    """
+
+    entry = models.ForeignKey(
+        AttendanceEntry, on_delete=models.PROTECT, related_name="corrections"
+    )
+    previous_status = models.CharField(max_length=10, choices=AttendanceStatus.choices)
+    new_status = models.CharField(max_length=10, choices=AttendanceStatus.choices)
+    reason = models.TextField()
+    corrected_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="attendance_corrections"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.entry} {self.previous_status} -> {self.new_status}"

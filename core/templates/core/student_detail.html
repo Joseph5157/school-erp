@@ -54,6 +54,9 @@
 {% if perms.core.add_academicenrollment %}
     <a class="btn btn-primary mb-3" href="{% url 'core:student-enroll' student.pk %}">Record Enrollment</a>
 {% endif %}
+{% if perms.core.view_attendanceentry %}
+    <a class="btn btn-outline-secondary mb-3" href="{% url 'core:student-attendance' student.pk %}">View Attendance</a>
+{% endif %}
 
 <h2 class="h5">Enrollment history</h2>
 <table class="table">

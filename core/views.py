@@ -1,7 +1,7 @@
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 
 from core.authorization import administrator_required
@@ -11,6 +11,11 @@ from core.forms import (
     AdmissionDecisionForm,
     ApplicantForm,
     ApplicantGuardianForm,
+    AttendanceCaptureForm,
+    AttendanceCorrectionForm,
+    AttendanceRangeForm,
+    AttendanceRegisterFilterForm,
+    AttendanceRegisterForm,
     ClassGradeForm,
     GuardianForm,
     SchoolForm,
@@ -21,6 +26,9 @@ from core.models import (
     AcademicEnrollment,
     AcademicYear,
     Applicant,
+    AttendanceEntry,
+    AttendanceRegister,
+    AttendanceStatus,
     ClassGrade,
     Guardian,
     School,
@@ -339,3 +347,161 @@ def student_status_change(request, pk):
 
     messages.success(request, f"Student status changed: {student.status}.")
     return redirect("core:student-detail", pk=student.pk)
+
+
+@administrator_required("core.view_attendanceregister")
+def attendance_register_list(request):
+    registers = AttendanceRegister.objects.select_related(
+        "academic_year", "class_grade", "section"
+    ).annotate(entry_count=Count("entries"))
+    form = AttendanceRegisterFilterForm(request.GET or None)
+    if form.is_valid():
+        section = form.cleaned_data.get("section")
+        start = form.cleaned_data.get("start")
+        end = form.cleaned_data.get("end")
+        if section is not None:
+            registers = registers.filter(section=section)
+        if start is not None:
+            registers = registers.filter(date__gte=start)
+        if end is not None:
+            registers = registers.filter(date__lte=end)
+    section_summary = None
+    if form.is_valid() and form.cleaned_data.get("section") is not None:
+        counts = {
+            row["status"]: row["n"]
+            for row in AttendanceEntry.objects.filter(register__in=registers)
+            .order_by()
+            .values("status")
+            .annotate(n=Count("id"))
+        }
+        section_summary = [
+            {"label": label, "count": counts.get(value, 0)}
+            for value, label in AttendanceStatus.choices
+        ]
+    return render(
+        request,
+        "core/attendance_register_list.html",
+        {
+            "registers": registers,
+            "form": form,
+            "section_summary": section_summary,
+            "section_total": sum(counts.values()) if section_summary is not None else None,
+        },
+    )
+
+
+@administrator_required("core.add_attendanceregister")
+def attendance_register_create(request):
+    if request.method == "POST":
+        form = AttendanceRegisterForm(request.POST)
+        if form.is_valid():
+            register = form.save()
+            messages.success(request, "Attendance register created.")
+            return redirect("core:attendance-register-detail", pk=register.pk)
+    else:
+        form = AttendanceRegisterForm()
+    return render(request, "core/attendance_register_form.html", {"form": form})
+
+
+@administrator_required("core.view_attendanceregister")
+def attendance_register_detail(request, pk):
+    register = get_object_or_404(
+        AttendanceRegister.objects.select_related("academic_year", "class_grade", "section"),
+        pk=pk,
+    )
+    entries = register.entries.select_related("academic_enrollment__student")
+    capture_form = AttendanceCaptureForm(register=register)
+    return render(
+        request,
+        "core/attendance_register_detail.html",
+        {"register": register, "entries": entries, "capture_form": capture_form},
+    )
+
+
+@administrator_required("core.add_attendanceentry")
+def attendance_capture(request, pk):
+    register = get_object_or_404(AttendanceRegister, pk=pk)
+    if request.method != "POST":
+        return redirect("core:attendance-register-detail", pk=register.pk)
+
+    form = AttendanceCaptureForm(request.POST, register=register)
+    if not form.is_valid():
+        messages.error(request, "Attendance was not captured. Choose a status for every Student.")
+        return redirect("core:attendance-register-detail", pk=register.pk)
+
+    try:
+        with transaction.atomic():
+            for enrollment, status in form.statuses():
+                register.capture(enrollment=enrollment, status=status)
+    except ValidationError as error:
+        messages.error(request, error.messages[0])
+    else:
+        messages.success(request, "Attendance captured.")
+    return redirect("core:attendance-register-detail", pk=register.pk)
+
+
+@administrator_required("core.change_attendanceentry")
+def attendance_entry_correct(request, pk):
+    entry = get_object_or_404(
+        AttendanceEntry.objects.select_related(
+            "register__section", "academic_enrollment__student"
+        ),
+        pk=pk,
+    )
+    if request.method == "POST":
+        form = AttendanceCorrectionForm(request.POST, entry=entry)
+        if form.is_valid():
+            try:
+                entry.record_status_change(
+                    form.cleaned_data["status"],
+                    actor=request.user,
+                    reason=form.cleaned_data["reason"],
+                )
+            except ValidationError as error:
+                messages.error(request, error.messages[0])
+            else:
+                messages.success(request, "Attendance corrected.")
+                return redirect("core:attendance-register-detail", pk=entry.register_id)
+    else:
+        form = AttendanceCorrectionForm(entry=entry)
+    corrections = entry.corrections.select_related("corrected_by")
+    return render(
+        request,
+        "core/attendance_correction_form.html",
+        {"form": form, "entry": entry, "corrections": corrections},
+    )
+
+
+@administrator_required("core.view_attendanceentry")
+def student_attendance(request, pk):
+    student = get_object_or_404(Student, pk=pk)
+    form = AttendanceRangeForm(request.GET or None)
+    entries = AttendanceEntry.objects.filter(
+        academic_enrollment__student=student
+    ).select_related("register__academic_year", "register__section")
+    if form.is_valid():
+        start = form.cleaned_data.get("start")
+        end = form.cleaned_data.get("end")
+        if start is not None:
+            entries = entries.filter(register__date__gte=start)
+        if end is not None:
+            entries = entries.filter(register__date__lte=end)
+    counts = {
+        row["status"]: row["n"]
+        for row in entries.order_by().values("status").annotate(n=Count("id"))
+    }
+    summary = [
+        {"label": label, "count": counts.get(value, 0)}
+        for value, label in AttendanceStatus.choices
+    ]
+    return render(
+        request,
+        "core/student_attendance.html",
+        {
+            "student": student,
+            "form": form,
+            "entries": entries.order_by("register__date"),
+            "summary": summary,
+            "total": sum(counts.values()),
+        },
+    )

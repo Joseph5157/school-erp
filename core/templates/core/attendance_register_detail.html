@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Attendance {{ register.date }}{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Attendance: {{ register.section }} - {{ register.date }}</h1>
+<dl class="row">
+    <dt class="col-sm-3">Academic year</dt>
+    <dd class="col-sm-9">{{ register.academic_year }}</dd>
+    <dt class="col-sm-3">Class/Grade</dt>
+    <dd class="col-sm-9">{{ register.class_grade }}</dd>
+    <dt class="col-sm-3">Section</dt>
+    <dd class="col-sm-9">{{ register.section }}</dd>
+    <dt class="col-sm-3">Date</dt>
+    <dd class="col-sm-9">{{ register.date }}</dd>
+</dl>
+
+{% if capture_form.enrollments %}
+<h2 class="h5">Capture attendance</h2>
+{% if perms.core.add_attendanceentry %}
+<form method="post" action="{% url 'core:attendance-capture' register.pk %}">
+    {% csrf_token %}
+    {{ capture_form.as_p }}
+    <button type="submit" class="btn btn-primary">Save attendance</button>
+</form>
+{% else %}
+<p class="text-muted">You do not have permission to capture attendance.</p>
+{% endif %}
+{% endif %}
+
+<h2 class="h5 mt-4">Marked attendance</h2>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Student</th>
+            <th>Status</th>
+            {% if perms.core.change_attendanceentry %}<th>Actions</th>{% endif %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for entry in entries %}
+        <tr>
+            <td><a href="{% url 'core:student-detail' entry.academic_enrollment.student.pk %}">{{ entry.academic_enrollment.student.full_name }}</a></td>
+            <td>{{ entry.get_status_display }}</td>
+            {% if perms.core.change_attendanceentry %}
+            <td><a href="{% url 'core:attendance-entry-correct' entry.pk %}">Correct</a></td>
+            {% endif %}
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="3">No attendance captured yet.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

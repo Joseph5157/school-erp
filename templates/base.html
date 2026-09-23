@@ -18,6 +18,7 @@
                 <a class="nav-link" href="{% url 'core:applicant-list' %}">Applicants</a>
                 <a class="nav-link" href="{% url 'core:student-list' %}">Students</a>
                 <a class="nav-link" href="{% url 'core:guardian-list' %}">Guardians</a>
+                <a class="nav-link" href="{% url 'core:attendance-register-list' %}">Attendance</a>
             </div>
             <div class="navbar-nav ms-auto">
                 {% if user.is_authenticated %}

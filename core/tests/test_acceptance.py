@@ -8,6 +8,10 @@ from core.models import (
     AcademicYear,
     Applicant,
     ApplicantGuardian,
+    AttendanceCorrection,
+    AttendanceEntry,
+    AttendanceRegister,
+    AttendanceStatus,
     ClassGrade,
     Guardian,
     RelationshipType,
@@ -202,3 +206,89 @@ class Phase1AcceptanceJourneyTests(TestCase):
         self.assertEqual(student.enrollments.count(), 2)
         applicant.refresh_from_db()
         self.assertEqual(applicant.admission_status, Applicant.AdmissionStatus.ACCEPTED)
+
+
+class Phase2AcceptanceJourneyTests(TestCase):
+    """The REQUIREMENTS.md "Phase 2 acceptance journey", exercised end to end."""
+
+    def setUp(self):
+        self.admin_user = User.objects.create_user(
+            username="administrator", password="pass-12345"
+        )
+        self.admin_user.groups.add(Group.objects.get(name="School Administrators"))
+        self.client.login(username="administrator", password="pass-12345")
+
+    def _enrolled_student(self):
+        year = AcademicYear.objects.create(
+            name="2026-2027", start_date="2026-06-01", end_date="2027-04-30"
+        )
+        class_grade = ClassGrade.objects.create(name="Grade 1")
+        section = Section.objects.create(class_grade=class_grade, name="A")
+        applicant = Applicant.objects.create(full_name="Ravi Rao")
+        applicant.record_admission_decision(Applicant.AdmissionStatus.ACCEPTED)
+        student = applicant.progress_to_student()
+        enrollment = student.enroll(
+            academic_year=year, class_grade=class_grade, section=section
+        )
+        return year, class_grade, section, student, enrollment
+
+    def test_full_attendance_journey(self):
+        year, class_grade, section, student, enrollment = self._enrolled_student()
+
+        # Open an attendance register for the Class/Grade + Section and date.
+        response = self.client.post(
+            reverse("core:attendance-register-create"),
+            {
+                "academic_year": year.pk,
+                "class_grade": class_grade.pk,
+                "section": section.pk,
+                "date": "2026-07-01",
+            },
+        )
+        register = AttendanceRegister.objects.get()
+        self.assertRedirects(
+            response, reverse("core:attendance-register-detail", args=[register.pk])
+        )
+
+        # Capture a status for the enrolled Student.
+        response = self.client.post(
+            reverse("core:attendance-capture", args=[register.pk]),
+            {f"status_{enrollment.pk}": AttendanceStatus.PRESENT},
+        )
+        self.assertRedirects(
+            response, reverse("core:attendance-register-detail", args=[register.pk])
+        )
+        entry = AttendanceEntry.objects.get()
+        self.assertEqual(entry.status, AttendanceStatus.PRESENT)
+
+        # View the register and the Student's attendance history.
+        response = self.client.get(
+            reverse("core:attendance-register-detail", args=[register.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Ravi Rao")
+        self.assertContains(response, "Present")
+
+        # Correct the captured status with a recorded reason.
+        response = self.client.post(
+            reverse("core:attendance-entry-correct", args=[entry.pk]),
+            {"status": AttendanceStatus.ABSENT, "reason": "Guardian reported illness."},
+        )
+        self.assertRedirects(
+            response, reverse("core:attendance-register-detail", args=[register.pk])
+        )
+        entry.refresh_from_db()
+        self.assertEqual(entry.status, AttendanceStatus.ABSENT)
+        correction = AttendanceCorrection.objects.get()
+        self.assertEqual(correction.previous_status, AttendanceStatus.PRESENT)
+        self.assertEqual(correction.new_status, AttendanceStatus.ABSENT)
+        self.assertEqual(correction.reason, "Guardian reported illness.")
+
+        # View the Student's attendance summary over a date range.
+        response = self.client.get(
+            reverse("core:student-attendance", args=[student.pk]),
+            {"start": "2026-07-01", "end": "2026-07-31"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["total"], 1)
+        self.assertContains(response, "Absent")

@@ -39,4 +39,26 @@ urlpatterns = [
     path("guardians/", views.guardian_list, name="guardian-list"),
     path("guardians/create/", views.guardian_create, name="guardian-create"),
     path("guardians/<int:pk>/", views.guardian_detail, name="guardian-detail"),
+    path("attendance/", views.attendance_register_list, name="attendance-register-list"),
+    path(
+        "attendance/create/",
+        views.attendance_register_create,
+        name="attendance-register-create",
+    ),
+    path(
+        "attendance/<int:pk>/",
+        views.attendance_register_detail,
+        name="attendance-register-detail",
+    ),
+    path("attendance/<int:pk>/capture/", views.attendance_capture, name="attendance-capture"),
+    path(
+        "attendance/entries/<int:pk>/correct/",
+        views.attendance_entry_correct,
+        name="attendance-entry-correct",
+    ),
+    path(
+        "students/<int:pk>/attendance/",
+        views.student_attendance,
+        name="student-attendance",
+    ),
 ]
