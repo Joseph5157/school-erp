@@ -17,6 +17,15 @@ def _as_date(value):
     return models.DateField().to_python(value)
 
 
+def business_today():
+    """Today's local business date (per settings.TIME_ZONE).
+
+    Kept as one function so operational "no future date" rules share a single
+    definition of today, and tests can pin it deterministically.
+    """
+    return timezone.localdate()
+
+
 class School(models.Model):
     """The single-school configuration record (docs/REQUIREMENTS.md - School configuration).
 
@@ -359,6 +368,9 @@ class Student(models.Model):
 
         - requires the caller to state the effective `start_date` explicitly
           (it is never inferred from the clock or audit timestamps);
+        - rejects a `start_date` later than today's local business date, so an
+          ACTIVE enrollment is always the placement effective now (scheduled
+          future placements are not a Phase 2 concept);
         - closes the previous ACTIVE enrollment with `end_date` set to the day
           before `start_date` and marks it COMPLETED, preserving it;
         - creates the new ACTIVE enrollment from `start_date`.
@@ -373,6 +385,8 @@ class Student(models.Model):
         start_date = _as_date(start_date)
         if start_date is None:
             raise ValidationError("An effective start date is required.")
+        if start_date > business_today():
+            raise ValidationError("The effective start date cannot be in the future.")
         if section.class_grade_id != class_grade.pk:
             raise ValidationError("Selected Section does not belong to the selected Class/Grade.")
 

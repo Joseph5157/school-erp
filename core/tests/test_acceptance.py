@@ -1,4 +1,5 @@
 from datetime import date
+from unittest import mock
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
@@ -140,6 +141,9 @@ class Phase1AcceptanceJourneyTests(TestCase):
         response = self.client.get(reverse("core:student-list"), {"q": "Ravi"})
         self.assertEqual(list(response.context["students"]), [student])
 
+    # The second placement starts in 2027-2028; pin "today" after it so the
+    # no-future-start rule does not make this journey clock-dependent.
+    @mock.patch("core.models.business_today", new=lambda: date(2027, 12, 31))
     def test_placement_and_status_changes_preserve_history(self):
         # Build the prerequisites for an enrolled Student through the views.
         self.client.post(reverse("core:school-create"), {"name": "Greenwood High"})

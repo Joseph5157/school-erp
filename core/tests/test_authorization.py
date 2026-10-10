@@ -1089,6 +1089,16 @@ class StudentEnrollAuthorizationTests(AuthorizationClientsMixin, TestCase):
         self.assertEqual(enrollment.section, self.section)
         self.assertEqual(enrollment.status, AcademicEnrollment.Status.ACTIVE)
 
+    def test_future_start_date_is_rejected_by_view(self):
+        with mock.patch("core.models.business_today", new=lambda: date(2026, 7, 1)):
+            response = self.administrator.post(
+                self.url, {**self.valid_payload, "start_date": "2026-07-02"}
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "cannot be in the future")
+        self.assertFalse(AcademicEnrollment.objects.exists())
+
     def test_non_admin_cannot_transfer(self):
         self.administrator.post(self.url, self.valid_payload)
         other_section = Section.objects.create(class_grade=self.class_grade, name="B")

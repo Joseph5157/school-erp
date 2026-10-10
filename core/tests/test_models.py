@@ -1,4 +1,5 @@
 from datetime import date
+from unittest import mock
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
@@ -719,6 +720,12 @@ class AcademicEnrollmentModelTests(TestCase):
         self.assertEqual(Student.objects.count(), 1)
 
 
+# Fixtures below enroll into the 2027-2028 year; pin "today" after those dates
+# so the operational no-future-start rule does not make results clock-dependent.
+PINNED_TODAY = date(2027, 12, 31)
+
+
+@mock.patch("core.models.business_today", new=lambda: PINNED_TODAY)
 class StudentEnrollmentTests(TestCase):
     def setUp(self):
         self.student = Student.objects.create(
@@ -822,6 +829,7 @@ class StudentEnrollmentTests(TestCase):
         self.assertIsNone(self.student.current_enrollment)
 
 
+@mock.patch("core.models.business_today", new=lambda: PINNED_TODAY)
 class AcademicEnrollmentEffectiveDatingTests(TestCase):
     """Gate 1 effective dating (docs/adr/0006-academic-enrollment-effective-dating.md)."""
 
@@ -1095,6 +1103,36 @@ class AcademicEnrollmentEffectiveDatingTests(TestCase):
         self.assertEqual(first.end_date, date(2027, 5, 31))
         self.assertEqual(self.student.enrollment_on(date(2027, 4, 30)), first)
         self.assertEqual(self.student.enrollment_on(date(2027, 6, 1)), second)
+
+    # --- operational no-future-start rule ---------------------------------
+
+    def test_future_initial_enrollment_rejected(self):
+        with mock.patch("core.models.business_today", new=lambda: date(2026, 7, 1)):
+            with self.assertRaises(ValidationError):
+                self._enroll(self.section_a, date(2026, 7, 2))
+
+        self.assertFalse(AcademicEnrollment.objects.exists())
+
+    def test_enrollment_starting_today_allowed(self):
+        with mock.patch("core.models.business_today", new=lambda: date(2026, 7, 1)):
+            enrollment = self._enroll(self.section_a, date(2026, 7, 1))
+
+        self.assertEqual(enrollment.start_date, date(2026, 7, 1))
+        self.assertEqual(enrollment.status, AcademicEnrollment.Status.ACTIVE)
+
+    def test_future_transfer_rejected_without_changing_history(self):
+        first = self._enroll(self.section_a, date(2026, 6, 1))
+
+        with mock.patch("core.models.business_today", new=lambda: date(2026, 9, 1)):
+            with self.assertRaises(ValidationError):
+                self._enroll(self.section_b, date(2026, 9, 2))
+
+        first.refresh_from_db()
+        self.assertEqual(first.status, AcademicEnrollment.Status.ACTIVE)
+        self.assertIsNone(first.end_date)
+        self.assertEqual(first.section, self.section_a)
+        self.assertEqual(AcademicEnrollment.objects.count(), 1)
+        self.assertEqual(self.student.current_enrollment, first)
 
     def test_enroll_accepts_iso_string_start_date(self):
         enrollment = self._enroll(self.section_a, "2026-06-10")
