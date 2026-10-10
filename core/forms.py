@@ -246,9 +246,11 @@ class AttendanceRegisterForm(forms.ModelForm):
     """Open an attendance register for a Class/Grade + Section and a date.
 
     The Section-belongs-to-Class/Grade rule is checked here for a friendly
-    error and again in the model (docs/adr/0005). The date-within-Academic-Year
+    error and again in the model (docs/adr/0007). The date-within-Academic-Year
     rule and the one-register-per-section-per-date rule are enforced by the
-    model's clean/constraints when the form is validated.
+    model's clean/constraints when the form is validated. `status` and the
+    submission fields are deliberately not form fields: a register opened
+    here is always DRAFT, and submission is a separate Gate 4 workflow.
     """
 
     class Meta:

@@ -3,9 +3,11 @@ from unittest import mock
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, connection, transaction
+from django.db.migrations.executor import MigrationExecutor
 from django.db.models import ProtectedError
-from django.test import TestCase, override_settings
+from django.test import TestCase, TransactionTestCase, override_settings
+from django.utils import timezone
 
 from core.models import (
     AcademicEnrollment,
@@ -1644,7 +1646,9 @@ class AttendanceRegisterModelTests(AttendanceFixtureMixin, TestCase):
 
         self.assertEqual(AttendanceEntry.objects.count(), 0)
 
-    def test_capture_rejects_completed_enrollment(self):
+    def test_capture_accepts_historical_enrollment_effective_on_register_date(self):
+        # Gate 3 (ADR 0006/0007): validity follows the date-effective
+        # enrollment, so a later transfer does not invalidate earlier dates.
         other_section = Section.objects.create(class_grade=self.class_grade, name="B")
         self.student.enroll(
             academic_year=self.year, class_grade=self.class_grade, section=other_section,
@@ -1652,10 +1656,30 @@ class AttendanceRegisterModelTests(AttendanceFixtureMixin, TestCase):
         )
         self.enrollment.refresh_from_db()
 
-        with self.assertRaises(ValidationError):
-            self.register.capture(enrollment=self.enrollment, status=AttendanceStatus.PRESENT)
+        entry = self.register.capture(
+            enrollment=self.enrollment, status=AttendanceStatus.PRESENT
+        )
 
         self.assertEqual(self.enrollment.status, AcademicEnrollment.Status.COMPLETED)
+        self.assertEqual(entry.academic_enrollment, self.enrollment)
+
+    def test_capture_rejects_completed_enrollment_not_effective_on_date(self):
+        other_section = Section.objects.create(class_grade=self.class_grade, name="B")
+        self.student.enroll(
+            academic_year=self.year, class_grade=self.class_grade, section=other_section,
+            start_date=date(2026, 7, 1),
+        )
+        self.enrollment.refresh_from_db()
+        later_register = AttendanceRegister.objects.create(
+            academic_year=self.year,
+            class_grade=self.class_grade,
+            section=self.section,
+            date="2026-07-02",
+        )
+
+        with self.assertRaises(ValidationError):
+            later_register.capture(enrollment=self.enrollment, status=AttendanceStatus.PRESENT)
+
         self.assertEqual(AttendanceEntry.objects.count(), 0)
 
     def test_capture_rejects_duplicate_entry(self):
@@ -1739,7 +1763,7 @@ class AttendanceEntryModelTests(AttendanceFixtureMixin, TestCase):
             AttendanceStatus.ABSENT, actor=self.actor, reason="Marked absent."
         )
         entry.record_status_change(
-            AttendanceStatus.LATE, actor=self.actor, reason="Arrived later."
+            AttendanceStatus.PRESENT, actor=self.actor, reason="Arrived after roll call."
         )
 
         self.assertEqual(entry.corrections.count(), 2)
@@ -1747,7 +1771,7 @@ class AttendanceEntryModelTests(AttendanceFixtureMixin, TestCase):
             entry.corrections.values_list("previous_status", "new_status")
         )
         self.assertIn((AttendanceStatus.PRESENT, AttendanceStatus.ABSENT), statuses)
-        self.assertIn((AttendanceStatus.ABSENT, AttendanceStatus.LATE), statuses)
+        self.assertIn((AttendanceStatus.ABSENT, AttendanceStatus.PRESENT), statuses)
 
     def test_invalid_status_is_rejected_without_change(self):
         entry = self.register.capture(
@@ -1820,3 +1844,449 @@ class AttendanceEntryModelTests(AttendanceFixtureMixin, TestCase):
         with self.assertRaises(ProtectedError), transaction.atomic():
             self.actor.delete()
         self.assertEqual(User.objects.filter(pk=self.actor.pk).count(), 1)
+
+
+class AttendanceGate3StatusTests(AttendanceFixtureMixin, TestCase):
+    """Gate 3: PRESENT/ABSENT only (docs/adr/0007-phase-2-attendance-model.md)."""
+
+    def setUp(self):
+        self.build_attendance_fixture()
+        self.actor = User.objects.create_user(username="administrator", password="pass-12345")
+
+    def test_choices_are_exactly_present_and_absent(self):
+        self.assertEqual(AttendanceStatus.values, ["PRESENT", "ABSENT"])
+        self.assertEqual(
+            [value for value, _ in AttendanceEntry._meta.get_field("status").choices],
+            ["PRESENT", "ABSENT"],
+        )
+        for field in ("previous_status", "new_status"):
+            with self.subTest(field=field):
+                self.assertEqual(
+                    [v for v, _ in AttendanceCorrection._meta.get_field(field).choices],
+                    ["PRESENT", "ABSENT"],
+                )
+
+    def test_late_and_excused_are_unavailable(self):
+        self.assertFalse(hasattr(AttendanceStatus, "LATE"))
+        self.assertFalse(hasattr(AttendanceStatus, "EXCUSED"))
+        for legacy in ("LATE", "EXCUSED"):
+            with self.subTest(status=legacy), self.assertRaises(ValidationError):
+                self.register.capture(enrollment=self.enrollment, status=legacy)
+        self.assertFalse(AttendanceEntry.objects.exists())
+
+    def test_correction_to_legacy_status_rejected(self):
+        entry = self.register.capture(enrollment=self.enrollment, status=AttendanceStatus.PRESENT)
+
+        for legacy in ("LATE", "EXCUSED"):
+            with self.subTest(status=legacy), self.assertRaises(ValidationError):
+                entry.record_status_change(legacy, actor=self.actor, reason="Legacy.")
+        self.assertFalse(AttendanceCorrection.objects.exists())
+
+    def test_entry_full_clean_rejects_invalid_status(self):
+        entry = AttendanceEntry(
+            register=self.register, academic_enrollment=self.enrollment, status="LATE"
+        )
+        with self.assertRaises(ValidationError) as ctx:
+            entry.full_clean()
+        self.assertIn("status", ctx.exception.message_dict)
+
+    def test_database_rejects_legacy_entry_status(self):
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            AttendanceEntry.objects.create(
+                register=self.register, academic_enrollment=self.enrollment, status="LATE"
+            )
+        self.assertFalse(AttendanceEntry.objects.exists())
+
+    def test_database_rejects_legacy_correction_status(self):
+        entry = self.register.capture(enrollment=self.enrollment, status=AttendanceStatus.PRESENT)
+
+        for previous, new in (("EXCUSED", "PRESENT"), ("PRESENT", "LATE")):
+            with self.subTest(previous=previous, new=new):
+                with self.assertRaises(IntegrityError), transaction.atomic():
+                    AttendanceCorrection.objects.create(
+                        entry=entry,
+                        previous_status=previous,
+                        new_status=new,
+                        reason="Direct write.",
+                        corrected_by=self.actor,
+                    )
+        self.assertFalse(AttendanceCorrection.objects.exists())
+
+
+class AttendanceGate3AbsenceNoteTests(AttendanceFixtureMixin, TestCase):
+    def setUp(self):
+        self.build_attendance_fixture()
+        self.actor = User.objects.create_user(username="administrator", password="pass-12345")
+
+    def test_absent_may_have_note(self):
+        entry = self.register.capture(
+            enrollment=self.enrollment,
+            status=AttendanceStatus.ABSENT,
+            absence_note="  Fever, guardian called.  ",
+        )
+
+        entry.refresh_from_db()
+        self.assertEqual(entry.absence_note, "Fever, guardian called.")
+
+    def test_absent_note_is_optional(self):
+        entry = self.register.capture(enrollment=self.enrollment, status=AttendanceStatus.ABSENT)
+
+        self.assertEqual(entry.absence_note, "")
+
+    def test_present_cannot_have_note(self):
+        with self.assertRaises(ValidationError):
+            self.register.capture(
+                enrollment=self.enrollment,
+                status=AttendanceStatus.PRESENT,
+                absence_note="Should not be here.",
+            )
+        self.assertFalse(AttendanceEntry.objects.exists())
+
+    def test_database_rejects_present_with_note(self):
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            AttendanceEntry.objects.create(
+                register=self.register,
+                academic_enrollment=self.enrollment,
+                status=AttendanceStatus.PRESENT,
+                absence_note="Direct write.",
+            )
+        self.assertFalse(AttendanceEntry.objects.exists())
+
+    def test_correcting_absent_to_present_clears_note(self):
+        entry = self.register.capture(
+            enrollment=self.enrollment, status=AttendanceStatus.ABSENT, absence_note="Fever."
+        )
+
+        entry.record_status_change(
+            AttendanceStatus.PRESENT, actor=self.actor, reason="Arrived after roll call."
+        )
+
+        entry.refresh_from_db()
+        self.assertEqual(entry.status, AttendanceStatus.PRESENT)
+        self.assertEqual(entry.absence_note, "")
+        correction = entry.corrections.get()
+        self.assertEqual(correction.previous_status, AttendanceStatus.ABSENT)
+        self.assertEqual(correction.new_status, AttendanceStatus.PRESENT)
+
+    def test_correcting_present_to_absent_works_without_note(self):
+        entry = self.register.capture(enrollment=self.enrollment, status=AttendanceStatus.PRESENT)
+
+        entry.record_status_change(AttendanceStatus.ABSENT, actor=self.actor, reason="Left early.")
+
+        entry.refresh_from_db()
+        self.assertEqual(entry.status, AttendanceStatus.ABSENT)
+        self.assertEqual(entry.absence_note, "")
+
+
+class AttendanceGate3RegisterLifecycleTests(AttendanceFixtureMixin, TestCase):
+    def setUp(self):
+        self.build_attendance_fixture()
+        self.actor = User.objects.create_user(username="administrator", password="pass-12345")
+
+    def test_new_register_defaults_to_draft_with_empty_submission_fields(self):
+        self.register.refresh_from_db()
+
+        self.assertEqual(self.register.status, AttendanceRegister.Status.DRAFT)
+        self.assertIsNone(self.register.submitted_by)
+        self.assertIsNone(self.register.submitted_at)
+
+    def test_lifecycle_states_are_exactly_draft_and_submitted(self):
+        self.assertEqual(AttendanceRegister.Status.values, ["DRAFT", "SUBMITTED"])
+
+    def test_clean_rejects_new_register_created_as_submitted(self):
+        register = AttendanceRegister(
+            academic_year=self.year,
+            class_grade=self.class_grade,
+            section=Section.objects.create(class_grade=self.class_grade, name="B"),
+            date=date(2026, 7, 1),
+            status=AttendanceRegister.Status.SUBMITTED,
+            submitted_by=self.actor,
+            submitted_at=timezone.now(),
+        )
+        with self.assertRaises(ValidationError):
+            register.full_clean()
+
+    def test_database_rejects_draft_with_submission_data(self):
+        for fields in (
+            {"submitted_by": self.actor},
+            {"submitted_at": timezone.now()},
+            {"submitted_by": self.actor, "submitted_at": timezone.now()},
+        ):
+            with self.subTest(fields=list(fields)):
+                with self.assertRaises(IntegrityError), transaction.atomic():
+                    AttendanceRegister.objects.filter(pk=self.register.pk).update(**fields)
+        self.register.refresh_from_db()
+        self.assertIsNone(self.register.submitted_by)
+        self.assertIsNone(self.register.submitted_at)
+
+    def test_database_rejects_submitted_without_submission_data(self):
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            AttendanceRegister.objects.filter(pk=self.register.pk).update(
+                status=AttendanceRegister.Status.SUBMITTED
+            )
+        self.register.refresh_from_db()
+        self.assertEqual(self.register.status, AttendanceRegister.Status.DRAFT)
+
+    def test_database_rejects_unknown_register_status(self):
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            AttendanceRegister.objects.filter(pk=self.register.pk).update(status="LOCKED")
+
+    def test_capture_leaves_register_draft(self):
+        self.register.capture(enrollment=self.enrollment, status=AttendanceStatus.PRESENT)
+
+        self.register.refresh_from_db()
+        self.assertEqual(self.register.status, AttendanceRegister.Status.DRAFT)
+        self.assertIsNone(self.register.submitted_at)
+
+
+class AttendanceGate3ContextTests(AttendanceFixtureMixin, TestCase):
+    def setUp(self):
+        self.build_attendance_fixture()
+
+    def test_register_section_must_belong_to_class_grade(self):
+        other_grade = ClassGrade.objects.create(name="Grade 2")
+        register = AttendanceRegister(
+            academic_year=self.year,
+            class_grade=other_grade,
+            section=self.section,
+            date="2026-07-02",
+        )
+        with self.assertRaises(ValidationError) as ctx:
+            register.full_clean()
+        self.assertIn("section", ctx.exception.message_dict)
+
+    def test_register_date_must_fall_in_academic_year(self):
+        register = AttendanceRegister(
+            academic_year=self.year,
+            class_grade=self.class_grade,
+            section=self.section,
+            date="2027-05-03",
+        )
+        with self.assertRaises(ValidationError) as ctx:
+            register.full_clean()
+        self.assertIn("date", ctx.exception.message_dict)
+
+    def test_register_context_locked_once_entries_exist(self):
+        self.register.capture(enrollment=self.enrollment, status=AttendanceStatus.PRESENT)
+        other_section = Section.objects.create(class_grade=self.class_grade, name="B")
+
+        for field, value in (("date", date(2026, 7, 2)), ("section", other_section)):
+            with self.subTest(field=field):
+                register = AttendanceRegister.objects.get(pk=self.register.pk)
+                setattr(register, field, value)
+                with self.assertRaises(ValidationError):
+                    register.full_clean()
+
+    def test_register_context_can_change_while_empty(self):
+        register = AttendanceRegister.objects.get(pk=self.register.pk)
+        register.date = date(2026, 7, 2)
+
+        register.full_clean()
+        register.save()
+
+    def test_unique_register_and_enrollment(self):
+        self.register.capture(enrollment=self.enrollment, status=AttendanceStatus.PRESENT)
+
+        with self.assertRaises(ValidationError):
+            self.register.capture(enrollment=self.enrollment, status=AttendanceStatus.ABSENT)
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            AttendanceEntry.objects.create(
+                register=self.register,
+                academic_enrollment=self.enrollment,
+                status=AttendanceStatus.ABSENT,
+            )
+        self.assertEqual(AttendanceEntry.objects.count(), 1)
+
+    def test_enrollment_from_other_academic_year_rejected(self):
+        other_year = AcademicYear.objects.create(
+            name="Overlapping session", start_date=date(2026, 6, 1), end_date=date(2027, 4, 30)
+        )
+        other_student = Student.objects.create(
+            applicant=Applicant.objects.create(full_name="Meera Rao"), full_name="Meera Rao"
+        )
+        other_enrollment = other_student.enroll(
+            academic_year=other_year,
+            class_grade=self.class_grade,
+            section=self.section,
+            start_date=date(2026, 6, 1),
+        )
+
+        with self.assertRaises(ValidationError):
+            self.register.capture(enrollment=other_enrollment, status=AttendanceStatus.PRESENT)
+        self.assertFalse(AttendanceEntry.objects.exists())
+
+    def test_enrollment_starting_after_register_date_rejected(self):
+        late_joiner = Student.objects.create(
+            applicant=Applicant.objects.create(full_name="Meera Rao"), full_name="Meera Rao"
+        )
+        enrollment = late_joiner.enroll(
+            academic_year=self.year,
+            class_grade=self.class_grade,
+            section=self.section,
+            start_date=date(2026, 7, 2),
+        )
+
+        with self.assertRaises(ValidationError):
+            self.register.capture(enrollment=enrollment, status=AttendanceStatus.PRESENT)
+        self.assertFalse(AttendanceEntry.objects.exists())
+
+    def test_entry_full_clean_rejects_non_effective_enrollment(self):
+        self.student.enroll(
+            academic_year=self.year,
+            class_grade=self.class_grade,
+            section=Section.objects.create(class_grade=self.class_grade, name="B"),
+            start_date=date(2026, 6, 15),
+        )
+        self.enrollment.refresh_from_db()  # now ends 2026-06-14
+
+        entry = AttendanceEntry(
+            register=self.register,
+            academic_enrollment=self.enrollment,
+            status=AttendanceStatus.PRESENT,
+        )
+        with self.assertRaises(ValidationError) as ctx:
+            entry.full_clean()
+        self.assertIn("academic_enrollment", ctx.exception.message_dict)
+
+
+class AttendanceGate3HistoryProtectionTests(AttendanceFixtureMixin, TestCase):
+    def setUp(self):
+        self.build_attendance_fixture()
+        self.actor = User.objects.create_user(username="administrator", password="pass-12345")
+        self.entry = self.register.capture(
+            enrollment=self.enrollment, status=AttendanceStatus.PRESENT
+        )
+        self.entry.record_status_change(
+            AttendanceStatus.ABSENT, actor=self.actor, reason="Left early."
+        )
+
+    def test_entry_with_corrections_cannot_be_deleted(self):
+        with self.assertRaises(ProtectedError), transaction.atomic():
+            self.entry.delete()
+        self.assertTrue(AttendanceEntry.objects.filter(pk=self.entry.pk).exists())
+
+    def test_enrollment_with_attendance_cannot_be_deleted(self):
+        with self.assertRaises(ProtectedError), transaction.atomic():
+            self.enrollment.delete()
+
+    def test_correcting_actor_cannot_be_deleted(self):
+        with self.assertRaises(ProtectedError), transaction.atomic():
+            self.actor.delete()
+
+    def test_submitting_user_is_protected(self):
+        AttendanceRegister.objects.filter(pk=self.register.pk).update(
+            status=AttendanceRegister.Status.SUBMITTED,
+            submitted_by=self.actor,
+            submitted_at=timezone.now(),
+        )
+        self.register.refresh_from_db()
+
+        self.assertEqual(self.register.status, AttendanceRegister.Status.SUBMITTED)
+        self.assertEqual(
+            list(self.actor.submitted_attendance_registers.all()), [self.register]
+        )
+        with self.assertRaises(ProtectedError), transaction.atomic():
+            self.actor.delete()
+
+
+class AttendanceLegacyStatusMigrationTests(TransactionTestCase):
+    """Migration 0021 must refuse, not convert, legacy LATE/EXCUSED data."""
+
+    before = [("core", "0020_add_school_calendar_permissions_to_group")]
+    after = [("core", "0021_attendance_core_reconciliation")]
+
+    def tearDown(self):
+        # Remove any deliberately unreconciled legacy rows, then always leave
+        # the database fully migrated for the following tests.
+        executor = MigrationExecutor(connection)
+        executor.loader.build_graph()
+        applied = executor.loader.applied_migrations
+        if ("core", "0021_attendance_core_reconciliation") not in applied:
+            apps = executor.loader.project_state(self.before).apps
+            apps.get_model("core", "AttendanceCorrection").objects.all().delete()
+            apps.get_model("core", "AttendanceEntry").objects.all().delete()
+        executor = MigrationExecutor(connection)
+        executor.loader.build_graph()
+        executor.migrate(executor.loader.graph.leaf_nodes())
+
+    def _migrate(self, targets):
+        executor = MigrationExecutor(connection)
+        executor.loader.build_graph()
+        executor.migrate(targets)
+        return executor.loader.project_state(targets).apps
+
+    def _seed_legacy(self, apps, *, entry_status, correction=None):
+        AcademicYear_ = apps.get_model("core", "AcademicYear")
+        ClassGrade_ = apps.get_model("core", "ClassGrade")
+        Section_ = apps.get_model("core", "Section")
+        Applicant_ = apps.get_model("core", "Applicant")
+        Student_ = apps.get_model("core", "Student")
+        Enrollment_ = apps.get_model("core", "AcademicEnrollment")
+        Register_ = apps.get_model("core", "AttendanceRegister")
+        Entry_ = apps.get_model("core", "AttendanceEntry")
+        Correction_ = apps.get_model("core", "AttendanceCorrection")
+        User_ = apps.get_model("accounts", "User")
+
+        year = AcademicYear_.objects.create(
+            name="Legacy", start_date=date(2026, 6, 1), end_date=date(2027, 4, 30)
+        )
+        grade = ClassGrade_.objects.create(name="Legacy grade")
+        section = Section_.objects.create(class_grade=grade, name="A")
+        applicant = Applicant_.objects.create(full_name="Legacy Student")
+        student = Student_.objects.create(applicant=applicant, full_name="Legacy Student")
+        enrollment = Enrollment_.objects.create(
+            student=student,
+            academic_year=year,
+            class_grade=grade,
+            section=section,
+            start_date=date(2026, 6, 1),
+        )
+        register = Register_.objects.create(
+            academic_year=year, class_grade=grade, section=section, date=date(2026, 7, 1)
+        )
+        entry = Entry_.objects.create(
+            register=register, academic_enrollment=enrollment, status=entry_status
+        )
+        if correction is not None:
+            user = User_.objects.create(username="legacy-admin")
+            Correction_.objects.create(
+                entry=entry,
+                previous_status=correction[0],
+                new_status=correction[1],
+                reason="Legacy correction.",
+                corrected_by=user,
+            )
+        return entry
+
+    def test_legacy_entry_status_stops_migration_without_conversion(self):
+        apps = self._migrate(self.before)
+        entry = self._seed_legacy(apps, entry_status="LATE")
+
+        with self.assertRaisesMessage(RuntimeError, "will not be converted automatically"):
+            self._migrate(self.after)
+
+        Entry_ = apps.get_model("core", "AttendanceEntry")
+        self.assertEqual(Entry_.objects.get(pk=entry.pk).status, "LATE")
+
+    def test_legacy_correction_status_stops_migration(self):
+        apps = self._migrate(self.before)
+        self._seed_legacy(apps, entry_status="PRESENT", correction=("EXCUSED", "PRESENT"))
+
+        with self.assertRaisesMessage(RuntimeError, "AttendanceCorrection ids [1]"):
+            self._migrate(self.after)
+
+    def test_reconciled_data_migrates_and_registers_become_draft(self):
+        apps = self._migrate(self.before)
+        entry = self._seed_legacy(apps, entry_status="LATE")
+        Entry_ = apps.get_model("core", "AttendanceEntry")
+        Entry_.objects.filter(pk=entry.pk).update(status="PRESENT")  # manual reconciliation
+
+        new_apps = self._migrate(self.after)
+
+        Register_ = new_apps.get_model("core", "AttendanceRegister")
+        register = Register_.objects.get()
+        self.assertEqual(register.status, "DRAFT")
+        self.assertIsNone(register.submitted_by_id)
+        self.assertIsNone(register.submitted_at)
+        migrated = new_apps.get_model("core", "AttendanceEntry").objects.get()
+        self.assertEqual((migrated.status, migrated.absence_note), ("PRESENT", ""))

@@ -11,7 +11,14 @@
     <dd class="col-sm-9">{{ entry.register.date }}</dd>
     <dt class="col-sm-3">Current status</dt>
     <dd class="col-sm-9">{{ entry.get_status_display }}</dd>
+    {% if entry.absence_note %}
+    <dt class="col-sm-3">Absence note</dt>
+    <dd class="col-sm-9">{{ entry.absence_note }}</dd>
+    {% endif %}
 </dl>
+{% if entry.absence_note %}
+<p class="text-muted">Correcting this entry to Present clears its absence note.</p>
+{% endif %}
 <form method="post">
     {% csrf_token %}
     {{ form.as_p }}

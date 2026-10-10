@@ -302,26 +302,6 @@ class AcademicYearListAuthorizationTests(AuthorizationClientsMixin, TestCase):
 
         self.assertEqual(response.status_code, 200)
 
-    def test_section_date_range_includes_status_summary(self):
-        self.register.capture(enrollment=self.enrollment, status=AttendanceStatus.PRESENT)
-
-        response = self.administrator.get(
-            self.url,
-            {"section": self.section.pk, "start": "2026-07-01", "end": "2026-07-01"},
-        )
-
-        self.assertEqual(response.context["section_total"], 1)
-        self.assertEqual(
-            response.context["section_summary"],
-            [
-                {"label": "Present", "count": 1},
-                {"label": "Absent", "count": 0},
-                {"label": "Late", "count": 0},
-                {"label": "Excused", "count": 0},
-            ],
-        )
-        self.assertContains(response, "2026-2027")
-
 
 class ClassGradeCreateAuthorizationTests(AuthorizationClientsMixin, TestCase):
     def setUp(self):
@@ -1364,6 +1344,27 @@ class AttendanceRegisterListAuthorizationTests(
         self.build_attendance_fixture()
         self.url = reverse("core:attendance-register-list")
 
+    def test_section_date_range_includes_status_summary(self):
+        # Moved from AcademicYearListAuthorizationTests (it had no register
+        # fixture there) and reconciled to the ADR 0007 PRESENT/ABSENT set.
+        self.register.capture(enrollment=self.enrollment, status=AttendanceStatus.PRESENT)
+
+        response = self.administrator.get(
+            self.url,
+            {"section": self.section.pk, "start": "2026-07-01", "end": "2026-07-01"},
+        )
+
+        self.assertEqual(response.context["section_total"], 1)
+        self.assertEqual(
+            response.context["section_summary"],
+            [
+                {"label": "Present", "count": 1},
+                {"label": "Absent", "count": 0},
+            ],
+        )
+        self.assertContains(response, "2026-2027")
+        self.assertContains(response, "Draft")
+
     def test_anonymous_is_redirected_to_login(self):
         response = self.anonymous.get(self.url)
 
@@ -1905,3 +1906,104 @@ class SchoolCalendarAuthorizationTests(AuthorizationClientsMixin, TestCase):
         )
 
         self.assertTrue(AcademicYear.objects.get(name="2027-2028").saturdays_instructional)
+
+
+class AttendanceGate3ViewTests(AuthorizationClientsMixin, AttendanceFixtureMixin, TestCase):
+    """Gate 3 behaviour through the existing attendance views."""
+
+    def setUp(self):
+        super().setUp()
+        self.build_attendance_fixture()
+
+    def test_register_create_ignores_submitted_status_in_request(self):
+        section_b = Section.objects.create(class_grade=self.class_grade, name="B")
+
+        response = self.administrator.post(
+            reverse("core:attendance-register-create"),
+            {
+                "academic_year": self.year.pk,
+                "class_grade": self.class_grade.pk,
+                "section": section_b.pk,
+                "date": "2026-07-01",
+                "status": "SUBMITTED",
+                "submitted_by": self.admin_user.pk,
+                "submitted_at": "2026-07-01T10:00",
+            },
+        )
+
+        register = AttendanceRegister.objects.get(section=section_b)
+        self.assertRedirects(
+            response, reverse("core:attendance-register-detail", args=[register.pk])
+        )
+        self.assertEqual(register.status, AttendanceRegister.Status.DRAFT)
+        self.assertIsNone(register.submitted_by)
+        self.assertIsNone(register.submitted_at)
+
+    def test_register_detail_shows_draft_status(self):
+        response = self.administrator.get(
+            reverse("core:attendance-register-detail", args=[self.register.pk])
+        )
+
+        self.assertContains(response, "Register status")
+        self.assertContains(response, "Draft")
+
+    def test_capture_form_offers_only_present_and_absent(self):
+        form = AttendanceCaptureForm(register=self.register)
+        field = form.fields[AttendanceCaptureForm.field_name(self.enrollment)]
+
+        self.assertEqual([value for value, _ in field.choices], ["PRESENT", "ABSENT"])
+
+    def test_capture_rejects_legacy_status_via_view(self):
+        response = self.administrator.post(
+            reverse("core:attendance-capture", args=[self.register.pk]),
+            {AttendanceCaptureForm.field_name(self.enrollment): "LATE"},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(AttendanceEntry.objects.exists())
+
+    def test_correction_rejects_legacy_status_via_view(self):
+        entry = self.register.capture(enrollment=self.enrollment, status=AttendanceStatus.PRESENT)
+
+        response = self.administrator.post(
+            reverse("core:attendance-entry-correct", args=[entry.pk]),
+            {"status": "EXCUSED", "reason": "Legacy."},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        entry.refresh_from_db()
+        self.assertEqual(entry.status, AttendanceStatus.PRESENT)
+        self.assertFalse(AttendanceCorrection.objects.exists())
+
+    def test_correction_to_present_via_view_clears_absence_note(self):
+        entry = self.register.capture(
+            enrollment=self.enrollment, status=AttendanceStatus.ABSENT, absence_note="Fever."
+        )
+        url = reverse("core:attendance-entry-correct", args=[entry.pk])
+        self.assertContains(self.administrator.get(url), "clears its absence note")
+
+        response = self.administrator.post(
+            url, {"status": AttendanceStatus.PRESENT, "reason": "Arrived late."}
+        )
+
+        self.assertRedirects(
+            response, reverse("core:attendance-register-detail", args=[self.register.pk])
+        )
+        entry.refresh_from_db()
+        self.assertEqual(entry.status, AttendanceStatus.PRESENT)
+        self.assertEqual(entry.absence_note, "")
+        self.assertEqual(AttendanceCorrection.objects.count(), 1)
+
+    def test_student_history_shows_absence_note(self):
+        self.register.capture(
+            enrollment=self.enrollment, status=AttendanceStatus.ABSENT, absence_note="Fever."
+        )
+
+        response = self.administrator.get(
+            reverse("core:student-attendance", args=[self.student.pk])
+        )
+
+        self.assertContains(response, "Fever.")
+        self.assertEqual(
+            [row["label"] for row in response.context["summary"]], ["Present", "Absent"]
+        )
