@@ -106,7 +106,14 @@ OPEN: Online payment gateways are later work and are not part of the initial pha
 
 FROZEN: Assessment planning and student results are separate concepts.
 
-Detailed grading systems are intentionally undecided until the assessment module is designed.
+FROZEN (ADR 0009, ADR 0010): Phase 4 assessments follow these rules:
+- Subject is a long-lived identity; AcademicSubjectOffering (Academic Year + Class/Grade + Subject, optionally limited to Sections) is what assessments reference; AcademicTerm is an explicitly ordered period inside an Academic Year.
+- An Assessment is one subject assessment in a Term for a Section scope, with a date, maximum marks and optional pass mark, and a DRAFT → FINALIZED lifecycle.
+- The roster comes from the AcademicEnrollment effective on the assessment date; each StudentResult references that enrollment, so transfers never rewrite results.
+- Results are MARKED (0 ≤ score ≤ maximum) or ABSENT (no score). ABSENT is never zero, and a missing result is incomplete entry, never ABSENT.
+- Numeric marks are canonical; percentage, grade (from a reusable GradingScale) and pass/fail (only when a pass mark is set) are derived. Finalized results keep the grading context they were finalized with.
+- Administrators finalize and make audited corrections; teachers enter DRAFT results only for their assigned Subject/Section.
+- Reports are views of canonical results: no rank, GPA, weighting, promotion or transcripts.
 
 ## Attendance domain principles
 
@@ -122,7 +129,7 @@ Rules:
 - Submitted attendance corrections preserve the previous value, new value, administrator, and timestamp.
 - Percentage is PRESENT / (PRESENT + ABSENT) over submitted eligible entries only.
 
-CURRENT: Attendance is administrator-facing in Phase 2. Teacher attendance is deferred to Phase 5; Guardian and Student attendance access is deferred to later phases.
+CURRENT: Attendance is administrator-facing in Phase 2. Teacher attendance is deferred to Phase 5; Guardian and Student attendance access is deferred to later phases. (Phase 4 introduces assessment-scoped teacher assignment for result entry only; ADR 0010.)
 
 OPEN: Period/slot-level attendance, leave workflows, portals, notifications, and timetable integration are later work and are not part of Phase 2.
 

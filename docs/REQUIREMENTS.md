@@ -362,6 +362,39 @@ Successful completion requires date-correct enrollment context, calendar-correct
 eligibility, explicit submission, no missing=ABSENT inference, and audited
 corrections.
 
+## Phase 4 scope
+
+Phase 4 Assessments is planned; its decisions are frozen in ADR 0009 and
+ADR 0010 and its gates are defined in `docs/PHASE_4_ASSESSMENTS_PLAN.md`.
+It contains only:
+
+1. Subjects, Academic-Year-aware subject offerings, and academic terms
+2. Minimal assessment teacher assignment (User + offering + Section)
+3. Reusable grading scales with deterministic grade resolution
+4. Subject assessments with planning rules and a DRAFT → FINALIZED lifecycle
+5. Date-effective rosters and MARKED/ABSENT DRAFT result entry
+6. Administrator finalization and audited corrections
+7. Optional Term teacher remarks
+8. Assessment result sheet, Student result history, Subject/Section results,
+   and Term report card
+
+Acceptance criteria are defined per gate in the plan. Phase 4 is complete
+when the system can configure terms and subjects, assign subjects and
+teachers, create an assessment, derive the correct historical roster, accept
+teacher DRAFT results, finalize complete results, correct an error with audit
+history, and produce trustworthy student and Term reports without rewriting
+academic history.
+
+## Explicitly out of scope for Phase 4
+
+- GPA, class rank, percentile ranking
+- assessment or category weighting, rubrics, outcome/competency frameworks
+- homework gradebooks, online examinations, question banks
+- hall tickets, exam seating, timetable integration
+- automatic promotion, transcript engine, board-specific result rules
+- parent/student result publication, co-scholastic grading
+- teacher workload, substitute-teacher workflows
+
 ## Definition of Done
 
 FROZEN: A feature or milestone is done when, where applicable:
