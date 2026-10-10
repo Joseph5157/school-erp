@@ -160,9 +160,7 @@ class DraftResultTests(Phase4Fixture, TestCase):
 
     def test_finalized_assessment_rejects_draft_entry(self):
         self.enter(self.ravi_a, ResultStatus.MARKED, "15")
-        Assessment.objects.filter(pk=self.assessment.pk).update(
-            status=Assessment.Status.FINALIZED
-        )
+        self.force_finalize(self.assessment)
         with self.assertRaisesMessage(ValidationError, "finalized"):
             self.enter(self.ravi_a, ResultStatus.MARKED, "16")
         self.assertEqual(StudentResult.objects.get().score, Decimal("15"))

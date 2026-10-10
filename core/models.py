@@ -1753,12 +1753,42 @@ class Assessment(models.Model):
     maximum_marks = models.DecimalField(max_digits=6, decimal_places=2)
     pass_mark = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.DRAFT)
+    finalized_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="finalized_assessments",
+    )
+    finalized_at = models.DateTimeField(null=True, blank=True)
+    grading_snapshot = models.JSONField(
+        null=True,
+        blank=True,
+        help_text="Frozen grading scale (name and bands) captured at finalization.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ["-assessment_date", "offering", "section", "name"]
+        permissions = [("finalize_assessment", "Can finalize assessment results")]
         constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(
+                        status="DRAFT",
+                        finalized_by__isnull=True,
+                        finalized_at__isnull=True,
+                        grading_snapshot__isnull=True,
+                    )
+                    | models.Q(
+                        status="FINALIZED",
+                        finalized_by__isnull=False,
+                        finalized_at__isnull=False,
+                    )
+                ),
+                name="assessment_finalization_fields_match_status",
+            ),
             models.UniqueConstraint(
                 fields=["offering", "section", "term", "name"],
                 name="assessment_unique_name_per_offering_section_term",
@@ -1884,6 +1914,85 @@ class Assessment(models.Model):
             .values_list("status", flat=True)
             .get()
         )
+
+    # --- finalization (Gate 6) ---
+
+    def applicable_scale(self):
+        return GradingScale.for_grade(self.offering.academic_year, self.offering.class_grade)
+
+    def finalization_problems(self):
+        """Reasons this DRAFT assessment cannot be finalized yet (empty = ready)."""
+        problems = []
+        if self.status != self.Status.DRAFT:
+            return ["This assessment is already finalized."]
+        if _as_date(self.assessment_date) > business_today():
+            problems.append("The assessment date has not been reached.")
+        if not self.roster().exists():
+            problems.append("No Students are on this assessment's roster.")
+        unmarked = self.unmarked_enrollments().count()
+        if unmarked:
+            problems.append(f"{unmarked} Student(s) still have no result.")
+        if self.ineligible_results().exists():
+            problems.append("Some results belong to Students not on the roster.")
+        over = self.results.filter(
+            status=ResultStatus.MARKED, score__gt=self.maximum_marks
+        ).count()
+        if over:
+            problems.append(f"{over} score(s) exceed the maximum marks.")
+        scale = self.applicable_scale()
+        if scale is not None and not scale.is_complete:
+            problems.append(
+                f"The grading scale {scale.name} needs a band starting at 0% before results "
+                "can be finalized."
+            )
+        return problems
+
+    def finalize(self, *, actor):
+        """DRAFT -> FINALIZED (Gate 6). Administrator-only; records who and when.
+
+        Requires the date to have passed, a non-empty roster, exactly one
+        valid result per roster enrollment and none for others. Freezes the
+        applicable grading scale's bands onto the assessment so later scale
+        edits never change these grades. Normal editing stops afterwards.
+        """
+        if actor is None or not getattr(actor, "pk", None):
+            raise ValidationError("A finalizing user is required.")
+        if not actor.has_perm("core.finalize_assessment"):
+            raise ValidationError("Only an administrator can finalize results.")
+        with transaction.atomic():
+            if self._lock() != self.Status.DRAFT:
+                raise ValidationError("This assessment is already finalized.")
+            problems = self.finalization_problems()
+            if problems:
+                raise ValidationError(problems)
+            scale = self.applicable_scale()
+            self.grading_snapshot = scale.snapshot() if scale is not None else None
+            self.status = self.Status.FINALIZED
+            self.finalized_by = actor
+            self.finalized_at = timezone.now()
+            self.save(
+                update_fields=[
+                    "status", "finalized_by", "finalized_at", "grading_snapshot", "updated_at",
+                ]
+            )
+
+    def grade_for(self, result):
+        """Derived grade: frozen bands once finalized, the live scale before."""
+        if result.status != ResultStatus.MARKED:
+            return None
+        if self.status == self.Status.FINALIZED:
+            if not self.grading_snapshot:
+                return None
+            return grade_from_bands(self.grading_snapshot["bands"], result.percentage)
+        scale = self.applicable_scale()
+        return scale.grade_for(result.percentage) if scale is not None else None
+
+    @property
+    def grading_scale_name(self):
+        if self.status == self.Status.FINALIZED:
+            return (self.grading_snapshot or {}).get("scale")
+        scale = self.applicable_scale()
+        return scale.name if scale is not None else None
 
     def save_draft_result(self, *, enrollment, status, score=None, actor):
         """Create or update one Student's DRAFT result (Gate 5).
@@ -2019,6 +2128,19 @@ class StudentResult(models.Model):
         if self.status != ResultStatus.MARKED or self.score is None:
             return None
         return (self.score * 100 / self.assessment.maximum_marks).quantize(Decimal("0.01"))
+
+    @property
+    def pass_fail(self):
+        """PASS/FAIL derived from the pass mark; None without one; ABSENT stays ABSENT."""
+        if self.status == ResultStatus.ABSENT:
+            return "ABSENT"
+        if self.assessment.pass_mark is None or self.score is None:
+            return None
+        return "PASS" if self.score >= self.assessment.pass_mark else "FAIL"
+
+    @property
+    def grade(self):
+        return self.assessment.grade_for(self)
 
     def __str__(self):
         shown = self.score if self.status == ResultStatus.MARKED else "Absent"
