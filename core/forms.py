@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator
 
 from core.models import (
     TEACHERS_GROUP_NAME,
@@ -384,6 +385,39 @@ class ResultEntryForm(forms.Form):
             status = self.cleaned_data.get(self.status_name(enrollment))
             if status:
                 yield enrollment, status, self.cleaned_data.get(self.score_name(enrollment))
+
+
+class ResultCorrectionForm(forms.Form):
+    """Correct one finalized result, with a required reason."""
+
+    status = forms.ChoiceField(choices=ResultStatus.choices, label="Correct result")
+    score = forms.DecimalField(
+        required=False, min_value=0, decimal_places=2, max_digits=6,
+        help_text="Required for Marked; leave empty for Absent.",
+    )
+    reason = forms.CharField(widget=forms.Textarea(attrs={"rows": 2}))
+
+    def __init__(self, *args, result=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.result = result
+        self.fields["score"].max_value = result.assessment.maximum_marks
+        self.fields["score"].validators.append(
+            MaxValueValidator(
+                result.assessment.maximum_marks
+            )
+        )
+        if not self.is_bound:
+            self.fields["status"].initial = result.status
+            self.fields["score"].initial = result.score
+
+    def clean(self):
+        cleaned_data = super().clean()
+        status, score = cleaned_data.get("status"), cleaned_data.get("score")
+        if status == ResultStatus.MARKED and score is None:
+            self.add_error("score", "Enter the corrected score.")
+        if status == ResultStatus.ABSENT and score is not None:
+            self.add_error("score", "An absent Student has no score.")
+        return cleaned_data
 
 
 class OfferedSubjectsLookupForm(forms.Form):
