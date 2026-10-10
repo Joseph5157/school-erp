@@ -1,3 +1,6 @@
+from datetime import date
+from unittest import mock
+
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.test import TestCase
@@ -109,7 +112,12 @@ class Phase1AcceptanceJourneyTests(TestCase):
         # Create Academic Enrollment (assignment through enrollment).
         response = self.client.post(
             reverse("core:student-enroll", args=[student.pk]),
-            {"academic_year": year.pk, "class_grade": class_grade.pk, "section": section.pk},
+            {
+                "academic_year": year.pk,
+                "class_grade": class_grade.pk,
+                "section": section.pk,
+                "start_date": "2026-06-01",
+            },
         )
         self.assertRedirects(response, reverse("core:student-detail", args=[student.pk]))
         enrollment = AcademicEnrollment.objects.get()
@@ -133,6 +141,9 @@ class Phase1AcceptanceJourneyTests(TestCase):
         response = self.client.get(reverse("core:student-list"), {"q": "Ravi"})
         self.assertEqual(list(response.context["students"]), [student])
 
+    # The second placement starts in 2027-2028; pin "today" after it so the
+    # no-future-start rule does not make this journey clock-dependent.
+    @mock.patch("core.models.business_today", new=lambda: date(2027, 12, 31))
     def test_placement_and_status_changes_preserve_history(self):
         # Build the prerequisites for an enrolled Student through the views.
         self.client.post(reverse("core:school-create"), {"name": "Greenwood High"})
@@ -167,6 +178,7 @@ class Phase1AcceptanceJourneyTests(TestCase):
                 "academic_year": first_year.pk,
                 "class_grade": class_grade.pk,
                 "section": section.pk,
+                "start_date": "2026-06-01",
             },
         )
         # Second placement completes the first rather than overwriting it.
@@ -176,6 +188,7 @@ class Phase1AcceptanceJourneyTests(TestCase):
                 "academic_year": second_year.pk,
                 "class_grade": class_grade.pk,
                 "section": section.pk,
+                "start_date": "2027-06-01",
             },
         )
 
@@ -228,7 +241,8 @@ class Phase2AcceptanceJourneyTests(TestCase):
         applicant.record_admission_decision(Applicant.AdmissionStatus.ACCEPTED)
         student = applicant.progress_to_student()
         enrollment = student.enroll(
-            academic_year=year, class_grade=class_grade, section=section
+            academic_year=year, class_grade=class_grade, section=section,
+            start_date=date(2026, 6, 1),
         )
         return year, class_grade, section, student, enrollment
 

@@ -130,7 +130,10 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = "UTC"
+# The school's local timezone. Business dates (e.g. "is this date in the
+# future?") come from timezone.localdate(), so this must be the school's
+# timezone, not UTC. USE_TZ stays on: stored timestamps remain timezone-aware.
+TIME_ZONE = "Asia/Kolkata"
 
 USE_I18N = True
 

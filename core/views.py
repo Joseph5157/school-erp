@@ -313,6 +313,7 @@ def student_enroll(request, pk):
                     academic_year=form.cleaned_data["academic_year"],
                     class_grade=form.cleaned_data["class_grade"],
                     section=form.cleaned_data["section"],
+                    start_date=form.cleaned_data["start_date"],
                 )
             except ValidationError as error:
                 messages.error(request, error.messages[0])

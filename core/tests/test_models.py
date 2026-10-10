@@ -1,10 +1,11 @@
-from datetime import date
+from datetime import UTC, date, datetime
+from unittest import mock
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import ProtectedError
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from core.models import (
     AcademicEnrollment,
@@ -22,6 +23,7 @@ from core.models import (
     Section,
     Student,
     StudentGuardian,
+    business_today,
 )
 
 User = get_user_model()
@@ -665,6 +667,7 @@ class AcademicEnrollmentModelTests(TestCase):
             "academic_year": self.year,
             "class_grade": self.class_grade,
             "section": self.section,
+            "start_date": date(2026, 6, 1),
         }
         values.update(overrides)
         return AcademicEnrollment(**values)
@@ -700,9 +703,11 @@ class AcademicEnrollmentModelTests(TestCase):
             class_grade=self.class_grade,
             section=self.section,
             status=AcademicEnrollment.Status.COMPLETED,
+            start_date=date(2026, 6, 1),
+            end_date=date(2026, 6, 30),
         )
 
-        active = self._enrollment()
+        active = self._enrollment(start_date=date(2026, 7, 1))
         active.full_clean()
         active.save()
 
@@ -716,6 +721,67 @@ class AcademicEnrollmentModelTests(TestCase):
         self.assertEqual(Student.objects.count(), 1)
 
 
+class BusinessDateTimezoneTests(TestCase):
+    """Business dates follow the school's configured timezone, not UTC."""
+
+    # 2026-07-01 19:00 UTC is already 2026-07-02 00:30 in Asia/Kolkata.
+    NOW_UTC = datetime(2026, 7, 1, 19, 0, tzinfo=UTC)
+
+    def setUp(self):
+        self.student = Student.objects.create(
+            applicant=Applicant.objects.create(full_name="Ravi Rao"), full_name="Ravi Rao"
+        )
+        self.year = AcademicYear.objects.create(
+            name="2026-2027", start_date=date(2026, 6, 1), end_date=date(2027, 4, 30)
+        )
+        self.class_grade = ClassGrade.objects.create(name="Grade 1")
+        self.section = Section.objects.create(class_grade=self.class_grade, name="A")
+
+    def test_project_timezone_is_school_local(self):
+        from django.conf import settings
+
+        self.assertEqual(settings.TIME_ZONE, "Asia/Kolkata")
+        self.assertTrue(settings.USE_TZ)
+
+    def test_business_today_uses_school_timezone_after_ist_midnight(self):
+        with mock.patch("django.utils.timezone.now", return_value=self.NOW_UTC):
+            self.assertEqual(business_today(), date(2026, 7, 2))
+
+    @override_settings(TIME_ZONE="UTC")
+    def test_business_today_is_driven_by_configured_timezone(self):
+        with mock.patch("django.utils.timezone.now", return_value=self.NOW_UTC):
+            self.assertEqual(business_today(), date(2026, 7, 1))
+
+    def test_same_day_ist_enrollment_allowed_just_after_midnight(self):
+        with mock.patch("django.utils.timezone.now", return_value=self.NOW_UTC):
+            enrollment = self.student.enroll(
+                academic_year=self.year,
+                class_grade=self.class_grade,
+                section=self.section,
+                start_date=date(2026, 7, 2),
+            )
+
+        self.assertEqual(enrollment.start_date, date(2026, 7, 2))
+
+    def test_next_ist_day_still_rejected_as_future(self):
+        with mock.patch("django.utils.timezone.now", return_value=self.NOW_UTC):
+            with self.assertRaises(ValidationError):
+                self.student.enroll(
+                    academic_year=self.year,
+                    class_grade=self.class_grade,
+                    section=self.section,
+                    start_date=date(2026, 7, 3),
+                )
+
+        self.assertFalse(AcademicEnrollment.objects.exists())
+
+
+# Fixtures below enroll into the 2027-2028 year; pin "today" after those dates
+# so the operational no-future-start rule does not make results clock-dependent.
+PINNED_TODAY = date(2027, 12, 31)
+
+
+@mock.patch("core.models.business_today", new=lambda: PINNED_TODAY)
 class StudentEnrollmentTests(TestCase):
     def setUp(self):
         self.student = Student.objects.create(
@@ -733,7 +799,8 @@ class StudentEnrollmentTests(TestCase):
 
     def test_enroll_creates_active_enrollment(self):
         enrollment = self.student.enroll(
-            academic_year=self.year, class_grade=self.class_grade, section=self.section
+            academic_year=self.year, class_grade=self.class_grade, section=self.section,
+            start_date=date(2026, 6, 1),
         )
 
         self.assertEqual(enrollment.status, AcademicEnrollment.Status.ACTIVE)
@@ -742,11 +809,13 @@ class StudentEnrollmentTests(TestCase):
 
     def test_new_placement_completes_previous_enrollment(self):
         first = self.student.enroll(
-            academic_year=self.year, class_grade=self.class_grade, section=self.section
+            academic_year=self.year, class_grade=self.class_grade, section=self.section,
+            start_date=date(2026, 6, 1),
         )
 
         second = self.student.enroll(
-            academic_year=self.next_year, class_grade=self.class_grade, section=self.section
+            academic_year=self.next_year, class_grade=self.class_grade, section=self.section,
+            start_date=date(2027, 6, 1),
         )
 
         first.refresh_from_db()
@@ -756,10 +825,12 @@ class StudentEnrollmentTests(TestCase):
 
     def test_previous_enrollment_is_preserved(self):
         first = self.student.enroll(
-            academic_year=self.year, class_grade=self.class_grade, section=self.section
+            academic_year=self.year, class_grade=self.class_grade, section=self.section,
+            start_date=date(2026, 6, 1),
         )
         self.student.enroll(
-            academic_year=self.next_year, class_grade=self.class_grade, section=self.section
+            academic_year=self.next_year, class_grade=self.class_grade, section=self.section,
+            start_date=date(2027, 6, 1),
         )
 
         self.assertTrue(AcademicEnrollment.objects.filter(pk=first.pk).exists())
@@ -767,10 +838,12 @@ class StudentEnrollmentTests(TestCase):
 
     def test_history_accumulates_multiple_completed_enrollments(self):
         self.student.enroll(
-            academic_year=self.year, class_grade=self.class_grade, section=self.section
+            academic_year=self.year, class_grade=self.class_grade, section=self.section,
+            start_date=date(2026, 6, 1),
         )
         self.student.enroll(
-            academic_year=self.next_year, class_grade=self.class_grade, section=self.other_section
+            academic_year=self.next_year, class_grade=self.class_grade, section=self.other_section,
+            start_date=date(2027, 6, 1),
         )
 
         self.assertEqual(
@@ -789,24 +862,338 @@ class StudentEnrollmentTests(TestCase):
                 academic_year=self.year,
                 class_grade=self.class_grade,
                 section=other_section,
+                start_date=date(2026, 6, 1),
             )
 
         self.assertFalse(AcademicEnrollment.objects.exists())
 
     def test_duplicate_active_placement_is_rejected(self):
         self.student.enroll(
-            academic_year=self.year, class_grade=self.class_grade, section=self.section
+            academic_year=self.year, class_grade=self.class_grade, section=self.section,
+            start_date=date(2026, 6, 1),
         )
 
         with self.assertRaises(ValidationError):
             self.student.enroll(
-                academic_year=self.year, class_grade=self.class_grade, section=self.section
+                academic_year=self.year, class_grade=self.class_grade, section=self.section,
+                start_date=date(2026, 6, 1),
             )
 
         self.assertEqual(AcademicEnrollment.objects.count(), 1)
 
     def test_current_enrollment_is_none_without_enrollment(self):
         self.assertIsNone(self.student.current_enrollment)
+
+
+@mock.patch("core.models.business_today", new=lambda: PINNED_TODAY)
+class AcademicEnrollmentEffectiveDatingTests(TestCase):
+    """Gate 1 effective dating (docs/adr/0006-academic-enrollment-effective-dating.md)."""
+
+    def setUp(self):
+        self.student = Student.objects.create(
+            applicant=Applicant.objects.create(full_name="Ravi Rao"), full_name="Ravi Rao"
+        )
+        self.year = AcademicYear.objects.create(
+            name="2026-2027", start_date=date(2026, 6, 1), end_date=date(2027, 4, 30)
+        )
+        self.next_year = AcademicYear.objects.create(
+            name="2027-2028", start_date=date(2027, 6, 1), end_date=date(2028, 4, 30)
+        )
+        self.class_grade = ClassGrade.objects.create(name="Grade 1")
+        self.section_a = Section.objects.create(class_grade=self.class_grade, name="A")
+        self.section_b = Section.objects.create(class_grade=self.class_grade, name="B")
+
+    def _enrollment(self, **overrides):
+        values = {
+            "student": self.student,
+            "academic_year": self.year,
+            "class_grade": self.class_grade,
+            "section": self.section_a,
+            "start_date": date(2026, 6, 1),
+        }
+        values.update(overrides)
+        return AcademicEnrollment(**values)
+
+    def _enroll(self, section, start_date, year=None):
+        return self.student.enroll(
+            academic_year=year or self.year,
+            class_grade=self.class_grade,
+            section=section,
+            start_date=start_date,
+        )
+
+    # --- model validation -------------------------------------------------
+
+    def test_valid_active_dated_enrollment(self):
+        enrollment = self._enrollment()
+        enrollment.full_clean()
+        enrollment.save()
+
+        enrollment.refresh_from_db()
+        self.assertEqual(enrollment.start_date, date(2026, 6, 1))
+        self.assertIsNone(enrollment.end_date)
+
+    def test_start_date_is_required(self):
+        with self.assertRaises(ValidationError) as ctx:
+            self._enrollment(start_date=None).full_clean()
+        self.assertIn("start_date", ctx.exception.message_dict)
+
+    def test_active_with_end_date_rejected(self):
+        with self.assertRaises(ValidationError) as ctx:
+            self._enrollment(end_date=date(2026, 7, 1)).full_clean()
+        self.assertIn("end_date", ctx.exception.message_dict)
+
+    def test_completed_without_end_date_rejected(self):
+        with self.assertRaises(ValidationError) as ctx:
+            self._enrollment(status=AcademicEnrollment.Status.COMPLETED).full_clean()
+        self.assertIn("end_date", ctx.exception.message_dict)
+
+    def test_end_before_start_rejected(self):
+        enrollment = self._enrollment(
+            status=AcademicEnrollment.Status.COMPLETED,
+            start_date=date(2026, 7, 1),
+            end_date=date(2026, 6, 30),
+        )
+        with self.assertRaises(ValidationError) as ctx:
+            enrollment.full_clean()
+        self.assertIn("end_date", ctx.exception.message_dict)
+
+    def test_single_day_completed_enrollment_allowed(self):
+        enrollment = self._enrollment(
+            status=AcademicEnrollment.Status.COMPLETED,
+            start_date=date(2026, 7, 1),
+            end_date=date(2026, 7, 1),
+        )
+        enrollment.full_clean()
+        enrollment.save()
+
+    def test_start_date_outside_academic_year_rejected(self):
+        for start in (date(2026, 5, 31), date(2027, 5, 1)):
+            with self.subTest(start=start), self.assertRaises(ValidationError) as ctx:
+                self._enrollment(start_date=start).full_clean()
+            self.assertIn("start_date", ctx.exception.message_dict)
+
+    def test_overlapping_periods_rejected(self):
+        self._enrollment(
+            status=AcademicEnrollment.Status.COMPLETED,
+            start_date=date(2026, 6, 1),
+            end_date=date(2026, 7, 31),
+        ).save()
+
+        for start in (date(2026, 6, 1), date(2026, 7, 15), date(2026, 7, 31)):
+            with self.subTest(start=start), self.assertRaises(ValidationError):
+                self._enrollment(section=self.section_b, start_date=start).full_clean()
+
+    def test_overlap_with_open_ended_active_rejected(self):
+        self._enrollment(start_date=date(2026, 8, 1)).save()
+
+        later_completed = self._enrollment(
+            section=self.section_b,
+            status=AcademicEnrollment.Status.COMPLETED,
+            start_date=date(2026, 9, 1),
+            end_date=date(2026, 9, 30),
+        )
+        with self.assertRaises(ValidationError):
+            later_completed.full_clean()
+
+    def test_non_overlapping_historical_and_active_allowed(self):
+        self._enrollment(
+            status=AcademicEnrollment.Status.COMPLETED,
+            start_date=date(2026, 6, 1),
+            end_date=date(2026, 7, 31),
+        ).save()
+
+        active = self._enrollment(section=self.section_b, start_date=date(2026, 8, 1))
+        active.full_clean()
+        active.save()
+
+        self.assertEqual(AcademicEnrollment.objects.filter(student=self.student).count(), 2)
+
+    def test_other_students_periods_do_not_conflict(self):
+        self._enrollment().save()
+        other = Student.objects.create(
+            applicant=Applicant.objects.create(full_name="Meera Rao"), full_name="Meera Rao"
+        )
+        enrollment = self._enrollment(student=other)
+        enrollment.full_clean()
+        enrollment.save()
+
+    # --- database constraints (bypassing clean) --------------------------
+
+    def test_database_rejects_active_with_end_date(self):
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            self._enrollment(end_date=date(2026, 7, 1)).save()
+        self.assertFalse(AcademicEnrollment.objects.exists())
+
+    def test_database_rejects_completed_without_end_date(self):
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            self._enrollment(status=AcademicEnrollment.Status.COMPLETED).save()
+        self.assertFalse(AcademicEnrollment.objects.exists())
+
+    def test_database_rejects_end_before_start(self):
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            self._enrollment(
+                status=AcademicEnrollment.Status.COMPLETED,
+                start_date=date(2026, 7, 1),
+                end_date=date(2026, 6, 30),
+            ).save()
+        self.assertFalse(AcademicEnrollment.objects.exists())
+
+    def test_database_rejects_missing_start_date(self):
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            self._enrollment(start_date=None).save()
+        self.assertFalse(AcademicEnrollment.objects.exists())
+
+    # --- effective-date lookup -------------------------------------------
+
+    def test_effective_on_exact_boundaries(self):
+        completed = self._enrollment(
+            status=AcademicEnrollment.Status.COMPLETED,
+            start_date=date(2026, 6, 1),
+            end_date=date(2026, 7, 31),
+        )
+        completed.save()
+        active = self._enrollment(section=self.section_b, start_date=date(2026, 8, 1))
+        active.save()
+
+        expectations = {
+            date(2026, 5, 31): None,
+            date(2026, 6, 1): completed,
+            date(2026, 7, 31): completed,
+            date(2026, 8, 1): active,
+            date(2030, 1, 1): active,
+        }
+        for on_date, expected in expectations.items():
+            with self.subTest(on_date=on_date):
+                self.assertEqual(self.student.enrollment_on(on_date), expected)
+                self.assertEqual(
+                    list(AcademicEnrollment.objects.effective_on(on_date)),
+                    [expected] if expected else [],
+                )
+        self.assertTrue(completed.is_effective_on(date(2026, 7, 31)))
+        self.assertFalse(completed.is_effective_on(date(2026, 8, 1)))
+        self.assertTrue(active.is_effective_on("2026-08-01"))
+
+    # --- enroll / transfer workflow --------------------------------------
+
+    def test_enroll_requires_start_date(self):
+        with self.assertRaises(ValidationError):
+            self._enroll(self.section_a, None)
+        self.assertFalse(AcademicEnrollment.objects.exists())
+
+    def test_enroll_records_explicit_start_date(self):
+        enrollment = self._enroll(self.section_a, date(2026, 6, 15))
+
+        self.assertEqual(enrollment.start_date, date(2026, 6, 15))
+        self.assertIsNone(enrollment.end_date)
+        self.assertEqual(enrollment.status, AcademicEnrollment.Status.ACTIVE)
+
+    def test_enroll_rejects_start_outside_academic_year(self):
+        with self.assertRaises(ValidationError):
+            self._enroll(self.section_a, date(2026, 5, 1))
+        self.assertFalse(AcademicEnrollment.objects.exists())
+
+    def test_transfer_closes_previous_enrollment_on_day_before(self):
+        first = self._enroll(self.section_a, date(2026, 6, 1))
+
+        second = self._enroll(self.section_b, date(2026, 9, 15))
+
+        first.refresh_from_db()
+        self.assertEqual(first.status, AcademicEnrollment.Status.COMPLETED)
+        self.assertEqual(first.start_date, date(2026, 6, 1))
+        self.assertEqual(first.end_date, date(2026, 9, 14))
+        self.assertEqual(first.section, self.section_a)
+        self.assertEqual(second.status, AcademicEnrollment.Status.ACTIVE)
+        self.assertEqual(second.start_date, date(2026, 9, 15))
+        self.assertIsNone(second.end_date)
+        self.assertEqual(self.student.current_enrollment, second)
+
+    def test_transfer_on_day_after_start_produces_single_day_history(self):
+        first = self._enroll(self.section_a, date(2026, 6, 1))
+        self._enroll(self.section_b, date(2026, 6, 2))
+
+        first.refresh_from_db()
+        self.assertEqual(first.end_date, date(2026, 6, 1))
+
+    def test_historical_lookup_before_and_after_transfer(self):
+        first = self._enroll(self.section_a, date(2026, 6, 1))
+        second = self._enroll(self.section_b, date(2026, 9, 15))
+
+        self.assertEqual(self.student.enrollment_on(date(2026, 7, 1)), first)
+        self.assertEqual(self.student.enrollment_on(date(2026, 7, 1)).section, self.section_a)
+        self.assertEqual(self.student.enrollment_on(date(2026, 9, 14)), first)
+        self.assertEqual(self.student.enrollment_on(date(2026, 9, 15)), second)
+        self.assertEqual(self.student.enrollment_on(date(2026, 12, 1)).section, self.section_b)
+        self.assertIsNone(self.student.enrollment_on(date(2026, 5, 31)))
+
+    def test_transfer_on_or_before_current_start_rejected_without_change(self):
+        first = self._enroll(self.section_a, date(2026, 8, 1))
+
+        for start in (date(2026, 8, 1), date(2026, 7, 1)):
+            with self.subTest(start=start), self.assertRaises(ValidationError):
+                self._enroll(self.section_b, start)
+
+        first.refresh_from_db()
+        self.assertEqual(first.status, AcademicEnrollment.Status.ACTIVE)
+        self.assertIsNone(first.end_date)
+        self.assertEqual(AcademicEnrollment.objects.count(), 1)
+
+    def test_invalid_new_placement_leaves_current_enrollment_untouched(self):
+        first = self._enroll(self.section_a, date(2026, 6, 1))
+
+        # Start date falls outside the next Academic Year: the new enrollment
+        # fails validation, so closing the current one must roll back.
+        with self.assertRaises(ValidationError):
+            self._enroll(self.section_a, date(2027, 5, 1), year=self.next_year)
+
+        first.refresh_from_db()
+        self.assertEqual(first.status, AcademicEnrollment.Status.ACTIVE)
+        self.assertIsNone(first.end_date)
+        self.assertEqual(AcademicEnrollment.objects.count(), 1)
+
+    def test_cross_year_progression_keeps_dated_history(self):
+        first = self._enroll(self.section_a, date(2026, 6, 1))
+        second = self._enroll(self.section_a, date(2027, 6, 1), year=self.next_year)
+
+        first.refresh_from_db()
+        self.assertEqual(first.end_date, date(2027, 5, 31))
+        self.assertEqual(self.student.enrollment_on(date(2027, 4, 30)), first)
+        self.assertEqual(self.student.enrollment_on(date(2027, 6, 1)), second)
+
+    # --- operational no-future-start rule ---------------------------------
+
+    def test_future_initial_enrollment_rejected(self):
+        with mock.patch("core.models.business_today", new=lambda: date(2026, 7, 1)):
+            with self.assertRaises(ValidationError):
+                self._enroll(self.section_a, date(2026, 7, 2))
+
+        self.assertFalse(AcademicEnrollment.objects.exists())
+
+    def test_enrollment_starting_today_allowed(self):
+        with mock.patch("core.models.business_today", new=lambda: date(2026, 7, 1)):
+            enrollment = self._enroll(self.section_a, date(2026, 7, 1))
+
+        self.assertEqual(enrollment.start_date, date(2026, 7, 1))
+        self.assertEqual(enrollment.status, AcademicEnrollment.Status.ACTIVE)
+
+    def test_future_transfer_rejected_without_changing_history(self):
+        first = self._enroll(self.section_a, date(2026, 6, 1))
+
+        with mock.patch("core.models.business_today", new=lambda: date(2026, 9, 1)):
+            with self.assertRaises(ValidationError):
+                self._enroll(self.section_b, date(2026, 9, 2))
+
+        first.refresh_from_db()
+        self.assertEqual(first.status, AcademicEnrollment.Status.ACTIVE)
+        self.assertIsNone(first.end_date)
+        self.assertEqual(first.section, self.section_a)
+        self.assertEqual(AcademicEnrollment.objects.count(), 1)
+        self.assertEqual(self.student.current_enrollment, first)
+
+    def test_enroll_accepts_iso_string_start_date(self):
+        enrollment = self._enroll(self.section_a, "2026-06-10")
+
+        self.assertEqual(enrollment.start_date, date(2026, 6, 10))
 
 
 class StudentStatusTests(TestCase):
@@ -856,7 +1243,8 @@ class StudentStatusTests(TestCase):
         class_grade = ClassGrade.objects.create(name="Grade 1")
         section = Section.objects.create(class_grade=class_grade, name="A")
         enrollment = self.student.enroll(
-            academic_year=year, class_grade=class_grade, section=section
+            academic_year=year, class_grade=class_grade, section=section,
+            start_date=date(2026, 6, 1),
         )
 
         self.student.record_status_change(Student.Status.INACTIVE)
@@ -886,7 +1274,8 @@ class AttendanceFixtureMixin:
             applicant=Applicant.objects.create(full_name="Ravi Rao"), full_name="Ravi Rao"
         )
         self.enrollment = self.student.enroll(
-            academic_year=self.year, class_grade=self.class_grade, section=self.section
+            academic_year=self.year, class_grade=self.class_grade, section=self.section,
+            start_date=date(2026, 6, 1),
         )
         self.register = AttendanceRegister.objects.create(
             academic_year=self.year,
@@ -984,7 +1373,8 @@ class AttendanceRegisterModelTests(AttendanceFixtureMixin, TestCase):
             applicant=Applicant.objects.create(full_name="Meera Rao"), full_name="Meera Rao"
         )
         other_student.enroll(
-            academic_year=self.year, class_grade=self.class_grade, section=other_section
+            academic_year=self.year, class_grade=self.class_grade, section=other_section,
+            start_date=date(2026, 6, 1),
         )
 
         self.assertEqual(list(self.register.eligible_enrollments()), [self.enrollment])
@@ -1010,7 +1400,8 @@ class AttendanceRegisterModelTests(AttendanceFixtureMixin, TestCase):
             applicant=Applicant.objects.create(full_name="Meera Rao"), full_name="Meera Rao"
         )
         other_enrollment = other_student.enroll(
-            academic_year=self.year, class_grade=self.class_grade, section=other_section
+            academic_year=self.year, class_grade=self.class_grade, section=other_section,
+            start_date=date(2026, 6, 1),
         )
 
         with self.assertRaises(ValidationError):
@@ -1021,7 +1412,8 @@ class AttendanceRegisterModelTests(AttendanceFixtureMixin, TestCase):
     def test_capture_rejects_completed_enrollment(self):
         other_section = Section.objects.create(class_grade=self.class_grade, name="B")
         self.student.enroll(
-            academic_year=self.year, class_grade=self.class_grade, section=other_section
+            academic_year=self.year, class_grade=self.class_grade, section=other_section,
+            start_date=date(2026, 8, 1),
         )
         self.enrollment.refresh_from_db()
 
@@ -1065,7 +1457,8 @@ class AttendanceEntryModelTests(AttendanceFixtureMixin, TestCase):
             applicant=Applicant.objects.create(full_name="Meera Rao"), full_name="Meera Rao"
         )
         other_enrollment = other_student.enroll(
-            academic_year=self.year, class_grade=self.class_grade, section=other_section
+            academic_year=self.year, class_grade=self.class_grade, section=other_section,
+            start_date=date(2026, 6, 1),
         )
 
         entry = AttendanceEntry(register=self.register, academic_enrollment=other_enrollment)

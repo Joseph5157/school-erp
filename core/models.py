@@ -1,7 +1,29 @@
+import datetime
+
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, models, transaction
 from django.utils import timezone
+
+
+def _as_date(value):
+    """Normalise a date-like value (date or ISO string) to a `datetime.date`.
+
+    Unsaved or freshly created model instances may still hold the string that
+    was passed in, so date comparisons go through this helper.
+    """
+    if value is None or value == "":
+        return None
+    return models.DateField().to_python(value)
+
+
+def business_today():
+    """Today's local business date (per settings.TIME_ZONE).
+
+    Kept as one function so operational "no future date" rules share a single
+    definition of today, and tests can pin it deterministically.
+    """
+    return timezone.localdate()
 
 
 class School(models.Model):
@@ -336,22 +358,47 @@ class Student(models.Model):
         self.status_changed_at = timezone.now()
         self.save(update_fields=["status", "status_changed_at", "updated_at"])
 
-    def enroll(self, *, academic_year, class_grade, section):
-        """Place the Student into a new academic placement.
+    def enroll(self, *, academic_year, class_grade, section, start_date):
+        """Place the Student into a new academic placement effective `start_date`.
 
         Per docs/adr/0003-phase-1-status-and-transition-rules.md, a Student has
-        at most one ACTIVE Academic Enrollment. Recording a new placement
-        completes the previous ACTIVE enrollment and creates a new ACTIVE one,
-        preserving the earlier record rather than overwriting it. The Section
-        must belong to the enrollment's Class/Grade. An incompatible placement
-        or an exact repeat of the current one is rejected without changing
-        anything.
+        at most one ACTIVE Academic Enrollment, and per
+        docs/adr/0006-academic-enrollment-effective-dating.md every placement
+        carries a business-effective date range. Recording a new placement:
+
+        - requires the caller to state the effective `start_date` explicitly
+          (it is never inferred from the clock or audit timestamps);
+        - rejects a `start_date` later than today's local business date, so an
+          ACTIVE enrollment is always the placement effective now (scheduled
+          future placements are not a Phase 2 concept);
+        - closes the previous ACTIVE enrollment with `end_date` set to the day
+          before `start_date` and marks it COMPLETED, preserving it;
+        - creates the new ACTIVE enrollment from `start_date`.
+
+        Effective ranges are inclusive on both ends, so a transfer effective
+        on date D leaves the Student in the old placement through D - 1 and in
+        the new placement from D. The Section must belong to the enrollment's
+        Class/Grade. An incompatible placement, an exact repeat of the current
+        one, or a date that would produce an invalid or overlapping history is
+        rejected without changing anything.
         """
+        start_date = _as_date(start_date)
+        if start_date is None:
+            raise ValidationError("An effective start date is required.")
+        if start_date > business_today():
+            raise ValidationError("The effective start date cannot be in the future.")
         if section.class_grade_id != class_grade.pk:
             raise ValidationError("Selected Section does not belong to the selected Class/Grade.")
 
         try:
             with transaction.atomic():
+                # Serialise placement changes for this Student so concurrent
+                # requests cannot both close/create around the same history.
+                list(
+                    Student.objects.select_for_update()
+                    .filter(pk=self.pk)
+                    .values_list("pk", flat=True)
+                )
                 current = AcademicEnrollment.objects.filter(
                     student=self, status=AcademicEnrollment.Status.ACTIVE
                 ).first()
@@ -364,20 +411,39 @@ class Student(models.Model):
                         raise ValidationError(
                             "This Student already has an active enrollment for this placement."
                         )
+                    if start_date <= current.start_date:
+                        raise ValidationError(
+                            "The new placement must start after the current placement's "
+                            f"start date ({current.start_date.isoformat()})."
+                        )
                     AcademicEnrollment.objects.filter(pk=current.pk).update(
                         status=AcademicEnrollment.Status.COMPLETED,
+                        end_date=start_date - datetime.timedelta(days=1),
                         updated_at=timezone.now(),
                     )
-                return AcademicEnrollment.objects.create(
+                enrollment = AcademicEnrollment(
                     student=self,
                     academic_year=academic_year,
                     class_grade=class_grade,
                     section=section,
+                    start_date=start_date,
                 )
+                enrollment.full_clean()
+                enrollment.save()
+                return enrollment
         except IntegrityError:
             raise ValidationError(
                 "This Student already has an active enrollment for this placement."
             ) from None
+
+    def enrollment_on(self, on_date):
+        """The AcademicEnrollment effective for this Student on `on_date`, or None.
+
+        This is the single date-lookup path required by ADR 0006: date-sensitive
+        records (such as attendance) use the placement effective on their
+        business date, not the current one.
+        """
+        return AcademicEnrollment.objects.filter(student=self).effective_on(on_date).first()
 
     @property
     def current_enrollment(self):
@@ -385,6 +451,15 @@ class Student(models.Model):
 
     def __str__(self):
         return self.full_name
+
+
+class AcademicEnrollmentQuerySet(models.QuerySet):
+    def effective_on(self, on_date):
+        """Enrollments whose inclusive effective range contains `on_date`."""
+        on_date = _as_date(on_date)
+        return self.filter(start_date__lte=on_date).filter(
+            models.Q(end_date__isnull=True) | models.Q(end_date__gte=on_date)
+        )
 
 
 class AcademicEnrollment(models.Model):
@@ -397,6 +472,15 @@ class AcademicEnrollment(models.Model):
     (docs/adr/0001-academic-structure-and-enrollment-history.md,
     docs/adr/0003-phase-1-status-and-transition-rules.md). The database
     enforces at most one ACTIVE enrollment per Student.
+
+    Effective dating (docs/adr/0006-academic-enrollment-effective-dating.md):
+    `start_date` and `end_date` are business-effective dates, inclusive on
+    both ends; `created_at`/`updated_at` are audit metadata only. An ACTIVE
+    enrollment has no `end_date`; a COMPLETED enrollment has one, and it may
+    not precede `start_date` (both enforced by database check constraints).
+    Effective periods for one Student must not overlap; this is enforced in
+    `clean()` and in the `Student.enroll` workflow, which locks the Student
+    row while it changes placement.
     """
 
     class Status(models.TextChoices):
@@ -412,8 +496,18 @@ class AcademicEnrollment(models.Model):
     )
     section = models.ForeignKey(Section, on_delete=models.PROTECT, related_name="enrollments")
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.ACTIVE)
+    start_date = models.DateField(
+        help_text="First date this placement is effective (inclusive)."
+    )
+    end_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Last date this placement is effective (inclusive). Empty while ACTIVE.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    objects = AcademicEnrollmentQuerySet.as_manager()
 
     class Meta:
         ordering = ["-created_at"]
@@ -422,7 +516,21 @@ class AcademicEnrollment(models.Model):
                 fields=["student"],
                 condition=models.Q(status="ACTIVE"),
                 name="academicenrollment_one_active_per_student",
-            )
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(status="ACTIVE", end_date__isnull=True)
+                    | models.Q(status="COMPLETED", end_date__isnull=False)
+                ),
+                name="academicenrollment_end_date_matches_status",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(end_date__isnull=True)
+                    | models.Q(end_date__gte=models.F("start_date"))
+                ),
+                name="academicenrollment_end_date_not_before_start_date",
+            ),
         ]
 
     def clean(self):
@@ -435,6 +543,46 @@ class AcademicEnrollment(models.Model):
             raise ValidationError(
                 {"section": "Selected Section does not belong to the selected Class/Grade."}
             )
+
+        start_date = _as_date(self.start_date)
+        end_date = _as_date(self.end_date)
+        if self.status == self.Status.ACTIVE and end_date is not None:
+            raise ValidationError({"end_date": "An active enrollment cannot have an end date."})
+        if self.status == self.Status.COMPLETED and end_date is None:
+            raise ValidationError({"end_date": "A completed enrollment requires an end date."})
+        if start_date is None:
+            return
+        if end_date is not None and end_date < start_date:
+            raise ValidationError({"end_date": "End date cannot be before the start date."})
+        if self.academic_year_id:
+            year = self.academic_year
+            if not (_as_date(year.start_date) <= start_date <= _as_date(year.end_date)):
+                raise ValidationError(
+                    {"start_date": "Start date must fall within the selected Academic Year."}
+                )
+        if self.student_id and self.overlapping_enrollments().exists():
+            raise ValidationError(
+                "This placement's effective dates overlap another enrollment for this Student."
+            )
+
+    def overlapping_enrollments(self):
+        """Other enrollments of this Student whose effective range meets this one."""
+        start_date = _as_date(self.start_date)
+        end_date = _as_date(self.end_date)
+        others = AcademicEnrollment.objects.filter(student_id=self.student_id).filter(
+            models.Q(end_date__isnull=True) | models.Q(end_date__gte=start_date)
+        )
+        if end_date is not None:
+            others = others.filter(start_date__lte=end_date)
+        if self.pk is not None:
+            others = others.exclude(pk=self.pk)
+        return others
+
+    def is_effective_on(self, on_date):
+        on_date = _as_date(on_date)
+        start_date = _as_date(self.start_date)
+        end_date = _as_date(self.end_date)
+        return start_date <= on_date and (end_date is None or on_date <= end_date)
 
     def __str__(self):
         return f"{self.student} - {self.academic_year} ({self.get_status_display()})"
