@@ -796,12 +796,16 @@ class AttendanceRegister(models.Model):
     per date. Registers are historical records and are not hard deleted
     through normal operation.
 
-    Lifecycle: a register is DRAFT until it is submitted. Submission (the
-    DRAFT -> SUBMITTED workflow, roster completeness, calendar and future-date
-    checks, and capture of `submitted_by`/`submitted_at`) belongs to Gate 4;
-    in Gate 3 registers can only be created as DRAFT. Database constraints
-    require a DRAFT register to have no submission data and a SUBMITTED one
-    to have both submission fields.
+    Lifecycle (ADR 0007): a register is created DRAFT and becomes SUBMITTED
+    only through `submit()`, which requires a complete date-effective roster
+    and records `submitted_by`/`submitted_at`. Database constraints require a
+    DRAFT register to have no submission data and a SUBMITTED one to have
+    both. Attendance semantics: no register = NOT TAKEN; DRAFT = started but
+    not official; SUBMITTED = officially taken. A missing entry is never
+    ABSENT.
+
+    A register can only be opened for a past-or-today, instructional date in
+    its Academic Year (school calendar, ADR 0008); submission re-checks both.
 
     `academic_year` and `class_grade` are stored alongside `section` and
     `date`; `clean()` rejects any combination in which they contradict each
@@ -860,10 +864,43 @@ class AttendanceRegister(models.Model):
             ),
         ]
 
+    class AttendanceState(models.TextChoices):
+        NOT_TAKEN = "NOT_TAKEN", "Not taken"
+        DRAFT = "DRAFT", "Draft"
+        SUBMITTED = "SUBMITTED", "Submitted"
+
+    @classmethod
+    def attendance_state(cls, section, on_date):
+        """NOT_TAKEN, DRAFT or SUBMITTED for a Section on a date."""
+        status = (
+            cls.objects.filter(section=section, date=_as_date(on_date))
+            .values_list("status", flat=True)
+            .first()
+        )
+        if status is None:
+            return cls.AttendanceState.NOT_TAKEN
+        return cls.AttendanceState(status)
+
+    @property
+    def is_submitted(self):
+        return self.status == self.Status.SUBMITTED
+
     def clean(self):
         super().clean()
         if self.pk is None and self.status != self.Status.DRAFT:
             raise ValidationError("A new attendance register always starts as a draft.")
+        if self.pk is None and self.date and self.academic_year_id:
+            on_date = _as_date(self.date)
+            if on_date > business_today():
+                raise ValidationError(
+                    {"date": "Attendance cannot be recorded for a future date."}
+                )
+            if self.academic_year.contains(on_date) and not (
+                self.academic_year.is_instructional_day(on_date)
+            ):
+                raise ValidationError(
+                    {"date": "This date is not an instructional day in the school calendar."}
+                )
         if (
             self.section_id
             and self.class_grade_id
@@ -894,19 +931,84 @@ class AttendanceRegister(models.Model):
                     )
 
     def eligible_enrollments(self):
-        """The enrollments offered for marking in this register.
+        """The date-effective roster for this register.
 
-        Still the Student's current (ACTIVE) placement for the register's
-        Academic Year, Class/Grade and Section. Replacing this with the
-        date-effective roster is Gate 4 (docs/PHASE_2_RECONCILIATION_PLAN.md);
-        entry validation already uses the date-effective rule.
+        Enrollments in the register's Academic Year, Class/Grade and Section
+        whose effective range contains the register date (ADR 0006). A later
+        transfer never removes a Student from an earlier date's roster, and a
+        Student who joins later is not on it.
         """
-        return AcademicEnrollment.objects.filter(
-            academic_year_id=self.academic_year_id,
-            class_grade_id=self.class_grade_id,
-            section_id=self.section_id,
-            status=AcademicEnrollment.Status.ACTIVE,
-        ).select_related("student")
+        return (
+            AcademicEnrollment.objects.effective_on(self.date)
+            .filter(
+                academic_year_id=self.academic_year_id,
+                class_grade_id=self.class_grade_id,
+                section_id=self.section_id,
+            )
+            .select_related("student")
+            .order_by("student__full_name", "pk")
+        )
+
+    def unmarked_enrollments(self):
+        """Roster enrollments that do not yet have an entry in this register."""
+        return self.eligible_enrollments().exclude(attendance_entries__register=self)
+
+    def ineligible_entries(self):
+        """Entries whose enrollment is not on this register's effective roster."""
+        return self.entries.exclude(
+            academic_enrollment__in=self.eligible_enrollments().values("pk")
+        )
+
+    def _lock(self):
+        """Re-read this register under a row lock; return its current status."""
+        return (
+            AttendanceRegister.objects.select_for_update()
+            .filter(pk=self.pk)
+            .values_list("status", flat=True)
+            .get()
+        )
+
+    def submit(self, *, actor):
+        """Officially submit attendance (DRAFT -> SUBMITTED).
+
+        Rejected without any change when: the register is not DRAFT; there is
+        no acting user; the date is in the future or not instructional; the
+        effective roster is empty (there is nothing to attest); any roster
+        enrollment lacks an entry; or any entry belongs to an enrollment not on
+        the effective roster. On success, records the submitting user and time.
+        """
+        if actor is None or not getattr(actor, "pk", None):
+            raise ValidationError("A submitting user is required.")
+        with transaction.atomic():
+            if self._lock() != self.Status.DRAFT:
+                raise ValidationError("This register has already been submitted.")
+            on_date = _as_date(self.date)
+            if on_date > business_today():
+                raise ValidationError("Attendance cannot be submitted for a future date.")
+            if not self.academic_year.is_instructional_day(on_date):
+                raise ValidationError(
+                    "This date is not an instructional day in the school calendar."
+                )
+            if not self.eligible_enrollments().exists():
+                raise ValidationError(
+                    "No Students are enrolled in this Section on this date; "
+                    "there is no attendance to submit."
+                )
+            if self.ineligible_entries().exists():
+                raise ValidationError(
+                    "This register contains entries for Students not enrolled in this "
+                    "Section on this date."
+                )
+            unmarked = self.unmarked_enrollments().count()
+            if unmarked:
+                raise ValidationError(
+                    f"Attendance is incomplete: {unmarked} Student(s) still need a "
+                    "Present or Absent status."
+                )
+            self.status = self.Status.SUBMITTED
+            self.submitted_by = actor
+            self.submitted_at = timezone.now()
+            self.save(update_fields=["status", "submitted_by", "submitted_at", "updated_at"])
 
     def capture(self, *, enrollment, status, absence_note=""):
         """Capture an initial attendance status for an enrolled Student.
@@ -926,8 +1028,15 @@ class AttendanceRegister(models.Model):
             absence_note=(absence_note or "").strip(),
         )
         entry.full_clean(validate_constraints=False)
+        if _as_date(self.date) > business_today():
+            raise ValidationError("Attendance cannot be recorded for a future date.")
         try:
             with transaction.atomic():
+                if self._lock() != self.Status.DRAFT:
+                    raise ValidationError(
+                        "This register has been submitted; change attendance through a "
+                        "correction."
+                    )
                 entry.save()
         except IntegrityError:
             raise ValidationError(

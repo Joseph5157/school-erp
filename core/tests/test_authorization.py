@@ -2007,3 +2007,88 @@ class AttendanceGate3ViewTests(AuthorizationClientsMixin, AttendanceFixtureMixin
         self.assertEqual(
             [row["label"] for row in response.context["summary"]], ["Present", "Absent"]
         )
+
+
+class AttendanceSubmitAuthorizationTests(
+    AuthorizationClientsMixin, AttendanceFixtureMixin, TestCase
+):
+    """Gate 4: submitting a register through the view."""
+
+    def setUp(self):
+        super().setUp()
+        self.build_attendance_fixture()
+        self.url = reverse("core:attendance-register-submit", args=[self.register.pk])
+        self.detail_url = reverse("core:attendance-register-detail", args=[self.register.pk])
+
+    def _complete(self):
+        self.register.capture(enrollment=self.enrollment, status=AttendanceStatus.PRESENT)
+
+    def test_anonymous_is_redirected_to_login(self):
+        self._complete()
+        response = self.anonymous.post(self.url)
+
+        self.assertRedirects(
+            response, f"{reverse('login')}?next={self.url}", fetch_redirect_response=False
+        )
+        self.register.refresh_from_db()
+        self.assertEqual(self.register.status, AttendanceRegister.Status.DRAFT)
+
+    def test_non_admin_cannot_submit(self):
+        self._complete()
+        response = self.non_admin.post(self.url)
+
+        self.assertEqual(response.status_code, 403)
+        self.register.refresh_from_db()
+        self.assertEqual(self.register.status, AttendanceRegister.Status.DRAFT)
+
+    def test_get_does_not_submit(self):
+        self._complete()
+        self.administrator.get(self.url)
+
+        self.register.refresh_from_db()
+        self.assertEqual(self.register.status, AttendanceRegister.Status.DRAFT)
+
+    def test_administrator_submits_complete_register(self):
+        self._complete()
+        response = self.administrator.post(self.url)
+
+        self.assertRedirects(response, self.detail_url)
+        self.register.refresh_from_db()
+        self.assertEqual(self.register.status, AttendanceRegister.Status.SUBMITTED)
+        self.assertEqual(self.register.submitted_by, self.admin_user)
+
+    def test_incomplete_register_submission_shows_error(self):
+        response = self.administrator.post(self.url, follow=True)
+
+        self.assertContains(response, "Attendance is incomplete")
+        self.register.refresh_from_db()
+        self.assertEqual(self.register.status, AttendanceRegister.Status.DRAFT)
+
+    def test_submitted_detail_shows_submitter_and_hides_submit(self):
+        self._complete()
+        self.administrator.post(self.url)
+
+        response = self.administrator.get(self.detail_url)
+
+        self.assertContains(response, "Submitted")
+        self.assertContains(response, "administrator")
+        self.assertNotContains(response, "Submit register")
+
+    def test_register_create_rejects_future_and_non_instructional_dates(self):
+        section_b = Section.objects.create(class_grade=self.class_grade, name="B")
+        create_url = reverse("core:attendance-register-create")
+        payload = {
+            "academic_year": self.year.pk,
+            "class_grade": self.class_grade.pk,
+            "section": section_b.pk,
+        }
+        with mock.patch("core.models.business_today", new=lambda: date(2026, 10, 10)):
+            for on_date, message in (
+                ("2026-10-12", "future date"),
+                ("2026-07-04", "not an instructional day"),  # Saturday
+            ):
+                with self.subTest(on_date=on_date):
+                    response = self.administrator.post(create_url, {**payload, "date": on_date})
+                    self.assertEqual(response.status_code, 200)
+                    self.assertContains(response, message)
+        self.assertFalse(AttendanceRegister.objects.filter(section=section_b).exists())

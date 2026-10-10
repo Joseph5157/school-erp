@@ -73,6 +73,11 @@ urlpatterns = [
     ),
     path("attendance/<int:pk>/capture/", views.attendance_capture, name="attendance-capture"),
     path(
+        "attendance/<int:pk>/submit/",
+        views.attendance_register_submit,
+        name="attendance-register-submit",
+    ),
+    path(
         "attendance/entries/<int:pk>/correct/",
         views.attendance_entry_correct,
         name="attendance-entry-correct",
