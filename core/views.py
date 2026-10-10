@@ -524,6 +524,19 @@ def attendance_register_detail(request, pk):
     )
 
 
+@administrator_required("core.change_attendanceregister")
+def attendance_register_submit(request, pk):
+    register = get_object_or_404(AttendanceRegister, pk=pk)
+    if request.method == "POST":
+        try:
+            register.submit(actor=request.user)
+        except ValidationError as error:
+            messages.error(request, error.messages[0])
+        else:
+            messages.success(request, "Attendance submitted.")
+    return redirect("core:attendance-register-detail", pk=register.pk)
+
+
 @administrator_required("core.add_attendanceentry")
 def attendance_capture(request, pk):
     register = get_object_or_404(AttendanceRegister, pk=pk)

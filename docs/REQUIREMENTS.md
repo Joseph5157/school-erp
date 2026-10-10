@@ -294,6 +294,12 @@ Acceptance criteria:
 - A register is DRAFT until submission. Submission requires exactly one entry
   for every effective roster enrollment.
 - Missing or DRAFT attendance is not ABSENT.
+- A register cannot be opened for a future or non-instructional date, and
+  submission re-checks both.
+- A register whose effective roster is empty cannot be submitted (there is no
+  attendance to attest).
+- A SUBMITTED register accepts no new entries; changes go through audited
+  corrections. Submission records the submitting administrator and time.
 - Unauthorized users cannot create, capture, or submit attendance.
 
 ## Attendance history and operational corrections

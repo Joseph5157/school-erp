@@ -15,9 +15,20 @@
     <dd class="col-sm-9">
         <span class="badge {% if register.status == 'SUBMITTED' %}bg-success{% else %}bg-secondary{% endif %}">{{ register.get_status_display }}</span>
     </dd>
+    {% if register.is_submitted %}
+    <dt class="col-sm-3">Submitted</dt>
+    <dd class="col-sm-9">{{ register.submitted_at }} by {{ register.submitted_by }}</dd>
+    {% endif %}
 </dl>
+{% if not register.is_submitted and perms.core.change_attendanceregister %}
+<form method="post" action="{% url 'core:attendance-register-submit' register.pk %}" class="mb-3">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-success">Submit register</button>
+    <span class="form-text ms-2">Every Student on the roster needs Present or Absent before submitting.</span>
+</form>
+{% endif %}
 
-{% if capture_form.enrollments %}
+{% if capture_form.enrollments and not register.is_submitted %}
 <h2 class="h5">Capture attendance</h2>
 {% if perms.core.add_attendanceentry %}
 <form method="post" action="{% url 'core:attendance-capture' register.pk %}">

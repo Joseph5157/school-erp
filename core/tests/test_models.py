@@ -1531,7 +1531,7 @@ class AttendanceRegisterModelTests(AttendanceFixtureMixin, TestCase):
             academic_year=self.year,
             class_grade=self.class_grade,
             section=self.section,
-            date="2026-08-01",
+            date="2026-08-03",  # Monday; 2026-08-01 is a non-instructional Saturday
         )
         register.full_clean()
         register.save()
@@ -2290,3 +2290,250 @@ class AttendanceLegacyStatusMigrationTests(TransactionTestCase):
         self.assertIsNone(register.submitted_at)
         migrated = new_apps.get_model("core", "AttendanceEntry").objects.get()
         self.assertEqual((migrated.status, migrated.absence_note), ("PRESENT", ""))
+
+
+@mock.patch("core.models.business_today", new=lambda: date(2026, 10, 10))
+class AttendanceGate4Tests(TestCase):
+    """Gate 4: date-effective roster and DRAFT -> SUBMITTED workflow (ADR 0007)."""
+
+    WEDNESDAY = date(2026, 7, 1)
+    TRANSFER_DATE = date(2026, 9, 1)
+
+    def setUp(self):
+        self.year = AcademicYear.objects.create(
+            name="2026-2027", start_date=date(2026, 6, 1), end_date=date(2027, 4, 30)
+        )
+        self.class_grade = ClassGrade.objects.create(name="Grade 1")
+        self.section_a = Section.objects.create(class_grade=self.class_grade, name="A")
+        self.section_b = Section.objects.create(class_grade=self.class_grade, name="B")
+        self.ravi = self._student("Ravi Rao")
+        self.meera = self._student("Meera Rao")
+        self.ravi_a = self._enroll(self.ravi, self.section_a, date(2026, 6, 1))
+        self.meera_a = self._enroll(self.meera, self.section_a, date(2026, 6, 1))
+        self.actor = User.objects.create_user(username="administrator", password="pass-12345")
+
+    def _student(self, name):
+        return Student.objects.create(
+            applicant=Applicant.objects.create(full_name=name), full_name=name
+        )
+
+    def _enroll(self, student, section, start):
+        return student.enroll(
+            academic_year=self.year,
+            class_grade=self.class_grade,
+            section=section,
+            start_date=start,
+        )
+
+    def _register(self, on_date, section=None):
+        register = AttendanceRegister(
+            academic_year=self.year,
+            class_grade=self.class_grade,
+            section=section or self.section_a,
+            date=on_date,
+        )
+        register.full_clean()
+        register.save()
+        return register
+
+    def _mark_all(self, register, status=AttendanceStatus.PRESENT):
+        for enrollment in register.eligible_enrollments():
+            register.capture(enrollment=enrollment, status=status)
+
+    # --- roster -----------------------------------------------------------
+
+    def test_roster_is_date_effective_before_transfer(self):
+        self._enroll(self.ravi, self.section_b, self.TRANSFER_DATE)
+        register = self._register(date(2026, 8, 31))
+
+        self.ravi_a.refresh_from_db()
+        self.assertEqual(list(register.eligible_enrollments()), [self.meera_a, self.ravi_a])
+
+    def test_roster_after_transfer_moves_student_to_new_section(self):
+        ravi_b = self._enroll(self.ravi, self.section_b, self.TRANSFER_DATE)
+
+        register_a = self._register(self.TRANSFER_DATE)
+        register_b = self._register(self.TRANSFER_DATE, section=self.section_b)
+
+        self.assertEqual(list(register_a.eligible_enrollments()), [self.meera_a])
+        self.assertEqual(list(register_b.eligible_enrollments()), [ravi_b])
+
+    def test_later_transfer_keeps_student_on_earlier_historical_roster(self):
+        register = self._register(self.WEDNESDAY)
+        self._enroll(self.ravi, self.section_b, self.TRANSFER_DATE)
+
+        roster = list(register.eligible_enrollments())
+        self.assertIn(self.ravi_a, roster)
+
+    def test_late_joiner_not_on_earlier_roster(self):
+        late = self._enroll(self._student("Asha Iyer"), self.section_a, date(2026, 7, 2))
+        register = self._register(self.WEDNESDAY)
+
+        self.assertNotIn(late, list(register.eligible_enrollments()))
+
+    # --- missing-attendance semantics --------------------------------------
+
+    def test_no_register_means_not_taken(self):
+        self.assertEqual(
+            AttendanceRegister.attendance_state(self.section_a, self.WEDNESDAY),
+            AttendanceRegister.AttendanceState.NOT_TAKEN,
+        )
+
+    def test_draft_and_submitted_states(self):
+        register = self._register(self.WEDNESDAY)
+        self.assertEqual(
+            AttendanceRegister.attendance_state(self.section_a, self.WEDNESDAY),
+            AttendanceRegister.AttendanceState.DRAFT,
+        )
+
+        self._mark_all(register)
+        register.submit(actor=self.actor)
+
+        self.assertEqual(
+            AttendanceRegister.attendance_state(self.section_a, self.WEDNESDAY),
+            AttendanceRegister.AttendanceState.SUBMITTED,
+        )
+
+    def test_missing_entry_is_not_absent(self):
+        register = self._register(self.WEDNESDAY)
+        register.capture(enrollment=self.ravi_a, status=AttendanceStatus.PRESENT)
+
+        self.assertFalse(
+            AttendanceEntry.objects.filter(status=AttendanceStatus.ABSENT).exists()
+        )
+        self.assertEqual(list(register.unmarked_enrollments()), [self.meera_a])
+
+    # --- DRAFT and submission ----------------------------------------------
+
+    def test_incomplete_draft_is_accepted(self):
+        register = self._register(self.WEDNESDAY)
+        register.capture(enrollment=self.ravi_a, status=AttendanceStatus.ABSENT)
+
+        register.refresh_from_db()
+        self.assertEqual(register.status, AttendanceRegister.Status.DRAFT)
+
+    def test_incomplete_submission_rejected(self):
+        register = self._register(self.WEDNESDAY)
+        register.capture(enrollment=self.ravi_a, status=AttendanceStatus.PRESENT)
+
+        with self.assertRaisesMessage(ValidationError, "1 Student(s)"):
+            register.submit(actor=self.actor)
+
+        register.refresh_from_db()
+        self.assertEqual(register.status, AttendanceRegister.Status.DRAFT)
+        self.assertIsNone(register.submitted_at)
+
+    def test_complete_submission_captures_actor_and_time(self):
+        register = self._register(self.WEDNESDAY)
+        register.capture(enrollment=self.ravi_a, status=AttendanceStatus.PRESENT)
+        register.capture(enrollment=self.meera_a, status=AttendanceStatus.ABSENT)
+
+        register.submit(actor=self.actor)
+
+        register.refresh_from_db()
+        self.assertEqual(register.status, AttendanceRegister.Status.SUBMITTED)
+        self.assertEqual(register.submitted_by, self.actor)
+        self.assertIsNotNone(register.submitted_at)
+
+    def test_submission_requires_actor(self):
+        register = self._register(self.WEDNESDAY)
+        self._mark_all(register)
+
+        with self.assertRaises(ValidationError):
+            register.submit(actor=None)
+
+    def test_repeat_submission_rejected(self):
+        register = self._register(self.WEDNESDAY)
+        self._mark_all(register)
+        register.submit(actor=self.actor)
+        first_time = AttendanceRegister.objects.get(pk=register.pk).submitted_at
+
+        with self.assertRaisesMessage(ValidationError, "already been submitted"):
+            register.submit(actor=self.actor)
+
+        self.assertEqual(AttendanceRegister.objects.get(pk=register.pk).submitted_at, first_time)
+
+    def test_empty_roster_cannot_be_submitted(self):
+        register = self._register(self.WEDNESDAY, section=self.section_b)
+
+        with self.assertRaisesMessage(ValidationError, "no attendance to submit"):
+            register.submit(actor=self.actor)
+
+    def test_submission_rejected_with_ineligible_entry(self):
+        register = self._register(self.WEDNESDAY)
+        self._mark_all(register)
+        # An entry whose enrollment is not on the roster can only arise from a
+        # direct write; submission must still refuse it.
+        outsider = self._enroll(self._student("Asha Iyer"), self.section_b, date(2026, 6, 1))
+        AttendanceEntry.objects.create(
+            register=register, academic_enrollment=outsider, status=AttendanceStatus.PRESENT
+        )
+
+        with self.assertRaisesMessage(ValidationError, "not enrolled in this Section"):
+            register.submit(actor=self.actor)
+
+    def test_submitted_register_rejects_new_capture(self):
+        register = self._register(self.WEDNESDAY)
+        register.capture(enrollment=self.ravi_a, status=AttendanceStatus.PRESENT)
+        register.capture(enrollment=self.meera_a, status=AttendanceStatus.PRESENT)
+        register.submit(actor=self.actor)
+        register.entries.filter(academic_enrollment=self.ravi_a).delete()  # free the slot
+
+        with self.assertRaisesMessage(ValidationError, "through a correction"):
+            register.capture(enrollment=self.ravi_a, status=AttendanceStatus.ABSENT)
+        self.assertEqual(register.entries.count(), 1)
+
+    # --- calendar and future dates -----------------------------------------
+
+    def test_future_register_cannot_be_opened(self):
+        with self.assertRaisesMessage(ValidationError, "future date"):
+            self._register(date(2026, 10, 12))
+
+    def test_register_for_today_can_be_opened(self):
+        register = self._register(date(2026, 10, 9))  # Friday; "today" is Saturday 10th
+        self.assertEqual(register.status, AttendanceRegister.Status.DRAFT)
+
+    def test_future_submission_rejected(self):
+        register = self._register(self.WEDNESDAY)
+        self._mark_all(register)
+        AttendanceRegister.objects.filter(pk=register.pk).update(date=date(2026, 10, 12))
+        register.refresh_from_db()
+
+        with self.assertRaisesMessage(ValidationError, "future date"):
+            register.submit(actor=self.actor)
+
+    def test_non_instructional_date_cannot_be_opened(self):
+        SchoolCalendarDay.objects.create(
+            academic_year=self.year, date=date(2026, 8, 17), is_instructional=False
+        )
+        for on_date in (date(2026, 8, 17), date(2026, 8, 22), date(2026, 8, 23)):
+            with self.subTest(on_date=on_date), self.assertRaisesMessage(
+                ValidationError, "not an instructional day"
+            ):
+                self._register(on_date)
+
+    def test_non_instructional_submission_rejected(self):
+        register = AttendanceRegister.objects.create(  # legacy register on a Saturday
+            academic_year=self.year,
+            class_grade=self.class_grade,
+            section=self.section_a,
+            date=date(2026, 8, 22),
+        )
+        self._mark_all(register)
+
+        with self.assertRaisesMessage(ValidationError, "not an instructional day"):
+            register.submit(actor=self.actor)
+        register.refresh_from_db()
+        self.assertEqual(register.status, AttendanceRegister.Status.DRAFT)
+
+    def test_working_saturday_accepted_when_instructional(self):
+        SchoolCalendarDay.objects.create(
+            academic_year=self.year, date=date(2026, 8, 22), is_instructional=True
+        )
+        register = self._register(date(2026, 8, 22))
+        self._mark_all(register)
+
+        register.submit(actor=self.actor)
+
+        register.refresh_from_db()
+        self.assertEqual(register.status, AttendanceRegister.Status.SUBMITTED)
