@@ -82,6 +82,22 @@ urlpatterns = [
         views.attendance_entry_correct,
         name="attendance-entry-correct",
     ),
+    path("attendance/reports/", views.attendance_reports, name="attendance-reports"),
+    path(
+        "attendance/reports/absent/",
+        views.report_daily_absentees,
+        name="report-daily-absentees",
+    ),
+    path(
+        "attendance/reports/missing/",
+        views.report_missing_attendance,
+        name="report-missing-attendance",
+    ),
+    path(
+        "attendance/reports/monthly/",
+        views.report_monthly_section,
+        name="report-monthly-section",
+    ),
     path(
         "students/<int:pk>/attendance/",
         views.student_attendance,

@@ -9,6 +9,7 @@ from django.db.models import ProtectedError
 from django.test import TestCase, TransactionTestCase, override_settings
 from django.utils import timezone
 
+from core import reports
 from core.models import (
     AcademicEnrollment,
     AcademicYear,
@@ -2693,3 +2694,200 @@ class AttendanceGate6CorrectionTests(AttendanceFixtureMixin, TestCase):
         self.assertEqual(entry.register_id, self.register.pk)
         after = AttendanceRegister.objects.filter(pk=self.register.pk).values(*before).get()
         self.assertEqual(after, before)
+
+
+@mock.patch("core.models.business_today", new=lambda: date(2026, 10, 10))
+class AttendanceReportingTests(TestCase):
+    """Gate 7: report and percentage semantics (core.reports)."""
+
+    MON, TUE, WED = date(2026, 7, 6), date(2026, 7, 7), date(2026, 7, 8)
+    SAT, SUN = date(2026, 7, 11), date(2026, 7, 12)
+
+    def setUp(self):
+        self.year = AcademicYear.objects.create(
+            name="2026-2027", start_date=date(2026, 6, 1), end_date=date(2027, 4, 30)
+        )
+        self.class_grade = ClassGrade.objects.create(name="Grade 1")
+        self.section_a = Section.objects.create(class_grade=self.class_grade, name="A")
+        self.section_b = Section.objects.create(class_grade=self.class_grade, name="B")
+        self.ravi = self._student("Ravi Rao")
+        self.meera = self._student("Meera Rao")
+        self.ravi_a = self._enroll(self.ravi, self.section_a, date(2026, 6, 1))
+        self.meera_a = self._enroll(self.meera, self.section_a, date(2026, 6, 1))
+        self.actor = User.objects.create_user(username="administrator", password="pass-12345")
+
+    def _student(self, name):
+        return Student.objects.create(
+            applicant=Applicant.objects.create(full_name=name), full_name=name
+        )
+
+    def _enroll(self, student, section, start):
+        return student.enroll(
+            academic_year=self.year, class_grade=self.class_grade, section=section, start_date=start
+        )
+
+    def _take(self, on_date, statuses, section=None, submit=True):
+        register = AttendanceRegister(
+            academic_year=self.year,
+            class_grade=self.class_grade,
+            section=section or self.section_a,
+            date=on_date,
+        )
+        register.full_clean()
+        register.save()
+        for enrollment, status in statuses.items():
+            register.capture(enrollment=enrollment, status=status)
+        if submit:
+            register.submit(actor=self.actor)
+        return register
+
+    # --- percentage -------------------------------------------------------
+
+    def test_percentage_formula(self):
+        self.assertIsNone(reports.percentage(0, 0))
+        self.assertEqual(reports.percentage(3, 0), 100.0)
+        self.assertEqual(reports.percentage(0, 2), 0.0)
+        self.assertEqual(reports.percentage(2, 1), 66.7)
+
+    def test_all_present_and_all_absent(self):
+        self._take(self.MON, {self.ravi_a: "PRESENT", self.meera_a: "ABSENT"})
+        self._take(self.TUE, {self.ravi_a: "PRESENT", self.meera_a: "ABSENT"})
+
+        self.assertEqual(reports.student_summary(self.ravi)["percentage"], 100.0)
+        self.assertEqual(reports.student_summary(self.meera)["percentage"], 0.0)
+
+    def test_missing_register_excluded_from_percentage(self):
+        self._take(self.MON, {self.ravi_a: "PRESENT", self.meera_a: "PRESENT"})
+        # TUE: no register at all.
+        self.assertEqual(
+            reports.student_summary(self.ravi),
+            {"present": 1, "absent": 0, "total": 1, "percentage": 100.0},
+        )
+
+    def test_draft_excluded_from_percentage(self):
+        self._take(self.MON, {self.ravi_a: "PRESENT", self.meera_a: "PRESENT"})
+        self._take(self.TUE, {self.ravi_a: "ABSENT"}, submit=False)
+
+        self.assertEqual(reports.student_summary(self.ravi)["percentage"], 100.0)
+
+    def test_holiday_and_weekend_excluded_and_working_saturday_included(self):
+        SchoolCalendarDay.objects.create(
+            academic_year=self.year, date=self.SAT, is_instructional=True
+        )
+        self._take(self.MON, {self.ravi_a: "PRESENT", self.meera_a: "PRESENT"})
+        self._take(self.SAT, {self.ravi_a: "ABSENT", self.meera_a: "PRESENT"})
+
+        self.assertEqual(reports.student_summary(self.ravi)["total"], 2)
+        self.assertEqual(reports.student_summary(self.ravi)["percentage"], 50.0)
+
+    def test_reportable_query_ignores_non_instructional_dates_even_if_present(self):
+        # A legacy/direct write on a Sunday must never count, even if submitted.
+        register = AttendanceRegister.objects.create(
+            academic_year=self.year,
+            class_grade=self.class_grade,
+            section=self.section_a,
+            date=self.SUN,
+            status=AttendanceRegister.Status.SUBMITTED,
+            submitted_by=self.actor,
+            submitted_at=timezone.now(),
+        )
+        AttendanceEntry.objects.create(
+            register=register, academic_enrollment=self.ravi_a, status="ABSENT"
+        )
+
+        self.assertEqual(reports.student_summary(self.ravi)["total"], 0)
+
+    def test_correction_changes_current_value_without_erasing_audit(self):
+        register = self._take(self.MON, {self.ravi_a: "ABSENT", self.meera_a: "PRESENT"})
+        entry = register.entries.get(academic_enrollment=self.ravi_a)
+
+        entry.record_status_change("PRESENT", actor=self.actor, reason="Late arrival.")
+
+        self.assertEqual(reports.student_summary(self.ravi)["percentage"], 100.0)
+        self.assertEqual(entry.corrections.count(), 1)
+
+    def test_transfer_keeps_historical_context_and_continuous_history(self):
+        self._take(self.MON, {self.ravi_a: "PRESENT", self.meera_a: "PRESENT"})
+        ravi_b = self._enroll(self.ravi, self.section_b, self.WED)
+        self._take(self.WED, {ravi_b: "ABSENT"}, section=self.section_b)
+
+        history = list(
+            reports.reportable_entries(
+                AttendanceEntry.objects.filter(academic_enrollment__student=self.ravi)
+            ).order_by("register__date")
+        )
+        self.assertEqual([e.register.section for e in history], [self.section_a, self.section_b])
+        self.assertEqual(reports.student_summary(self.ravi)["percentage"], 50.0)
+
+    # --- daily absent list -----------------------------------------------
+
+    def test_absent_list_includes_only_submitted_absences(self):
+        self._take(self.MON, {self.ravi_a: "ABSENT", self.meera_a: "PRESENT"})
+        other = self._enroll(self._student("Asha Iyer"), self.section_b, date(2026, 6, 1))
+        self._take(self.MON, {other: "ABSENT"}, section=self.section_b, submit=False)
+
+        absentees = list(reports.daily_absentees(self.MON))
+
+        self.assertEqual([e.academic_enrollment for e in absentees], [self.ravi_a])
+
+    # --- missing report ---------------------------------------------------
+
+    def test_missing_report_lists_not_taken_and_draft_only_on_instructional_days(self):
+        SchoolCalendarDay.objects.create(
+            academic_year=self.year, date=self.TUE, is_instructional=False, label="Holiday"
+        )
+        self._take(self.MON, {self.ravi_a: "PRESENT", self.meera_a: "PRESENT"})
+        draft = self._take(self.WED, {self.ravi_a: "PRESENT"}, submit=False)
+
+        rows = reports.missing_attendance(self.MON, self.SUN, section=self.section_a)
+
+        self.assertEqual(
+            [(row["date"], row["state"]) for row in rows],
+            [
+                (self.WED, AttendanceRegister.AttendanceState.DRAFT),
+                (date(2026, 7, 9), AttendanceRegister.AttendanceState.NOT_TAKEN),
+                (date(2026, 7, 10), AttendanceRegister.AttendanceState.NOT_TAKEN),
+            ],
+        )
+        self.assertEqual(rows[0]["register"], draft)
+
+    def test_missing_report_skips_sections_without_students_and_future_dates(self):
+        rows = reports.missing_attendance(date(2026, 10, 9), date(2026, 10, 20))
+
+        self.assertEqual({row["section"] for row in rows}, {self.section_a})
+        self.assertTrue(all(row["date"] <= date(2026, 10, 10) for row in rows))
+
+    def test_missing_attendance_does_not_lower_percentage(self):
+        self._take(self.MON, {self.ravi_a: "PRESENT", self.meera_a: "PRESENT"})
+
+        self.assertTrue(reports.missing_attendance(self.TUE, self.TUE))
+        self.assertEqual(reports.student_summary(self.ravi)["percentage"], 100.0)
+
+    # --- monthly summary --------------------------------------------------
+
+    def test_monthly_section_summary(self):
+        self._take(self.MON, {self.ravi_a: "PRESENT", self.meera_a: "ABSENT"})
+        self._take(self.TUE, {self.ravi_a: "ABSENT", self.meera_a: "ABSENT"})
+        self._take(self.WED, {self.ravi_a: "PRESENT"}, submit=False)
+
+        summary = reports.monthly_section_summary(self.section_a, 2026, 7)
+
+        rows = {row["student"]: row for row in summary["rows"]}
+        self.assertEqual((rows[self.ravi]["present"], rows[self.ravi]["absent"]), (1, 1))
+        self.assertEqual(rows[self.ravi]["percentage"], 50.0)
+        self.assertEqual(rows[self.meera]["percentage"], 0.0)
+        july_weekdays = 23
+        self.assertEqual(summary["totals"]["expected_days"], july_weekdays)
+        self.assertEqual(summary["totals"]["submitted_days"], 2)
+        self.assertEqual(summary["totals"]["missing_days"], july_weekdays - 2)
+        self.assertEqual(summary["totals"]["percentage"], 25.0)
+
+    def test_monthly_summary_lists_student_who_transferred_out(self):
+        self._take(self.MON, {self.ravi_a: "PRESENT", self.meera_a: "PRESENT"})
+        self._enroll(self.ravi, self.section_b, self.WED)
+
+        summary = reports.monthly_section_summary(self.section_a, 2026, 7)
+
+        self.assertIn(self.ravi, [row["student"] for row in summary["rows"]])
+        rows = {row["student"]: row for row in summary["rows"]}
+        self.assertEqual(rows[self.ravi]["present"], 1)

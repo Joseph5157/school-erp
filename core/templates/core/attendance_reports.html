@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Attendance reports{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Attendance reports</h1>
+<p class="text-muted">
+    Counts and percentages use only submitted attendance on instructional, non-future dates
+    within each Student's enrollment. Missing and draft registers never count as absent.
+    Percentage = Present / (Present + Absent).
+</p>
+<ul class="list-group mb-3">
+    <li class="list-group-item"><a href="{% url 'core:attendance-register-list' %}">Daily Section registers</a></li>
+    <li class="list-group-item"><a href="{% url 'core:report-daily-absentees' %}">Daily absent-student list</a></li>
+    <li class="list-group-item"><a href="{% url 'core:report-missing-attendance' %}">Missing attendance</a></li>
+    <li class="list-group-item"><a href="{% url 'core:report-monthly-section' %}">Monthly Class/Section summary</a></li>
+    <li class="list-group-item">Student history and percentage: open a Student, then "View Attendance".</li>
+</ul>
+{% endblock %}

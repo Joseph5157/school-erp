@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Absent Students{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Absent Students</h1>
+<form method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-auto">{{ form.date.label_tag }} {{ form.date }}</div>
+    <div class="col-auto"><button type="submit" class="btn btn-outline-secondary">Show</button></div>
+</form>
+{% if absentees is not None %}
+<p class="text-muted">Submitted attendance only. Sections whose register is missing or still a draft are listed in the missing-attendance report, not here.</p>
+<table class="table">
+    <thead><tr><th>Section</th><th>Student</th><th>Absence note</th></tr></thead>
+    <tbody>
+        {% for entry in absentees %}
+        <tr>
+            <td><a href="{% url 'core:attendance-register-detail' entry.register.pk %}">{{ entry.register.section }}</a></td>
+            <td><a href="{% url 'core:student-attendance' entry.academic_enrollment.student.pk %}">{{ entry.academic_enrollment.student.full_name }}</a></td>
+            <td>{{ entry.absence_note }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="3">No submitted absences on this date.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% endblock %}

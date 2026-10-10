@@ -17,6 +17,10 @@
 </form>
 
 <h2 class="h5">Summary</h2>
+<p class="text-muted">Submitted attendance only; missing or draft registers are not counted as absent.</p>
+<p>Attendance percentage:
+    <strong>{% if percentage is not None %}{{ percentage }}%{% else %}&mdash;{% endif %}</strong>
+</p>
 <table class="table">
     <thead>
         <tr>
@@ -45,6 +49,7 @@
             <th>Date</th>
             <th>Academic year</th>
             <th>Section</th>
+            <th>Register</th>
             <th>Status</th>
             <th>Absence note</th>
         </tr>
@@ -55,12 +60,13 @@
             <td>{{ entry.register.date }}</td>
             <td>{{ entry.register.academic_year }}</td>
             <td>{{ entry.register.section }}</td>
+            <td>{{ entry.register.get_status_display }}</td>
             <td>{{ entry.get_status_display }}</td>
             <td>{{ entry.absence_note }}</td>
         </tr>
         {% empty %}
         <tr>
-            <td colspan="5">No attendance recorded.</td>
+            <td colspan="6">No attendance recorded.</td>
         </tr>
         {% endfor %}
     </tbody>

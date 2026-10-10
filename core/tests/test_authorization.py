@@ -1363,7 +1363,14 @@ class AttendanceRegisterListAuthorizationTests(
     def test_section_date_range_includes_status_summary(self):
         # Moved from AcademicYearListAuthorizationTests (it had no register
         # fixture there) and reconciled to the ADR 0007 PRESENT/ABSENT set.
+        # Gate 7: the summary counts submitted attendance only.
         self.register.capture(enrollment=self.enrollment, status=AttendanceStatus.PRESENT)
+        draft_response = self.administrator.get(
+            self.url,
+            {"section": self.section.pk, "start": "2026-07-01", "end": "2026-07-01"},
+        )
+        self.assertEqual(draft_response.context["section_total"], 0)
+        self.register.submit(actor=self.admin_user)
 
         response = self.administrator.get(
             self.url,
@@ -1379,7 +1386,7 @@ class AttendanceRegisterListAuthorizationTests(
             ],
         )
         self.assertContains(response, "2026-2027")
-        self.assertContains(response, "Draft")
+        self.assertContains(response, "Submitted")
 
     def test_anonymous_is_redirected_to_login(self):
         response = self.anonymous.get(self.url)
@@ -2395,3 +2402,112 @@ class AttendanceGate6CorrectionViewTests(
         summary = {row["label"]: row["count"] for row in response.context["summary"]}
         self.assertEqual(summary, {"Present": 0, "Absent": 1})
         self.assertEqual(AttendanceCorrection.objects.count(), 1)
+
+
+class AttendanceReportViewTests(AuthorizationClientsMixin, AttendanceFixtureMixin, TestCase):
+    """Gate 7: report pages, authorization and semantics."""
+
+    def setUp(self):
+        super().setUp()
+        self.build_attendance_fixture()  # register on Wednesday 2026-07-01
+        self.urls = {
+            "index": reverse("core:attendance-reports"),
+            "absent": reverse("core:report-daily-absentees"),
+            "missing": reverse("core:report-missing-attendance"),
+            "monthly": reverse("core:report-monthly-section"),
+        }
+
+    def test_reports_require_admin(self):
+        for name, url in self.urls.items():
+            with self.subTest(report=name):
+                anonymous = self.anonymous.get(url)
+                self.assertEqual(anonymous.status_code, 302)
+                self.assertIn(reverse("login"), anonymous["Location"])
+                self.assertEqual(self.non_admin.get(url).status_code, 403)
+                self.assertEqual(self.administrator.get(url).status_code, 200)
+                self.assertEqual(self.superuser_client.get(url).status_code, 200)
+
+    def test_daily_absent_list_shows_submitted_absence_with_note(self):
+        self.capture_and_submit(
+            enrollment=self.enrollment, status=AttendanceStatus.ABSENT, absence_note="Fever"
+        )
+
+        response = self.administrator.get(self.urls["absent"], {"date": "2026-07-01"})
+
+        self.assertContains(response, "Ravi Rao")
+        self.assertContains(response, "Fever")
+
+    def test_daily_absent_list_ignores_draft(self):
+        self.register.capture(enrollment=self.enrollment, status=AttendanceStatus.ABSENT)
+
+        response = self.administrator.get(self.urls["absent"], {"date": "2026-07-01"})
+
+        self.assertContains(response, "No submitted absences on this date.")
+
+    def test_missing_report_shows_draft_and_not_taken(self):
+        with mock.patch("core.models.business_today", new=lambda: date(2026, 10, 10)):
+            response = self.administrator.get(
+                self.urls["missing"],
+                {"start": "2026-07-01", "end": "2026-07-03", "section": self.section.pk},
+            )
+
+        rows = response.context["rows"]
+        self.assertEqual(
+            [(row["date"], row["state"].label) for row in rows],
+            [
+                (date(2026, 7, 1), "Draft"),
+                (date(2026, 7, 2), "Not taken"),
+                (date(2026, 7, 3), "Not taken"),
+            ],
+        )
+        self.assertContains(response, "Draft")
+
+    def test_missing_report_rejects_oversized_range(self):
+        response = self.administrator.get(
+            self.urls["missing"], {"start": "2026-06-01", "end": "2027-12-31"}
+        )
+
+        self.assertIsNone(response.context["rows"])
+        self.assertContains(response, "at most")
+
+    def test_monthly_summary_page(self):
+        self.capture_and_submit(enrollment=self.enrollment, status=AttendanceStatus.PRESENT)
+
+        response = self.administrator.get(
+            self.urls["monthly"], {"section": self.section.pk, "month": "2026-07"}
+        )
+
+        self.assertContains(response, "Ravi Rao")
+        self.assertContains(response, "100.0%")
+        self.assertEqual(response.context["summary"]["totals"]["submitted_days"], 1)
+
+    def test_monthly_summary_rejects_bad_month(self):
+        response = self.administrator.get(
+            self.urls["monthly"], {"section": self.section.pk, "month": "2026-13"}
+        )
+
+        self.assertIsNone(response.context["summary"])
+        self.assertContains(response, "Enter a month as YYYY-MM.")
+
+    def test_student_page_shows_percentage_and_register_status(self):
+        self.capture_and_submit(enrollment=self.enrollment, status=AttendanceStatus.ABSENT)
+
+        response = self.administrator.get(
+            reverse("core:student-attendance", args=[self.student.pk])
+        )
+
+        self.assertEqual(response.context["percentage"], 0.0)
+        self.assertContains(response, "0.0%")
+        self.assertContains(response, "Submitted")
+
+    def test_student_page_draft_not_counted(self):
+        self.register.capture(enrollment=self.enrollment, status=AttendanceStatus.ABSENT)
+
+        response = self.administrator.get(
+            reverse("core:student-attendance", args=[self.student.pk])
+        )
+
+        self.assertEqual(response.context["total"], 0)
+        self.assertIsNone(response.context["percentage"])
+        self.assertEqual(len(response.context["entries"]), 1)  # history still shows it
+        self.assertContains(response, "Draft")

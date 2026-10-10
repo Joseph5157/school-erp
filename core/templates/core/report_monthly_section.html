@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Monthly Section summary{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Monthly Class/Section summary</h1>
+<form method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-auto">{{ form.section.label_tag }} {{ form.section }}</div>
+    <div class="col-auto">{{ form.month.label_tag }} {{ form.month }}</div>
+    <div class="col-auto"><button type="submit" class="btn btn-outline-secondary">Show</button></div>
+</form>
+{{ form.month.errors }}
+{% if summary %}
+<p>
+    {{ summary.start }} to {{ summary.end }}:
+    {{ summary.totals.expected_days }} instructional day(s) with attendance expected,
+    {{ summary.totals.submitted_days }} submitted, {{ summary.totals.missing_days }} missing or draft.
+</p>
+<table class="table">
+    <thead><tr><th>Student</th><th>Present</th><th>Absent</th><th>Attendance %</th></tr></thead>
+    <tbody>
+        {% for row in summary.rows %}
+        <tr>
+            <td><a href="{% url 'core:student-attendance' row.student.pk %}">{{ row.student.full_name }}</a></td>
+            <td>{{ row.present }}</td>
+            <td>{{ row.absent }}</td>
+            <td>{% if row.percentage is not None %}{{ row.percentage }}%{% else %}&mdash;{% endif %}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4">No Students enrolled in this Section during this month.</td></tr>
+        {% endfor %}
+    </tbody>
+    <tfoot>
+        <tr>
+            <th>Total</th>
+            <th>{{ summary.totals.present }}</th>
+            <th>{{ summary.totals.absent }}</th>
+            <th>{% if summary.totals.percentage is not None %}{{ summary.totals.percentage }}%{% else %}&mdash;{% endif %}</th>
+        </tr>
+    </tfoot>
+</table>
+{% endif %}
+{% endblock %}
