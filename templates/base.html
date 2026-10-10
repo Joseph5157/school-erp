@@ -20,6 +20,9 @@
                 <a class="nav-link" href="{% url 'core:student-list' %}">Students</a>
                 <a class="nav-link" href="{% url 'core:guardian-list' %}">Guardians</a>
                 <a class="nav-link" href="{% url 'core:attendance-register-list' %}">Attendance</a>
+                {% if user_is_teacher %}
+                    <a class="nav-link" href="{% url 'core:my-assessments' %}">My assessments</a>
+                {% endif %}
             </div>
             <div class="navbar-nav ms-auto">
                 {% if user.is_authenticated %}

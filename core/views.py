@@ -1,11 +1,16 @@
 from django.contrib import messages
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 
 from core import reports
-from core.authorization import administrator_required
+from core.authorization import (
+    administrator_required,
+    can_enter_results,
+    teacher_assignments,
+    teacher_required,
+)
 from core.forms import (
     AcademicEnrollmentForm,
     AcademicTermForm,
@@ -29,6 +34,7 @@ from core.forms import (
     MissingAttendanceForm,
     MonthlySectionSummaryForm,
     OfferedSubjectsLookupForm,
+    ResultEntryForm,
     SchoolCalendarDayForm,
     SchoolCalendarDayLabelForm,
     SchoolForm,
@@ -437,7 +443,76 @@ def assessment_create(request, pk):
 @administrator_required("core.view_assessment")
 def assessment_detail(request, pk):
     assessment = get_object_or_404(_assessments(), pk=pk)
-    return render(request, "core/assessment_detail.html", {"assessment": assessment})
+    return render(
+        request, "core/assessment_detail.html", _assessment_context(assessment)
+    )
+
+
+def _assessment_context(assessment):
+    results = {
+        r.academic_enrollment_id: r
+        for r in assessment.results.select_related("entered_by")
+    }
+    roster = list(assessment.roster())
+    rows = [(enrollment, results.get(enrollment.pk)) for enrollment in roster]
+    teacher = assessment.offering.teacher_assignments.filter(
+        section=assessment.section
+    ).select_related("teacher").first()
+    return {
+        "assessment": assessment,
+        "rows": rows,
+        "marked_count": sum(1 for _, r in rows if r is not None),
+        "ineligible_results": assessment.ineligible_results().select_related(
+            "academic_enrollment__student"
+        ),
+        "teacher": teacher.teacher if teacher else None,
+    }
+
+
+# --- Phase 4 Gate 5: teacher DRAFT result entry (ADR 0010) -----------------
+
+
+@teacher_required
+def my_assessments(request):
+    duties = list(teacher_assignments(request.user))
+    query = Q(pk__in=[])
+    for duty in duties:
+        query |= Q(offering=duty.offering, section=duty.section)
+    assessments = _assessments().filter(query).order_by("-assessment_date", "name")
+    return render(
+        request,
+        "core/my_assessments.html",
+        {"duties": duties, "assessments": assessments},
+    )
+
+
+@teacher_required
+def assessment_marks_entry(request, pk):
+    assessment = get_object_or_404(_assessments(), pk=pk)
+    if not can_enter_results(request.user, assessment.offering, assessment.section):
+        raise PermissionDenied
+    form = None
+    if assessment.is_open_for_entry:
+        form = ResultEntryForm(request.POST or None, assessment=assessment)
+        if request.method == "POST":
+            if form.is_valid():
+                try:
+                    with transaction.atomic():
+                        for enrollment, status, score in form.answers():
+                            assessment.save_draft_result(
+                                enrollment=enrollment, status=status, score=score,
+                                actor=request.user,
+                            )
+                except ValidationError as error:
+                    messages.error(request, error.messages[0])
+                else:
+                    messages.success(request, "Marks saved as draft.")
+                    return redirect("core:assessment-marks-entry", pk=assessment.pk)
+            else:
+                messages.error(request, "Marks were not saved. Fix the highlighted rows.")
+    context = _assessment_context(assessment)
+    context["form"] = form
+    return render(request, "core/assessment_marks_entry.html", context)
 
 
 @administrator_required("core.change_assessment")

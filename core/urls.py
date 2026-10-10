@@ -69,6 +69,12 @@ urlpatterns = [
         name="assessment-create",
     ),
     path("assessments/<int:pk>/", views.assessment_detail, name="assessment-detail"),
+    path("my/assessments/", views.my_assessments, name="my-assessments"),
+    path(
+        "my/assessments/<int:pk>/marks/",
+        views.assessment_marks_entry,
+        name="assessment-marks-entry",
+    ),
     path("assessments/<int:pk>/edit/", views.assessment_update, name="assessment-update"),
     path("assessments/<int:pk>/delete/", views.assessment_delete, name="assessment-delete"),
     path(

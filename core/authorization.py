@@ -59,3 +59,22 @@ def can_enter_results(user, offering, section):
     do not make someone a result-entering teacher.
     """
     return teacher_assignments(user).filter(offering=offering, section=section).exists()
+
+
+def teacher_required(view_func):
+    """Require an authenticated, active member of the Teachers group.
+
+    Anonymous users are redirected to login; other users get 403. Views still
+    check the specific assignment with `can_enter_results` (ADR 0010).
+    """
+    from functools import wraps
+
+    from django.core.exceptions import PermissionDenied
+
+    @wraps(view_func)
+    def wrapped(request, *args, **kwargs):
+        if not is_teacher(request.user):
+            raise PermissionDenied
+        return view_func(request, *args, **kwargs)
+
+    return login_required(wrapped)

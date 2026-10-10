@@ -18,6 +18,7 @@ from core.models import (
     GradeBoundary,
     GradingScale,
     Guardian,
+    ResultStatus,
     School,
     SchoolCalendarDay,
     Section,
@@ -315,6 +316,74 @@ class AssessmentFilterForm(forms.Form):
         super().__init__(*args, **kwargs)
         if academic_year is not None:
             self.fields["term"].queryset = academic_year.terms.all()
+
+
+class ResultEntryForm(forms.Form):
+    """Bulk DRAFT marks entry for an assessment's date-effective roster.
+
+    One optional status (Marked/Absent) and score per Student, pre-filled
+    from saved results. A score with no status counts as Marked; Absent takes
+    no score; unanswered rows stay unmarked (never Absent).
+    """
+
+    def __init__(self, *args, assessment=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.assessment = assessment
+        saved = {r.academic_enrollment_id: r for r in assessment.results.all()}
+        self.enrollments = list(assessment.roster())
+        for enrollment in self.enrollments:
+            result = saved.get(enrollment.pk)
+            self.fields[self.status_name(enrollment)] = forms.ChoiceField(
+                choices=[("", "—"), *ResultStatus.choices],
+                required=False,
+                label=str(enrollment.student),
+                initial=result.status if result else "",
+            )
+            self.fields[self.score_name(enrollment)] = forms.DecimalField(
+                required=False,
+                min_value=0,
+                max_value=assessment.maximum_marks,
+                decimal_places=2,
+                max_digits=6,
+                label="Score",
+                initial=result.score if result else None,
+                widget=forms.NumberInput(attrs={"step": "0.01", "style": "width: 7em"}),
+            )
+
+    @staticmethod
+    def status_name(enrollment):
+        return f"status_{enrollment.pk}"
+
+    @staticmethod
+    def score_name(enrollment):
+        return f"score_{enrollment.pk}"
+
+    def clean(self):
+        cleaned_data = super().clean()
+        for enrollment in self.enrollments:
+            status = cleaned_data.get(self.status_name(enrollment))
+            score = cleaned_data.get(self.score_name(enrollment))
+            if not status and score is not None:
+                cleaned_data[self.status_name(enrollment)] = status = ResultStatus.MARKED
+            if status == ResultStatus.MARKED and score is None:
+                self.add_error(self.score_name(enrollment), "Enter a score or choose Absent.")
+            if status == ResultStatus.ABSENT and score is not None:
+                self.add_error(self.score_name(enrollment), "An absent Student has no score.")
+        return cleaned_data
+
+    def rows(self):
+        for enrollment in self.enrollments:
+            yield (
+                enrollment,
+                self[self.status_name(enrollment)],
+                self[self.score_name(enrollment)],
+            )
+
+    def answers(self):
+        for enrollment in self.enrollments:
+            status = self.cleaned_data.get(self.status_name(enrollment))
+            if status:
+                yield enrollment, status, self.cleaned_data.get(self.score_name(enrollment))
 
 
 class OfferedSubjectsLookupForm(forms.Form):
