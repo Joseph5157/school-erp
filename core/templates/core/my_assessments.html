@@ -23,4 +23,12 @@
         {% endfor %}
     </tbody>
 </table>
+<h2 class="h5 mt-4">Term remarks</h2>
+<ul>
+    {% for term, section in remark_links %}
+    <li><a href="{% url 'core:term-remarks' term.pk %}?section={{ section.pk }}">{{ term.academic_year.name }} {{ term.name }} &middot; {{ section }}</a></li>
+    {% empty %}
+    <li>No Sections assigned.</li>
+    {% endfor %}
+</ul>
 {% endblock %}

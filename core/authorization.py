@@ -78,3 +78,16 @@ def teacher_required(view_func):
         return view_func(request, *args, **kwargs)
 
     return login_required(wrapped)
+
+
+def can_write_term_remarks(user, term, section):
+    """Administrators, or a teacher assigned to any Subject in this Section that year."""
+    if not (user and user.is_authenticated and user.is_active):
+        return False
+    if user.has_perm("core.change_termremark"):
+        return True
+    return (
+        teacher_assignments(user)
+        .filter(offering__academic_year_id=term.academic_year_id, section=section)
+        .exists()
+    )

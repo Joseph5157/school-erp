@@ -10,16 +10,17 @@
 <body>
     <nav class="navbar navbar-expand navbar-light bg-light mb-4">
         <div class="container">
-            <a class="navbar-brand" href="{% url 'core:school-detail' %}">School ERP</a>
+            <a class="navbar-brand" href="{% if user_is_teacher and not perms.core.view_school %}{% url 'core:my-assessments' %}{% else %}{% url 'core:school-detail' %}{% endif %}">School ERP</a>
+            {# Each link shows only to users who may open it; views still enforce access. #}
             <div class="navbar-nav">
-                <a class="nav-link" href="{% url 'core:school-detail' %}">School</a>
-                <a class="nav-link" href="{% url 'core:academic-year-list' %}">Academic Years</a>
-                <a class="nav-link" href="{% url 'core:class-grade-list' %}">Classes/Grades</a>
-                <a class="nav-link" href="{% url 'core:subject-list' %}">Subjects</a>
-                <a class="nav-link" href="{% url 'core:applicant-list' %}">Applicants</a>
-                <a class="nav-link" href="{% url 'core:student-list' %}">Students</a>
-                <a class="nav-link" href="{% url 'core:guardian-list' %}">Guardians</a>
-                <a class="nav-link" href="{% url 'core:attendance-register-list' %}">Attendance</a>
+                {% if perms.core.view_school %}<a class="nav-link" href="{% url 'core:school-detail' %}">School</a>{% endif %}
+                {% if perms.core.view_academicyear %}<a class="nav-link" href="{% url 'core:academic-year-list' %}">Academic Years</a>{% endif %}
+                {% if perms.core.view_classgrade %}<a class="nav-link" href="{% url 'core:class-grade-list' %}">Classes/Grades</a>{% endif %}
+                {% if perms.core.view_subject %}<a class="nav-link" href="{% url 'core:subject-list' %}">Subjects</a>{% endif %}
+                {% if perms.core.view_applicant %}<a class="nav-link" href="{% url 'core:applicant-list' %}">Applicants</a>{% endif %}
+                {% if perms.core.view_student %}<a class="nav-link" href="{% url 'core:student-list' %}">Students</a>{% endif %}
+                {% if perms.core.view_guardian %}<a class="nav-link" href="{% url 'core:guardian-list' %}">Guardians</a>{% endif %}
+                {% if perms.core.view_attendanceregister %}<a class="nav-link" href="{% url 'core:attendance-register-list' %}">Attendance</a>{% endif %}
                 {% if user_is_teacher %}
                     <a class="nav-link" href="{% url 'core:my-assessments' %}">My assessments</a>
                 {% endif %}

@@ -15,7 +15,10 @@
             <td>{{ term.name }}</td>
             <td>{{ term.start_date }}</td>
             <td>{{ term.end_date }}</td>
-            <td>{% if perms.core.change_academicterm %}<a href="{% url 'core:term-update' term.pk %}">Edit</a>{% endif %}</td>
+            <td>
+                {% if perms.core.change_academicterm %}<a href="{% url 'core:term-update' term.pk %}">Edit</a>{% endif %}
+                {% if perms.core.change_termremark %} &middot; <a href="{% url 'core:term-remarks' term.pk %}">Remarks</a>{% endif %}
+            </td>
         </tr>
         {% empty %}
         <tr><td colspan="5">No Terms yet.</td></tr>

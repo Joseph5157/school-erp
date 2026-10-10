@@ -1345,6 +1345,47 @@ class AcademicTerm(models.Model):
         on_date = _as_date(on_date)
         return _as_date(self.start_date) <= on_date <= _as_date(self.end_date)
 
+    def enrollment_for(self, student):
+        """The Student's placement for this Term (Gate 8).
+
+        The enrollment effective on the Term's last day; if the Student left
+        before then, their last enrollment of this Academic Year that was
+        effective at some point during the Term.
+        """
+        in_year = AcademicEnrollment.objects.filter(
+            student=student, academic_year_id=self.academic_year_id
+        )
+        on_last_day = in_year.effective_on(self.end_date).first()
+        if on_last_day is not None:
+            return on_last_day
+        return (
+            in_year.filter(start_date__lte=self.end_date)
+            .filter(models.Q(end_date__isnull=True) | models.Q(end_date__gte=self.start_date))
+            .order_by("-start_date")
+            .first()
+        )
+
+    def section_roster(self, section):
+        """Students whose Term placement (see enrollment_for) is in `section`."""
+        candidates = (
+            AcademicEnrollment.objects.filter(
+                academic_year_id=self.academic_year_id,
+                section=section,
+                start_date__lte=self.end_date,
+            )
+            .filter(models.Q(end_date__isnull=True) | models.Q(end_date__gte=self.start_date))
+            .select_related("student")
+            .order_by("student__full_name", "pk")
+        )
+        students = []
+        for enrollment in candidates:
+            student = enrollment.student
+            if student not in students:
+                placement = self.enrollment_for(student)
+                if placement is not None and placement.section_id == section.pk:
+                    students.append(student)
+        return students
+
     def __str__(self):
         return f"{self.academic_year} - {self.name}"
 
@@ -2250,3 +2291,38 @@ class ResultCorrection(models.Model):
 
     def __str__(self):
         return f"{self.result} corrected by {self.corrected_by}"
+
+
+# ---------------------------------------------------------------------------
+# Phase 4 Gate 8 - optional Term teacher remark (ADR 0009)
+# ---------------------------------------------------------------------------
+
+
+class TermRemark(models.Model):
+    """One optional remark per Student per Term, shown on the report card.
+
+    Separate from marks, grades and results; never used in any calculation.
+    """
+
+    term = models.ForeignKey(AcademicTerm, on_delete=models.PROTECT, related_name="remarks")
+    student = models.ForeignKey(Student, on_delete=models.PROTECT, related_name="term_remarks")
+    remark = models.TextField()
+    written_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="term_remarks"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["term", "student__full_name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["term", "student"], name="termremark_one_per_student_per_term"
+            ),
+            models.CheckConstraint(
+                condition=~models.Q(remark=""), name="termremark_not_blank"
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.term} - {self.student}"
