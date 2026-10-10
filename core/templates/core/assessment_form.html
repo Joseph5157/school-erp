@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}{% if assessment %}Edit assessment{% else %}Plan an assessment{% endif %}{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">{% if assessment %}Edit {{ assessment.name }}{% else %}Plan an assessment{% endif %} <small class="text-muted">{{ academic_year.name }}</small></h1>
+{% if assessment.is_locked %}
+<div class="alert alert-info">Results already exist, so the Term, Subject, Section, date and maximum marks are locked.</div>
+{% endif %}
+<form method="post">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">Save</button>
+    <a class="btn btn-link" href="{% if assessment %}{% url 'core:assessment-detail' assessment.pk %}{% else %}{% url 'core:academic-year-assessments' academic_year.pk %}{% endif %}">Cancel</a>
+</form>
+{% endblock %}

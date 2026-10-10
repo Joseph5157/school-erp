@@ -1718,3 +1718,140 @@ class GradeBoundary(models.Model):
 
     def __str__(self):
         return f"{self.label} (from {self.min_percentage}%)"
+
+
+# ---------------------------------------------------------------------------
+# Phase 4 Gate 4 - assessment planning (ADR 0009)
+# ---------------------------------------------------------------------------
+
+
+class Assessment(models.Model):
+    """One subject assessment for one Section in one Term (ADR 0009).
+
+    Not a multi-subject examination. Lifecycle DRAFT -> FINALIZED. The date
+    falls inside the Term (and so the Academic Year); future assessments may
+    be planned, but results cannot be entered before the date. Once results
+    exist (or the assessment is finalized) its context and maximum marks are
+    locked and it cannot be deleted.
+    """
+
+    class Status(models.TextChoices):
+        DRAFT = "DRAFT", "Draft"
+        FINALIZED = "FINALIZED", "Finalized"
+
+    LOCKED_FIELDS = (
+        "term_id", "offering_id", "section_id", "assessment_date", "maximum_marks",
+    )
+
+    term = models.ForeignKey(AcademicTerm, on_delete=models.PROTECT, related_name="assessments")
+    offering = models.ForeignKey(
+        AcademicSubjectOffering, on_delete=models.PROTECT, related_name="assessments"
+    )
+    section = models.ForeignKey(Section, on_delete=models.PROTECT, related_name="assessments")
+    name = models.CharField(max_length=100)
+    assessment_date = models.DateField()
+    maximum_marks = models.DecimalField(max_digits=6, decimal_places=2)
+    pass_mark = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.DRAFT)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-assessment_date", "offering", "section", "name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["offering", "section", "term", "name"],
+                name="assessment_unique_name_per_offering_section_term",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(maximum_marks__gt=0),
+                name="assessment_maximum_marks_positive",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(pass_mark__isnull=True)
+                | (models.Q(pass_mark__gte=0) & models.Q(pass_mark__lte=models.F("maximum_marks"))),
+                name="assessment_pass_mark_within_maximum",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(status__in=["DRAFT", "FINALIZED"]),
+                name="assessment_status_valid",
+            ),
+        ]
+
+    @property
+    def is_finalized(self):
+        return self.status == self.Status.FINALIZED
+
+    def has_results(self):
+        """Whether any StudentResult depends on this assessment (from Gate 5)."""
+        related = getattr(self, "results", None)
+        return bool(self.pk and related is not None and related.exists())
+
+    @property
+    def is_locked(self):
+        """Context and maximum marks can no longer change."""
+        if not self.pk:
+            return False
+        stored = Assessment.objects.filter(pk=self.pk).values_list("status", flat=True).first()
+        return stored == self.Status.FINALIZED or self.has_results()
+
+    def clean(self):
+        super().clean()
+        if self.pk is None and self.status != self.Status.DRAFT:
+            raise ValidationError("A new assessment always starts as a draft.")
+        if self.pk is not None and self.is_locked:
+            original = Assessment.objects.filter(pk=self.pk).values(*self.LOCKED_FIELDS).get()
+            current = {
+                "term_id": self.term_id,
+                "offering_id": self.offering_id,
+                "section_id": self.section_id,
+                "assessment_date": _as_date(self.assessment_date),
+                "maximum_marks": (
+                    Decimal(str(self.maximum_marks)) if self.maximum_marks is not None else None
+                ),
+            }
+            if current != original:
+                raise ValidationError(
+                    "Results already depend on this assessment; its Term, Subject, Section, "
+                    "date and maximum marks can no longer change."
+                )
+        errors = {}
+        if self.term_id and self.offering_id:
+            if self.term.academic_year_id != self.offering.academic_year_id:
+                errors["term"] = (
+                    "The Term and the Subject offering are in different Academic Years."
+                )
+        if self.offering_id and self.section_id and not self.offering.applies_to(self.section):
+            errors["section"] = "This Section does not take this Subject offering."
+        if self.term_id and self.assessment_date and not self.term.contains(self.assessment_date):
+            errors["assessment_date"] = (
+                f"The date must fall inside {self.term.name} "
+                f"({self.term.start_date} to {self.term.end_date})."
+            )
+        if self.maximum_marks is not None and self.maximum_marks <= 0:
+            errors["maximum_marks"] = "Maximum marks must be greater than zero."
+        if self.pass_mark is not None:
+            if self.pass_mark < 0:
+                errors["pass_mark"] = "The pass mark cannot be negative."
+            elif self.maximum_marks is not None and self.pass_mark > self.maximum_marks:
+                errors["pass_mark"] = "The pass mark cannot exceed the maximum marks."
+        if errors:
+            raise ValidationError(errors)
+
+    def delete(self, *args, **kwargs):
+        if self.is_locked:
+            raise ValidationError(
+                "This assessment has results or is finalized and cannot be deleted."
+            )
+        return super().delete(*args, **kwargs)
+
+    @property
+    def class_grade(self):
+        return self.offering.class_grade
+
+    @property
+    def subject(self):
+        return self.offering.subject
+
+    def __str__(self):
+        return f"{self.offering.subject.name} {self.section} - {self.name}"

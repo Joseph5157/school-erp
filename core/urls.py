@@ -59,6 +59,19 @@ urlpatterns = [
         name="teacher-assignment-create",
     ),
     path(
+        "academic-years/<int:pk>/assessments/",
+        views.academic_year_assessments,
+        name="academic-year-assessments",
+    ),
+    path(
+        "academic-years/<int:pk>/assessments/add/",
+        views.assessment_create,
+        name="assessment-create",
+    ),
+    path("assessments/<int:pk>/", views.assessment_detail, name="assessment-detail"),
+    path("assessments/<int:pk>/edit/", views.assessment_update, name="assessment-update"),
+    path("assessments/<int:pk>/delete/", views.assessment_delete, name="assessment-delete"),
+    path(
         "academic-years/<int:pk>/grading-scales/",
         views.academic_year_grading_scales,
         name="academic-year-grading-scales",

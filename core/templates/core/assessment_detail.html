@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}{{ assessment.name }}{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">{{ assessment.offering.subject.name }}: {{ assessment.name }}</h1>
+<dl class="row">
+    <dt class="col-sm-3">Academic year / Term</dt><dd class="col-sm-9">{{ assessment.term.academic_year.name }} &middot; {{ assessment.term.name }}</dd>
+    <dt class="col-sm-3">Section</dt><dd class="col-sm-9">{{ assessment.section }}</dd>
+    <dt class="col-sm-3">Date</dt><dd class="col-sm-9">{{ assessment.assessment_date }}</dd>
+    <dt class="col-sm-3">Maximum marks</dt><dd class="col-sm-9">{{ assessment.maximum_marks }}</dd>
+    <dt class="col-sm-3">Pass mark</dt><dd class="col-sm-9">{{ assessment.pass_mark|default:"None (no pass/fail)" }}</dd>
+    <dt class="col-sm-3">Status</dt><dd class="col-sm-9">{{ assessment.get_status_display }}</dd>
+</dl>
+{% block assessment_actions %}
+{% if not assessment.is_finalized %}
+    {% if perms.core.change_assessment %}<a class="btn btn-outline-primary" href="{% url 'core:assessment-update' assessment.pk %}">Edit</a>{% endif %}
+    {% if perms.core.delete_assessment and not assessment.is_locked %}
+    <form method="post" action="{% url 'core:assessment-delete' assessment.pk %}" class="d-inline">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline-danger">Delete</button>
+    </form>
+    {% endif %}
+{% endif %}
+{% endblock %}
+<p class="mt-3"><a href="{% url 'core:academic-year-assessments' assessment.term.academic_year_id %}">All assessments</a></p>
+{% endblock %}

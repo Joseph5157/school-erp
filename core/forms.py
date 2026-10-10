@@ -10,6 +10,7 @@ from core.models import (
     AcademicYear,
     Applicant,
     ApplicantGuardian,
+    Assessment,
     AssessmentTeacherAssignment,
     AttendanceRegister,
     AttendanceStatus,
@@ -275,6 +276,45 @@ class GradeBoundaryForm(forms.ModelForm):
             if value not in (None, "") and scale.boundaries.filter(**{field: value}).exists():
                 self.add_error(field, "This scale already has a band with this value.")
         return cleaned_data
+
+
+class AssessmentForm(forms.ModelForm):
+    """Plan an assessment in one Academic Year (ADR 0009)."""
+
+    class Meta:
+        model = Assessment
+        fields = [
+            "term", "offering", "section", "name", "assessment_date",
+            "maximum_marks", "pass_mark",
+        ]
+        labels = {"offering": "Subject"}
+        help_texts = {"pass_mark": "Optional. Leave empty for no pass/fail."}
+        widgets = {"assessment_date": forms.DateInput(attrs={"type": "date"})}
+
+    def __init__(self, *args, academic_year=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        year = academic_year or (self.instance.term.academic_year if self.instance.pk else None)
+        if year is not None:
+            self.fields["term"].queryset = year.terms.all()
+            self.fields["offering"].queryset = AcademicSubjectOffering.objects.filter(
+                academic_year=year
+            ).select_related("class_grade", "subject", "academic_year")
+        self.fields["section"].queryset = Section.objects.select_related("class_grade")
+        if self.instance.pk and self.instance.is_locked:
+            for name in ("term", "offering", "section", "assessment_date", "maximum_marks"):
+                self.fields[name].disabled = True
+
+
+class AssessmentFilterForm(forms.Form):
+    term = forms.ModelChoiceField(queryset=AcademicTerm.objects.none(), required=False)
+    section = forms.ModelChoiceField(
+        queryset=Section.objects.select_related("class_grade"), required=False
+    )
+
+    def __init__(self, *args, academic_year=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if academic_year is not None:
+            self.fields["term"].queryset = academic_year.terms.all()
 
 
 class OfferedSubjectsLookupForm(forms.Form):

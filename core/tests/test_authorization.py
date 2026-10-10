@@ -102,6 +102,10 @@ class SchoolAdministratorsGroupMigrationTests(TestCase):
                 "add_gradingscaleclassgrade",
                 "delete_gradingscaleclassgrade",
                 "view_gradingscaleclassgrade",
+                "add_assessment",
+                "change_assessment",
+                "delete_assessment",
+                "view_assessment",
             },
         )
 
