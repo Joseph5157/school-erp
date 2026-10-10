@@ -6,7 +6,7 @@ Foundation
 → Phase 1 Student Lifecycle ✅
 → Phase 2 Attendance ✅
 → Phase 3 Fees ⏸️ deferred (not implemented)
-→ Phase 4 Assessments (research/planning)
+→ Phase 4 Assessments (Gate 0: decisions frozen)
 → Phase 5 Teacher Workflows
 → Phase 6 Parent/Student Experience
 → Phase 7 Communication & Reporting
@@ -69,17 +69,28 @@ how recorded payments and receipts are corrected) is not yet frozen. No fee
 code may be written until its Gate 0 decisions are frozen.
 
 ### Phase 4 Assessments
-- assessment planning
-- result capture
-- grade philosophy and reporting
+- subjects, Academic-Year-aware subject offerings and academic terms
+- minimal teacher-to-subject/section assignment for result entry
+- subject assessments with a date-effective roster
+- DRAFT marks entry (MARKED/ABSENT), administrator finalization, audited corrections
+- reusable grading scales, derived grades and optional pass marks
+- result sheets, Student result history and simple Term report cards with optional teacher remarks
 
-Status: next phase; research and planning only. Implementation starts only
-after its decisions are frozen.
+Status: Gate 0 — decisions frozen in ADR 0009 and ADR 0010; implementation
+proceeds gate by gate per `docs/PHASE_4_ASSESSMENTS_PLAN.md`.
+
+Out of scope for Phase 4: GPA, rank, weighting, rubrics, competency grading,
+online exams, exam logistics, timetable integration, automatic promotion,
+transcripts, board-specific rules, parent/student publication and
+co-scholastic grading.
 
 ### Phase 5 Teacher Workflows
 - teacher assignment workflows
 - class-specific operations
 - daily teaching tasks and limited student access
+
+Note: the minimum assessment teacher assignment needed for Phase 4 result
+entry is part of Phase 4 (ADR 0010). Everything else about teachers stays here.
 
 ### Phase 6 Parent/Student Experience
 - guardian and student-facing information
