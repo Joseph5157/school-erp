@@ -3,10 +3,10 @@
 The roadmap below is directional and meant to guide planning. Later phases may change as we learn more about real school workflows, data quality needs, and operational constraints.
 
 Foundation
-→ Phase 1 Student Lifecycle
-→ Phase 2 Attendance
-→ Phase 3 Fees
-→ Phase 4 Assessments
+→ Phase 1 Student Lifecycle ✅
+→ Phase 2 Attendance ✅
+→ Phase 3 Fees ⏸️ deferred (not implemented)
+→ Phase 4 Assessments (research/planning)
 → Phase 5 Teacher Workflows
 → Phase 6 Parent/Student Experience
 → Phase 7 Communication & Reporting
@@ -42,8 +42,8 @@ Status: complete.
 - administrator-facing capture and reporting views
 - attendance authorization using the shared authorization foundation
 
-Status: in reconciliation/implementation (see ADR 0006, ADR 0007, and
-`docs/PHASE_2_RECONCILIATION_PLAN.md`).
+Status: complete (tag `phase-2-complete`). Reconciled through Gates 0-9 of
+`docs/PHASE_2_RECONCILIATION_PLAN.md`; see ADR 0006, ADR 0007 and ADR 0008.
 
 Approved scope:
 - daily attendance only; statuses PRESENT and ABSENT
@@ -62,10 +62,19 @@ Out of scope for Phase 2:
 - payment recording
 - fee reporting and reconciliation
 
+Status: DEFERRED / NOT IMPLEMENTED. The phase keeps its number so existing
+research, plans and references stay valid. Fees carry higher audit,
+correction and money-integrity risk, and the financial model (in particular
+how recorded payments and receipts are corrected) is not yet frozen. No fee
+code may be written until its Gate 0 decisions are frozen.
+
 ### Phase 4 Assessments
 - assessment planning
 - result capture
 - grade philosophy and reporting
+
+Status: next phase; research and planning only. Implementation starts only
+after its decisions are frozen.
 
 ### Phase 5 Teacher Workflows
 - teacher assignment workflows

@@ -2,6 +2,30 @@
 
 ## Status
 
+**Complete.** Every gate passed in order and was merged to `main`; the
+`phase-2-complete` tag marks the completed state.
+
+| Gate | Pull request | Merge commit |
+| --- | --- | --- |
+| 0 Source of truth | (direct commit) | `d869af9` |
+| 1 Effective-dated enrollment | #2 | `a8ece97` |
+| 2 Minimal school calendar | #3 | `9ff2007` |
+| 3 Attendance core schema | #4 | `d68b82a` |
+| 4 Register submission workflow | #5 | `ac58cd8` |
+| 5 Admin capture UI | #6 | `396d8fc` |
+| 6 Correction hardening | #7 | `34cf213` |
+| 7 Reporting semantics | #8 | `fe70db1` |
+| 8 Integration hardening | #9 | `5e71504` |
+| 9 Documentation closeout | #10 | (this closeout) |
+
+Decisions made during the gates are recorded in ADR 0008 (calendar) and in
+`docs/REQUIREMENTS.md` (submission, reporting and missing-attendance rules).
+Known, documented limitations carried to later hardening: enrollment overlap
+is enforced at the application layer (no PostgreSQL exclusion constraint),
+and calendar-exception delete protection is bypassed by bulk queryset deletes.
+
+Original planning text follows.
+
 Approved planning document for reconciling the current Phase 2 implementation on `main`.
 
 Planning baseline:

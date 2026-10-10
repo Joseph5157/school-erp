@@ -241,7 +241,7 @@ Successful completion requires that the Student was not created by application r
 
 ## Phase 2 scope
 
-Phase 2 is in reconciliation/implementation. It contains only:
+Phase 2 is complete (tag `phase-2-complete`). It contains only:
 
 1. Effective-dated Academic Enrollment needed for date-correct attendance
 2. Minimal Academic-Year-aware instructional calendar
