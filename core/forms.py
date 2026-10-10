@@ -309,6 +309,9 @@ class AssessmentForm(forms.ModelForm):
 
 class AssessmentFilterForm(forms.Form):
     term = forms.ModelChoiceField(queryset=AcademicTerm.objects.none(), required=False)
+    status = forms.ChoiceField(
+        choices=[("", "Any status"), *Assessment.Status.choices], required=False
+    )
     section = forms.ModelChoiceField(
         queryset=Section.objects.select_related("class_grade"), required=False
     )

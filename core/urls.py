@@ -37,6 +37,7 @@ urlpatterns = [
     path("academic-years/<int:pk>/terms/", views.academic_year_terms, name="academic-year-terms"),
     path("academic-years/<int:pk>/terms/add/", views.term_create, name="term-create"),
     path("terms/<int:pk>/edit/", views.term_update, name="term-update"),
+    path("terms/<int:pk>/remarks/", views.term_remarks, name="term-remarks"),
     path(
         "academic-years/<int:pk>/subjects/",
         views.academic_year_offerings,

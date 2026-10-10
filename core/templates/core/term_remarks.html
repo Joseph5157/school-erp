@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Term remarks - {{ term.name }}{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Term remarks: {{ term.academic_year.name }} {{ term.name }}</h1>
+<form method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-auto">
+        <label for="id_section">Section:</label>
+        <select name="section" id="id_section" class="form-select">
+            <option value="">Choose a Section</option>
+            {% for s in sections %}<option value="{{ s.pk }}"{% if section and s.pk == section.pk %} selected{% endif %}>{{ s }}</option>{% endfor %}
+        </select>
+    </div>
+    <div class="col-auto"><button type="submit" class="btn btn-outline-secondary">Open</button></div>
+</form>
+{% if section %}
+<p class="text-muted">One optional remark per Student for this Term, shown on the Term report card. Remarks never affect marks or grades. Clear a box to remove a remark.</p>
+<form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="section" value="{{ section.pk }}">
+    <table class="table align-middle">
+        <thead><tr><th>Student</th><th>Remark</th><th>Last written by</th></tr></thead>
+        <tbody>
+            {% for student, remark in rows %}
+            <tr>
+                <td>{{ student.full_name }}</td>
+                <td><textarea name="remark_{{ student.pk }}" rows="2" class="form-control">{{ remark.remark|default:"" }}</textarea></td>
+                <td>{% if remark %}{{ remark.written_by }}{% endif %}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3">No Students in this Section for this Term.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% if rows %}<button type="submit" class="btn btn-primary">Save remarks</button>{% endif %}
+</form>
+{% endif %}
+{% endblock %}

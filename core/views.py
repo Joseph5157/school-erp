@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
@@ -8,6 +9,8 @@ from core import reports
 from core.authorization import (
     administrator_required,
     can_enter_results,
+    can_write_term_remarks,
+    is_teacher,
     teacher_assignments,
     teacher_required,
 )
@@ -62,9 +65,11 @@ from core.models import (
     Guardian,
     School,
     SchoolCalendarDay,
+    Section,
     Student,
     StudentResult,
     Subject,
+    TermRemark,
 )
 
 
@@ -416,6 +421,8 @@ def academic_year_assessments(request, pk):
             assessments = assessments.filter(term=form.cleaned_data["term"])
         if form.cleaned_data.get("section"):
             assessments = assessments.filter(section=form.cleaned_data["section"])
+        if form.cleaned_data.get("status"):
+            assessments = assessments.filter(status=form.cleaned_data["status"])
     return render(
         request,
         "core/assessment_list.html",
@@ -526,6 +533,60 @@ def result_correct(request, pk):
     )
 
 
+# --- Phase 4 Gate 8: Term remarks (ADR 0009) ------------------------------
+
+
+@login_required
+def term_remarks(request, pk):
+    """Write optional Term remarks for one Section (admins, or its teachers)."""
+    if not (request.user.has_perm("core.change_termremark") or is_teacher(request.user)):
+        raise PermissionDenied
+    term = get_object_or_404(AcademicTerm.objects.select_related("academic_year"), pk=pk)
+    if request.user.has_perm("core.change_termremark"):
+        sections = Section.objects.select_related("class_grade")
+    else:
+        sections = Section.objects.filter(
+            teacher_assignments__teacher=request.user,
+            teacher_assignments__offering__academic_year=term.academic_year,
+        ).select_related("class_grade").distinct()
+    section_id = request.POST.get("section") or request.GET.get("section")
+    section = None
+    if section_id:
+        section = get_object_or_404(sections, pk=section_id)
+        if not can_write_term_remarks(request.user, term, section):
+            raise PermissionDenied
+    students, remarks = [], {}
+    if section is not None:
+        students = term.section_roster(section)
+        remarks = {
+            r.student_id: r
+            for r in TermRemark.objects.filter(term=term, student__in=students).select_related(
+                "written_by"
+            )
+        }
+        if request.method == "POST":
+            with transaction.atomic():
+                for student in students:
+                    text = (request.POST.get(f"remark_{student.pk}") or "").strip()
+                    existing = remarks.get(student.pk)
+                    if text and (existing is None or existing.remark != text):
+                        TermRemark.objects.update_or_create(
+                            term=term,
+                            student=student,
+                            defaults={"remark": text, "written_by": request.user},
+                        )
+                    elif not text and existing is not None:
+                        existing.delete()
+            messages.success(request, "Remarks saved.")
+            return redirect(f"{request.path}?section={section.pk}")
+    rows = [(student, remarks.get(student.pk)) for student in students]
+    return render(
+        request,
+        "core/term_remarks.html",
+        {"term": term, "sections": sections, "section": section, "rows": rows},
+    )
+
+
 # --- Phase 4 Gate 5: teacher DRAFT result entry (ADR 0010) -----------------
 
 
@@ -536,10 +597,18 @@ def my_assessments(request):
     for duty in duties:
         query |= Q(offering=duty.offering, section=duty.section)
     assessments = _assessments().filter(query).order_by("-assessment_date", "name")
+    remark_links = []
+    seen = set()
+    for duty in duties:
+        for term in duty.offering.academic_year.terms.all():
+            key = (term.pk, duty.section_id)
+            if key not in seen:
+                seen.add(key)
+                remark_links.append((term, duty.section))
     return render(
         request,
         "core/my_assessments.html",
-        {"duties": duties, "assessments": assessments},
+        {"duties": duties, "assessments": assessments, "remark_links": remark_links},
     )
 
 

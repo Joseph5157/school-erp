@@ -110,6 +110,10 @@ class SchoolAdministratorsGroupMigrationTests(TestCase):
                 "finalize_assessment",
                 "correct_studentresult",
                 "view_resultcorrection",
+                "add_termremark",
+                "change_termremark",
+                "delete_termremark",
+                "view_termremark",
             },
         )
 
