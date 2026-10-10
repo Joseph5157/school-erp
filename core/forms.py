@@ -337,10 +337,22 @@ class AttendanceCaptureForm(forms.Form):
 
 
 class AttendanceCorrectionForm(forms.Form):
-    """Correct a captured attendance status, recording a reason."""
+    """Correct submitted attendance, recording a reason and optional absence note."""
 
     status = forms.ChoiceField(choices=AttendanceStatus.choices)
+    absence_note = forms.CharField(
+        required=False,
+        label="Absence note",
+        help_text="Optional; only for a correction to Absent.",
+    )
     reason = forms.CharField(widget=forms.Textarea(attrs={"rows": 2}))
+
+    def clean(self):
+        cleaned_data = super().clean()
+        note = (cleaned_data.get("absence_note") or "").strip()
+        if note and cleaned_data.get("status") != AttendanceStatus.ABSENT:
+            self.add_error("absence_note", "Only an absent Student can have a note.")
+        return cleaned_data
 
     def __init__(self, *args, entry=None, **kwargs):
         super().__init__(*args, **kwargs)

@@ -32,6 +32,7 @@
             <th>When</th>
             <th>From</th>
             <th>To</th>
+            <th>Note change</th>
             <th>Reason</th>
             <th>By</th>
         </tr>
@@ -42,12 +43,17 @@
             <td>{{ correction.created_at }}</td>
             <td>{{ correction.get_previous_status_display }}</td>
             <td>{{ correction.get_new_status_display }}</td>
+            <td>
+                {% if correction.previous_absence_note != correction.new_absence_note %}
+                    {{ correction.previous_absence_note|default:"(none)" }} &rarr; {{ correction.new_absence_note|default:"(none)" }}
+                {% endif %}
+            </td>
             <td>{{ correction.reason }}</td>
             <td>{{ correction.corrected_by }}</td>
         </tr>
         {% empty %}
         <tr>
-            <td colspan="5">No corrections recorded.</td>
+            <td colspan="6">No corrections recorded.</td>
         </tr>
         {% endfor %}
     </tbody>

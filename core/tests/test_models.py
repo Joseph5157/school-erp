@@ -1521,6 +1521,18 @@ class AttendanceFixtureMixin:
             date="2026-07-01",
         )
 
+    def capture_and_submit(self, *, enrollment, status, absence_note=""):
+        """Capture the fixture roster's single entry and submit the register.
+
+        Gate 6: corrections apply only to SUBMITTED attendance.
+        """
+        entry = self.register.capture(
+            enrollment=enrollment, status=status, absence_note=absence_note
+        )
+        submitter, _ = User.objects.get_or_create(username="register-submitter")
+        self.register.submit(actor=submitter)
+        return entry
+
 
 class AttendanceRegisterModelTests(AttendanceFixtureMixin, TestCase):
     def setUp(self):
@@ -1738,7 +1750,7 @@ class AttendanceEntryModelTests(AttendanceFixtureMixin, TestCase):
         self.assertEqual(AttendanceEntry.objects.count(), 1)
 
     def test_correction_records_history_and_updates_status(self):
-        entry = self.register.capture(
+        entry = self.capture_and_submit(
             enrollment=self.enrollment, status=AttendanceStatus.PRESENT
         )
 
@@ -1755,7 +1767,7 @@ class AttendanceEntryModelTests(AttendanceFixtureMixin, TestCase):
         self.assertEqual(correction.corrected_by, self.actor)
 
     def test_correction_history_is_preserved_across_changes(self):
-        entry = self.register.capture(
+        entry = self.capture_and_submit(
             enrollment=self.enrollment, status=AttendanceStatus.PRESENT
         )
 
@@ -1822,7 +1834,7 @@ class AttendanceEntryModelTests(AttendanceFixtureMixin, TestCase):
         self.assertFalse(AttendanceCorrection.objects.exists())
 
     def test_entry_with_correction_cannot_be_deleted(self):
-        entry = self.register.capture(
+        entry = self.capture_and_submit(
             enrollment=self.enrollment, status=AttendanceStatus.PRESENT
         )
         entry.record_status_change(
@@ -1834,7 +1846,7 @@ class AttendanceEntryModelTests(AttendanceFixtureMixin, TestCase):
         self.assertEqual(AttendanceEntry.objects.count(), 1)
 
     def test_correcting_user_with_correction_cannot_be_deleted(self):
-        entry = self.register.capture(
+        entry = self.capture_and_submit(
             enrollment=self.enrollment, status=AttendanceStatus.PRESENT
         )
         entry.record_status_change(
@@ -1953,7 +1965,7 @@ class AttendanceGate3AbsenceNoteTests(AttendanceFixtureMixin, TestCase):
         self.assertFalse(AttendanceEntry.objects.exists())
 
     def test_correcting_absent_to_present_clears_note(self):
-        entry = self.register.capture(
+        entry = self.capture_and_submit(
             enrollment=self.enrollment, status=AttendanceStatus.ABSENT, absence_note="Fever."
         )
 
@@ -1969,7 +1981,7 @@ class AttendanceGate3AbsenceNoteTests(AttendanceFixtureMixin, TestCase):
         self.assertEqual(correction.new_status, AttendanceStatus.PRESENT)
 
     def test_correcting_present_to_absent_works_without_note(self):
-        entry = self.register.capture(enrollment=self.enrollment, status=AttendanceStatus.PRESENT)
+        entry = self.capture_and_submit(enrollment=self.enrollment, status=AttendanceStatus.PRESENT)
 
         entry.record_status_change(AttendanceStatus.ABSENT, actor=self.actor, reason="Left early.")
 
@@ -2153,7 +2165,7 @@ class AttendanceGate3HistoryProtectionTests(AttendanceFixtureMixin, TestCase):
     def setUp(self):
         self.build_attendance_fixture()
         self.actor = User.objects.create_user(username="administrator", password="pass-12345")
-        self.entry = self.register.capture(
+        self.entry = self.capture_and_submit(
             enrollment=self.enrollment, status=AttendanceStatus.PRESENT
         )
         self.entry.record_status_change(
@@ -2537,3 +2549,147 @@ class AttendanceGate4Tests(TestCase):
 
         register.refresh_from_db()
         self.assertEqual(register.status, AttendanceRegister.Status.SUBMITTED)
+
+
+class AttendanceGate6CorrectionTests(AttendanceFixtureMixin, TestCase):
+    """Gate 6: DRAFT = normal edits; SUBMITTED = audited corrections."""
+
+    def setUp(self):
+        self.build_attendance_fixture()
+        self.actor = User.objects.create_user(username="administrator", password="pass-12345")
+
+    def test_draft_edit_creates_no_correction(self):
+        self.register.save_draft_entry(enrollment=self.enrollment, status=AttendanceStatus.ABSENT)
+        entry = self.register.save_draft_entry(
+            enrollment=self.enrollment, status=AttendanceStatus.PRESENT
+        )
+
+        entry.refresh_from_db()
+        self.assertEqual(entry.status, AttendanceStatus.PRESENT)
+        self.assertEqual(AttendanceEntry.objects.count(), 1)
+        self.assertFalse(AttendanceCorrection.objects.exists())
+
+    def test_draft_entry_cannot_be_corrected(self):
+        entry = self.register.capture(enrollment=self.enrollment, status=AttendanceStatus.PRESENT)
+
+        with self.assertRaisesMessage(ValidationError, "still a draft"):
+            entry.record_status_change(AttendanceStatus.ABSENT, actor=self.actor, reason="x")
+
+        entry.refresh_from_db()
+        self.assertEqual(entry.status, AttendanceStatus.PRESENT)
+        self.assertFalse(AttendanceCorrection.objects.exists())
+
+    def test_submitted_entry_cannot_be_draft_edited(self):
+        self.capture_and_submit(enrollment=self.enrollment, status=AttendanceStatus.PRESENT)
+
+        with self.assertRaisesMessage(ValidationError, "through a correction"):
+            self.register.save_draft_entry(
+                enrollment=self.enrollment, status=AttendanceStatus.ABSENT
+            )
+        self.assertEqual(AttendanceEntry.objects.get().status, AttendanceStatus.PRESENT)
+
+    def test_submitted_correction_records_full_history(self):
+        entry = self.capture_and_submit(
+            enrollment=self.enrollment, status=AttendanceStatus.ABSENT, absence_note="Fever"
+        )
+
+        entry.record_status_change(
+            AttendanceStatus.PRESENT, actor=self.actor, reason="Arrived after roll call."
+        )
+
+        correction = AttendanceCorrection.objects.get()
+        self.assertEqual(
+            (
+                correction.previous_status,
+                correction.new_status,
+                correction.previous_absence_note,
+                correction.new_absence_note,
+                correction.reason,
+                correction.corrected_by,
+            ),
+            ("ABSENT", "PRESENT", "Fever", "", "Arrived after roll call.", self.actor),
+        )
+        self.assertIsNotNone(correction.created_at)
+        entry.refresh_from_db()
+        self.assertEqual((entry.status, entry.absence_note), ("PRESENT", ""))
+
+    def test_correction_to_absent_can_record_note(self):
+        entry = self.capture_and_submit(
+            enrollment=self.enrollment, status=AttendanceStatus.PRESENT
+        )
+
+        entry.record_status_change(
+            AttendanceStatus.ABSENT, actor=self.actor, reason="Left early.", absence_note=" Ill "
+        )
+
+        entry.refresh_from_db()
+        self.assertEqual((entry.status, entry.absence_note), ("ABSENT", "Ill"))
+        self.assertEqual(AttendanceCorrection.objects.get().new_absence_note, "Ill")
+
+    def test_note_on_present_correction_rejected(self):
+        entry = self.capture_and_submit(enrollment=self.enrollment, status=AttendanceStatus.ABSENT)
+
+        with self.assertRaises(ValidationError):
+            entry.record_status_change(
+                AttendanceStatus.PRESENT, actor=self.actor, reason="x", absence_note="nope"
+            )
+        self.assertFalse(AttendanceCorrection.objects.exists())
+
+    def test_repeated_corrections_preserve_sequence(self):
+        entry = self.capture_and_submit(
+            enrollment=self.enrollment, status=AttendanceStatus.PRESENT
+        )
+        for status, reason in (
+            (AttendanceStatus.ABSENT, "first"),
+            (AttendanceStatus.PRESENT, "second"),
+            (AttendanceStatus.ABSENT, "third"),
+        ):
+            entry.record_status_change(status, actor=self.actor, reason=reason)
+
+        history = list(
+            entry.corrections.order_by("created_at", "pk").values_list(
+                "previous_status", "new_status", "reason"
+            )
+        )
+        self.assertEqual(
+            history,
+            [
+                ("PRESENT", "ABSENT", "first"),
+                ("ABSENT", "PRESENT", "second"),
+                ("PRESENT", "ABSENT", "third"),
+            ],
+        )
+        entry.refresh_from_db()
+        self.assertEqual(entry.status, AttendanceStatus.ABSENT)
+
+    def test_no_op_and_invalid_corrections_rejected(self):
+        entry = self.capture_and_submit(
+            enrollment=self.enrollment, status=AttendanceStatus.PRESENT
+        )
+
+        for status, reason, actor in (
+            (AttendanceStatus.PRESENT, "same", self.actor),
+            ("LATE", "legacy", self.actor),
+            (AttendanceStatus.ABSENT, "   ", self.actor),
+            (AttendanceStatus.ABSENT, "no actor", None),
+        ):
+            with self.subTest(status=status, reason=reason), self.assertRaises(ValidationError):
+                entry.record_status_change(status, actor=actor, reason=reason)
+        self.assertFalse(AttendanceCorrection.objects.exists())
+
+    def test_correction_leaves_historical_context_unchanged(self):
+        entry = self.capture_and_submit(
+            enrollment=self.enrollment, status=AttendanceStatus.PRESENT
+        )
+        before = AttendanceRegister.objects.filter(pk=self.register.pk).values(
+            "academic_year_id", "class_grade_id", "section_id", "date", "status",
+            "submitted_by_id", "submitted_at",
+        ).get()
+
+        entry.record_status_change(AttendanceStatus.ABSENT, actor=self.actor, reason="x")
+
+        entry.refresh_from_db()
+        self.assertEqual(entry.academic_enrollment_id, self.enrollment.pk)
+        self.assertEqual(entry.register_id, self.register.pk)
+        after = AttendanceRegister.objects.filter(pk=self.register.pk).values(*before).get()
+        self.assertEqual(after, before)

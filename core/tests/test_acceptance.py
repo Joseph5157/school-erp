@@ -283,6 +283,13 @@ class Phase2AcceptanceJourneyTests(TestCase):
         self.assertContains(response, "Ravi Rao")
         self.assertContains(response, "Present")
 
+        # Submit the complete register; corrections apply to submitted attendance.
+        response = self.client.post(
+            reverse("core:attendance-register-submit", args=[register.pk])
+        )
+        register.refresh_from_db()
+        self.assertEqual(register.status, AttendanceRegister.Status.SUBMITTED)
+
         # Correct the captured status with a recorded reason.
         response = self.client.post(
             reverse("core:attendance-entry-correct", args=[entry.pk]),
