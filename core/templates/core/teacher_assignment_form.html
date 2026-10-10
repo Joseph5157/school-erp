@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Assign a teacher{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Assign a teacher <small class="text-muted">{{ academic_year.name }}</small></h1>
+<form method="post">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">Assign</button>
+    <a class="btn btn-link" href="{% url 'core:academic-year-teacher-assignments' academic_year.pk %}">Cancel</a>
+</form>
+{% endblock %}

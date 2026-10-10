@@ -97,8 +97,12 @@ Historical integrity
   silently edited, grading-policy changes never silently rewrite finalized
   grades, and deletion is restricted once results depend on a record.
 
+DECIDED (Gate 1):
+- An offering's Section scope is an explicit link table: no linked Sections
+  means all Sections of the Grade; linked Sections must belong to the Grade.
+  Terms of one year may not overlap.
+
 OPEN (decided in the named gate, not here):
-- How Section scope is stored on an offering (Gate 1).
 - How grading context is preserved for finalized results — snapshot on the
   result vs. immutable scale versions (Gate 3, before Gate 6 finalization).
 - Whether a correction may also be made while the assessment is still DRAFT

@@ -90,6 +90,9 @@ class SchoolAdministratorsGroupMigrationTests(TestCase):
                 "add_academicsubjectofferingsection",
                 "change_academicsubjectofferingsection",
                 "view_academicsubjectofferingsection",
+                "add_assessmentteacherassignment",
+                "delete_assessmentteacherassignment",
+                "view_assessmentteacherassignment",
             },
         )
 

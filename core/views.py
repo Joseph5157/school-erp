@@ -32,6 +32,7 @@ from core.forms import (
     StudentStatusForm,
     SubjectForm,
     SubjectOfferingForm,
+    TeacherAssignmentForm,
 )
 from core.models import (
     AcademicEnrollment,
@@ -39,6 +40,7 @@ from core.models import (
     AcademicTerm,
     AcademicYear,
     Applicant,
+    AssessmentTeacherAssignment,
     AttendanceEntry,
     AttendanceRegister,
     AttendanceStatus,
@@ -374,6 +376,70 @@ def offering_update(request, pk):
         "core/offering_form.html",
         {"form": form, "academic_year": offering.academic_year, "offering": offering},
     )
+
+
+# --- Phase 4 Gate 2: assessment teacher assignments (ADR 0010) -------------
+
+
+@administrator_required("core.view_assessmentteacherassignment")
+def academic_year_teacher_assignments(request, pk):
+    academic_year = get_object_or_404(AcademicYear, pk=pk)
+    assignments = (
+        AssessmentTeacherAssignment.objects.filter(offering__academic_year=academic_year)
+        .select_related("teacher", "offering__class_grade", "offering__subject", "section")
+        .order_by("offering__class_grade__name", "offering__subject__name", "section__name")
+    )
+    form = TeacherAssignmentForm(academic_year=academic_year)
+    return render(
+        request,
+        "core/teacher_assignments.html",
+        {
+            "academic_year": academic_year,
+            "assignments": assignments,
+            "form": form,
+            "teacher_count": form.fields["teacher"].queryset.count(),
+        },
+    )
+
+
+@administrator_required("core.add_assessmentteacherassignment")
+def teacher_assignment_create(request, pk):
+    academic_year = get_object_or_404(AcademicYear, pk=pk)
+    form = TeacherAssignmentForm(request.POST or None, academic_year=academic_year)
+    if request.method == "POST" and form.is_valid():
+        assignment = AssessmentTeacherAssignment(
+            teacher=form.cleaned_data["teacher"],
+            offering=form.cleaned_data["offering"],
+            section=form.cleaned_data["section"],
+        )
+        try:
+            with transaction.atomic():
+                assignment.full_clean()
+                assignment.save()
+        except ValidationError as error:
+            form.add_error(None, error)
+        except IntegrityError:
+            form.add_error(None, "A teacher is already assigned to this Subject and Section.")
+        else:
+            messages.success(request, "Teacher assigned.")
+            return redirect("core:academic-year-teacher-assignments", pk=academic_year.pk)
+    return render(
+        request,
+        "core/teacher_assignment_form.html",
+        {"form": form, "academic_year": academic_year},
+    )
+
+
+@administrator_required("core.delete_assessmentteacherassignment")
+def teacher_assignment_delete(request, pk):
+    assignment = get_object_or_404(
+        AssessmentTeacherAssignment.objects.select_related("offering"), pk=pk
+    )
+    year_pk = assignment.offering.academic_year_id
+    if request.method == "POST":
+        assignment.delete()
+        messages.success(request, "Teacher assignment removed.")
+    return redirect("core:academic-year-teacher-assignments", pk=year_pk)
 
 
 @administrator_required("core.view_classgrade")

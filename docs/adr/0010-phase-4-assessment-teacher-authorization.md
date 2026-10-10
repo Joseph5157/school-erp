@@ -36,10 +36,21 @@ FROZEN:
   authorization foundation of ADR 0004 rather than being re-implemented per
   view.
 
-OPEN (Gate 2):
-- How a teacher login is recognized (for example a "Teachers" group) and
-  whether a separate staff profile record is needed; ADR 0004 already forbids
-  using a domain entity as the login itself.
+DECIDED (Gate 2):
+- A teacher is an active login in the "Teachers" group. There is no separate
+  staff profile record. The group carries no model permissions: what a
+  teacher may do is decided only by their assignments. Logins are added to
+  the group through the site administration.
+- Each offering + Section has exactly one owning teacher; one teacher may
+  hold several assignments. Shared ownership of one result workflow would
+  need a new decision.
+- An offering's Section scope cannot drop a Section that has an assigned
+  teacher.
+- Leaving the group or being deactivated removes result-entry rights
+  immediately. Administrator permissions and superuser status do not make
+  someone a result-entering teacher.
+- Reusable checks live in `core.authorization`: `is_teacher`,
+  `teacher_assignments` and `can_enter_results`.
 
 ## Consequences
 

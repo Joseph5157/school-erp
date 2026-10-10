@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Teacher assignments - {{ academic_year.name }}{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Teacher assignments: {{ academic_year.name }}</h1>
+<p class="text-muted">
+    Each Subject offering and Section has one teacher who enters its marks.
+    A teacher is a login in the <strong>Teachers</strong> group ({{ teacher_count }} active);
+    add logins to that group in the site administration.
+</p>
+{% if perms.core.add_assessmentteacherassignment %}
+    <a class="btn btn-primary mb-3" href="{% url 'core:teacher-assignment-create' academic_year.pk %}">Assign a teacher</a>
+{% endif %}
+<table class="table">
+    <thead><tr><th>Class/Grade</th><th>Subject</th><th>Section</th><th>Teacher</th><th></th></tr></thead>
+    <tbody>
+        {% for assignment in assignments %}
+        <tr>
+            <td>{{ assignment.offering.class_grade }}</td>
+            <td>{{ assignment.offering.subject }}</td>
+            <td>{{ assignment.section.name }}</td>
+            <td>{{ assignment.teacher.get_full_name|default:assignment.teacher.username }}</td>
+            <td class="text-end">
+                {% if perms.core.delete_assessmentteacherassignment %}
+                <form method="post" action="{% url 'core:teacher-assignment-delete' assignment.pk %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-danger btn-sm">Remove</button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5">No teachers assigned in this Academic Year yet.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
