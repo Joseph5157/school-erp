@@ -2511,3 +2511,37 @@ class AttendanceReportViewTests(AuthorizationClientsMixin, AttendanceFixtureMixi
         self.assertIsNone(response.context["percentage"])
         self.assertEqual(len(response.context["entries"]), 1)  # history still shows it
         self.assertContains(response, "Draft")
+
+
+class AppWideAuthorizationSweepTests(AuthorizationClientsMixin, TestCase):
+    """Gate 8: every core URL requires login and the administrator permission."""
+
+    def _urls(self):
+        from django.urls import URLPattern
+
+        from core import urls as core_urls
+
+        for pattern in core_urls.urlpatterns:
+            assert isinstance(pattern, URLPattern)
+            kwargs = {"pk": 1} if "pk" in pattern.pattern.regex.groupindex else {}
+            yield pattern.name, reverse(f"core:{pattern.name}", kwargs=kwargs)
+
+    def test_every_url_is_covered(self):
+        names = [name for name, _ in self._urls()]
+        self.assertGreaterEqual(len(names), 30)
+        self.assertEqual(len(names), len(set(names)))
+
+    def test_anonymous_is_sent_to_login_everywhere(self):
+        for name, url in self._urls():
+            for method in ("get", "post"):
+                with self.subTest(url=name, method=method):
+                    response = getattr(self.anonymous, method)(url)
+                    self.assertEqual(response.status_code, 302)
+                    self.assertTrue(response["Location"].startswith(reverse("login")))
+
+    def test_non_administrator_is_forbidden_everywhere(self):
+        for name, url in self._urls():
+            for method in ("get", "post"):
+                with self.subTest(url=name, method=method):
+                    response = getattr(self.non_admin, method)(url)
+                    self.assertEqual(response.status_code, 403)

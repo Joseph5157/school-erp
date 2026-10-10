@@ -7,6 +7,7 @@ from django.db import IntegrityError, connection, transaction
 from django.db.migrations.executor import MigrationExecutor
 from django.db.models import ProtectedError
 from django.test import TestCase, TransactionTestCase, override_settings
+from django.urls import reverse
 from django.utils import timezone
 
 from core import reports
@@ -2262,7 +2263,7 @@ class AttendanceLegacyStatusMigrationTests(TransactionTestCase):
         )
         if correction is not None:
             user = User_.objects.create(username="legacy-admin")
-            Correction_.objects.create(
+            self.legacy_correction = Correction_.objects.create(
                 entry=entry,
                 previous_status=correction[0],
                 new_status=correction[1],
@@ -2285,7 +2286,10 @@ class AttendanceLegacyStatusMigrationTests(TransactionTestCase):
         apps = self._migrate(self.before)
         self._seed_legacy(apps, entry_status="PRESENT", correction=("EXCUSED", "PRESENT"))
 
-        with self.assertRaisesMessage(RuntimeError, "AttendanceCorrection ids [1]"):
+        # Assert the real id: PostgreSQL does not reset sequences between tests.
+        legacy_id = self.legacy_correction.pk
+        expected = f"AttendanceEntry ids [] and AttendanceCorrection ids [{legacy_id}]"
+        with self.assertRaisesMessage(RuntimeError, expected):
             self._migrate(self.after)
 
     def test_reconciled_data_migrates_and_registers_become_draft(self):
@@ -2891,3 +2895,93 @@ class AttendanceReportingTests(TestCase):
         self.assertIn(self.ravi, [row["student"] for row in summary["rows"]])
         rows = {row["student"]: row for row in summary["rows"]}
         self.assertEqual(rows[self.ravi]["present"], 1)
+
+
+@mock.patch("core.models.business_today", new=lambda: date(2026, 10, 10))
+class AttendanceQueryCountTests(TestCase):
+    """Gate 8: list and report paths do not grow queries with the data (no N+1)."""
+
+    def setUp(self):
+        from django.test import Client
+
+        self.year = AcademicYear.objects.create(
+            name="2026-2027", start_date=date(2026, 6, 1), end_date=date(2027, 4, 30)
+        )
+        self.grade = ClassGrade.objects.create(name="Grade 1")
+        self.section = Section.objects.create(class_grade=self.grade, name="A")
+        self.admin = User.objects.create_superuser("root", "r@example.com", "pass-12345")
+        self.http = Client()
+        self.http.force_login(self.admin)
+        self.students = []
+
+    def _grow(self, n_students, days):
+        for _ in range(n_students):
+            name = f"Student {len(self.students):03d}"
+            student = Student.objects.create(
+                applicant=Applicant.objects.create(full_name=name), full_name=name
+            )
+            student.enroll(
+                academic_year=self.year,
+                class_grade=self.grade,
+                section=self.section,
+                start_date=date(2026, 6, 1),
+            )
+            self.students.append(student)
+        for on_date in days:
+            register, _ = AttendanceRegister.objects.get_or_create(
+                academic_year=self.year, class_grade=self.grade, section=self.section, date=on_date
+            )
+            for enrollment in register.unmarked_enrollments():
+                register.capture(enrollment=enrollment, status=AttendanceStatus.PRESENT)
+            if not register.is_submitted:
+                register.submit(actor=self.admin)
+
+    def _queries(self, url, params=None):
+        from django.db import connection as db_connection
+        from django.test.utils import CaptureQueriesContext
+
+        with CaptureQueriesContext(db_connection) as ctx:
+            response = self.http.get(url, params or {})
+        self.assertEqual(response.status_code, 200)
+        return len(ctx.captured_queries)
+
+    def _assert_flat(self, url, params=None):
+        self._grow(2, [date(2026, 7, 1)])
+        small = self._queries(url, params)
+        self._grow(6, [date(2026, 7, 2), date(2026, 7, 3), date(2026, 7, 6)])
+        large = self._queries(url, params)
+        self.assertEqual(small, large, f"query count grew with data for {url}")
+
+    def test_register_list(self):
+        self._assert_flat(reverse("core:attendance-register-list"), {"section": self.section.pk})
+
+    def test_register_detail(self):
+        self._grow(1, [])
+        register = AttendanceRegister.objects.create(
+            academic_year=self.year, class_grade=self.grade, section=self.section,
+            date=date(2026, 7, 7),
+        )
+        url = reverse("core:attendance-register-detail", args=[register.pk])
+        small = self._queries(url)
+        self._grow(6, [])
+        self.assertEqual(small, self._queries(url))
+
+    def test_student_history(self):
+        self._grow(1, [])
+        url = reverse("core:student-attendance", args=[self.students[0].pk])
+        self._assert_flat(url)
+
+    def test_missing_report(self):
+        self._assert_flat(
+            reverse("core:report-missing-attendance"),
+            {"start": "2026-06-01", "end": "2026-07-31"},
+        )
+
+    def test_monthly_summary(self):
+        self._assert_flat(
+            reverse("core:report-monthly-section"),
+            {"section": self.section.pk, "month": "2026-07"},
+        )
+
+    def test_daily_absentees(self):
+        self._assert_flat(reverse("core:report-daily-absentees"), {"date": "2026-07-01"})
