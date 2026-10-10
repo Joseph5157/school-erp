@@ -11,6 +11,10 @@
     <dd class="col-sm-9">{{ register.section }}</dd>
     <dt class="col-sm-3">Date</dt>
     <dd class="col-sm-9">{{ register.date }}</dd>
+    <dt class="col-sm-3">Register status</dt>
+    <dd class="col-sm-9">
+        <span class="badge {% if register.status == 'SUBMITTED' %}bg-success{% else %}bg-secondary{% endif %}">{{ register.get_status_display }}</span>
+    </dd>
 </dl>
 
 {% if capture_form.enrollments %}
@@ -32,6 +36,7 @@
         <tr>
             <th>Student</th>
             <th>Status</th>
+            <th>Absence note</th>
             {% if perms.core.change_attendanceentry %}<th>Actions</th>{% endif %}
         </tr>
     </thead>
@@ -40,13 +45,14 @@
         <tr>
             <td><a href="{% url 'core:student-detail' entry.academic_enrollment.student.pk %}">{{ entry.academic_enrollment.student.full_name }}</a></td>
             <td>{{ entry.get_status_display }}</td>
+            <td>{{ entry.absence_note }}</td>
             {% if perms.core.change_attendanceentry %}
             <td><a href="{% url 'core:attendance-entry-correct' entry.pk %}">Correct</a></td>
             {% endif %}
         </tr>
         {% empty %}
         <tr>
-            <td colspan="3">No attendance captured yet.</td>
+            <td colspan="4">No attendance captured yet.</td>
         </tr>
         {% endfor %}
     </tbody>

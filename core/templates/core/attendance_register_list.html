@@ -43,6 +43,7 @@
             <th>Academic year</th>
             <th>Class/Grade</th>
             <th>Section</th>
+            <th>Status</th>
             <th>Entries</th>
         </tr>
     </thead>
@@ -53,11 +54,12 @@
             <td>{{ register.academic_year }}</td>
             <td>{{ register.class_grade }}</td>
             <td>{{ register.section }}</td>
+            <td>{{ register.get_status_display }}</td>
             <td>{{ register.entry_count }}</td>
         </tr>
         {% empty %}
         <tr>
-            <td colspan="5">No attendance registers yet.</td>
+            <td colspan="6">No attendance registers yet.</td>
         </tr>
         {% endfor %}
     </tbody>
