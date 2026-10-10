@@ -1,10 +1,12 @@
+import re
 from datetime import date
 from io import StringIO
 from unittest import mock
 
+from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.core.management.base import CommandError
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from core.models import (
     AcademicEnrollment,
@@ -17,9 +19,12 @@ from core.models import (
     Student,
 )
 
+User = get_user_model()
+
 PINNED_TODAY = date(2026, 10, 9)  # A Friday.
 
 
+@override_settings(DEBUG=True)
 @mock.patch("core.models.business_today", new=lambda: PINNED_TODAY)
 @mock.patch("core.management.commands.seed_demo.business_today", new=lambda: PINNED_TODAY)
 class SeedDemoCommandTests(TestCase):
@@ -67,3 +72,17 @@ class SeedDemoCommandTests(TestCase):
         with self.assertRaises(CommandError):
             self.seed()
         self.assertEqual(Student.objects.count(), 36)
+
+    @override_settings(DEBUG=False)
+    def test_refuses_to_run_without_debug(self):
+        with self.assertRaises(CommandError):
+            call_command("seed_demo", stdout=StringIO())
+        self.assertFalse(Student.objects.exists())
+        self.assertFalse(User.objects.filter(username="demo_admin").exists())
+
+    def test_printed_password_logs_in_demo_admin(self):
+        out = StringIO()
+        call_command("seed_demo", stdout=out)
+        match = re.search(r"demo_admin / (\S+)", out.getvalue())
+        self.assertIsNotNone(match, out.getvalue())
+        self.assertTrue(User.objects.get(username="demo_admin").check_password(match.group(1)))

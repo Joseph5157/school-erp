@@ -12,7 +12,9 @@ so a failure leaves nothing behind.
 
 import datetime
 import random
+import secrets
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.core.management.base import BaseCommand, CommandError
@@ -34,7 +36,6 @@ from core.models import (
 )
 
 DEMO_ADMIN_USERNAME = "demo_admin"
-DEMO_ADMIN_PASSWORD = "DemoPass#2026"
 ADMIN_GROUP_NAME = "School Administrators"
 
 CLASS_GRADES = ["Grade 1", "Grade 2", "Grade 3"]
@@ -66,19 +67,32 @@ class Command(BaseCommand):
         "enrollments and recent attendance) for manual testing."
     )
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--allow-non-debug",
+            action="store_true",
+            help="Run even when DEBUG is off (never on a real school's database).",
+        )
+
     def handle(self, *args, **options):
+        if not settings.DEBUG and not options["allow_non_debug"]:
+            raise CommandError(
+                "seed_demo creates a demo staff login and is for local use only. "
+                "Set DJANGO_DEBUG=True, or pass --allow-non-debug if you are sure."
+            )
         if ClassGrade.objects.exists() or Applicant.objects.exists():
             raise CommandError(
                 "Classes or applicants already exist; seed_demo only runs on an empty "
                 "school. Use a fresh database to reseed."
             )
         self.rng = random.Random(2026)
+        self.demo_password = secrets.token_urlsafe(12)
         self.today = business_today()
         self.name_pool = iter(self._unique_names())
 
         with transaction.atomic():
             school = self._school()
-            admin = self._demo_admin()
+            admin, admin_created = self._demo_admin()
             year = self._academic_year()
             self._calendar(year)
             sections = self._classes_and_sections()
@@ -89,8 +103,12 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS(f"Demo data created for {school}."))
         self.stdout.write(f"  Academic year: {year} ({year.start_date} to {year.end_date})")
+        if admin_created:
+            login = f"{DEMO_ADMIN_USERNAME} / {self.demo_password}"
+        else:
+            login = f"{DEMO_ADMIN_USERNAME} (existing user; password unchanged)"
         self.stdout.write(
-            f"  Demo staff login: {DEMO_ADMIN_USERNAME} / {DEMO_ADMIN_PASSWORD} "
+            f"  Demo staff login: {login} "
             f"(member of '{ADMIN_GROUP_NAME}', not a superuser)"
         )
 
@@ -111,10 +129,10 @@ class Command(BaseCommand):
             defaults={"first_name": "Demo", "last_name": "Admin"},
         )
         if created:
-            user.set_password(DEMO_ADMIN_PASSWORD)
+            user.set_password(self.demo_password)
             user.save()
         user.groups.add(Group.objects.get(name=ADMIN_GROUP_NAME))
-        return user
+        return user, created
 
     def _academic_year(self):
         # Indian academic calendar: June to March.
