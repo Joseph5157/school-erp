@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}My assessments{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">My assessments</h1>
+<p class="text-muted">
+    You enter marks for:
+    {% for duty in duties %}{{ duty.offering.subject.name }} {{ duty.section }} ({{ duty.offering.academic_year.name }}){% if not forloop.last %}; {% endif %}{% empty %}nothing yet &mdash; ask an administrator to assign you.{% endfor %}
+</p>
+<table class="table">
+    <thead><tr><th>Date</th><th>Subject</th><th>Section</th><th>Assessment</th><th>Max</th><th>Status</th></tr></thead>
+    <tbody>
+        {% for assessment in assessments %}
+        <tr>
+            <td>{{ assessment.assessment_date }}</td>
+            <td>{{ assessment.offering.subject.name }}</td>
+            <td>{{ assessment.section }}</td>
+            <td><a href="{% url 'core:assessment-marks-entry' assessment.pk %}">{{ assessment.name }}</a></td>
+            <td>{{ assessment.maximum_marks }}</td>
+            <td>{{ assessment.get_status_display }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6">No assessments for your Subjects and Sections yet.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

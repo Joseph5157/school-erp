@@ -1,0 +1,26 @@
+{# Read-only roster with results. Context: assessment, rows, marked_count, ineligible_results #}
+<p class="text-muted">
+    Roster on {{ assessment.assessment_date }}: {{ rows|length }} Student(s); results entered: {{ marked_count }}.
+    A Student without a result is <strong>not</strong> absent &mdash; entry is incomplete.
+</p>
+<table class="table">
+    <thead><tr><th>Student</th><th>Result</th><th>Score</th><th>Entered by</th></tr></thead>
+    <tbody>
+        {% for enrollment, result in rows %}
+        <tr>
+            <td>{{ enrollment.student.full_name }}</td>
+            <td>{% if result %}{{ result.get_status_display }}{% else %}<span class="text-muted">Not entered</span>{% endif %}</td>
+            <td>{% if result and result.status == "MARKED" %}{{ result.score }} / {{ assessment.maximum_marks }}{% endif %}</td>
+            <td>{% if result %}{{ result.entered_by }}{% endif %}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4">No Students are enrolled in this Section on the assessment date.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% if ineligible_results %}
+<div class="alert alert-danger">
+    {{ ineligible_results|length }} result(s) belong to Students no longer on this assessment's roster:
+    {% for result in ineligible_results %}{{ result.academic_enrollment.student.full_name }}{% if not forloop.last %}, {% endif %}{% endfor %}.
+</div>
+{% endif %}

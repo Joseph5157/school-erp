@@ -1845,6 +1845,85 @@ class Assessment(models.Model):
             )
         return super().delete(*args, **kwargs)
 
+    # --- roster and DRAFT result entry (Gate 5) ---
+
+    def roster(self):
+        """Enrollments eligible on the assessment date (ADR 0006/0009).
+
+        Effective on the date, in the offering's Academic Year and Grade, and
+        in this assessment's Section - never just the current placement.
+        """
+        return (
+            AcademicEnrollment.objects.effective_on(self.assessment_date)
+            .filter(
+                academic_year_id=self.offering.academic_year_id,
+                class_grade_id=self.offering.class_grade_id,
+                section_id=self.section_id,
+            )
+            .select_related("student")
+            .order_by("student__full_name", "pk")
+        )
+
+    def unmarked_enrollments(self):
+        return self.roster().exclude(assessment_results__assessment=self)
+
+    def ineligible_results(self):
+        return self.results.exclude(academic_enrollment__in=self.roster().values("pk"))
+
+    @property
+    def is_open_for_entry(self):
+        return (
+            self.status == self.Status.DRAFT
+            and _as_date(self.assessment_date) <= business_today()
+        )
+
+    def _lock(self):
+        return (
+            Assessment.objects.select_for_update()
+            .filter(pk=self.pk)
+            .values_list("status", flat=True)
+            .get()
+        )
+
+    def save_draft_result(self, *, enrollment, status, score=None, actor):
+        """Create or update one Student's DRAFT result (Gate 5).
+
+        Only the teacher assigned to this offering and Section may enter
+        results (ADR 0010), only from the assessment date, and only while the
+        assessment is DRAFT. The enrollment must be on the date-effective
+        roster. Editing a DRAFT result is a normal edit, not a correction.
+        """
+        from core.authorization import can_enter_results
+
+        if not can_enter_results(actor, self.offering, self.section):
+            raise ValidationError(
+                "Only the teacher assigned to this Subject and Section can enter results."
+            )
+        if _as_date(self.assessment_date) > business_today():
+            raise ValidationError("Results cannot be entered before the assessment date.")
+        if status == ResultStatus.ABSENT:
+            score = None
+        result = self.results.filter(academic_enrollment=enrollment).first() or StudentResult(
+            assessment=self, academic_enrollment=enrollment
+        )
+        result.status = status
+        result.score = None if score in (None, "") else Decimal(str(score))
+        result.entered_by = actor
+        result.full_clean(validate_constraints=False)
+        try:
+            with transaction.atomic():
+                if self._lock() != self.Status.DRAFT:
+                    raise ValidationError(
+                        "This assessment is finalized; results can only be corrected by an "
+                        "administrator."
+                    )
+                result.save()
+        except IntegrityError:
+            raise ValidationError(
+                "This Student already has a result for this assessment."
+            ) from None
+        return result
+
     @property
     def class_grade(self):
         return self.offering.class_grade
@@ -1855,3 +1934,92 @@ class Assessment(models.Model):
 
     def __str__(self):
         return f"{self.offering.subject.name} {self.section} - {self.name}"
+
+
+# ---------------------------------------------------------------------------
+# Phase 4 Gate 5 - date-effective roster and DRAFT results (ADR 0009/0010)
+# ---------------------------------------------------------------------------
+
+
+class ResultStatus(models.TextChoices):
+    """Exactly MARKED and ABSENT. ABSENT is never stored as a zero score."""
+
+    MARKED = "MARKED", "Marked"
+    ABSENT = "ABSENT", "Absent"
+
+
+class StudentResult(models.Model):
+    """One eligible enrollment's result in one assessment (ADR 0009).
+
+    MARKED requires 0 <= score <= the assessment's maximum marks; ABSENT has
+    no score (DB check for the status/score pairing and non-negative score;
+    the maximum is checked in clean()). The result references the
+    AcademicEnrollment effective on the assessment date, so later transfers
+    never rewrite it. A missing result means entry is incomplete - never
+    ABSENT.
+    """
+
+    assessment = models.ForeignKey(Assessment, on_delete=models.PROTECT, related_name="results")
+    academic_enrollment = models.ForeignKey(
+        AcademicEnrollment, on_delete=models.PROTECT, related_name="assessment_results"
+    )
+    status = models.CharField(max_length=10, choices=ResultStatus.choices)
+    score = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    entered_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="entered_results"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["assessment", "academic_enrollment__student__full_name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["assessment", "academic_enrollment"],
+                name="studentresult_unique_assessment_enrollment",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(status="MARKED", score__isnull=False, score__gte=0)
+                    | models.Q(status="ABSENT", score__isnull=True)
+                ),
+                name="studentresult_status_matches_score",
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        if self.status == ResultStatus.MARKED:
+            if self.score is None:
+                raise ValidationError({"score": "A marked result needs a score."})
+            if self.score < 0:
+                raise ValidationError({"score": "A score cannot be negative."})
+            if self.assessment_id and self.score > self.assessment.maximum_marks:
+                raise ValidationError(
+                    {"score": f"A score cannot exceed {self.assessment.maximum_marks}."}
+                )
+        elif self.status == ResultStatus.ABSENT and self.score is not None:
+            raise ValidationError({"score": "An absent result has no score."})
+        if self.assessment_id and self.academic_enrollment_id:
+            if not self.assessment.roster().filter(pk=self.academic_enrollment_id).exists():
+                raise ValidationError(
+                    {
+                        "academic_enrollment": (
+                            "This Student is not on the assessment's roster for its date."
+                        )
+                    }
+                )
+
+    @property
+    def student(self):
+        return self.academic_enrollment.student
+
+    @property
+    def percentage(self):
+        if self.status != ResultStatus.MARKED or self.score is None:
+            return None
+        return (self.score * 100 / self.assessment.maximum_marks).quantize(Decimal("0.01"))
+
+    def __str__(self):
+        shown = self.score if self.status == ResultStatus.MARKED else "Absent"
+        return f"{self.assessment} - {self.academic_enrollment.student}: {shown}"

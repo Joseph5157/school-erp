@@ -8,7 +8,7 @@
     <dt class="col-sm-3">Date</dt><dd class="col-sm-9">{{ assessment.assessment_date }}</dd>
     <dt class="col-sm-3">Maximum marks</dt><dd class="col-sm-9">{{ assessment.maximum_marks }}</dd>
     <dt class="col-sm-3">Pass mark</dt><dd class="col-sm-9">{{ assessment.pass_mark|default:"None (no pass/fail)" }}</dd>
-    <dt class="col-sm-3">Status</dt><dd class="col-sm-9">{{ assessment.get_status_display }}</dd>
+    <dt class="col-sm-3">Status</dt><dd class="col-sm-9">{{ assessment.get_status_display }}{% if assessment.is_locked and not assessment.is_finalized %} (results entered; context locked){% endif %}</dd>
 </dl>
 {% block assessment_actions %}
 {% if not assessment.is_finalized %}
@@ -21,5 +21,8 @@
     {% endif %}
 {% endif %}
 {% endblock %}
+<h2 class="h5 mt-4">Results</h2>
+<p>Teacher: {% if teacher %}{{ teacher.get_full_name|default:teacher.username }}{% else %}<span class="text-danger">no teacher assigned for this Subject and Section</span>{% endif %}</p>
+{% include "core/_assessment_results.html" %}
 <p class="mt-3"><a href="{% url 'core:academic-year-assessments' assessment.term.academic_year_id %}">All assessments</a></p>
 {% endblock %}
