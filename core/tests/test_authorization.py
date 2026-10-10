@@ -78,6 +78,18 @@ class SchoolAdministratorsGroupMigrationTests(TestCase):
                 "change_schoolcalendarday",
                 "delete_schoolcalendarday",
                 "view_schoolcalendarday",
+                "add_subject",
+                "change_subject",
+                "view_subject",
+                "add_academicterm",
+                "change_academicterm",
+                "view_academicterm",
+                "add_academicsubjectoffering",
+                "change_academicsubjectoffering",
+                "view_academicsubjectoffering",
+                "add_academicsubjectofferingsection",
+                "change_academicsubjectofferingsection",
+                "view_academicsubjectofferingsection",
             },
         )
 

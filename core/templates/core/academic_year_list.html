@@ -26,6 +26,12 @@
                 {% if perms.core.view_schoolcalendarday %}
                     <a href="{% url 'core:academic-year-calendar' academic_year.pk %}">Calendar</a>
                 {% endif %}
+                {% if perms.core.view_academicterm %}
+                    &middot; <a href="{% url 'core:academic-year-terms' academic_year.pk %}">Terms</a>
+                {% endif %}
+                {% if perms.core.view_academicsubjectoffering %}
+                    &middot; <a href="{% url 'core:academic-year-offerings' academic_year.pk %}">Subjects offered</a>
+                {% endif %}
             </td>
         </tr>
         {% empty %}

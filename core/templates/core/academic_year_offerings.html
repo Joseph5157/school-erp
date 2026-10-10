@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Subjects offered - {{ academic_year.name }}{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Subjects offered: {{ academic_year.name }}</h1>
+{% if perms.core.add_academicsubjectoffering %}
+    <a class="btn btn-primary mb-3" href="{% url 'core:offering-create' academic_year.pk %}">Offer a Subject</a>
+{% endif %}
+<table class="table">
+    <thead><tr><th>Class/Grade</th><th>Subject</th><th>Sections</th><th></th></tr></thead>
+    <tbody>
+        {% for offering in offerings %}
+        <tr>
+            <td>{{ offering.class_grade }}</td>
+            <td>{{ offering.subject }}</td>
+            <td>
+                {% for link in offering.section_links.all %}{{ link.section.name }}{% if not forloop.last %}, {% endif %}{% empty %}All Sections{% endfor %}
+            </td>
+            <td>{% if perms.core.change_academicsubjectoffering %}<a href="{% url 'core:offering-update' offering.pk %}">Edit Sections</a>{% endif %}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4">No Subjects offered in this Academic Year yet.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<h2 class="h5 mt-4">Which Subjects does a Section take?</h2>
+<form method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-auto">{{ lookup.section.label_tag }} {{ lookup.section }}</div>
+    <div class="col-auto">{{ lookup.term.label_tag }} {{ lookup.term }}</div>
+    <div class="col-auto"><button type="submit" class="btn btn-outline-secondary">Show</button></div>
+</form>
+{% if offered is not None %}
+<ul>
+    {% for offering in offered %}<li>{{ offering.subject }}</li>{% empty %}<li>No Subjects offered to this Section.</li>{% endfor %}
+</ul>
+{% endif %}
+{% endblock %}

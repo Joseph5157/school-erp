@@ -3,6 +3,8 @@ from django.core.exceptions import ValidationError
 
 from core.models import (
     AcademicEnrollment,
+    AcademicSubjectOffering,
+    AcademicTerm,
     AcademicYear,
     Applicant,
     ApplicantGuardian,
@@ -14,6 +16,7 @@ from core.models import (
     SchoolCalendarDay,
     Section,
     Student,
+    Subject,
 )
 
 
@@ -85,6 +88,104 @@ class SchoolCalendarDayLabelForm(forms.ModelForm):
 
 class CalendarDateCheckForm(forms.Form):
     date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
+
+
+class SubjectForm(forms.ModelForm):
+    class Meta:
+        model = Subject
+        fields = ["name", "code", "is_active"]
+        labels = {"is_active": "Active"}
+        help_texts = {"code": "Optional short code, e.g. MATH. Stored in capitals."}
+
+
+class AcademicTermForm(forms.ModelForm):
+    """Create or change a Term; `academic_year` comes from the URL."""
+
+    class Meta:
+        model = AcademicTerm
+        fields = ["name", "start_date", "end_date", "display_order"]
+        widgets = {
+            "start_date": forms.DateInput(attrs={"type": "date"}),
+            "end_date": forms.DateInput(attrs={"type": "date"}),
+        }
+
+    def __init__(self, *args, academic_year=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if academic_year is not None:
+            self.instance.academic_year = academic_year
+
+    def clean(self):
+        cleaned_data = super().clean()
+        year = self.instance.academic_year
+        for field in ("name", "display_order"):
+            value = cleaned_data.get(field)
+            if value in (None, ""):
+                continue
+            clash = AcademicTerm.objects.filter(academic_year=year, **{field: value})
+            if self.instance.pk is not None:
+                clash = clash.exclude(pk=self.instance.pk)
+            if clash.exists():
+                self.add_error(field, "Another Term in this Academic Year already uses this.")
+        return cleaned_data
+
+
+class SubjectOfferingForm(forms.Form):
+    """Offer a Subject to a Class/Grade in an Academic Year, optionally to some Sections.
+
+    Leaving every Section unticked means the offering applies to all Sections
+    of the Grade (ADR 0009).
+    """
+
+    class_grade = forms.ModelChoiceField(queryset=ClassGrade.objects.all(), label="Class/Grade")
+    subject = forms.ModelChoiceField(queryset=Subject.objects.filter(is_active=True))
+    sections = forms.ModelMultipleChoiceField(
+        queryset=Section.objects.select_related("class_grade"),
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        help_text="Leave all unticked to offer the Subject to every Section of the Grade.",
+    )
+
+    def __init__(self, *args, academic_year=None, offering=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.academic_year = academic_year
+        self.offering = offering
+        if offering is not None:
+            # Grade and Subject are fixed once offered; only the scope changes.
+            del self.fields["class_grade"]
+            del self.fields["subject"]
+            self.fields["sections"].queryset = offering.class_grade.sections.all()
+            if not self.is_bound:
+                self.fields["sections"].initial = list(offering.sections)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        grade = (
+            self.offering.class_grade if self.offering else cleaned_data.get("class_grade")
+        )
+        sections = cleaned_data.get("sections") or []
+        if grade is not None and any(s.class_grade_id != grade.pk for s in sections):
+            self.add_error("sections", "Every Section must belong to the selected Class/Grade.")
+        subject = cleaned_data.get("subject")
+        if (
+            self.offering is None
+            and grade is not None
+            and subject is not None
+            and AcademicSubjectOffering.objects.filter(
+                academic_year=self.academic_year, class_grade=grade, subject=subject
+            ).exists()
+        ):
+            raise ValidationError("This Subject is already offered to this Class/Grade this year.")
+        return cleaned_data
+
+
+class OfferedSubjectsLookupForm(forms.Form):
+    section = forms.ModelChoiceField(queryset=Section.objects.select_related("class_grade"))
+    term = forms.ModelChoiceField(queryset=AcademicTerm.objects.none(), required=False)
+
+    def __init__(self, *args, academic_year=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if academic_year is not None:
+            self.fields["term"].queryset = academic_year.terms.all()
 
 
 class ClassGradeForm(forms.ModelForm):

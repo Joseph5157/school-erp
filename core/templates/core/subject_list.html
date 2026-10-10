@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Subjects{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Subjects</h1>
+{% if perms.core.add_subject %}
+    <a class="btn btn-primary mb-3" href="{% url 'core:subject-create' %}">Add Subject</a>
+{% endif %}
+<table class="table">
+    <thead><tr><th>Name</th><th>Code</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+        {% for subject in subjects %}
+        <tr>
+            <td>{{ subject.name }}</td>
+            <td>{{ subject.code }}</td>
+            <td>{{ subject.is_active|yesno:"Active,Inactive" }}</td>
+            <td>{% if perms.core.change_subject %}<a href="{% url 'core:subject-update' subject.pk %}">Edit</a>{% endif %}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4">No Subjects yet.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

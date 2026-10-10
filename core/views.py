@@ -8,6 +8,7 @@ from core import reports
 from core.authorization import administrator_required
 from core.forms import (
     AcademicEnrollmentForm,
+    AcademicTermForm,
     AcademicYearForm,
     AdmissionDecisionForm,
     ApplicantForm,
@@ -23,14 +24,19 @@ from core.forms import (
     GuardianForm,
     MissingAttendanceForm,
     MonthlySectionSummaryForm,
+    OfferedSubjectsLookupForm,
     SchoolCalendarDayForm,
     SchoolCalendarDayLabelForm,
     SchoolForm,
     SectionForm,
     StudentStatusForm,
+    SubjectForm,
+    SubjectOfferingForm,
 )
 from core.models import (
     AcademicEnrollment,
+    AcademicSubjectOffering,
+    AcademicTerm,
     AcademicYear,
     Applicant,
     AttendanceEntry,
@@ -41,6 +47,7 @@ from core.models import (
     School,
     SchoolCalendarDay,
     Student,
+    Subject,
 )
 
 
@@ -211,6 +218,162 @@ def academic_year_saturday_rule(request, pk):
         else:
             messages.success(request, "Saturday rule updated.")
     return redirect("core:academic-year-calendar", pk=academic_year.pk)
+
+
+# --- Phase 4 Gate 1: Subjects, Terms, subject offerings (ADR 0009) ---------
+
+
+@administrator_required("core.view_subject")
+def subject_list(request):
+    return render(request, "core/subject_list.html", {"subjects": Subject.objects.all()})
+
+
+@administrator_required("core.add_subject")
+def subject_create(request):
+    form = SubjectForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "Subject created.")
+        return redirect("core:subject-list")
+    return render(request, "core/subject_form.html", {"form": form, "creating": True})
+
+
+@administrator_required("core.change_subject")
+def subject_update(request, pk):
+    subject = get_object_or_404(Subject, pk=pk)
+    form = SubjectForm(request.POST or None, instance=subject)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "Subject updated.")
+        return redirect("core:subject-list")
+    return render(
+        request, "core/subject_form.html", {"form": form, "creating": False, "subject": subject}
+    )
+
+
+@administrator_required("core.view_academicterm")
+def academic_year_terms(request, pk):
+    academic_year = get_object_or_404(AcademicYear, pk=pk)
+    return render(
+        request,
+        "core/academic_year_terms.html",
+        {"academic_year": academic_year, "terms": academic_year.terms.all()},
+    )
+
+
+@administrator_required("core.add_academicterm")
+def term_create(request, pk):
+    academic_year = get_object_or_404(AcademicYear, pk=pk)
+    form = AcademicTermForm(request.POST or None, academic_year=academic_year)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "Term created.")
+        return redirect("core:academic-year-terms", pk=academic_year.pk)
+    return render(
+        request,
+        "core/term_form.html",
+        {"form": form, "academic_year": academic_year, "creating": True},
+    )
+
+
+@administrator_required("core.change_academicterm")
+def term_update(request, pk):
+    term = get_object_or_404(AcademicTerm.objects.select_related("academic_year"), pk=pk)
+    form = AcademicTermForm(request.POST or None, instance=term)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "Term updated.")
+        return redirect("core:academic-year-terms", pk=term.academic_year_id)
+    return render(
+        request,
+        "core/term_form.html",
+        {"form": form, "academic_year": term.academic_year, "creating": False},
+    )
+
+
+@administrator_required("core.view_academicsubjectoffering")
+def academic_year_offerings(request, pk):
+    academic_year = get_object_or_404(AcademicYear, pk=pk)
+    offerings = (
+        AcademicSubjectOffering.objects.filter(academic_year=academic_year)
+        .select_related("class_grade", "subject")
+        .prefetch_related("section_links__section")
+        .order_by("class_grade__name", "subject__name")
+    )
+    lookup = OfferedSubjectsLookupForm(request.GET or None, academic_year=academic_year)
+    offered = None
+    if lookup.is_valid():
+        section = lookup.cleaned_data["section"]
+        term = lookup.cleaned_data.get("term")
+        queryset = (
+            AcademicSubjectOffering.objects.for_term_section(term, section)
+            if term is not None
+            else AcademicSubjectOffering.objects.for_section(academic_year, section)
+        )
+        offered = queryset.select_related("subject").order_by("subject__name")
+    return render(
+        request,
+        "core/academic_year_offerings.html",
+        {
+            "academic_year": academic_year,
+            "offerings": offerings,
+            "lookup": lookup,
+            "offered": offered,
+        },
+    )
+
+
+@administrator_required("core.add_academicsubjectoffering")
+def offering_create(request, pk):
+    academic_year = get_object_or_404(AcademicYear, pk=pk)
+    form = SubjectOfferingForm(request.POST or None, academic_year=academic_year)
+    if request.method == "POST" and form.is_valid():
+        offering = AcademicSubjectOffering(
+            academic_year=academic_year,
+            class_grade=form.cleaned_data["class_grade"],
+            subject=form.cleaned_data["subject"],
+        )
+        try:
+            with transaction.atomic():
+                offering.full_clean()
+                offering.save()
+                offering.set_sections(form.cleaned_data["sections"])
+        except ValidationError as error:
+            form.add_error(None, error)
+        except IntegrityError:
+            form.add_error(None, "This Subject is already offered to this Class/Grade this year.")
+        else:
+            messages.success(request, "Subject offering created.")
+            return redirect("core:academic-year-offerings", pk=academic_year.pk)
+    return render(
+        request,
+        "core/offering_form.html",
+        {"form": form, "academic_year": academic_year, "offering": None},
+    )
+
+
+@administrator_required("core.change_academicsubjectoffering")
+def offering_update(request, pk):
+    offering = get_object_or_404(
+        AcademicSubjectOffering.objects.select_related("academic_year", "class_grade", "subject"),
+        pk=pk,
+    )
+    form = SubjectOfferingForm(
+        request.POST or None, academic_year=offering.academic_year, offering=offering
+    )
+    if request.method == "POST" and form.is_valid():
+        try:
+            offering.set_sections(form.cleaned_data["sections"])
+        except ValidationError as error:
+            form.add_error(None, error)
+        else:
+            messages.success(request, "Section scope updated.")
+            return redirect("core:academic-year-offerings", pk=offering.academic_year_id)
+    return render(
+        request,
+        "core/offering_form.html",
+        {"form": form, "academic_year": offering.academic_year, "offering": offering},
+    )
 
 
 @administrator_required("core.view_classgrade")
