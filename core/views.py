@@ -13,6 +13,8 @@ from core.forms import (
     AdmissionDecisionForm,
     ApplicantForm,
     ApplicantGuardianForm,
+    AssessmentFilterForm,
+    AssessmentForm,
     AttendanceCaptureForm,
     AttendanceCorrectionForm,
     AttendanceDateForm,
@@ -42,6 +44,7 @@ from core.models import (
     AcademicTerm,
     AcademicYear,
     Applicant,
+    Assessment,
     AssessmentTeacherAssignment,
     AttendanceEntry,
     AttendanceRegister,
@@ -380,6 +383,98 @@ def offering_update(request, pk):
         "core/offering_form.html",
         {"form": form, "academic_year": offering.academic_year, "offering": offering},
     )
+
+
+# --- Phase 4 Gate 4: assessment planning (ADR 0009) ------------------------
+
+
+def _assessments():
+    return Assessment.objects.select_related(
+        "term__academic_year",
+        "offering__subject",
+        "offering__class_grade",
+        "offering__academic_year",
+        "section__class_grade",
+    )
+
+
+@administrator_required("core.view_assessment")
+def academic_year_assessments(request, pk):
+    academic_year = get_object_or_404(AcademicYear, pk=pk)
+    form = AssessmentFilterForm(request.GET or None, academic_year=academic_year)
+    assessments = _assessments().filter(term__academic_year=academic_year)
+    if form.is_valid():
+        if form.cleaned_data.get("term"):
+            assessments = assessments.filter(term=form.cleaned_data["term"])
+        if form.cleaned_data.get("section"):
+            assessments = assessments.filter(section=form.cleaned_data["section"])
+    return render(
+        request,
+        "core/assessment_list.html",
+        {
+            "academic_year": academic_year,
+            "assessments": assessments.order_by("assessment_date", "offering__subject__name"),
+            "form": form,
+        },
+    )
+
+
+@administrator_required("core.add_assessment")
+def assessment_create(request, pk):
+    academic_year = get_object_or_404(AcademicYear, pk=pk)
+    form = AssessmentForm(request.POST or None, academic_year=academic_year)
+    if request.method == "POST" and form.is_valid():
+        assessment = form.save()
+        messages.success(request, "Assessment planned.")
+        return redirect("core:assessment-detail", pk=assessment.pk)
+    return render(
+        request,
+        "core/assessment_form.html",
+        {"form": form, "academic_year": academic_year, "assessment": None},
+    )
+
+
+@administrator_required("core.view_assessment")
+def assessment_detail(request, pk):
+    assessment = get_object_or_404(_assessments(), pk=pk)
+    return render(request, "core/assessment_detail.html", {"assessment": assessment})
+
+
+@administrator_required("core.change_assessment")
+def assessment_update(request, pk):
+    assessment = get_object_or_404(_assessments(), pk=pk)
+    if assessment.is_finalized:
+        messages.error(request, "A finalized assessment cannot be edited.")
+        return redirect("core:assessment-detail", pk=assessment.pk)
+    form = AssessmentForm(request.POST or None, instance=assessment)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "Assessment updated.")
+        return redirect("core:assessment-detail", pk=assessment.pk)
+    return render(
+        request,
+        "core/assessment_form.html",
+        {
+            "form": form,
+            "academic_year": assessment.term.academic_year,
+            "assessment": assessment,
+        },
+    )
+
+
+@administrator_required("core.delete_assessment")
+def assessment_delete(request, pk):
+    assessment = get_object_or_404(Assessment.objects.select_related("term"), pk=pk)
+    if request.method != "POST":
+        return redirect("core:assessment-detail", pk=assessment.pk)
+    year_pk = assessment.term.academic_year_id
+    try:
+        assessment.delete()
+    except ValidationError as error:
+        messages.error(request, error.messages[0])
+        return redirect("core:assessment-detail", pk=assessment.pk)
+    messages.success(request, "Assessment deleted.")
+    return redirect("core:academic-year-assessments", pk=year_pk)
 
 
 # --- Phase 4 Gate 3: grading scales (ADR 0009) -----------------------------
