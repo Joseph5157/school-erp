@@ -2,7 +2,7 @@ from datetime import date
 from unittest import mock
 
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group
+from django.contrib.auth.models import Group, Permission
 from django.test import TestCase
 from django.urls import reverse
 
@@ -1323,7 +1323,9 @@ class AttendanceRegisterCreateAuthorizationTests(AuthorizationClientsMixin, Test
         self.assertFalse(AttendanceRegister.objects.exists())
 
     def test_duplicate_register_leaves_one_record(self):
-        AttendanceRegister.objects.create(
+        # Gate 5: opening a Section/date that already has a register opens
+        # that register instead of creating a second one.
+        existing = AttendanceRegister.objects.create(
             academic_year=self.year,
             class_grade=self.class_grade,
             section=self.section,
@@ -1332,7 +1334,9 @@ class AttendanceRegisterCreateAuthorizationTests(AuthorizationClientsMixin, Test
 
         response = self.administrator.post(self.url, self.valid_payload)
 
-        self.assertEqual(response.status_code, 200)
+        self.assertRedirects(
+            response, reverse("core:attendance-register-detail", args=[existing.pk])
+        )
         self.assertEqual(AttendanceRegister.objects.count(), 1)
 
 
@@ -2092,3 +2096,227 @@ class AttendanceSubmitAuthorizationTests(
                     self.assertEqual(response.status_code, 200)
                     self.assertContains(response, message)
         self.assertFalse(AttendanceRegister.objects.filter(section=section_b).exists())
+
+
+class AttendanceCaptureUiTests(AuthorizationClientsMixin, TestCase):
+    """Gate 5: the everyday administrator capture workflow."""
+
+    def setUp(self):
+        super().setUp()
+        self.year = AcademicYear.objects.create(
+            name="2026-2027", start_date=date(2026, 6, 1), end_date=date(2027, 4, 30)
+        )
+        self.class_grade = ClassGrade.objects.create(name="Grade 1")
+        self.section_a = Section.objects.create(class_grade=self.class_grade, name="A")
+        self.section_b = Section.objects.create(class_grade=self.class_grade, name="B")
+        self.ravi = self._student("Ravi Rao")
+        self.meera = self._student("Meera Rao")
+        self.ravi_a = self._enroll(self.ravi, self.section_a, date(2026, 6, 1))
+        self.meera_a = self._enroll(self.meera, self.section_a, date(2026, 6, 1))
+        self.register = AttendanceRegister.objects.create(
+            academic_year=self.year,
+            class_grade=self.class_grade,
+            section=self.section_a,
+            date=date(2026, 7, 1),
+        )
+        self.detail_url = reverse("core:attendance-register-detail", args=[self.register.pk])
+        self.capture_url = reverse("core:attendance-capture", args=[self.register.pk])
+
+    def _student(self, name):
+        applicant = Applicant.objects.create(full_name=name)
+        applicant.record_admission_decision(Applicant.AdmissionStatus.ACCEPTED)
+        return applicant.progress_to_student()
+
+    def _enroll(self, student, section, start):
+        return student.enroll(
+            academic_year=self.year, class_grade=self.class_grade, section=section, start_date=start
+        )
+
+    def _payload(self, statuses, notes=None, action=None):
+        data = {}
+        for enrollment, status in statuses.items():
+            data[AttendanceCaptureForm.field_name(enrollment)] = status
+        for enrollment, note in (notes or {}).items():
+            data[AttendanceCaptureForm.note_name(enrollment)] = note
+        if action:
+            data["action"] = action
+        return data
+
+    def test_open_register_then_capture_flow(self):
+        section_c = Section.objects.create(class_grade=self.class_grade, name="C")
+        self._enroll(self._student("Asha Iyer"), section_c, date(2026, 6, 1))
+
+        response = self.administrator.post(
+            reverse("core:attendance-register-create"),
+            {
+                "academic_year": self.year.pk,
+                "class_grade": self.class_grade.pk,
+                "section": section_c.pk,
+                "date": "2026-07-01",
+            },
+        )
+
+        register = AttendanceRegister.objects.get(section=section_c)
+        self.assertRedirects(
+            response, reverse("core:attendance-register-detail", args=[register.pk])
+        )
+        self.assertEqual(register.status, AttendanceRegister.Status.DRAFT)
+
+    def test_detail_renders_date_effective_roster(self):
+        ravi_b = self._enroll(self.ravi, self.section_b, date(2026, 9, 1))  # later transfer
+        late = self._enroll(self._student("Asha Iyer"), self.section_a, date(2026, 7, 2))
+
+        response = self.administrator.get(self.detail_url)
+
+        roster = response.context["capture_form"].enrollments
+        self.ravi_a.refresh_from_db()
+        self.assertEqual(roster, [self.meera_a, self.ravi_a])
+        self.assertNotIn(ravi_b, roster)
+        self.assertNotIn(late, roster)
+        self.assertContains(response, "Ravi Rao")
+        self.assertNotContains(response, "Asha Iyer")
+        self.assertContains(response, "not</strong> treated as absent")
+
+    def test_detail_offers_present_absent_only_and_mark_all_present(self):
+        response = self.administrator.get(self.detail_url)
+
+        self.assertContains(response, 'value="PRESENT"')
+        self.assertContains(response, 'value="ABSENT"')
+        self.assertNotContains(response, "Late")
+        self.assertNotContains(response, "Excused")
+        self.assertContains(response, "Mark unanswered as present")
+        self.assertContains(response, "Save draft")
+        self.assertContains(response, "Save and submit")
+
+    def test_save_partial_draft(self):
+        response = self.administrator.post(
+            self.capture_url, self._payload({self.ravi_a: "ABSENT"}, {self.ravi_a: "Fever"})
+        )
+
+        self.assertRedirects(response, self.detail_url)
+        entry = AttendanceEntry.objects.get()
+        self.assertEqual((entry.status, entry.absence_note), ("ABSENT", "Fever"))
+        self.register.refresh_from_db()
+        self.assertEqual(self.register.status, AttendanceRegister.Status.DRAFT)
+        follow = self.administrator.get(self.detail_url)
+        self.assertContains(follow, "Marked: 1")
+
+    def test_draft_edit_updates_entry_without_correction(self):
+        self.administrator.post(self.capture_url, self._payload({self.ravi_a: "ABSENT"}))
+
+        self.administrator.post(self.capture_url, self._payload({self.ravi_a: "PRESENT"}))
+
+        entry = AttendanceEntry.objects.get()
+        self.assertEqual(entry.status, "PRESENT")
+        self.assertFalse(AttendanceCorrection.objects.exists())
+
+    def test_existing_entries_prefill_the_form(self):
+        self.register.capture(
+            enrollment=self.ravi_a, status=AttendanceStatus.ABSENT, absence_note="Fever"
+        )
+
+        response = self.administrator.get(self.detail_url)
+
+        form = response.context["capture_form"]
+        self.assertEqual(form[AttendanceCaptureForm.field_name(self.ravi_a)].initial, "ABSENT")
+        self.assertEqual(form[AttendanceCaptureForm.note_name(self.ravi_a)].initial, "Fever")
+
+    def test_save_and_submit_complete_register(self):
+        response = self.administrator.post(
+            self.capture_url,
+            self._payload({self.ravi_a: "PRESENT", self.meera_a: "ABSENT"}, action="submit"),
+        )
+
+        self.assertRedirects(response, self.detail_url)
+        self.register.refresh_from_db()
+        self.assertEqual(self.register.status, AttendanceRegister.Status.SUBMITTED)
+        self.assertEqual(self.register.submitted_by, self.admin_user)
+        self.assertEqual(AttendanceEntry.objects.count(), 2)
+
+    def test_submit_incomplete_keeps_draft_and_explains(self):
+        response = self.administrator.post(
+            self.capture_url, self._payload({self.ravi_a: "PRESENT"}, action="submit"), follow=True
+        )
+
+        self.assertContains(response, "Draft saved but not submitted")
+        self.assertContains(response, "1 Student(s)")
+        self.register.refresh_from_db()
+        self.assertEqual(self.register.status, AttendanceRegister.Status.DRAFT)
+        self.assertEqual(AttendanceEntry.objects.count(), 1)
+
+    def test_note_on_present_is_rejected_with_message(self):
+        response = self.administrator.post(
+            self.capture_url,
+            self._payload({self.ravi_a: "PRESENT"}, {self.ravi_a: "Should not be here"}),
+            follow=True,
+        )
+
+        self.assertContains(response, "Only an absent Student can have a note.")
+        self.assertFalse(AttendanceEntry.objects.exists())
+
+    def test_submitted_register_is_read_only_with_correction_links(self):
+        self.register.capture(enrollment=self.ravi_a, status=AttendanceStatus.PRESENT)
+        self.register.capture(enrollment=self.meera_a, status=AttendanceStatus.ABSENT)
+        self.register.submit(actor=self.admin_user)
+
+        response = self.administrator.get(self.detail_url)
+
+        self.assertContains(response, "Submitted attendance")
+        self.assertNotContains(response, "Save draft")
+        self.assertContains(response, "Correct")
+
+    def test_capture_post_to_submitted_register_changes_nothing(self):
+        self.register.capture(enrollment=self.ravi_a, status=AttendanceStatus.PRESENT)
+        self.register.capture(enrollment=self.meera_a, status=AttendanceStatus.PRESENT)
+        self.register.submit(actor=self.admin_user)
+
+        response = self.administrator.post(
+            self.capture_url, self._payload({self.ravi_a: "ABSENT"}), follow=True
+        )
+
+        self.assertContains(response, "through a correction")
+        self.assertEqual(
+            AttendanceEntry.objects.get(academic_enrollment=self.ravi_a).status, "PRESENT"
+        )
+        self.assertFalse(AttendanceCorrection.objects.exists())
+
+    def test_empty_roster_message(self):
+        register = AttendanceRegister.objects.create(
+            academic_year=self.year,
+            class_grade=self.class_grade,
+            section=self.section_b,
+            date=date(2026, 7, 1),
+        )
+
+        response = self.administrator.get(
+            reverse("core:attendance-register-detail", args=[register.pk])
+        )
+
+        self.assertContains(response, "No Students are enrolled in this Section on this date.")
+
+    def test_non_admin_cannot_view_or_capture(self):
+        self.assertEqual(self.non_admin.get(self.detail_url).status_code, 403)
+        response = self.non_admin.post(self.capture_url, self._payload({self.ravi_a: "PRESENT"}))
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(AttendanceEntry.objects.exists())
+
+    def test_capture_without_submit_permission_saves_draft_only(self):
+        limited = User.objects.create_user(username="clerk", password="pass-12345")
+        limited.user_permissions.add(
+            *Permission.objects.filter(
+                codename__in=["add_attendanceentry", "view_attendanceregister"]
+            )
+        )
+        client = self.client_class()
+        client.login(username="clerk", password="pass-12345")
+
+        response = client.post(
+            self.capture_url,
+            self._payload({self.ravi_a: "PRESENT", self.meera_a: "PRESENT"}, action="submit"),
+            follow=True,
+        )
+
+        self.assertContains(response, "You do not have permission to submit")
+        self.register.refresh_from_db()
+        self.assertEqual(self.register.status, AttendanceRegister.Status.DRAFT)
+        self.assertEqual(AttendanceEntry.objects.count(), 2)

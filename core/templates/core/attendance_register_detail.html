@@ -10,38 +10,75 @@
     <dt class="col-sm-3">Section</dt>
     <dd class="col-sm-9">{{ register.section }}</dd>
     <dt class="col-sm-3">Date</dt>
-    <dd class="col-sm-9">{{ register.date }}</dd>
+    <dd class="col-sm-9">{{ register.date }} ({{ register.date|date:"l" }})</dd>
     <dt class="col-sm-3">Register status</dt>
     <dd class="col-sm-9">
         <span class="badge {% if register.status == 'SUBMITTED' %}bg-success{% else %}bg-secondary{% endif %}">{{ register.get_status_display }}</span>
+        {% if not register.is_submitted %}
+            <span class="text-muted ms-2">Attendance started, not yet official.</span>
+        {% endif %}
     </dd>
     {% if register.is_submitted %}
     <dt class="col-sm-3">Submitted</dt>
     <dd class="col-sm-9">{{ register.submitted_at }} by {{ register.submitted_by }}</dd>
     {% endif %}
 </dl>
-{% if not register.is_submitted and perms.core.change_attendanceregister %}
-<form method="post" action="{% url 'core:attendance-register-submit' register.pk %}" class="mb-3">
-    {% csrf_token %}
-    <button type="submit" class="btn btn-success">Submit register</button>
-    <span class="form-text ms-2">Every Student on the roster needs Present or Absent before submitting.</span>
-</form>
-{% endif %}
 
-{% if capture_form.enrollments and not register.is_submitted %}
-<h2 class="h5">Capture attendance</h2>
-{% if perms.core.add_attendanceentry %}
-<form method="post" action="{% url 'core:attendance-capture' register.pk %}">
-    {% csrf_token %}
-    {{ capture_form.as_p }}
-    <button type="submit" class="btn btn-primary">Save attendance</button>
-</form>
+{% if not register.is_submitted %}
+<h2 class="h5">Roster</h2>
+<p class="text-muted">
+    Students enrolled in this Section on {{ register.date }}: {{ capture_form.enrollments|length }}.
+    Marked: {{ marked_count }}. Unmarked Students are <strong>not</strong> treated as absent.
+</p>
+{% if capture_form.enrollments %}
+    {% if perms.core.add_attendanceentry %}
+    <form method="post" action="{% url 'core:attendance-capture' register.pk %}" id="attendance-capture">
+        {% csrf_token %}
+        <button type="button" class="btn btn-outline-secondary btn-sm mb-2" id="mark-all-present">Mark unanswered as present</button>
+        <table class="table align-middle">
+            <thead>
+                <tr><th>Student</th><th>Status</th><th>Absence note</th></tr>
+            </thead>
+            <tbody>
+                {% for enrollment, status_field, note_field in capture_form.rows %}
+                <tr>
+                    <td>{{ enrollment.student.full_name }}</td>
+                    <td>
+                        {% for radio in status_field %}
+                            <label class="me-3">{{ radio.tag }} {{ radio.choice_label }}</label>
+                        {% endfor %}
+                    </td>
+                    <td>{{ note_field }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <button type="submit" name="action" value="save" class="btn btn-primary">Save draft</button>
+        {% if perms.core.change_attendanceregister %}
+        <button type="submit" name="action" value="submit" class="btn btn-success">Save and submit</button>
+        <span class="form-text ms-2">Submitting requires Present or Absent for every Student.</span>
+        {% endif %}
+    </form>
+    <script>
+        // UI convenience only: fills Present for rows not yet answered and never
+        // overrides a choice already made. Nothing is saved until the form is
+        // submitted, so an unopened register is never treated as present.
+        document.getElementById("mark-all-present").addEventListener("click", function () {
+            var form = document.getElementById("attendance-capture");
+            form.querySelectorAll('input[type="radio"][value="PRESENT"]').forEach(function (radio) {
+                var answered = form.querySelector('input[name="' + radio.name + '"]:checked');
+                if (!answered) { radio.checked = true; }
+            });
+        });
+    </script>
+    {% else %}
+    <p class="text-muted">You do not have permission to capture attendance.</p>
+    {% endif %}
 {% else %}
-<p class="text-muted">You do not have permission to capture attendance.</p>
+    <p>No Students are enrolled in this Section on this date.</p>
 {% endif %}
-{% endif %}
-
-<h2 class="h5 mt-4">Marked attendance</h2>
+{% else %}
+<h2 class="h5">Submitted attendance</h2>
 <table class="table">
     <thead>
         <tr>
@@ -62,10 +99,9 @@
             {% endif %}
         </tr>
         {% empty %}
-        <tr>
-            <td colspan="4">No attendance captured yet.</td>
-        </tr>
+        <tr><td colspan="4">No attendance entries.</td></tr>
         {% endfor %}
     </tbody>
 </table>
+{% endif %}
 {% endblock %}

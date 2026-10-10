@@ -1044,6 +1044,30 @@ class AttendanceRegister(models.Model):
             ) from None
         return entry
 
+    def save_draft_entry(self, *, enrollment, status, absence_note=""):
+        """Create or update one Student's entry while the register is DRAFT.
+
+        DRAFT attendance is work in progress, so changing it is a normal edit
+        and creates no AttendanceCorrection (docs/PHASE_2_RECONCILIATION_PLAN.md
+        Gate 6). A SUBMITTED register is changed only through
+        `AttendanceEntry.record_status_change`. Returns the entry.
+        """
+        absence_note = (absence_note or "").strip()
+        existing = self.entries.filter(academic_enrollment=enrollment).first()
+        if existing is None:
+            return self.capture(enrollment=enrollment, status=status, absence_note=absence_note)
+        existing.status = status
+        existing.absence_note = absence_note
+        existing.full_clean(validate_constraints=False)
+        with transaction.atomic():
+            if self._lock() != self.Status.DRAFT:
+                raise ValidationError(
+                    "This register has been submitted; change attendance through a "
+                    "correction."
+                )
+            existing.save(update_fields=["status", "absence_note", "updated_at"])
+        return existing
+
     def __str__(self):
         return f"{self.section} - {self.date}"
 

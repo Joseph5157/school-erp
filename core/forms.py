@@ -6,7 +6,6 @@ from core.models import (
     AcademicYear,
     Applicant,
     ApplicantGuardian,
-    AttendanceEntry,
     AttendanceRegister,
     AttendanceStatus,
     ClassGrade,
@@ -271,12 +270,12 @@ class AttendanceRegisterForm(forms.ModelForm):
 
 
 class AttendanceCaptureForm(forms.Form):
-    """Capture an initial status for each not-yet-marked Student in a register.
+    """Mark the date-effective roster of a DRAFT register.
 
-    One required choice field is created per eligible enrollment that has no
-    entry yet, so opening the register always offers exactly the Students who
-    still need marking. Existing entries are corrected through
-    `AttendanceCorrectionForm` rather than re-captured here.
+    One optional PRESENT/ABSENT choice and one optional absence note per
+    roster enrollment, pre-filled from any existing entries. Unanswered rows
+    stay unmarked (a draft may be incomplete; unmarked is never ABSENT). A
+    note is accepted only for an ABSENT choice.
     """
 
     def __init__(self, *args, register=None, **kwargs):
@@ -284,25 +283,57 @@ class AttendanceCaptureForm(forms.Form):
         self.register = register
         self.enrollments = []
         if register is not None:
-            marked = AttendanceEntry.objects.filter(register=register).values_list(
-                "academic_enrollment_id", flat=True
-            )
-            self.enrollments = list(register.eligible_enrollments().exclude(pk__in=marked))
+            existing = {
+                entry.academic_enrollment_id: entry for entry in register.entries.all()
+            }
+            self.enrollments = list(register.eligible_enrollments())
             for enrollment in self.enrollments:
+                entry = existing.get(enrollment.pk)
                 self.fields[self.field_name(enrollment)] = forms.ChoiceField(
                     choices=AttendanceStatus.choices,
+                    required=False,
+                    widget=forms.RadioSelect,
                     label=str(enrollment.student),
+                    initial=entry.status if entry else None,
+                )
+                self.fields[self.note_name(enrollment)] = forms.CharField(
+                    required=False,
+                    label="Absence note",
+                    initial=entry.absence_note if entry else "",
+                    widget=forms.TextInput(attrs={"placeholder": "Optional, absent only"}),
                 )
 
     @staticmethod
     def field_name(enrollment):
         return f"status_{enrollment.pk}"
 
+    @staticmethod
+    def note_name(enrollment):
+        return f"note_{enrollment.pk}"
+
+    def clean(self):
+        cleaned_data = super().clean()
+        for enrollment in self.enrollments:
+            status = cleaned_data.get(self.field_name(enrollment))
+            note = (cleaned_data.get(self.note_name(enrollment)) or "").strip()
+            if note and status != AttendanceStatus.ABSENT:
+                self.add_error(
+                    self.note_name(enrollment), "Only an absent Student can have a note."
+                )
+        return cleaned_data
+
+    def rows(self):
+        """(enrollment, status bound field, note bound field) for templates."""
+        for enrollment in self.enrollments:
+            yield enrollment, self[self.field_name(enrollment)], self[self.note_name(enrollment)]
+
     def statuses(self):
+        """(enrollment, status, note) for every answered roster row."""
         for enrollment in self.enrollments:
             status = self.cleaned_data.get(self.field_name(enrollment))
             if status:
-                yield enrollment, status
+                note = (self.cleaned_data.get(self.note_name(enrollment)) or "").strip()
+                yield enrollment, status, note
 
 
 class AttendanceCorrectionForm(forms.Form):
