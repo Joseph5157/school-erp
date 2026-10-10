@@ -460,6 +460,9 @@ def _assessment_context(assessment):
     ).select_related("teacher").first()
     return {
         "assessment": assessment,
+        "problems": (
+            assessment.finalization_problems() if not assessment.is_finalized else []
+        ),
         "rows": rows,
         "marked_count": sum(1 for _, r in rows if r is not None),
         "ineligible_results": assessment.ineligible_results().select_related(
@@ -467,6 +470,19 @@ def _assessment_context(assessment):
         ),
         "teacher": teacher.teacher if teacher else None,
     }
+
+
+@administrator_required("core.finalize_assessment")
+def assessment_finalize(request, pk):
+    assessment = get_object_or_404(Assessment, pk=pk)
+    if request.method == "POST":
+        try:
+            assessment.finalize(actor=request.user)
+        except ValidationError as error:
+            messages.error(request, "Not finalized: " + " ".join(error.messages))
+        else:
+            messages.success(request, "Results finalized.")
+    return redirect("core:assessment-detail", pk=assessment.pk)
 
 
 # --- Phase 4 Gate 5: teacher DRAFT result entry (ADR 0010) -----------------

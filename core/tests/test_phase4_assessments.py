@@ -107,7 +107,7 @@ class AssessmentRuleTests(Phase4Fixture, TestCase):
 
     def test_finalized_assessment_is_locked(self):
         assessment = self.make_assessment()
-        Assessment.objects.filter(pk=assessment.pk).update(status=Assessment.Status.FINALIZED)
+        self.force_finalize(assessment)
         assessment.refresh_from_db()
         self.assertTrue(assessment.is_locked)
         assessment.maximum_marks = Decimal("30")
@@ -193,7 +193,7 @@ class AssessmentViewTests(Phase4Fixture, TestCase):
 
     def test_finalized_assessment_cannot_be_edited_or_deleted(self):
         assessment = self.make_assessment()
-        Assessment.objects.filter(pk=assessment.pk).update(status=Assessment.Status.FINALIZED)
+        self.force_finalize(assessment)
         detail = reverse("core:assessment-detail", args=[assessment.pk])
         self.assertRedirects(
             self.client.post(reverse("core:assessment-update", args=[assessment.pk]),

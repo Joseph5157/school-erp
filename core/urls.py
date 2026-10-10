@@ -78,6 +78,11 @@ urlpatterns = [
     path("assessments/<int:pk>/edit/", views.assessment_update, name="assessment-update"),
     path("assessments/<int:pk>/delete/", views.assessment_delete, name="assessment-delete"),
     path(
+        "assessments/<int:pk>/finalize/",
+        views.assessment_finalize,
+        name="assessment-finalize",
+    ),
+    path(
         "academic-years/<int:pk>/grading-scales/",
         views.academic_year_grading_scales,
         name="academic-year-grading-scales",

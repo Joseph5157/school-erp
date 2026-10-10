@@ -96,6 +96,16 @@ class Phase4Fixture:
             teacher=teacher, offering=offering, section=section
         )
 
+    def force_finalize(self, assessment):
+        """Mark finalized directly (bypassing the workflow) for lock tests."""
+        from django.utils import timezone
+
+        Assessment.objects.filter(pk=assessment.pk).update(
+            status=Assessment.Status.FINALIZED, finalized_by=self.admin,
+            finalized_at=timezone.now(),
+        )
+        assessment.refresh_from_db()
+
     def make_scale(self, bands=((90, "A"), (75, "B"), (50, "C"), (0, "D"))):
         scale = GradingScale.objects.create(academic_year=self.year, name="Standard")
         for minimum, label in bands:

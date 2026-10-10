@@ -107,6 +107,7 @@ class SchoolAdministratorsGroupMigrationTests(TestCase):
                 "delete_assessment",
                 "view_assessment",
                 "view_studentresult",
+                "finalize_assessment",
             },
         )
 

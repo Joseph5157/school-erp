@@ -8,6 +8,10 @@
     <dt class="col-sm-3">Date</dt><dd class="col-sm-9">{{ assessment.assessment_date }}</dd>
     <dt class="col-sm-3">Maximum marks</dt><dd class="col-sm-9">{{ assessment.maximum_marks }}</dd>
     <dt class="col-sm-3">Pass mark</dt><dd class="col-sm-9">{{ assessment.pass_mark|default:"None (no pass/fail)" }}</dd>
+    <dt class="col-sm-3">Grading</dt><dd class="col-sm-9">{{ assessment.grading_scale_name|default:"No grading scale (no grades shown)" }}{% if assessment.is_finalized %} (frozen at finalization){% endif %}</dd>
+    {% if assessment.is_finalized %}
+    <dt class="col-sm-3">Finalized</dt><dd class="col-sm-9">{{ assessment.finalized_at }} by {{ assessment.finalized_by }}</dd>
+    {% endif %}
     <dt class="col-sm-3">Status</dt><dd class="col-sm-9">{{ assessment.get_status_display }}{% if assessment.is_locked and not assessment.is_finalized %} (results entered; context locked){% endif %}</dd>
 </dl>
 {% block assessment_actions %}
@@ -21,6 +25,21 @@
     {% endif %}
 {% endif %}
 {% endblock %}
+{% if not assessment.is_finalized and perms.core.finalize_assessment %}
+<div class="card my-3"><div class="card-body">
+    <h2 class="h6">Finalize results</h2>
+    {% if problems %}
+        <p class="mb-1">Not ready yet:</p>
+        <ul class="mb-0">{% for problem in problems %}<li>{{ problem }}</li>{% endfor %}</ul>
+    {% else %}
+        <p>Every Student on the roster has a result. Finalizing makes these the official results; after that only audited corrections can change them.</p>
+        <form method="post" action="{% url 'core:assessment-finalize' assessment.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-success">Finalize results</button>
+        </form>
+    {% endif %}
+</div></div>
+{% endif %}
 <h2 class="h5 mt-4">Results</h2>
 <p>Teacher: {% if teacher %}{{ teacher.get_full_name|default:teacher.username }}{% else %}<span class="text-danger">no teacher assigned for this Subject and Section</span>{% endif %}</p>
 {% include "core/_assessment_results.html" %}
