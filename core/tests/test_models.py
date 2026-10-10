@@ -1,11 +1,11 @@
-from datetime import date
+from datetime import UTC, date, datetime
 from unittest import mock
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import ProtectedError
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from core.models import (
     AcademicEnrollment,
@@ -23,6 +23,7 @@ from core.models import (
     Section,
     Student,
     StudentGuardian,
+    business_today,
 )
 
 User = get_user_model()
@@ -718,6 +719,61 @@ class AcademicEnrollmentModelTests(TestCase):
         with self.assertRaises(ProtectedError), transaction.atomic():
             self.student.delete()
         self.assertEqual(Student.objects.count(), 1)
+
+
+class BusinessDateTimezoneTests(TestCase):
+    """Business dates follow the school's configured timezone, not UTC."""
+
+    # 2026-07-01 19:00 UTC is already 2026-07-02 00:30 in Asia/Kolkata.
+    NOW_UTC = datetime(2026, 7, 1, 19, 0, tzinfo=UTC)
+
+    def setUp(self):
+        self.student = Student.objects.create(
+            applicant=Applicant.objects.create(full_name="Ravi Rao"), full_name="Ravi Rao"
+        )
+        self.year = AcademicYear.objects.create(
+            name="2026-2027", start_date=date(2026, 6, 1), end_date=date(2027, 4, 30)
+        )
+        self.class_grade = ClassGrade.objects.create(name="Grade 1")
+        self.section = Section.objects.create(class_grade=self.class_grade, name="A")
+
+    def test_project_timezone_is_school_local(self):
+        from django.conf import settings
+
+        self.assertEqual(settings.TIME_ZONE, "Asia/Kolkata")
+        self.assertTrue(settings.USE_TZ)
+
+    def test_business_today_uses_school_timezone_after_ist_midnight(self):
+        with mock.patch("django.utils.timezone.now", return_value=self.NOW_UTC):
+            self.assertEqual(business_today(), date(2026, 7, 2))
+
+    @override_settings(TIME_ZONE="UTC")
+    def test_business_today_is_driven_by_configured_timezone(self):
+        with mock.patch("django.utils.timezone.now", return_value=self.NOW_UTC):
+            self.assertEqual(business_today(), date(2026, 7, 1))
+
+    def test_same_day_ist_enrollment_allowed_just_after_midnight(self):
+        with mock.patch("django.utils.timezone.now", return_value=self.NOW_UTC):
+            enrollment = self.student.enroll(
+                academic_year=self.year,
+                class_grade=self.class_grade,
+                section=self.section,
+                start_date=date(2026, 7, 2),
+            )
+
+        self.assertEqual(enrollment.start_date, date(2026, 7, 2))
+
+    def test_next_ist_day_still_rejected_as_future(self):
+        with mock.patch("django.utils.timezone.now", return_value=self.NOW_UTC):
+            with self.assertRaises(ValidationError):
+                self.student.enroll(
+                    academic_year=self.year,
+                    class_grade=self.class_grade,
+                    section=self.section,
+                    start_date=date(2026, 7, 3),
+                )
+
+        self.assertFalse(AcademicEnrollment.objects.exists())
 
 
 # Fixtures below enroll into the 2027-2028 year; pin "today" after those dates
