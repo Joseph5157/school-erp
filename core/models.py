@@ -1147,14 +1147,18 @@ class AttendanceEntry(models.Model):
                     }
                 )
 
-    def record_status_change(self, new_status, *, actor, reason):
-        """Correct a captured status, preserving the previous value.
+    def record_status_change(self, new_status, *, actor, reason, absence_note=""):
+        """Correct the accepted status of SUBMITTED attendance (Gate 6).
 
-        An unknown status, a no-op change, a missing reason, or a missing actor
-        is rejected without changing anything. A valid correction writes an
-        immutable AttendanceCorrection and then updates the accepted status,
-        so the prior value is never lost. Changing to PRESENT clears any
-        absence note, because a PRESENT entry may not retain one.
+        Only entries in a SUBMITTED register are corrected; DRAFT attendance is
+        edited normally through `AttendanceRegister.save_draft_entry`. An
+        unknown status, a no-op change, a missing reason or actor, or an
+        absence note on a PRESENT correction is rejected without changing
+        anything. A valid correction writes an immutable AttendanceCorrection
+        (previous/new status and note, actor, timestamp, reason) and then
+        updates the accepted status and note, so earlier values are never
+        lost. Only status and note change: the register and enrollment context
+        are untouched. Changing to PRESENT clears the absence note.
         """
         if new_status not in AttendanceStatus.values:
             raise ValidationError("Invalid attendance status.")
@@ -1165,18 +1169,33 @@ class AttendanceEntry(models.Model):
             raise ValidationError("A reason is required when correcting attendance.")
         if actor is None or not getattr(actor, "pk", None):
             raise ValidationError("A correcting user is required.")
+        absence_note = (absence_note or "").strip()
+        if absence_note and new_status != AttendanceStatus.ABSENT:
+            raise ValidationError("Only an absent Student can have a note.")
 
         with transaction.atomic():
+            register_status = (
+                AttendanceRegister.objects.select_for_update()
+                .filter(pk=self.register_id)
+                .values_list("status", flat=True)
+                .get()
+            )
+            if register_status != AttendanceRegister.Status.SUBMITTED:
+                raise ValidationError(
+                    "This register is still a draft; edit its attendance directly instead "
+                    "of recording a correction."
+                )
             AttendanceCorrection.objects.create(
                 entry=self,
                 previous_status=self.status,
                 new_status=new_status,
+                previous_absence_note=self.absence_note,
+                new_absence_note=absence_note,
                 reason=reason,
                 corrected_by=actor,
             )
             self.status = new_status
-            if new_status != AttendanceStatus.ABSENT:
-                self.absence_note = ""
+            self.absence_note = absence_note
             self.save(update_fields=["status", "absence_note", "updated_at"])
 
     @property
@@ -1192,8 +1211,10 @@ class AttendanceCorrection(models.Model):
 
     Per docs/adr/0007-phase-2-attendance-model.md, corrections preserve
     history rather than overwriting it: each row captures the previous status,
-    the new status, the correcting actor, the timestamp, and the reason. Both
-    statuses are limited to PRESENT/ABSENT by database check constraints.
+    the new status, the previous and new absence note, the correcting actor,
+    the timestamp, and the reason. Both statuses are limited to PRESENT/ABSENT
+    by database check constraints. Rows are never edited or deleted through
+    the application, and the PROTECT relations keep them attached.
     """
 
     entry = models.ForeignKey(
@@ -1201,6 +1222,8 @@ class AttendanceCorrection(models.Model):
     )
     previous_status = models.CharField(max_length=10, choices=AttendanceStatus.choices)
     new_status = models.CharField(max_length=10, choices=AttendanceStatus.choices)
+    previous_absence_note = models.TextField(blank=True, default="")
+    new_absence_note = models.TextField(blank=True, default="")
     reason = models.TextField()
     corrected_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="attendance_corrections"

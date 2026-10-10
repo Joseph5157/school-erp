@@ -599,6 +599,11 @@ def attendance_entry_correct(request, pk):
         ),
         pk=pk,
     )
+    if not entry.register.is_submitted:
+        messages.info(
+            request, "This register is still a draft; edit its attendance on the register page."
+        )
+        return redirect("core:attendance-register-detail", pk=entry.register_id)
     if request.method == "POST":
         form = AttendanceCorrectionForm(request.POST, entry=entry)
         if form.is_valid():
@@ -607,6 +612,7 @@ def attendance_entry_correct(request, pk):
                     form.cleaned_data["status"],
                     actor=request.user,
                     reason=form.cleaned_data["reason"],
+                    absence_note=form.cleaned_data["absence_note"],
                 )
             except ValidationError as error:
                 messages.error(request, error.messages[0])

@@ -1258,6 +1258,18 @@ class AttendanceFixtureMixin:
         )
         return self.register
 
+    def capture_and_submit(self, *, enrollment, status, absence_note=""):
+        """Capture the fixture roster's single entry and submit the register.
+
+        Gate 6: corrections apply only to SUBMITTED attendance.
+        """
+        entry = self.register.capture(
+            enrollment=enrollment, status=status, absence_note=absence_note
+        )
+        submitter, _ = User.objects.get_or_create(username="register-submitter")
+        self.register.submit(actor=submitter)
+        return entry
+
 
 class AttendanceRegisterCreateAuthorizationTests(AuthorizationClientsMixin, TestCase):
     def setUp(self):
@@ -1498,7 +1510,7 @@ class AttendanceCorrectionAuthorizationTests(
     def setUp(self):
         super().setUp()
         self.build_attendance_fixture()
-        self.entry = self.register.capture(
+        self.entry = self.capture_and_submit(
             enrollment=self.enrollment, status=AttendanceStatus.PRESENT
         )
         self.url = reverse("core:attendance-entry-correct", args=[self.entry.pk])
@@ -1967,7 +1979,7 @@ class AttendanceGate3ViewTests(AuthorizationClientsMixin, AttendanceFixtureMixin
         self.assertFalse(AttendanceEntry.objects.exists())
 
     def test_correction_rejects_legacy_status_via_view(self):
-        entry = self.register.capture(enrollment=self.enrollment, status=AttendanceStatus.PRESENT)
+        entry = self.capture_and_submit(enrollment=self.enrollment, status=AttendanceStatus.PRESENT)
 
         response = self.administrator.post(
             reverse("core:attendance-entry-correct", args=[entry.pk]),
@@ -1980,7 +1992,7 @@ class AttendanceGate3ViewTests(AuthorizationClientsMixin, AttendanceFixtureMixin
         self.assertFalse(AttendanceCorrection.objects.exists())
 
     def test_correction_to_present_via_view_clears_absence_note(self):
-        entry = self.register.capture(
+        entry = self.capture_and_submit(
             enrollment=self.enrollment, status=AttendanceStatus.ABSENT, absence_note="Fever."
         )
         url = reverse("core:attendance-entry-correct", args=[entry.pk])
@@ -2320,3 +2332,66 @@ class AttendanceCaptureUiTests(AuthorizationClientsMixin, TestCase):
         self.register.refresh_from_db()
         self.assertEqual(self.register.status, AttendanceRegister.Status.DRAFT)
         self.assertEqual(AttendanceEntry.objects.count(), 2)
+
+
+class AttendanceGate6CorrectionViewTests(
+    AuthorizationClientsMixin, AttendanceFixtureMixin, TestCase
+):
+    def setUp(self):
+        super().setUp()
+        self.build_attendance_fixture()
+
+    def test_correction_page_redirects_for_draft_register(self):
+        entry = self.register.capture(enrollment=self.enrollment, status=AttendanceStatus.PRESENT)
+        url = reverse("core:attendance-entry-correct", args=[entry.pk])
+
+        response = self.administrator.post(url, {"status": "ABSENT", "reason": "x"})
+
+        self.assertRedirects(
+            response, reverse("core:attendance-register-detail", args=[self.register.pk])
+        )
+        entry.refresh_from_db()
+        self.assertEqual(entry.status, AttendanceStatus.PRESENT)
+        self.assertFalse(AttendanceCorrection.objects.exists())
+
+    def test_correction_with_note_and_history_display(self):
+        entry = self.capture_and_submit(
+            enrollment=self.enrollment, status=AttendanceStatus.PRESENT
+        )
+        url = reverse("core:attendance-entry-correct", args=[entry.pk])
+
+        self.administrator.post(
+            url, {"status": "ABSENT", "absence_note": "Went home sick", "reason": "Nurse note."}
+        )
+        response = self.administrator.get(url)
+
+        entry.refresh_from_db()
+        self.assertEqual((entry.status, entry.absence_note), ("ABSENT", "Went home sick"))
+        self.assertContains(response, "Nurse note.")
+        self.assertContains(response, "Went home sick")
+
+    def test_note_on_present_correction_rejected_by_form(self):
+        entry = self.capture_and_submit(enrollment=self.enrollment, status=AttendanceStatus.ABSENT)
+        url = reverse("core:attendance-entry-correct", args=[entry.pk])
+
+        response = self.administrator.post(
+            url, {"status": "PRESENT", "absence_note": "nope", "reason": "x"}
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Only an absent Student can have a note.")
+        self.assertFalse(AttendanceCorrection.objects.exists())
+
+    def test_reports_use_current_corrected_value(self):
+        entry = self.capture_and_submit(
+            enrollment=self.enrollment, status=AttendanceStatus.PRESENT
+        )
+        entry.record_status_change(AttendanceStatus.ABSENT, actor=self.admin_user, reason="x")
+
+        response = self.administrator.get(
+            reverse("core:student-attendance", args=[self.student.pk])
+        )
+
+        summary = {row["label"]: row["count"] for row in response.context["summary"]}
+        self.assertEqual(summary, {"Present": 0, "Absent": 1})
+        self.assertEqual(AttendanceCorrection.objects.count(), 1)
