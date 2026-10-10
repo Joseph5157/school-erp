@@ -1,3 +1,4 @@
+from datetime import date
 from unittest import mock
 
 from django.contrib.auth import get_user_model
@@ -977,6 +978,7 @@ class StudentEnrollAuthorizationTests(AuthorizationClientsMixin, TestCase):
             "academic_year": self.year.pk,
             "class_grade": self.class_grade.pk,
             "section": self.section.pk,
+            "start_date": "2026-06-01",
         }
 
     def test_anonymous_is_redirected_to_login(self):
@@ -1035,6 +1037,71 @@ class StudentEnrollAuthorizationTests(AuthorizationClientsMixin, TestCase):
         response = self.administrator.get(self.url)
 
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Effective start date")
+
+    def test_missing_start_date_leaves_no_enrollment(self):
+        payload = {**self.valid_payload}
+        del payload["start_date"]
+
+        response = self.administrator.post(self.url, payload)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(AcademicEnrollment.objects.exists())
+
+    def test_start_date_outside_academic_year_leaves_no_enrollment(self):
+        response = self.administrator.post(
+            self.url, {**self.valid_payload, "start_date": "2026-05-01"}
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(AcademicEnrollment.objects.exists())
+
+    def test_administrator_transfer_records_effective_dates(self):
+        self.administrator.post(self.url, self.valid_payload)
+        other_section = Section.objects.create(class_grade=self.class_grade, name="B")
+
+        response = self.administrator.post(
+            self.url,
+            {**self.valid_payload, "section": other_section.pk, "start_date": "2026-09-15"},
+        )
+
+        self.assertRedirects(
+            response, reverse("core:student-detail", args=[self.student.pk])
+        )
+        previous = AcademicEnrollment.objects.get(section=self.section)
+        current = AcademicEnrollment.objects.get(section=other_section)
+        self.assertEqual(previous.status, AcademicEnrollment.Status.COMPLETED)
+        self.assertEqual(previous.end_date, date(2026, 9, 14))
+        self.assertEqual(current.start_date, date(2026, 9, 15))
+        self.assertIsNone(current.end_date)
+
+    def test_transfer_not_after_current_start_is_rejected(self):
+        self.administrator.post(self.url, self.valid_payload)
+        other_section = Section.objects.create(class_grade=self.class_grade, name="B")
+
+        response = self.administrator.post(
+            self.url,
+            {**self.valid_payload, "section": other_section.pk, "start_date": "2026-06-01"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        enrollment = AcademicEnrollment.objects.get()
+        self.assertEqual(enrollment.section, self.section)
+        self.assertEqual(enrollment.status, AcademicEnrollment.Status.ACTIVE)
+
+    def test_non_admin_cannot_transfer(self):
+        self.administrator.post(self.url, self.valid_payload)
+        other_section = Section.objects.create(class_grade=self.class_grade, name="B")
+
+        response = self.non_admin.post(
+            self.url,
+            {**self.valid_payload, "section": other_section.pk, "start_date": "2026-09-15"},
+        )
+
+        self.assertEqual(response.status_code, 403)
+        enrollment = AcademicEnrollment.objects.get()
+        self.assertEqual(enrollment.section, self.section)
+        self.assertIsNone(enrollment.end_date)
 
 
 class StudentListAuthorizationTests(AuthorizationClientsMixin, TestCase):
@@ -1185,7 +1252,8 @@ class AttendanceFixtureMixin:
         applicant.record_admission_decision(Applicant.AdmissionStatus.ACCEPTED)
         self.student = applicant.progress_to_student()
         self.enrollment = self.student.enroll(
-            academic_year=self.year, class_grade=self.class_grade, section=self.section
+            academic_year=self.year, class_grade=self.class_grade, section=self.section,
+            start_date="2026-06-01",  # `date` is shadowed by this method's parameter
         )
         self.register = AttendanceRegister.objects.create(
             academic_year=self.year,

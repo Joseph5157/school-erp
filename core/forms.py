@@ -78,11 +78,18 @@ class AcademicEnrollmentForm(forms.ModelForm):
     through this form (docs/adr/0003-phase-1-status-and-transition-rules.md).
     The Section-must-belong-to-Class/Grade rule is checked here for a friendly
     error and again in the model workflow.
+
+    `start_date` is the business-effective date of the new placement
+    (docs/adr/0006-academic-enrollment-effective-dating.md). It must be stated
+    explicitly; when it replaces a current placement, that placement is closed
+    on the day before.
     """
 
     class Meta:
         model = AcademicEnrollment
-        fields = ["academic_year", "class_grade", "section"]
+        fields = ["academic_year", "class_grade", "section", "start_date"]
+        labels = {"start_date": "Effective start date"}
+        widgets = {"start_date": forms.DateInput(attrs={"type": "date"})}
 
     def clean(self):
         cleaned_data = super().clean()
