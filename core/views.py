@@ -502,8 +502,16 @@ def attendance_register_create(request):
         form = AttendanceRegisterForm(request.POST)
         if form.is_valid():
             register = form.save()
-            messages.success(request, "Attendance register created.")
+            messages.success(request, "Attendance register opened as a draft.")
             return redirect("core:attendance-register-detail", pk=register.pk)
+        # Opening a Section/date that already has a register goes to it.
+        section = form.cleaned_data.get("section")
+        on_date = form.cleaned_data.get("date")
+        if section is not None and on_date is not None:
+            existing = AttendanceRegister.objects.filter(section=section, date=on_date).first()
+            if existing is not None:
+                messages.info(request, "A register already exists for this Section and date.")
+                return redirect("core:attendance-register-detail", pk=existing.pk)
     else:
         form = AttendanceRegisterForm()
     return render(request, "core/attendance_register_form.html", {"form": form})
@@ -520,7 +528,12 @@ def attendance_register_detail(request, pk):
     return render(
         request,
         "core/attendance_register_detail.html",
-        {"register": register, "entries": entries, "capture_form": capture_form},
+        {
+            "register": register,
+            "entries": entries,
+            "capture_form": capture_form,
+            "marked_count": entries.count(),
+        },
     )
 
 
@@ -543,19 +556,38 @@ def attendance_capture(request, pk):
     if request.method != "POST":
         return redirect("core:attendance-register-detail", pk=register.pk)
 
+    if register.is_submitted:
+        messages.error(
+            request, "This register has been submitted; change attendance through a correction."
+        )
+        return redirect("core:attendance-register-detail", pk=register.pk)
+
     form = AttendanceCaptureForm(request.POST, register=register)
     if not form.is_valid():
-        messages.error(request, "Attendance was not captured. Choose a status for every Student.")
+        errors = [message for field_errors in form.errors.values() for message in field_errors]
+        messages.error(request, f"Attendance was not saved. {errors[0]}")
         return redirect("core:attendance-register-detail", pk=register.pk)
 
     try:
         with transaction.atomic():
-            for enrollment, status in form.statuses():
-                register.capture(enrollment=enrollment, status=status)
+            for enrollment, status, note in form.statuses():
+                register.save_draft_entry(enrollment=enrollment, status=status, absence_note=note)
     except ValidationError as error:
         messages.error(request, error.messages[0])
+        return redirect("core:attendance-register-detail", pk=register.pk)
+
+    if request.POST.get("action") == "submit":
+        if not request.user.has_perm("core.change_attendanceregister"):
+            messages.error(request, "Draft saved. You do not have permission to submit.")
+            return redirect("core:attendance-register-detail", pk=register.pk)
+        try:
+            register.submit(actor=request.user)
+        except ValidationError as error:
+            messages.error(request, f"Draft saved but not submitted. {error.messages[0]}")
+        else:
+            messages.success(request, "Attendance saved and submitted.")
     else:
-        messages.success(request, "Attendance captured.")
+        messages.success(request, "Draft saved.")
     return redirect("core:attendance-register-detail", pk=register.pk)
 
 
