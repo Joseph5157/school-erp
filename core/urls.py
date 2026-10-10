@@ -48,6 +48,21 @@ urlpatterns = [
         name="offering-create",
     ),
     path("subject-offerings/<int:pk>/edit/", views.offering_update, name="offering-update"),
+    path(
+        "academic-years/<int:pk>/teachers/",
+        views.academic_year_teacher_assignments,
+        name="academic-year-teacher-assignments",
+    ),
+    path(
+        "academic-years/<int:pk>/teachers/add/",
+        views.teacher_assignment_create,
+        name="teacher-assignment-create",
+    ),
+    path(
+        "teacher-assignments/<int:pk>/remove/",
+        views.teacher_assignment_delete,
+        name="teacher-assignment-delete",
+    ),
     path("classes/", views.class_grade_list, name="class-grade-list"),
     path("classes/create/", views.class_grade_create, name="class-grade-create"),
     path("classes/<int:pk>/", views.class_grade_detail, name="class-grade-detail"),

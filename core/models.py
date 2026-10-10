@@ -1411,7 +1411,11 @@ class AcademicSubjectOffering(models.Model):
         return not self.section_links.exists()
 
     def set_sections(self, sections):
-        """Replace the Section scope. An empty iterable means all Sections."""
+        """Replace the Section scope. An empty iterable means all Sections.
+
+        A Section that has an assigned teacher cannot be dropped from a
+        restricted scope (remove the assignment first).
+        """
         sections = list(sections)
         wrong = [s for s in sections if s.class_grade_id != self.class_grade_id]
         if wrong:
@@ -1419,6 +1423,16 @@ class AcademicSubjectOffering(models.Model):
                 "Every Section must belong to the offering's Class/Grade "
                 f"({self.class_grade}): {', '.join(str(s) for s in wrong)}."
             )
+        if sections:
+            dropped = self.teacher_assignments.exclude(section__in=sections).select_related(
+                "section"
+            )
+            if dropped.exists():
+                names = ", ".join(sorted({a.section.name for a in dropped}))
+                raise ValidationError(
+                    f"Section(s) {names} have an assigned teacher; remove the assignment "
+                    "before taking them out of this offering."
+                )
         with transaction.atomic():
             self.section_links.exclude(section__in=sections).delete()
             existing = set(self.section_links.values_list("section_id", flat=True))
@@ -1469,3 +1483,57 @@ class AcademicSubjectOfferingSection(models.Model):
 
     def __str__(self):
         return f"{self.offering} - {self.section.name}"
+
+
+TEACHERS_GROUP_NAME = "Teachers"
+
+
+class AssessmentTeacherAssignment(models.Model):
+    """Which teacher enters results for one Subject offering in one Section (ADR 0010).
+
+    A teacher is an active login in the "Teachers" group; school-domain records
+    are never the login itself (ADR 0004). Each offering + Section has exactly
+    one owning teacher; shared multi-teacher ownership is outside Phase 4.
+    This is not a timetable, workload, substitution or HR record.
+    """
+
+    teacher = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="assessment_assignments",
+    )
+    offering = models.ForeignKey(
+        AcademicSubjectOffering, on_delete=models.PROTECT, related_name="teacher_assignments"
+    )
+    section = models.ForeignKey(
+        Section, on_delete=models.PROTECT, related_name="teacher_assignments"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["offering", "section"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["offering", "section"],
+                name="assessmentteacherassignment_one_teacher_per_offering_section",
+            )
+        ]
+
+    def clean(self):
+        super().clean()
+        if self.teacher_id:
+            teacher = self.teacher
+            if not teacher.is_active or not teacher.groups.filter(
+                name=TEACHERS_GROUP_NAME
+            ).exists():
+                raise ValidationError(
+                    {"teacher": "Choose an active login in the Teachers group."}
+                )
+        if self.offering_id and self.section_id and not self.offering.applies_to(self.section):
+            raise ValidationError(
+                {"section": "This Section does not take this Subject offering."}
+            )
+
+    def __str__(self):
+        return f"{self.teacher} - {self.offering} - {self.section.name}"

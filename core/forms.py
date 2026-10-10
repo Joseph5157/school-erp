@@ -1,13 +1,16 @@
 from django import forms
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 
 from core.models import (
+    TEACHERS_GROUP_NAME,
     AcademicEnrollment,
     AcademicSubjectOffering,
     AcademicTerm,
     AcademicYear,
     Applicant,
     ApplicantGuardian,
+    AssessmentTeacherAssignment,
     AttendanceRegister,
     AttendanceStatus,
     ClassGrade,
@@ -175,6 +178,49 @@ class SubjectOfferingForm(forms.Form):
             ).exists()
         ):
             raise ValidationError("This Subject is already offered to this Class/Grade this year.")
+        return cleaned_data
+
+
+class TeacherAssignmentForm(forms.Form):
+    """Assign the teacher who enters results for one offering in one Section."""
+
+    teacher = forms.ModelChoiceField(queryset=get_user_model().objects.none())
+    offering = forms.ModelChoiceField(
+        queryset=AcademicSubjectOffering.objects.none(), label="Subject offering"
+    )
+    section = forms.ModelChoiceField(queryset=Section.objects.select_related("class_grade"))
+
+    def __init__(self, *args, academic_year=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.academic_year = academic_year
+        self.fields["teacher"].queryset = (
+            get_user_model()
+            .objects.filter(groups__name=TEACHERS_GROUP_NAME, is_active=True)
+            .order_by("username")
+        )
+        self.fields["teacher"].label_from_instance = (
+            lambda user: f"{user.get_full_name() or user.username} ({user.username})"
+        )
+        if academic_year is not None:
+            self.fields["offering"].queryset = AcademicSubjectOffering.objects.filter(
+                academic_year=academic_year
+            ).select_related("class_grade", "subject", "academic_year")
+
+    def clean(self):
+        cleaned_data = super().clean()
+        offering = cleaned_data.get("offering")
+        section = cleaned_data.get("section")
+        if offering is None or section is None:
+            return cleaned_data
+        if not offering.applies_to(section):
+            self.add_error("section", "This Section does not take this Subject offering.")
+        elif AssessmentTeacherAssignment.objects.filter(
+            offering=offering, section=section
+        ).exists():
+            raise ValidationError(
+                "A teacher is already assigned to this Subject and Section; remove that "
+                "assignment first."
+            )
         return cleaned_data
 
 
