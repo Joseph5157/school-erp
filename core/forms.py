@@ -376,6 +376,46 @@ class AttendanceRangeForm(forms.Form):
         return cleaned_data
 
 
+class AttendanceDateForm(forms.Form):
+    date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
+
+
+class MissingAttendanceForm(AttendanceRangeForm):
+    """Date range (required) and optional Section for the missing report."""
+
+    start = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
+    end = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
+    section = forms.ModelChoiceField(
+        queryset=Section.objects.select_related("class_grade"), required=False
+    )
+
+    MAX_DAYS = 400
+
+    def clean(self):
+        cleaned_data = super().clean()
+        start, end = cleaned_data.get("start"), cleaned_data.get("end")
+        if start and end and (end - start).days > self.MAX_DAYS:
+            raise ValidationError(f"Choose a range of at most {self.MAX_DAYS} days.")
+        return cleaned_data
+
+
+class MonthlySectionSummaryForm(forms.Form):
+    section = forms.ModelChoiceField(queryset=Section.objects.select_related("class_grade"))
+    month = forms.CharField(
+        widget=forms.DateInput(attrs={"type": "month"}), help_text="YYYY-MM"
+    )
+
+    def clean_month(self):
+        value = self.cleaned_data["month"].strip()
+        try:
+            year, month = (int(part) for part in value.split("-"))
+            if not 1 <= month <= 12 or year < 1900:
+                raise ValueError
+        except ValueError:
+            raise ValidationError("Enter a month as YYYY-MM.") from None
+        return year, month
+
+
 class AttendanceRegisterFilterForm(AttendanceRangeForm):
     """Optional Section and date-range filter for the register list."""
 

@@ -324,6 +324,14 @@ Acceptance criteria:
 - Student percentage is PRESENT / (PRESENT + ABSENT) using submitted eligible entries only.
 - Reports exclude future, non-instructional, out-of-enrollment, missing, and DRAFT attendance from the percentage denominator.
 - Reported values reflect corrected accepted attendance without overwriting correction history.
+- The missing-attendance report lists instructional, non-future dates on which
+  a Section had at least one effectively enrolled Student but no SUBMITTED
+  register (no register, or a DRAFT). Non-instructional dates and Sections with
+  nobody enrolled that day are never listed. No year-scoped Section offering
+  model is introduced.
+- The monthly Class/Section summary shows per-Student Present, Absent and
+  percentage for Students enrolled in the Section during the month, plus
+  expected, submitted and missing register days.
 - Unauthorized users cannot access protected attendance reporting.
 
 ## Phase 2 authorization

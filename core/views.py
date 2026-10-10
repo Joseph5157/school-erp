@@ -4,6 +4,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 
+from core import reports
 from core.authorization import administrator_required
 from core.forms import (
     AcademicEnrollmentForm,
@@ -13,12 +14,15 @@ from core.forms import (
     ApplicantGuardianForm,
     AttendanceCaptureForm,
     AttendanceCorrectionForm,
+    AttendanceDateForm,
     AttendanceRangeForm,
     AttendanceRegisterFilterForm,
     AttendanceRegisterForm,
     CalendarDateCheckForm,
     ClassGradeForm,
     GuardianForm,
+    MissingAttendanceForm,
+    MonthlySectionSummaryForm,
     SchoolCalendarDayForm,
     SchoolCalendarDayLabelForm,
     SchoolForm,
@@ -473,12 +477,13 @@ def attendance_register_list(request):
             registers = registers.filter(date__lte=end)
     section_summary = None
     if form.is_valid() and form.cleaned_data.get("section") is not None:
+        # Reportable (submitted, eligible) attendance only - Gate 7 semantics.
+        totals = reports.counts(
+            reports.reportable_entries(AttendanceEntry.objects.filter(register__in=registers))
+        )
         counts = {
-            row["status"]: row["n"]
-            for row in AttendanceEntry.objects.filter(register__in=registers)
-            .order_by()
-            .values("status")
-            .annotate(n=Count("id"))
+            AttendanceStatus.PRESENT: totals["present"],
+            AttendanceStatus.ABSENT: totals["absent"],
         }
         section_summary = [
             {"label": label, "count": counts.get(value, 0)}
@@ -631,11 +636,18 @@ def attendance_entry_correct(request, pk):
 
 @administrator_required("core.view_attendanceentry")
 def student_attendance(request, pk):
+    """Report 3 + 4: continuous history and reportable percentage for a Student.
+
+    History lists every entry with the register's own Section and status, so
+    context stays historical across transfers. Counts and percentage use only
+    reportable attendance (core.reports).
+    """
     student = get_object_or_404(Student, pk=pk)
     form = AttendanceRangeForm(request.GET or None)
     entries = AttendanceEntry.objects.filter(
         academic_enrollment__student=student
-    ).select_related("register__academic_year", "register__section")
+    ).select_related("register__academic_year", "register__section__class_grade")
+    start = end = None
     if form.is_valid():
         start = form.cleaned_data.get("start")
         end = form.cleaned_data.get("end")
@@ -643,13 +655,10 @@ def student_attendance(request, pk):
             entries = entries.filter(register__date__gte=start)
         if end is not None:
             entries = entries.filter(register__date__lte=end)
-    counts = {
-        row["status"]: row["n"]
-        for row in entries.order_by().values("status").annotate(n=Count("id"))
-    }
+    totals = reports.student_summary(student, start=start, end=end)
     summary = [
-        {"label": label, "count": counts.get(value, 0)}
-        for value, label in AttendanceStatus.choices
+        {"label": AttendanceStatus.PRESENT.label, "count": totals["present"]},
+        {"label": AttendanceStatus.ABSENT.label, "count": totals["absent"]},
     ]
     return render(
         request,
@@ -659,6 +668,48 @@ def student_attendance(request, pk):
             "form": form,
             "entries": entries.order_by("register__date"),
             "summary": summary,
-            "total": sum(counts.values()),
+            "total": totals["total"],
+            "percentage": totals["percentage"],
         },
+    )
+
+
+@administrator_required("core.view_attendanceentry")
+def attendance_reports(request):
+    return render(request, "core/attendance_reports.html")
+
+
+@administrator_required("core.view_attendanceentry")
+def report_daily_absentees(request):
+    form = AttendanceDateForm(request.GET or None)
+    absentees = None
+    if form.is_valid():
+        absentees = reports.daily_absentees(form.cleaned_data["date"])
+    return render(
+        request, "core/report_daily_absentees.html", {"form": form, "absentees": absentees}
+    )
+
+
+@administrator_required("core.view_attendanceregister")
+def report_missing_attendance(request):
+    form = MissingAttendanceForm(request.GET or None)
+    rows = None
+    if form.is_valid():
+        rows = reports.missing_attendance(
+            form.cleaned_data["start"],
+            form.cleaned_data["end"],
+            section=form.cleaned_data.get("section"),
+        )
+    return render(request, "core/report_missing_attendance.html", {"form": form, "rows": rows})
+
+
+@administrator_required("core.view_attendanceentry")
+def report_monthly_section(request):
+    form = MonthlySectionSummaryForm(request.GET or None)
+    summary = None
+    if form.is_valid():
+        year, month = form.cleaned_data["month"]
+        summary = reports.monthly_section_summary(form.cleaned_data["section"], year, month)
+    return render(
+        request, "core/report_monthly_section.html", {"form": form, "summary": summary}
     )
