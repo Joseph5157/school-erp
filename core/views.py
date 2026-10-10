@@ -397,7 +397,9 @@ def student_list(request):
 def student_detail(request, pk):
     student = get_object_or_404(Student, pk=pk)
     guardian_links = student.guardian_links.select_related("guardian")
-    enrollments = student.enrollments.select_related("academic_year", "class_grade", "section")
+    enrollments = student.enrollments.select_related(
+        "academic_year", "class_grade", "section__class_grade"
+    )
     current_enrollment = enrollments.filter(status=AcademicEnrollment.Status.ACTIVE).first()
     return render(
         request,
@@ -462,7 +464,7 @@ def student_status_change(request, pk):
 @administrator_required("core.view_attendanceregister")
 def attendance_register_list(request):
     registers = AttendanceRegister.objects.select_related(
-        "academic_year", "class_grade", "section"
+        "academic_year", "class_grade", "section__class_grade"
     ).annotate(entry_count=Count("entries"))
     form = AttendanceRegisterFilterForm(request.GET or None)
     if form.is_valid():
@@ -525,7 +527,9 @@ def attendance_register_create(request):
 @administrator_required("core.view_attendanceregister")
 def attendance_register_detail(request, pk):
     register = get_object_or_404(
-        AttendanceRegister.objects.select_related("academic_year", "class_grade", "section"),
+        AttendanceRegister.objects.select_related(
+            "academic_year", "class_grade", "section__class_grade", "submitted_by"
+        ),
         pk=pk,
     )
     entries = register.entries.select_related("academic_enrollment__student")
@@ -600,7 +604,7 @@ def attendance_capture(request, pk):
 def attendance_entry_correct(request, pk):
     entry = get_object_or_404(
         AttendanceEntry.objects.select_related(
-            "register__section", "academic_enrollment__student"
+            "register__section__class_grade", "academic_enrollment__student"
         ),
         pk=pk,
     )
