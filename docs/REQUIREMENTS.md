@@ -259,6 +259,25 @@ Phase 2 is in reconciliation/implementation. It contains only:
 - dashboards, analytics, and scheduled reports
 - timetable integration
 
+## School calendar
+
+The minimal calendar follows ADR 0008.
+
+Acceptance criteria:
+
+- Each Academic Year has a weekly pattern: Monday-Friday instructional, Sunday
+  off, Saturday configurable per year (off by default).
+- An authorized administrator can record a holiday/closure or an extra
+  instructional day (for example a working Saturday) as a single-date
+  exception, view the year's exceptions, relabel one, and remove one.
+- An exception must fall within its Academic Year, is unique per Academic
+  Year and date, and must differ from the weekly pattern.
+- A date cannot become non-instructional, and an exception cannot be removed,
+  while attendance exists on that date.
+- The calendar answers whether attendance is expected on a given date for a
+  given Academic Year.
+- Unauthorized users cannot change the calendar.
+
 ## Attendance capture
 
 Attendance is recorded against the AcademicEnrollment effective for the Student

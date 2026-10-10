@@ -20,6 +20,7 @@ from core.models import (
     Guardian,
     RelationshipType,
     School,
+    SchoolCalendarDay,
     Section,
     Student,
     StudentGuardian,
@@ -1259,6 +1260,240 @@ class StudentStatusTests(TestCase):
         self.applicant.refresh_from_db()
         self.assertEqual(self.applicant.admission_status, Applicant.AdmissionStatus.ACCEPTED)
         self.assertEqual(self.student.applicant, self.applicant)
+
+
+class SchoolCalendarTests(TestCase):
+    """Gate 2 minimal school calendar (docs/adr/0008-phase-2-school-calendar-rules.md)."""
+
+    MONDAY = date(2026, 8, 17)
+    WEDNESDAY = date(2026, 7, 1)
+    SATURDAY = date(2026, 8, 22)
+    SUNDAY = date(2026, 8, 23)
+
+    def setUp(self):
+        self.year = AcademicYear.objects.create(
+            name="2026-2027", start_date=date(2026, 6, 1), end_date=date(2027, 4, 30)
+        )
+        self.class_grade = ClassGrade.objects.create(name="Grade 1")
+        self.section = Section.objects.create(class_grade=self.class_grade, name="A")
+
+    def _day(self, on_date, is_instructional, **overrides):
+        values = {
+            "academic_year": self.year,
+            "date": on_date,
+            "is_instructional": is_instructional,
+        }
+        values.update(overrides)
+        return SchoolCalendarDay(**values)
+
+    def _register(self, on_date):
+        return AttendanceRegister.objects.create(
+            academic_year=self.year,
+            class_grade=self.class_grade,
+            section=self.section,
+            date=on_date,
+        )
+
+    # --- weekly pattern ---------------------------------------------------
+
+    def test_weekday_is_instructional_by_default(self):
+        self.assertTrue(self.year.is_instructional_day(self.MONDAY))
+        self.assertTrue(self.year.is_instructional_day(self.WEDNESDAY))
+
+    def test_sunday_is_not_instructional(self):
+        self.assertFalse(self.year.is_instructional_day(self.SUNDAY))
+
+    def test_saturday_off_by_default(self):
+        self.assertFalse(self.year.saturdays_instructional)
+        self.assertFalse(self.year.is_instructional_day(self.SATURDAY))
+
+    def test_saturday_instructional_when_year_says_so(self):
+        year = AcademicYear.objects.create(
+            name="Six-day year",
+            start_date=date(2026, 6, 1),
+            end_date=date(2027, 4, 30),
+            saturdays_instructional=True,
+        )
+        self.assertTrue(year.is_instructional_day(self.SATURDAY))
+        self.assertFalse(year.is_instructional_day(self.SUNDAY))
+
+    def test_dates_outside_year_are_not_instructional(self):
+        self.assertFalse(self.year.is_instructional_day(date(2026, 5, 29)))
+        self.assertFalse(self.year.is_instructional_day(date(2027, 5, 3)))
+
+    def test_year_boundaries_are_inclusive(self):
+        self.assertTrue(self.year.is_instructional_day(date(2026, 6, 1)))  # Monday
+        self.assertTrue(self.year.is_instructional_day(date(2027, 4, 30)))  # Friday
+
+    def test_lookup_accepts_iso_string(self):
+        self.assertTrue(self.year.is_instructional_day("2026-08-17"))
+
+    # --- exceptions -------------------------------------------------------
+
+    def test_holiday_exception_makes_weekday_non_instructional(self):
+        day = self._day(self.MONDAY, False, label="Closure")
+        day.full_clean()
+        day.save()
+
+        self.assertFalse(self.year.is_instructional_day(self.MONDAY))
+
+    def test_working_saturday_exception_is_instructional(self):
+        day = self._day(self.SATURDAY, True, label="Working Saturday")
+        day.full_clean()
+        day.save()
+
+        self.assertTrue(self.year.is_instructional_day(self.SATURDAY))
+        self.assertFalse(self.year.is_instructional_day(date(2026, 8, 29)))
+
+    def test_working_sunday_exception_is_instructional(self):
+        day = self._day(self.SUNDAY, True)
+        day.full_clean()
+        day.save()
+
+        self.assertTrue(self.year.is_instructional_day(self.SUNDAY))
+
+    def test_exception_matching_weekly_pattern_rejected(self):
+        for on_date, is_instructional in (
+            (self.MONDAY, True),
+            (self.SATURDAY, False),
+            (self.SUNDAY, False),
+        ):
+            with self.subTest(on_date=on_date), self.assertRaises(ValidationError):
+                self._day(on_date, is_instructional).full_clean()
+        self.assertFalse(SchoolCalendarDay.objects.exists())
+
+    def test_exception_outside_academic_year_rejected(self):
+        for on_date in (date(2026, 5, 29), date(2027, 5, 3)):
+            with self.subTest(on_date=on_date), self.assertRaises(ValidationError) as ctx:
+                self._day(on_date, False).full_clean()
+            self.assertIn("date", ctx.exception.message_dict)
+
+    def test_duplicate_year_and_date_rejected(self):
+        self._day(self.MONDAY, False).save()
+
+        with self.assertRaises(ValidationError):
+            self._day(self.MONDAY, False, label="again").full_clean()
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            self._day(self.MONDAY, False, label="again").save()
+        self.assertEqual(SchoolCalendarDay.objects.count(), 1)
+
+    def test_same_date_allowed_in_another_academic_year(self):
+        self._day(self.MONDAY, False).save()
+        other = AcademicYear.objects.create(
+            name="Overlapping session", start_date=date(2026, 6, 1), end_date=date(2027, 4, 30)
+        )
+
+        day = self._day(self.MONDAY, False, academic_year=other)
+        day.full_clean()
+        day.save()
+
+        self.assertTrue(self.year.calendar_days.filter(date=self.MONDAY).exists())
+        self.assertTrue(other.calendar_days.filter(date=self.MONDAY).exists())
+
+    def test_label_can_change_but_date_and_type_cannot(self):
+        day = self._day(self.MONDAY, False, label="Closure")
+        day.save()
+
+        day.label = "Heavy rain closure"
+        day.full_clean()
+        day.save()
+
+        for field, value in (("date", date(2026, 8, 18)), ("is_instructional", True)):
+            with self.subTest(field=field):
+                fresh = SchoolCalendarDay.objects.get(pk=day.pk)
+                setattr(fresh, field, value)
+                with self.assertRaises(ValidationError):
+                    fresh.full_clean()
+
+    # --- attendance protection --------------------------------------------
+
+    def test_holiday_rejected_when_attendance_exists_on_date(self):
+        self._register(self.WEDNESDAY)
+
+        with self.assertRaises(ValidationError) as ctx:
+            self._day(self.WEDNESDAY, False).full_clean()
+        self.assertIn("date", ctx.exception.message_dict)
+        self.assertTrue(self.year.is_instructional_day(self.WEDNESDAY))
+
+    def test_holiday_allowed_when_attendance_only_in_other_year(self):
+        other = AcademicYear.objects.create(
+            name="Overlapping session", start_date=date(2026, 6, 1), end_date=date(2027, 4, 30)
+        )
+        AttendanceRegister.objects.create(
+            academic_year=other,
+            class_grade=self.class_grade,
+            section=self.section,
+            date=self.WEDNESDAY,
+        )
+
+        day = self._day(self.WEDNESDAY, False)
+        day.full_clean()
+        day.save()
+
+    def test_exception_can_be_deleted_without_attendance(self):
+        day = self._day(self.MONDAY, False)
+        day.save()
+
+        day.delete()
+
+        self.assertFalse(SchoolCalendarDay.objects.exists())
+        self.assertTrue(self.year.is_instructional_day(self.MONDAY))
+
+    def test_exception_cannot_be_deleted_when_attendance_exists(self):
+        day = self._day(self.SATURDAY, True, label="Working Saturday")
+        day.save()
+        self._register(self.SATURDAY)
+
+        with self.assertRaises(ValidationError):
+            day.delete()
+
+        self.assertTrue(SchoolCalendarDay.objects.filter(pk=day.pk).exists())
+        self.assertTrue(self.year.is_instructional_day(self.SATURDAY))
+
+    def test_academic_year_with_calendar_days_cannot_be_deleted(self):
+        self._day(self.MONDAY, False).save()
+
+        with self.assertRaises(ProtectedError), transaction.atomic():
+            self.year.delete()
+
+    # --- Saturday rule ----------------------------------------------------
+
+    def test_saturday_rule_can_change_before_attendance(self):
+        self.year.set_saturdays_instructional(True)
+
+        self.year.refresh_from_db()
+        self.assertTrue(self.year.saturdays_instructional)
+        self.assertTrue(self.year.is_instructional_day(self.SATURDAY))
+
+    def test_saturday_rule_no_op_rejected(self):
+        with self.assertRaises(ValidationError):
+            self.year.set_saturdays_instructional(False)
+
+    def test_saturday_rule_locked_once_attendance_exists(self):
+        self._register(self.WEDNESDAY)
+
+        with self.assertRaises(ValidationError):
+            self.year.set_saturdays_instructional(True)
+
+        self.year.refresh_from_db()
+        self.assertFalse(self.year.saturdays_instructional)
+
+    def test_saturday_rule_blocked_by_saturday_exceptions(self):
+        self._day(self.SATURDAY, True).save()
+
+        with self.assertRaises(ValidationError):
+            self.year.set_saturdays_instructional(True)
+
+        self.year.refresh_from_db()
+        self.assertFalse(self.year.saturdays_instructional)
+
+    def test_saturday_rule_not_blocked_by_weekday_exceptions(self):
+        self._day(self.MONDAY, False).save()
+
+        self.year.set_saturdays_instructional(True)
+
+        self.year.refresh_from_db()
+        self.assertTrue(self.year.saturdays_instructional)
 
 
 class AttendanceFixtureMixin:

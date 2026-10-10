@@ -11,6 +11,8 @@
             <th>Name</th>
             <th>Start date</th>
             <th>End date</th>
+            <th>Saturdays</th>
+            <th></th>
         </tr>
     </thead>
     <tbody>
@@ -19,10 +21,16 @@
             <td>{{ academic_year.name }}</td>
             <td>{{ academic_year.start_date }}</td>
             <td>{{ academic_year.end_date }}</td>
+            <td>{{ academic_year.saturdays_instructional|yesno:"Instructional,Off" }}</td>
+            <td>
+                {% if perms.core.view_schoolcalendarday %}
+                    <a href="{% url 'core:academic-year-calendar' academic_year.pk %}">Calendar</a>
+                {% endif %}
+            </td>
         </tr>
         {% empty %}
         <tr>
-            <td colspan="3">No Academic Years yet.</td>
+            <td colspan="5">No Academic Years yet.</td>
         </tr>
         {% endfor %}
     </tbody>

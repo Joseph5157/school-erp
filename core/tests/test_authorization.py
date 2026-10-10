@@ -20,6 +20,7 @@ from core.models import (
     Guardian,
     RelationshipType,
     School,
+    SchoolCalendarDay,
     Section,
     Student,
 )
@@ -73,6 +74,10 @@ class SchoolAdministratorsGroupMigrationTests(TestCase):
                 "add_attendancecorrection",
                 "change_attendancecorrection",
                 "view_attendancecorrection",
+                "add_schoolcalendarday",
+                "change_schoolcalendarday",
+                "delete_schoolcalendarday",
+                "view_schoolcalendarday",
             },
         )
 
@@ -1623,3 +1628,280 @@ class StudentAttendanceAuthorizationTests(
         )
 
         self.assertEqual(response.status_code, 404)
+
+
+class SchoolCalendarAuthorizationTests(AuthorizationClientsMixin, TestCase):
+    """Gate 2 calendar workflow (docs/adr/0008-phase-2-school-calendar-rules.md)."""
+
+    MONDAY = "2026-08-17"
+    SATURDAY = "2026-08-22"
+
+    def setUp(self):
+        super().setUp()
+        self.year = AcademicYear.objects.create(
+            name="2026-2027", start_date=date(2026, 6, 1), end_date=date(2027, 4, 30)
+        )
+        self.calendar_url = reverse("core:academic-year-calendar", args=[self.year.pk])
+        self.create_url = reverse("core:calendar-day-create", args=[self.year.pk])
+        self.saturday_url = reverse("core:academic-year-saturday-rule", args=[self.year.pk])
+        self.holiday_payload = {
+            "date": self.MONDAY,
+            "is_instructional": "False",
+            "label": "Closure",
+        }
+
+    def _holiday(self):
+        return SchoolCalendarDay.objects.create(
+            academic_year=self.year, date=date(2026, 8, 17), is_instructional=False, label="Closure"
+        )
+
+    def _register(self, on_date):
+        class_grade = ClassGrade.objects.create(name="Grade 1")
+        section = Section.objects.create(class_grade=class_grade, name="A")
+        return AttendanceRegister.objects.create(
+            academic_year=self.year, class_grade=class_grade, section=section, date=on_date
+        )
+
+    # --- calendar page ----------------------------------------------------
+
+    def test_anonymous_calendar_redirects_to_login(self):
+        response = self.anonymous.get(self.calendar_url)
+
+        self.assertRedirects(
+            response,
+            f"{reverse('login')}?next={self.calendar_url}",
+            fetch_redirect_response=False,
+        )
+
+    def test_non_admin_cannot_view_calendar(self):
+        self.assertEqual(self.non_admin.get(self.calendar_url).status_code, 403)
+
+    def test_administrator_views_calendar_with_exceptions(self):
+        self._holiday()
+
+        response = self.administrator.get(self.calendar_url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Closure")
+        self.assertContains(response, "Holiday / closure")
+
+    def test_calendar_date_check_reports_expectation(self):
+        self._holiday()
+        expectations = {
+            self.MONDAY: False,
+            "2026-08-18": True,
+            self.SATURDAY: False,
+        }
+        for on_date, expected in expectations.items():
+            with self.subTest(on_date=on_date):
+                response = self.administrator.get(self.calendar_url, {"date": on_date})
+                self.assertTrue(response.context["check_result"]["in_year"])
+                self.assertEqual(response.context["check_result"]["instructional"], expected)
+
+        response = self.administrator.get(self.calendar_url, {"date": "2027-05-03"})
+        self.assertFalse(response.context["check_result"]["in_year"])
+        self.assertContains(response, "outside this Academic Year")
+
+    def test_missing_academic_year_is_not_found(self):
+        url = reverse("core:academic-year-calendar", args=[self.year.pk + 999])
+        self.assertEqual(self.administrator.get(url).status_code, 404)
+
+    def test_academic_year_list_links_to_calendar(self):
+        response = self.administrator.get(reverse("core:academic-year-list"))
+
+        self.assertContains(response, self.calendar_url)
+
+    # --- create -------------------------------------------------------------
+
+    def test_anonymous_create_redirects_without_creating(self):
+        response = self.anonymous.post(self.create_url, self.holiday_payload)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(SchoolCalendarDay.objects.exists())
+
+    def test_non_admin_cannot_create(self):
+        response = self.non_admin.post(self.create_url, self.holiday_payload)
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(SchoolCalendarDay.objects.exists())
+
+    def test_administrator_creates_holiday(self):
+        response = self.administrator.post(self.create_url, self.holiday_payload)
+
+        self.assertRedirects(response, self.calendar_url)
+        day = SchoolCalendarDay.objects.get()
+        self.assertEqual(day.academic_year, self.year)
+        self.assertFalse(day.is_instructional)
+        self.assertFalse(self.year.is_instructional_day(self.MONDAY))
+
+    def test_administrator_creates_working_saturday(self):
+        response = self.administrator.post(
+            self.create_url,
+            {"date": self.SATURDAY, "is_instructional": "True", "label": "Working Saturday"},
+        )
+
+        self.assertRedirects(response, self.calendar_url)
+        self.assertTrue(self.year.is_instructional_day(self.SATURDAY))
+
+    def test_superuser_can_create(self):
+        response = self.superuser_client.post(self.create_url, self.holiday_payload)
+
+        self.assertRedirects(response, self.calendar_url)
+        self.assertEqual(SchoolCalendarDay.objects.count(), 1)
+
+    def test_duplicate_date_is_rejected(self):
+        self._holiday()
+
+        response = self.administrator.post(self.create_url, self.holiday_payload)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "already has a calendar exception")
+        self.assertEqual(SchoolCalendarDay.objects.count(), 1)
+
+    def test_exception_matching_pattern_is_rejected(self):
+        response = self.administrator.post(
+            self.create_url, {"date": self.SATURDAY, "is_instructional": "False"}
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(SchoolCalendarDay.objects.exists())
+
+    def test_date_outside_year_is_rejected(self):
+        response = self.administrator.post(
+            self.create_url, {**self.holiday_payload, "date": "2027-05-03"}
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(SchoolCalendarDay.objects.exists())
+
+    def test_holiday_on_date_with_attendance_is_rejected(self):
+        self._register(self.MONDAY)
+
+        response = self.administrator.post(self.create_url, self.holiday_payload)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Attendance already exists on this date")
+        self.assertFalse(SchoolCalendarDay.objects.exists())
+
+    def test_academic_year_cannot_be_injected(self):
+        other = AcademicYear.objects.create(
+            name="2027-2028", start_date=date(2027, 6, 1), end_date=date(2028, 4, 30)
+        )
+
+        self.administrator.post(
+            self.create_url, {**self.holiday_payload, "academic_year": other.pk}
+        )
+
+        self.assertEqual(SchoolCalendarDay.objects.get().academic_year, self.year)
+
+    # --- update label -------------------------------------------------------
+
+    def test_non_admin_cannot_update(self):
+        day = self._holiday()
+        url = reverse("core:calendar-day-update", args=[day.pk])
+
+        response = self.non_admin.post(url, {"label": "Changed"})
+
+        self.assertEqual(response.status_code, 403)
+        day.refresh_from_db()
+        self.assertEqual(day.label, "Closure")
+
+    def test_administrator_updates_label_only(self):
+        day = self._holiday()
+        url = reverse("core:calendar-day-update", args=[day.pk])
+
+        response = self.administrator.post(
+            url, {"label": "Heavy rain", "date": "2026-08-18", "is_instructional": "True"}
+        )
+
+        self.assertRedirects(response, self.calendar_url)
+        day.refresh_from_db()
+        self.assertEqual(day.label, "Heavy rain")
+        self.assertEqual(day.date, date(2026, 8, 17))
+        self.assertFalse(day.is_instructional)
+
+    # --- delete -------------------------------------------------------------
+
+    def test_get_does_not_delete(self):
+        day = self._holiday()
+
+        self.administrator.get(reverse("core:calendar-day-delete", args=[day.pk]))
+
+        self.assertTrue(SchoolCalendarDay.objects.filter(pk=day.pk).exists())
+
+    def test_non_admin_cannot_delete(self):
+        day = self._holiday()
+
+        response = self.non_admin.post(reverse("core:calendar-day-delete", args=[day.pk]))
+
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(SchoolCalendarDay.objects.filter(pk=day.pk).exists())
+
+    def test_administrator_deletes_exception(self):
+        day = self._holiday()
+
+        response = self.administrator.post(reverse("core:calendar-day-delete", args=[day.pk]))
+
+        self.assertRedirects(response, self.calendar_url)
+        self.assertFalse(SchoolCalendarDay.objects.exists())
+
+    def test_delete_blocked_when_attendance_exists(self):
+        day = SchoolCalendarDay.objects.create(
+            academic_year=self.year, date=date(2026, 8, 22), is_instructional=True
+        )
+        self._register(self.SATURDAY)
+
+        response = self.administrator.post(
+            reverse("core:calendar-day-delete", args=[day.pk]), follow=True
+        )
+
+        self.assertContains(response, "cannot be removed")
+        self.assertTrue(SchoolCalendarDay.objects.filter(pk=day.pk).exists())
+
+    # --- Saturday rule ------------------------------------------------------
+
+    def test_non_admin_cannot_change_saturday_rule(self):
+        response = self.non_admin.post(self.saturday_url, {"saturdays_instructional": "true"})
+
+        self.assertEqual(response.status_code, 403)
+        self.year.refresh_from_db()
+        self.assertFalse(self.year.saturdays_instructional)
+
+    def test_administrator_changes_saturday_rule(self):
+        response = self.administrator.post(
+            self.saturday_url, {"saturdays_instructional": "true"}
+        )
+
+        self.assertRedirects(response, self.calendar_url)
+        self.year.refresh_from_db()
+        self.assertTrue(self.year.saturdays_instructional)
+
+    def test_get_does_not_change_saturday_rule(self):
+        self.administrator.get(self.saturday_url, {"saturdays_instructional": "true"})
+
+        self.year.refresh_from_db()
+        self.assertFalse(self.year.saturdays_instructional)
+
+    def test_saturday_rule_locked_after_attendance(self):
+        self._register("2026-07-01")
+
+        response = self.administrator.post(
+            self.saturday_url, {"saturdays_instructional": "true"}, follow=True
+        )
+
+        self.assertContains(response, "cannot change once attendance")
+        self.year.refresh_from_db()
+        self.assertFalse(self.year.saturdays_instructional)
+
+    def test_academic_year_create_records_saturday_rule(self):
+        self.administrator.post(
+            reverse("core:academic-year-create"),
+            {
+                "name": "2027-2028",
+                "start_date": "2027-06-01",
+                "end_date": "2028-04-30",
+                "saturdays_instructional": "on",
+            },
+        )
+
+        self.assertTrue(AcademicYear.objects.get(name="2027-2028").saturdays_instructional)
