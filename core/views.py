@@ -34,6 +34,7 @@ from core.forms import (
     MissingAttendanceForm,
     MonthlySectionSummaryForm,
     OfferedSubjectsLookupForm,
+    ResultCorrectionForm,
     ResultEntryForm,
     SchoolCalendarDayForm,
     SchoolCalendarDayLabelForm,
@@ -62,6 +63,7 @@ from core.models import (
     School,
     SchoolCalendarDay,
     Student,
+    StudentResult,
     Subject,
 )
 
@@ -451,7 +453,7 @@ def assessment_detail(request, pk):
 def _assessment_context(assessment):
     results = {
         r.academic_enrollment_id: r
-        for r in assessment.results.select_related("entered_by")
+        for r in assessment.results.select_related("entered_by").prefetch_related("corrections")
     }
     roster = list(assessment.roster())
     rows = [(enrollment, results.get(enrollment.pk)) for enrollment in roster]
@@ -483,6 +485,45 @@ def assessment_finalize(request, pk):
         else:
             messages.success(request, "Results finalized.")
     return redirect("core:assessment-detail", pk=assessment.pk)
+
+
+@administrator_required("core.correct_studentresult")
+def result_correct(request, pk):
+    result = get_object_or_404(
+        StudentResult.objects.select_related(
+            "assessment__offering__subject", "assessment__section__class_grade",
+            "assessment__term", "academic_enrollment__student",
+        ),
+        pk=pk,
+    )
+    assessment = result.assessment
+    if not assessment.is_finalized:
+        messages.info(request, "This assessment is still a draft; the teacher edits results.")
+        return redirect("core:assessment-detail", pk=assessment.pk)
+    form = ResultCorrectionForm(request.POST or None, result=result)
+    if request.method == "POST" and form.is_valid():
+        try:
+            result.correct(
+                new_status=form.cleaned_data["status"],
+                new_score=form.cleaned_data["score"],
+                actor=request.user,
+                reason=form.cleaned_data["reason"],
+            )
+        except ValidationError as error:
+            form.add_error(None, error)
+        else:
+            messages.success(request, "Result corrected.")
+            return redirect("core:assessment-detail", pk=assessment.pk)
+    return render(
+        request,
+        "core/result_correction_form.html",
+        {
+            "form": form,
+            "result": result,
+            "assessment": assessment,
+            "corrections": result.corrections.select_related("corrected_by"),
+        },
+    )
 
 
 # --- Phase 4 Gate 5: teacher DRAFT result entry (ADR 0010) -----------------

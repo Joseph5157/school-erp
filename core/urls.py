@@ -69,6 +69,7 @@ urlpatterns = [
         name="assessment-create",
     ),
     path("assessments/<int:pk>/", views.assessment_detail, name="assessment-detail"),
+    path("results/<int:pk>/correct/", views.result_correct, name="result-correct"),
     path("my/assessments/", views.my_assessments, name="my-assessments"),
     path(
         "my/assessments/<int:pk>/marks/",

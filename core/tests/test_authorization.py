@@ -108,6 +108,8 @@ class SchoolAdministratorsGroupMigrationTests(TestCase):
                 "view_assessment",
                 "view_studentresult",
                 "finalize_assessment",
+                "correct_studentresult",
+                "view_resultcorrection",
             },
         )
 

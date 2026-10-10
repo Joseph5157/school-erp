@@ -2082,6 +2082,7 @@ class StudentResult(models.Model):
 
     class Meta:
         ordering = ["assessment", "academic_enrollment__student__full_name"]
+        permissions = [("correct_studentresult", "Can correct finalized results")]
         constraints = [
             models.UniqueConstraint(
                 fields=["assessment", "academic_enrollment"],
@@ -2142,6 +2143,110 @@ class StudentResult(models.Model):
     def grade(self):
         return self.assessment.grade_for(self)
 
+    def correct(self, *, new_status, new_score=None, actor, reason):
+        """Audited correction of a FINALIZED result (Gate 7, ADR 0009).
+
+        Administrator-only (correct_studentresult). MARKED->MARKED,
+        MARKED->ABSENT and ABSENT->MARKED are allowed; a no-op, an invalid
+        score, a blank reason or a draft assessment is rejected without
+        change. An immutable ResultCorrection keeps the previous and new
+        values, actor, time and reason; only this result changes - the
+        assessment is not reopened.
+        """
+        if actor is None or not getattr(actor, "pk", None):
+            raise ValidationError("A correcting user is required.")
+        if not actor.has_perm("core.correct_studentresult"):
+            raise ValidationError("Only an administrator can correct finalized results.")
+        reason = (reason or "").strip()
+        if not reason:
+            raise ValidationError("A reason is required when correcting a result.")
+        if new_status not in ResultStatus.values:
+            raise ValidationError("Invalid result status.")
+        if new_status == ResultStatus.ABSENT:
+            new_score = None
+        else:
+            if new_score in (None, ""):
+                raise ValidationError("A marked result needs a score.")
+            new_score = Decimal(str(new_score))
+            if new_score < 0 or new_score > self.assessment.maximum_marks:
+                raise ValidationError(
+                    f"A score must be between 0 and {self.assessment.maximum_marks}."
+                )
+        if new_status == self.status and new_score == self.score:
+            raise ValidationError("The result already has this value.")
+        with transaction.atomic():
+            status = (
+                Assessment.objects.select_for_update()
+                .filter(pk=self.assessment_id)
+                .values_list("status", flat=True)
+                .get()
+            )
+            if status != Assessment.Status.FINALIZED:
+                raise ValidationError(
+                    "This assessment is still a draft; the teacher edits its results directly."
+                )
+            ResultCorrection.objects.create(
+                result=self,
+                previous_status=self.status,
+                previous_score=self.score,
+                new_status=new_status,
+                new_score=new_score,
+                reason=reason,
+                corrected_by=actor,
+            )
+            self.status = new_status
+            self.score = new_score
+            self.save(update_fields=["status", "score", "updated_at"])
+
     def __str__(self):
         shown = self.score if self.status == ResultStatus.MARKED else "Absent"
         return f"{self.assessment} - {self.academic_enrollment.student}: {shown}"
+
+
+# ---------------------------------------------------------------------------
+# Phase 4 Gate 7 - audited result corrections (ADR 0009)
+# ---------------------------------------------------------------------------
+
+
+class ResultCorrection(models.Model):
+    """Immutable history of a correction to a finalized result (ADR 0009).
+
+    Keeps previous and new status and score, the administrator, the time and
+    the reason. Repeated corrections keep the full sequence. Status/score
+    pairing on both sides is enforced by database checks.
+    """
+
+    result = models.ForeignKey(
+        StudentResult, on_delete=models.PROTECT, related_name="corrections"
+    )
+    previous_status = models.CharField(max_length=10, choices=ResultStatus.choices)
+    previous_score = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    new_status = models.CharField(max_length=10, choices=ResultStatus.choices)
+    new_score = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    reason = models.TextField()
+    corrected_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="result_corrections"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(previous_status="MARKED", previous_score__isnull=False)
+                    | models.Q(previous_status="ABSENT", previous_score__isnull=True)
+                ),
+                name="resultcorrection_previous_status_matches_score",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(new_status="MARKED", new_score__isnull=False, new_score__gte=0)
+                    | models.Q(new_status="ABSENT", new_score__isnull=True)
+                ),
+                name="resultcorrection_new_status_matches_score",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.result} corrected by {self.corrected_by}"
