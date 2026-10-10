@@ -1,4 +1,5 @@
 import datetime
+from decimal import Decimal
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -1537,3 +1538,183 @@ class AssessmentTeacherAssignment(models.Model):
 
     def __str__(self):
         return f"{self.teacher} - {self.offering} - {self.section.name}"
+
+
+# ---------------------------------------------------------------------------
+# Phase 4 Gate 3 - grading scales (ADR 0009)
+# ---------------------------------------------------------------------------
+
+
+def grade_from_bands(bands, percentage):
+    """Resolve a percentage against bands of (min_percentage, label).
+
+    The grade is the label of the band with the highest minimum that is at or
+    below the percentage. Returns None when there is no percentage or no band
+    applies. Used both with live scales and with the frozen snapshot stored on
+    a finalized assessment, so both resolve identically.
+    """
+    if percentage is None:
+        return None
+    best = None
+    for minimum, label in bands:
+        minimum = Decimal(str(minimum))
+        if minimum <= Decimal(str(percentage)) and (best is None or minimum > best[0]):
+            best = (minimum, label)
+    return best[1] if best else None
+
+
+class GradingScale(models.Model):
+    """A reusable grading policy for an Academic Year (ADR 0009).
+
+    It applies to the Class/Grades linked through GradingScaleClassGrade;
+    each Year + Grade has at most one scale, so a grade is never ambiguous.
+    Bands are GradeBoundary rows: "from min_percentage upward -> label". A
+    scale is complete once it has a band starting at 0%, so every percentage
+    from 0 to 100 resolves deterministically. Numeric marks stay canonical;
+    finalized assessments keep a frozen copy of the bands they used, so later
+    edits never rewrite historical grades.
+    """
+
+    academic_year = models.ForeignKey(
+        AcademicYear, on_delete=models.PROTECT, related_name="grading_scales"
+    )
+    name = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["academic_year", "name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["academic_year", "name"], name="gradingscale_unique_name_per_year"
+            )
+        ]
+
+    @classmethod
+    def for_grade(cls, academic_year, class_grade):
+        link = (
+            GradingScaleClassGrade.objects.filter(
+                academic_year=academic_year, class_grade=class_grade
+            )
+            .select_related("scale")
+            .first()
+        )
+        return link.scale if link else None
+
+    def bands(self):
+        return list(self.boundaries.order_by("-min_percentage").values_list(
+            "min_percentage", "label"
+        ))
+
+    @property
+    def is_complete(self):
+        return self.boundaries.filter(min_percentage=0).exists()
+
+    def grade_for(self, percentage):
+        if percentage is not None and not (0 <= Decimal(str(percentage)) <= 100):
+            raise ValueError("A percentage must be between 0 and 100.")
+        return grade_from_bands(self.bands(), percentage)
+
+    def snapshot(self):
+        """The frozen form stored on a finalized assessment."""
+        return {
+            "scale": self.name,
+            "bands": [[str(minimum), label] for minimum, label in self.bands()],
+        }
+
+    def set_class_grades(self, class_grades):
+        """Replace the Grades this scale applies to; refuse Grades already taken."""
+        class_grades = list(class_grades)
+        taken = (
+            GradingScaleClassGrade.objects.filter(
+                academic_year=self.academic_year, class_grade__in=class_grades
+            )
+            .exclude(scale=self)
+            .select_related("class_grade", "scale")
+        )
+        if taken.exists():
+            raise ValidationError(
+                "; ".join(f"{t.class_grade} already uses {t.scale.name}" for t in taken)
+                + "."
+            )
+        with transaction.atomic():
+            self.class_grade_links.exclude(class_grade__in=class_grades).delete()
+            existing = set(self.class_grade_links.values_list("class_grade_id", flat=True))
+            GradingScaleClassGrade.objects.bulk_create(
+                GradingScaleClassGrade(
+                    scale=self, academic_year=self.academic_year, class_grade=grade
+                )
+                for grade in class_grades
+                if grade.pk not in existing
+            )
+
+    @property
+    def class_grades(self):
+        return ClassGrade.objects.filter(grading_scale_links__scale=self)
+
+    def __str__(self):
+        return f"{self.academic_year} - {self.name}"
+
+
+class GradingScaleClassGrade(models.Model):
+    """Applies a grading scale to one Class/Grade; one scale per Year + Grade."""
+
+    scale = models.ForeignKey(
+        GradingScale, on_delete=models.CASCADE, related_name="class_grade_links"
+    )
+    academic_year = models.ForeignKey(
+        AcademicYear, on_delete=models.PROTECT, related_name="grading_scale_links"
+    )
+    class_grade = models.ForeignKey(
+        ClassGrade, on_delete=models.PROTECT, related_name="grading_scale_links"
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["academic_year", "class_grade"],
+                name="gradingscaleclassgrade_one_scale_per_year_grade",
+            )
+        ]
+
+    def clean(self):
+        super().clean()
+        if self.scale_id and self.academic_year_id != self.scale.academic_year_id:
+            raise ValidationError("The link's Academic Year must match the scale's.")
+
+    def save(self, *args, **kwargs):
+        if self.scale_id and not self.academic_year_id:
+            self.academic_year_id = self.scale.academic_year_id
+        super().save(*args, **kwargs)
+
+
+class GradeBoundary(models.Model):
+    """One band of a grading scale: from `min_percentage` upward -> `label`."""
+
+    scale = models.ForeignKey(GradingScale, on_delete=models.CASCADE, related_name="boundaries")
+    label = models.CharField(max_length=10)
+    min_percentage = models.DecimalField(max_digits=5, decimal_places=2)
+
+    class Meta:
+        ordering = ["scale", "-min_percentage"]
+        constraints = [
+            models.UniqueConstraint(fields=["scale", "label"], name="gradeboundary_unique_label"),
+            models.UniqueConstraint(
+                fields=["scale", "min_percentage"], name="gradeboundary_unique_minimum"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(min_percentage__gte=0) & models.Q(min_percentage__lte=100),
+                name="gradeboundary_minimum_between_0_and_100",
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        self.label = (self.label or "").strip()
+        if self.min_percentage is not None and not (0 <= self.min_percentage <= 100):
+            raise ValidationError(
+                {"min_percentage": "The starting percentage must be between 0 and 100."}
+            )
+
+    def __str__(self):
+        return f"{self.label} (from {self.min_percentage}%)"

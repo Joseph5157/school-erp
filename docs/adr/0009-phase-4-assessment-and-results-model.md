@@ -102,9 +102,19 @@ DECIDED (Gate 1):
   means all Sections of the Grade; linked Sections must belong to the Grade.
   Terms of one year may not overlap.
 
+DECIDED (Gate 3):
+- A GradingScale belongs to an Academic Year and applies to the Grades
+  linked to it; each Year + Grade has at most one scale.
+- Bands are "from minimum percentage upward -> label"; a percentage gets the
+  band with the highest minimum at or below it, so bands cannot overlap and
+  resolution is deterministic. A scale is complete once it has a band
+  starting at 0%.
+- Historical grading uses a frozen copy: at finalization the assessment
+  stores the scale name and its bands, and every later grade for that
+  assessment is resolved from that copy. Scales stay editable without
+  rewriting finalized history.
+
 OPEN (decided in the named gate, not here):
-- How grading context is preserved for finalized results — snapshot on the
-  result vs. immutable scale versions (Gate 3, before Gate 6 finalization).
 - Whether a correction may also be made while the assessment is still DRAFT
   (expected: no — DRAFT is edited normally, as in Phase 2 attendance).
 

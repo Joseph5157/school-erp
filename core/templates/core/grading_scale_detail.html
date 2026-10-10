@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}{{ scale.name }}{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">{{ scale.name }} <small class="text-muted">{{ scale.academic_year.name }}</small></h1>
+<p>
+    Applies to: {% for grade in scale.class_grades %}{{ grade }}{% if not forloop.last %}, {% endif %}{% empty %}no Grades yet{% endfor %}.
+    {% if perms.core.change_gradingscale %}<a href="{% url 'core:grading-scale-update' scale.pk %}">Edit name and Grades</a>{% endif %}
+</p>
+{% if not scale.is_complete %}
+<div class="alert alert-warning">Add a band starting at 0% so every percentage gets a grade.</div>
+{% endif %}
+<h2 class="h5">Grade bands</h2>
+<p class="text-muted">A percentage gets the band with the highest starting point at or below it.</p>
+<table class="table">
+    <thead><tr><th>From</th><th>Grade</th><th></th></tr></thead>
+    <tbody>
+        {% for band in boundaries %}
+        <tr>
+            <td>{{ band.min_percentage }}%</td>
+            <td>{{ band.label }}</td>
+            <td class="text-end">
+                {% if perms.core.delete_gradeboundary %}
+                <form method="post" action="{% url 'core:grade-boundary-delete' band.pk %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-danger btn-sm">Remove</button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="3">No bands yet.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% if perms.core.add_gradeboundary %}
+<form method="post" action="{% url 'core:grade-boundary-create' scale.pk %}" class="row g-2 align-items-end">
+    {% csrf_token %}
+    <div class="col-auto">{{ boundary_form.min_percentage.label_tag }} {{ boundary_form.min_percentage }}</div>
+    <div class="col-auto">{{ boundary_form.label.label_tag }} {{ boundary_form.label }}</div>
+    <div class="col-auto"><button type="submit" class="btn btn-outline-primary">Add band</button></div>
+</form>
+{% endif %}
+<p class="mt-3"><a href="{% url 'core:academic-year-grading-scales' scale.academic_year_id %}">All grading scales</a></p>
+{% endblock %}

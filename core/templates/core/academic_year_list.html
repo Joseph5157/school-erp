@@ -32,6 +32,9 @@
                 {% if perms.core.view_academicsubjectoffering %}
                     &middot; <a href="{% url 'core:academic-year-offerings' academic_year.pk %}">Subjects offered</a>
                 {% endif %}
+                {% if perms.core.view_gradingscale %}
+                    &middot; <a href="{% url 'core:academic-year-grading-scales' academic_year.pk %}">Grading</a>
+                {% endif %}
                 {% if perms.core.view_assessmentteacherassignment %}
                     &middot; <a href="{% url 'core:academic-year-teacher-assignments' academic_year.pk %}">Teachers</a>
                 {% endif %}

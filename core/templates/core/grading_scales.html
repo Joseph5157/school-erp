@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Grading scales - {{ academic_year.name }}{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Grading scales: {{ academic_year.name }}</h1>
+<p class="text-muted">Marks are the official result; grades are worked out from the percentage. Each Grade uses at most one scale per year. Finalized assessments keep the grade bands they were finalized with.</p>
+{% if perms.core.add_gradingscale %}
+    <a class="btn btn-primary mb-3" href="{% url 'core:grading-scale-create' academic_year.pk %}">Add grading scale</a>
+{% endif %}
+<table class="table">
+    <thead><tr><th>Scale</th><th>Applies to</th><th>Bands</th><th>Status</th></tr></thead>
+    <tbody>
+        {% for scale in scales %}
+        <tr>
+            <td><a href="{% url 'core:grading-scale-detail' scale.pk %}">{{ scale.name }}</a></td>
+            <td>{% for link in scale.class_grade_links.all %}{{ link.class_grade }}{% if not forloop.last %}, {% endif %}{% empty %}&mdash;{% endfor %}</td>
+            <td>{% for band in scale.boundaries.all %}{{ band.label }} &ge; {{ band.min_percentage }}%{% if not forloop.last %}; {% endif %}{% empty %}&mdash;{% endfor %}</td>
+            <td>{% if scale.is_complete %}Complete{% else %}<span class="text-danger">Needs a band from 0%</span>{% endif %}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4">No grading scales yet.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
