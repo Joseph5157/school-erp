@@ -3,7 +3,7 @@
 ## Project status
 
 This repository contains the documentation foundation and the completed
-Phase 1 implementation of the School ERP.
+Phase 1 and Phase 2 implementations of the School ERP.
 
 Current status:
 - documentation foundation established; business and domain decisions are the source of truth
@@ -20,12 +20,29 @@ Current status:
   - student list, search, profile, and ACTIVE/INACTIVE status workflow
   - initial administrative authorization/permissions (School Administrators group)
   - full acceptance journey verified end to end by automated tests
+- Phase 2 Attendance is complete (tag `phase-2-complete`), reconciled gate by
+  gate per `docs/PHASE_2_RECONCILIATION_PLAN.md`:
+  - effective-dated Academic Enrollment with date-correct historical lookup (ADR 0006)
+  - minimal Academic-Year-aware school calendar: weekly pattern plus holiday /
+    working-Saturday exceptions (ADR 0008)
+  - daily Section/date registers with a date-effective roster
+  - statuses PRESENT and ABSENT only, with an optional absence note
+  - DRAFT → SUBMITTED registers; a complete roster is required to submit;
+    missing or DRAFT attendance is never treated as ABSENT
+  - audited corrections of submitted attendance (status, note, actor, time, reason)
+  - reports: daily register, absent list, Student history and percentage,
+    missing attendance, monthly Class/Section summary
+  - administrator-only authorization; reconciled acceptance journey verified
+    end to end; full suite passes on SQLite and PostgreSQL
+- Phase 3 Fees is deferred (not implemented); Phase 4 Assessments is in
+  research/planning only.
 
 ## Documentation
 
 - [docs/PRODUCT.md](docs/PRODUCT.md) — product vision, users, principles, and module strategy
 - [docs/DOMAIN_MODEL.md](docs/DOMAIN_MODEL.md) — domain model, lifecycle, enrollment, and historical-data rules
-- [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) — Phase 1 scope, out-of-scope items, and acceptance criteria
+- [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) — Phase 1 and Phase 2 scope, out-of-scope items, and acceptance criteria
+- [docs/PHASE_2_RECONCILIATION_PLAN.md](docs/PHASE_2_RECONCILIATION_PLAN.md) — Phase 2 gate-by-gate plan and completion record
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — engineering principles, security, architecture guidance, and source-of-truth hierarchy
 - [docs/ROADMAP.md](docs/ROADMAP.md) — directional roadmap across future phases
 - [docs/ECC_EVALUATION.md](docs/ECC_EVALUATION.md) — ECC experiment goals and evaluation framework
