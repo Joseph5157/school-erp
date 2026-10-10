@@ -14,6 +14,8 @@ from core.models import (
     AttendanceRegister,
     AttendanceStatus,
     ClassGrade,
+    GradeBoundary,
+    GradingScale,
     Guardian,
     School,
     SchoolCalendarDay,
@@ -221,6 +223,57 @@ class TeacherAssignmentForm(forms.Form):
                 "A teacher is already assigned to this Subject and Section; remove that "
                 "assignment first."
             )
+        return cleaned_data
+
+
+class GradingScaleForm(forms.Form):
+    """Name a grading scale and choose the Grades it applies to."""
+
+    name = forms.CharField(max_length=100)
+    class_grades = forms.ModelMultipleChoiceField(
+        queryset=ClassGrade.objects.all(),
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label="Applies to Class/Grades",
+        help_text="Each Grade can use only one scale per Academic Year.",
+    )
+
+    def __init__(self, *args, academic_year=None, scale=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.academic_year = academic_year
+        self.scale = scale
+        if scale is not None and not self.is_bound:
+            self.fields["name"].initial = scale.name
+            self.fields["class_grades"].initial = list(scale.class_grades)
+
+    def clean_name(self):
+        name = self.cleaned_data["name"].strip()
+        clash = GradingScale.objects.filter(academic_year=self.academic_year, name=name)
+        if self.scale is not None:
+            clash = clash.exclude(pk=self.scale.pk)
+        if clash.exists():
+            raise ValidationError("Another scale in this Academic Year has this name.")
+        return name
+
+
+class GradeBoundaryForm(forms.ModelForm):
+    class Meta:
+        model = GradeBoundary
+        fields = ["min_percentage", "label"]
+        labels = {"min_percentage": "From percentage", "label": "Grade"}
+
+    def __init__(self, *args, scale=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if scale is not None:
+            self.instance.scale = scale
+
+    def clean(self):
+        cleaned_data = super().clean()
+        scale = self.instance.scale
+        for field in ("label", "min_percentage"):
+            value = cleaned_data.get(field)
+            if value not in (None, "") and scale.boundaries.filter(**{field: value}).exists():
+                self.add_error(field, "This scale already has a band with this value.")
         return cleaned_data
 
 

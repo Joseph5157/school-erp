@@ -21,6 +21,8 @@ from core.forms import (
     AttendanceRegisterForm,
     CalendarDateCheckForm,
     ClassGradeForm,
+    GradeBoundaryForm,
+    GradingScaleForm,
     GuardianForm,
     MissingAttendanceForm,
     MonthlySectionSummaryForm,
@@ -45,6 +47,8 @@ from core.models import (
     AttendanceRegister,
     AttendanceStatus,
     ClassGrade,
+    GradeBoundary,
+    GradingScale,
     Guardian,
     School,
     SchoolCalendarDay,
@@ -376,6 +380,106 @@ def offering_update(request, pk):
         "core/offering_form.html",
         {"form": form, "academic_year": offering.academic_year, "offering": offering},
     )
+
+
+# --- Phase 4 Gate 3: grading scales (ADR 0009) -----------------------------
+
+
+@administrator_required("core.view_gradingscale")
+def academic_year_grading_scales(request, pk):
+    academic_year = get_object_or_404(AcademicYear, pk=pk)
+    scales = academic_year.grading_scales.prefetch_related(
+        "boundaries", "class_grade_links__class_grade"
+    )
+    return render(
+        request,
+        "core/grading_scales.html",
+        {"academic_year": academic_year, "scales": scales},
+    )
+
+
+def _save_scale(form, scale):
+    with transaction.atomic():
+        scale.name = form.cleaned_data["name"]
+        scale.full_clean()
+        scale.save()
+        scale.set_class_grades(form.cleaned_data["class_grades"])
+
+
+@administrator_required("core.add_gradingscale")
+def grading_scale_create(request, pk):
+    academic_year = get_object_or_404(AcademicYear, pk=pk)
+    form = GradingScaleForm(request.POST or None, academic_year=academic_year)
+    if request.method == "POST" and form.is_valid():
+        scale = GradingScale(academic_year=academic_year)
+        try:
+            _save_scale(form, scale)
+        except ValidationError as error:
+            form.add_error(None, error)
+        else:
+            messages.success(request, "Grading scale created. Now add its grade bands.")
+            return redirect("core:grading-scale-detail", pk=scale.pk)
+    return render(
+        request,
+        "core/grading_scale_form.html",
+        {"form": form, "academic_year": academic_year, "scale": None},
+    )
+
+
+@administrator_required("core.view_gradingscale")
+def grading_scale_detail(request, pk):
+    scale = get_object_or_404(GradingScale.objects.select_related("academic_year"), pk=pk)
+    return render(
+        request,
+        "core/grading_scale_detail.html",
+        {
+            "scale": scale,
+            "boundaries": scale.boundaries.all(),
+            "boundary_form": GradeBoundaryForm(scale=scale),
+        },
+    )
+
+
+@administrator_required("core.change_gradingscale")
+def grading_scale_update(request, pk):
+    scale = get_object_or_404(GradingScale.objects.select_related("academic_year"), pk=pk)
+    form = GradingScaleForm(request.POST or None, academic_year=scale.academic_year, scale=scale)
+    if request.method == "POST" and form.is_valid():
+        try:
+            _save_scale(form, scale)
+        except ValidationError as error:
+            form.add_error(None, error)
+        else:
+            messages.success(request, "Grading scale updated.")
+            return redirect("core:grading-scale-detail", pk=scale.pk)
+    return render(
+        request,
+        "core/grading_scale_form.html",
+        {"form": form, "academic_year": scale.academic_year, "scale": scale},
+    )
+
+
+@administrator_required("core.add_gradeboundary")
+def grade_boundary_create(request, pk):
+    scale = get_object_or_404(GradingScale, pk=pk)
+    if request.method == "POST":
+        form = GradeBoundaryForm(request.POST, scale=scale)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Grade band added.")
+        else:
+            errors = [m for field_errors in form.errors.values() for m in field_errors]
+            messages.error(request, f"Grade band not added. {errors[0]}")
+    return redirect("core:grading-scale-detail", pk=scale.pk)
+
+
+@administrator_required("core.delete_gradeboundary")
+def grade_boundary_delete(request, pk):
+    boundary = get_object_or_404(GradeBoundary, pk=pk)
+    if request.method == "POST":
+        boundary.delete()
+        messages.success(request, "Grade band removed.")
+    return redirect("core:grading-scale-detail", pk=boundary.scale_id)
 
 
 # --- Phase 4 Gate 2: assessment teacher assignments (ADR 0010) -------------

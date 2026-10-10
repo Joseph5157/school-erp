@@ -59,6 +59,28 @@ urlpatterns = [
         name="teacher-assignment-create",
     ),
     path(
+        "academic-years/<int:pk>/grading-scales/",
+        views.academic_year_grading_scales,
+        name="academic-year-grading-scales",
+    ),
+    path(
+        "academic-years/<int:pk>/grading-scales/add/",
+        views.grading_scale_create,
+        name="grading-scale-create",
+    ),
+    path("grading-scales/<int:pk>/", views.grading_scale_detail, name="grading-scale-detail"),
+    path("grading-scales/<int:pk>/edit/", views.grading_scale_update, name="grading-scale-update"),
+    path(
+        "grading-scales/<int:pk>/bands/add/",
+        views.grade_boundary_create,
+        name="grade-boundary-create",
+    ),
+    path(
+        "grade-bands/<int:pk>/remove/",
+        views.grade_boundary_delete,
+        name="grade-boundary-delete",
+    ),
+    path(
         "teacher-assignments/<int:pk>/remove/",
         views.teacher_assignment_delete,
         name="teacher-assignment-delete",
