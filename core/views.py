@@ -5,7 +5,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 
-from core import reports
+from core import assessment_reports, reports
 from core.authorization import (
     administrator_required,
     can_enter_results,
@@ -529,6 +529,90 @@ def result_correct(request, pk):
             "result": result,
             "assessment": assessment,
             "corrections": result.corrections.select_related("corrected_by"),
+        },
+    )
+
+
+# --- Phase 4 Gate 9: result reports and Term report cards (ADR 0009) -------
+
+
+@administrator_required("core.view_studentresult")
+def report_result_sheet(request, pk):
+    assessment = get_object_or_404(_assessments(), pk=pk)
+    return render(
+        request,
+        "core/report_result_sheet.html",
+        {"assessment": assessment, "results": assessment_reports.result_sheet(assessment)},
+    )
+
+
+@administrator_required("core.view_studentresult")
+def report_student_results(request, pk):
+    student = get_object_or_404(Student, pk=pk)
+    terms = (
+        AcademicTerm.objects.filter(academic_year__enrollments__student=student)
+        .select_related("academic_year")
+        .distinct()
+        .order_by("academic_year__start_date", "display_order")
+    )
+    return render(
+        request,
+        "core/report_student_results.html",
+        {
+            "student": student,
+            "results": assessment_reports.student_history(student),
+            "terms": terms,
+        },
+    )
+
+
+@administrator_required("core.view_studentresult")
+def report_term_report_card(request, pk, term_pk):
+    student = get_object_or_404(Student, pk=pk)
+    term = get_object_or_404(AcademicTerm.objects.select_related("academic_year"), pk=term_pk)
+    return render(
+        request,
+        "core/report_term_report_card.html",
+        assessment_reports.term_report_card(student, term),
+    )
+
+
+@administrator_required("core.view_studentresult")
+def report_subject_section_results(request, pk):
+    academic_year = get_object_or_404(AcademicYear, pk=pk)
+    offerings = AcademicSubjectOffering.objects.filter(academic_year=academic_year).select_related(
+        "class_grade", "subject"
+    )
+    sections = Section.objects.select_related("class_grade")
+    terms = academic_year.terms.all()
+    offering = section = term = None
+    assessments, rows = [], []
+    try:
+        if request.GET.get("offering"):
+            offering = offerings.get(pk=request.GET["offering"])
+        if request.GET.get("section"):
+            section = sections.get(pk=request.GET["section"])
+        if request.GET.get("term"):
+            term = terms.get(pk=request.GET["term"])
+    except (ValueError, AcademicSubjectOffering.DoesNotExist, Section.DoesNotExist,
+            AcademicTerm.DoesNotExist):
+        messages.error(request, "Choose a Subject, Section and Term from the lists.")
+        offering = section = term = None
+    if offering is not None and section is not None:
+        assessments, rows = assessment_reports.subject_section_results(offering, section, term)
+    return render(
+        request,
+        "core/report_subject_section_results.html",
+        {
+            "academic_year": academic_year,
+            "offerings": offerings,
+            "sections": sections,
+            "terms": terms,
+            "offering": offering,
+            "section": section,
+            "term": term,
+            "assessments": assessments,
+            "rows": rows,
         },
     )
 

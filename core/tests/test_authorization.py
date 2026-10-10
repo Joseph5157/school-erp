@@ -2559,7 +2559,7 @@ class AppWideAuthorizationSweepTests(AuthorizationClientsMixin, TestCase):
 
         for pattern in core_urls.urlpatterns:
             assert isinstance(pattern, URLPattern)
-            kwargs = {"pk": 1} if "pk" in pattern.pattern.regex.groupindex else {}
+            kwargs = {name: 1 for name in pattern.pattern.regex.groupindex}
             yield pattern.name, reverse(f"core:{pattern.name}", kwargs=kwargs)
 
     def test_every_url_is_covered(self):

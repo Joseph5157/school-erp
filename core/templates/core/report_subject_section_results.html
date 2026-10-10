@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Subject results - {{ academic_year.name }}{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Subject/Section results: {{ academic_year.name }}</h1>
+<form method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-auto"><label>Subject <select name="offering" class="form-select">
+        <option value="">Choose</option>
+        {% for o in offerings %}<option value="{{ o.pk }}"{% if offering and o.pk == offering.pk %} selected{% endif %}>{{ o.class_grade }} {{ o.subject.name }}</option>{% endfor %}
+    </select></label></div>
+    <div class="col-auto"><label>Section <select name="section" class="form-select">
+        <option value="">Choose</option>
+        {% for s in sections %}<option value="{{ s.pk }}"{% if section and s.pk == section.pk %} selected{% endif %}>{{ s }}</option>{% endfor %}
+    </select></label></div>
+    <div class="col-auto"><label>Term <select name="term" class="form-select">
+        <option value="">All Terms</option>
+        {% for t in terms %}<option value="{{ t.pk }}"{% if term and t.pk == term.pk %} selected{% endif %}>{{ t.name }}</option>{% endfor %}
+    </select></label></div>
+    <div class="col-auto"><button type="submit" class="btn btn-outline-secondary">Show</button></div>
+</form>
+{% if offering and section %}
+<p class="text-muted">Finalized assessments only. "Absent" is shown as such and never counted as zero.</p>
+<table class="table table-sm">
+    <thead><tr><th>Student</th>{% for a in assessments %}<th><a href="{% url 'core:report-result-sheet' a.pk %}">{{ a.name }}</a><br><small>{{ a.assessment_date }} / {{ a.maximum_marks }}</small></th>{% endfor %}</tr></thead>
+    <tbody>
+        {% for student, cells in rows %}
+        <tr>
+            <td><a href="{% url 'core:report-student-results' student.pk %}">{{ student.full_name }}</a></td>
+            {% for result in cells %}<td>{% if result %}{% if result.status == "MARKED" %}{{ result.score }}{% if result.grade %} ({{ result.grade }}){% endif %}{% else %}Absent{% endif %}{% else %}&mdash;{% endif %}</td>{% endfor %}
+        </tr>
+        {% empty %}
+        <tr><td colspan="{{ assessments|length|add:1 }}">No finalized results for this Subject and Section.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% endblock %}

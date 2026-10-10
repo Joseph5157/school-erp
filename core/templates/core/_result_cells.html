@@ -1,0 +1,5 @@
+{# One result's cells: score, %, grade, pass/fail. Context: result, show_pass #}
+<td>{% if result.status == "MARKED" %}{{ result.score }} / {{ result.assessment.maximum_marks }}{% else %}Absent{% endif %}</td>
+<td>{% if result.percentage is not None %}{{ result.percentage }}%{% endif %}</td>
+<td>{{ result.grade|default:"" }}</td>
+<td>{% if result.pass_fail and result.pass_fail != "ABSENT" %}{{ result.pass_fail|title }}{% endif %}</td>
