@@ -71,6 +71,26 @@ urlpatterns = [
     ),
     path("assessments/<int:pk>/", views.assessment_detail, name="assessment-detail"),
     path("results/<int:pk>/correct/", views.result_correct, name="result-correct"),
+    path(
+        "assessments/<int:pk>/result-sheet/",
+        views.report_result_sheet,
+        name="report-result-sheet",
+    ),
+    path(
+        "students/<int:pk>/results/",
+        views.report_student_results,
+        name="report-student-results",
+    ),
+    path(
+        "students/<int:pk>/report-card/<int:term_pk>/",
+        views.report_term_report_card,
+        name="report-term-report-card",
+    ),
+    path(
+        "academic-years/<int:pk>/subject-results/",
+        views.report_subject_section_results,
+        name="report-subject-section-results",
+    ),
     path("my/assessments/", views.my_assessments, name="my-assessments"),
     path(
         "my/assessments/<int:pk>/marks/",

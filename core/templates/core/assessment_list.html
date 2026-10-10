@@ -5,6 +5,9 @@
 {% if perms.core.add_assessment %}
     <a class="btn btn-primary mb-3" href="{% url 'core:assessment-create' academic_year.pk %}">Plan an assessment</a>
 {% endif %}
+{% if perms.core.view_studentresult %}
+    <a class="btn btn-outline-secondary mb-3" href="{% url 'core:report-subject-section-results' academic_year.pk %}">Subject/Section results</a>
+{% endif %}
 <form method="get" class="row g-2 align-items-end mb-3">
     <div class="col-auto">{{ form.term.label_tag }} {{ form.term }}</div>
     <div class="col-auto">{{ form.section.label_tag }} {{ form.section }}</div>

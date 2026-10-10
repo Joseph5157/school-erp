@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Results: {{ student.full_name }}{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Results: {{ student.full_name }}</h1>
+<p>Term report cards:
+    {% for term in terms %}<a href="{% url 'core:report-term-report-card' student.pk term.pk %}">{{ term.academic_year.name }} {{ term.name }}</a>{% if not forloop.last %} &middot; {% endif %}{% empty %}none yet{% endfor %}
+</p>
+<p class="text-muted">Finalized results only, each shown with the Section the Student was in at the time.</p>
+<table class="table">
+    <thead><tr><th>Date</th><th>Term</th><th>Section</th><th>Subject</th><th>Assessment</th><th>Marks</th><th>%</th><th>Grade</th><th>Pass/Fail</th></tr></thead>
+    <tbody>
+        {% for result in results %}
+        <tr>
+            <td>{{ result.assessment.assessment_date }}</td>
+            <td>{{ result.assessment.term.academic_year.name }} {{ result.assessment.term.name }}</td>
+            <td>{{ result.academic_enrollment.section }}</td>
+            <td>{{ result.assessment.offering.subject.name }}</td>
+            <td>{{ result.assessment.name }}</td>
+            {% include "core/_result_cells.html" %}
+        </tr>
+        {% empty %}
+        <tr><td colspan="9">No finalized results yet.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+<p><a href="{% url 'core:student-detail' student.pk %}">Back to Student</a></p>
+{% endblock %}
