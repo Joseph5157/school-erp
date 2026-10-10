@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}{% if creating %}Add Subject{% else %}Edit Subject{% endif %}{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">{% if creating %}Add Subject{% else %}Edit {{ subject.name }}{% endif %}</h1>
+{% if not creating %}
+<p class="text-muted">Renaming keeps all history attached. To retire a Subject, untick Active; it then cannot be offered again.</p>
+{% endif %}
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">Save</button>
+    <a class="btn btn-link" href="{% url 'core:subject-list' %}">Cancel</a>
+</form>
+{% endblock %}

@@ -1244,3 +1244,228 @@ class AttendanceCorrection(models.Model):
 
     def __str__(self):
         return f"{self.entry} {self.previous_status} -> {self.new_status}"
+
+
+# ---------------------------------------------------------------------------
+# Phase 4 - academic structures for assessments (ADR 0009, Gate 1)
+# ---------------------------------------------------------------------------
+
+
+class Subject(models.Model):
+    """A long-lived academic subject identity (ADR 0009).
+
+    Not tied to a Grade or Academic Year; offerings place it in a year/grade.
+    Renaming keeps every historical reference intact because history points
+    at this row, not at the name. Retire a subject by deactivating it.
+    """
+
+    name = models.CharField(max_length=100, unique=True)
+    code = models.CharField(max_length=20, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["code"],
+                condition=~models.Q(code=""),
+                name="subject_unique_code_when_set",
+            )
+        ]
+
+    def clean(self):
+        super().clean()
+        self.name = (self.name or "").strip()
+        self.code = (self.code or "").strip().upper()
+
+    def __str__(self):
+        return f"{self.name} ({self.code})" if self.code else self.name
+
+
+class AcademicTerm(models.Model):
+    """An explicitly ordered term inside one Academic Year (ADR 0009).
+
+    Dates fall inside the year, end after start, and terms of one year never
+    overlap. `display_order` is explicit, never inferred from the name.
+    """
+
+    academic_year = models.ForeignKey(
+        AcademicYear, on_delete=models.PROTECT, related_name="terms"
+    )
+    name = models.CharField(max_length=100)
+    start_date = models.DateField()
+    end_date = models.DateField()
+    display_order = models.PositiveSmallIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["academic_year", "display_order"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(end_date__gt=models.F("start_date")),
+                name="academicterm_end_date_after_start_date",
+            ),
+            models.UniqueConstraint(
+                fields=["academic_year", "name"], name="academicterm_unique_name_per_year"
+            ),
+            models.UniqueConstraint(
+                fields=["academic_year", "display_order"],
+                name="academicterm_unique_order_per_year",
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        start, end = _as_date(self.start_date), _as_date(self.end_date)
+        if start is None or end is None:
+            return
+        if end <= start:
+            raise ValidationError({"end_date": "End date must be after the start date."})
+        if not self.academic_year_id:
+            return
+        year = self.academic_year
+        if not (year.contains(start) and year.contains(end)):
+            raise ValidationError("Term dates must fall inside the Academic Year.")
+        overlapping = AcademicTerm.objects.filter(
+            academic_year_id=self.academic_year_id, start_date__lte=end, end_date__gte=start
+        )
+        if self.pk is not None:
+            overlapping = overlapping.exclude(pk=self.pk)
+        clash = overlapping.first()
+        if clash is not None:
+            raise ValidationError(
+                f"These dates overlap {clash.name} ({clash.start_date} to {clash.end_date})."
+            )
+
+    def contains(self, on_date):
+        on_date = _as_date(on_date)
+        return _as_date(self.start_date) <= on_date <= _as_date(self.end_date)
+
+    def __str__(self):
+        return f"{self.academic_year} - {self.name}"
+
+
+class AcademicSubjectOfferingQuerySet(models.QuerySet):
+    def for_section(self, academic_year, section):
+        """Offerings that apply to `section` in `academic_year`.
+
+        An offering applies when it is for the Section's Class/Grade in that
+        year and either lists no Sections (all Sections) or lists this one.
+        """
+        return (
+            self.filter(academic_year=academic_year, class_grade_id=section.class_grade_id)
+            .filter(
+                models.Q(section_links__isnull=True) | models.Q(section_links__section=section)
+            )
+            .distinct()
+        )
+
+    def for_term_section(self, term, section):
+        return self.for_section(term.academic_year, section)
+
+
+class AcademicSubjectOffering(models.Model):
+    """A Subject taught to a Class/Grade in one Academic Year (ADR 0009).
+
+    Section scope: with no linked Sections the offering applies to every
+    Section of the Grade; otherwise only to the linked Sections, each of which
+    must belong to the offering's Grade. Change the scope with
+    `set_sections()`, which validates it.
+    """
+
+    academic_year = models.ForeignKey(
+        AcademicYear, on_delete=models.PROTECT, related_name="subject_offerings"
+    )
+    class_grade = models.ForeignKey(
+        ClassGrade, on_delete=models.PROTECT, related_name="subject_offerings"
+    )
+    subject = models.ForeignKey(Subject, on_delete=models.PROTECT, related_name="offerings")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    objects = AcademicSubjectOfferingQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["academic_year", "class_grade", "subject"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["academic_year", "class_grade", "subject"],
+                name="subjectoffering_unique_year_grade_subject",
+            )
+        ]
+
+    def clean(self):
+        super().clean()
+        if self.pk is None and self.subject_id and not self.subject.is_active:
+            raise ValidationError({"subject": "An inactive Subject cannot be offered."})
+
+    @property
+    def sections(self):
+        return Section.objects.filter(subject_offering_links__offering=self)
+
+    @property
+    def applies_to_all_sections(self):
+        return not self.section_links.exists()
+
+    def set_sections(self, sections):
+        """Replace the Section scope. An empty iterable means all Sections."""
+        sections = list(sections)
+        wrong = [s for s in sections if s.class_grade_id != self.class_grade_id]
+        if wrong:
+            raise ValidationError(
+                "Every Section must belong to the offering's Class/Grade "
+                f"({self.class_grade}): {', '.join(str(s) for s in wrong)}."
+            )
+        with transaction.atomic():
+            self.section_links.exclude(section__in=sections).delete()
+            existing = set(self.section_links.values_list("section_id", flat=True))
+            AcademicSubjectOfferingSection.objects.bulk_create(
+                AcademicSubjectOfferingSection(offering=self, section=section)
+                for section in sections
+                if section.pk not in existing
+            )
+
+    def applies_to(self, section):
+        if section.class_grade_id != self.class_grade_id:
+            return False
+        links = set(self.section_links.values_list("section_id", flat=True))
+        return not links or section.pk in links
+
+    def __str__(self):
+        return f"{self.academic_year} - {self.class_grade} - {self.subject.name}"
+
+
+class AcademicSubjectOfferingSection(models.Model):
+    """One Section an offering is limited to (see AcademicSubjectOffering)."""
+
+    offering = models.ForeignKey(
+        AcademicSubjectOffering, on_delete=models.CASCADE, related_name="section_links"
+    )
+    section = models.ForeignKey(
+        Section, on_delete=models.PROTECT, related_name="subject_offering_links"
+    )
+
+    class Meta:
+        ordering = ["section"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["offering", "section"], name="subjectofferingsection_unique"
+            )
+        ]
+
+    def clean(self):
+        super().clean()
+        if (
+            self.offering_id
+            and self.section_id
+            and self.section.class_grade_id != self.offering.class_grade_id
+        ):
+            raise ValidationError(
+                {"section": "The Section must belong to the offering's Class/Grade."}
+            )
+
+    def __str__(self):
+        return f"{self.offering} - {self.section.name}"

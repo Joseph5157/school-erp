@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Terms - {{ academic_year.name }}{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Terms: {{ academic_year.name }}</h1>
+<p class="text-muted">{{ academic_year.start_date }} to {{ academic_year.end_date }}. Terms are shown in their explicit order and may not overlap.</p>
+{% if perms.core.add_academicterm %}
+    <a class="btn btn-primary mb-3" href="{% url 'core:term-create' academic_year.pk %}">Add Term</a>
+{% endif %}
+<table class="table">
+    <thead><tr><th>Order</th><th>Name</th><th>Start</th><th>End</th><th></th></tr></thead>
+    <tbody>
+        {% for term in terms %}
+        <tr>
+            <td>{{ term.display_order }}</td>
+            <td>{{ term.name }}</td>
+            <td>{{ term.start_date }}</td>
+            <td>{{ term.end_date }}</td>
+            <td>{% if perms.core.change_academicterm %}<a href="{% url 'core:term-update' term.pk %}">Edit</a>{% endif %}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5">No Terms yet.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
