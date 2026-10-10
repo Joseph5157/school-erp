@@ -16,8 +16,11 @@ from core.forms import (
     AttendanceRangeForm,
     AttendanceRegisterFilterForm,
     AttendanceRegisterForm,
+    CalendarDateCheckForm,
     ClassGradeForm,
     GuardianForm,
+    SchoolCalendarDayForm,
+    SchoolCalendarDayLabelForm,
     SchoolForm,
     SectionForm,
     StudentStatusForm,
@@ -32,6 +35,7 @@ from core.models import (
     ClassGrade,
     Guardian,
     School,
+    SchoolCalendarDay,
     Student,
 )
 
@@ -102,6 +106,107 @@ def academic_year_create(request):
     else:
         form = AcademicYearForm()
     return render(request, "core/academic_year_form.html", {"form": form})
+
+
+@administrator_required("core.view_schoolcalendarday")
+def academic_year_calendar(request, pk):
+    academic_year = get_object_or_404(AcademicYear, pk=pk)
+    check_form = CalendarDateCheckForm(request.GET or None)
+    check_result = None
+    if check_form.is_bound and check_form.is_valid():
+        checked = check_form.cleaned_data["date"]
+        check_result = {
+            "date": checked,
+            "in_year": academic_year.contains(checked),
+            "instructional": academic_year.is_instructional_day(checked),
+        }
+    return render(
+        request,
+        "core/academic_year_calendar.html",
+        {
+            "academic_year": academic_year,
+            "calendar_days": academic_year.calendar_days.all(),
+            "check_form": check_form,
+            "check_result": check_result,
+        },
+    )
+
+
+@administrator_required("core.add_schoolcalendarday")
+def calendar_day_create(request, pk):
+    academic_year = get_object_or_404(AcademicYear, pk=pk)
+    if request.method == "POST":
+        form = SchoolCalendarDayForm(request.POST, academic_year=academic_year)
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    form.save()
+            except IntegrityError:
+                messages.error(
+                    request, "This date already has a calendar exception for this Academic Year."
+                )
+            else:
+                messages.success(request, "Calendar exception recorded.")
+                return redirect("core:academic-year-calendar", pk=academic_year.pk)
+    else:
+        form = SchoolCalendarDayForm(academic_year=academic_year)
+    return render(
+        request,
+        "core/calendar_day_form.html",
+        {"form": form, "academic_year": academic_year, "creating": True},
+    )
+
+
+@administrator_required("core.change_schoolcalendarday")
+def calendar_day_update(request, pk):
+    calendar_day = get_object_or_404(SchoolCalendarDay, pk=pk)
+    if request.method == "POST":
+        form = SchoolCalendarDayLabelForm(request.POST, instance=calendar_day)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Calendar exception updated.")
+            return redirect("core:academic-year-calendar", pk=calendar_day.academic_year_id)
+    else:
+        form = SchoolCalendarDayLabelForm(instance=calendar_day)
+    return render(
+        request,
+        "core/calendar_day_form.html",
+        {
+            "form": form,
+            "academic_year": calendar_day.academic_year,
+            "calendar_day": calendar_day,
+            "creating": False,
+        },
+    )
+
+
+@administrator_required("core.delete_schoolcalendarday")
+def calendar_day_delete(request, pk):
+    calendar_day = get_object_or_404(SchoolCalendarDay, pk=pk)
+    academic_year_id = calendar_day.academic_year_id
+    if request.method == "POST":
+        try:
+            calendar_day.delete()
+        except ValidationError as error:
+            messages.error(request, error.messages[0])
+        else:
+            messages.success(request, "Calendar exception removed.")
+    return redirect("core:academic-year-calendar", pk=academic_year_id)
+
+
+@administrator_required("core.change_schoolcalendarday")
+def academic_year_saturday_rule(request, pk):
+    academic_year = get_object_or_404(AcademicYear, pk=pk)
+    if request.method == "POST":
+        try:
+            academic_year.set_saturdays_instructional(
+                request.POST.get("saturdays_instructional") == "true"
+            )
+        except ValidationError as error:
+            messages.error(request, error.messages[0])
+        else:
+            messages.success(request, "Saturday rule updated.")
+    return redirect("core:academic-year-calendar", pk=academic_year.pk)
 
 
 @administrator_required("core.view_classgrade")

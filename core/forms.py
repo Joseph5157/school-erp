@@ -12,6 +12,7 @@ from core.models import (
     ClassGrade,
     Guardian,
     School,
+    SchoolCalendarDay,
     Section,
     Student,
 )
@@ -26,11 +27,65 @@ class SchoolForm(forms.ModelForm):
 class AcademicYearForm(forms.ModelForm):
     class Meta:
         model = AcademicYear
-        fields = ["name", "start_date", "end_date"]
+        fields = ["name", "start_date", "end_date", "saturdays_instructional"]
+        labels = {"saturdays_instructional": "Saturdays are instructional days"}
         widgets = {
             "start_date": forms.DateInput(attrs={"type": "date"}),
             "end_date": forms.DateInput(attrs={"type": "date"}),
         }
+
+
+class SchoolCalendarDayForm(forms.ModelForm):
+    """Record one calendar exception for a specific Academic Year.
+
+    `academic_year` comes from the URL, not the request body
+    (docs/adr/0008-phase-2-school-calendar-rules.md).
+    """
+
+    is_instructional = forms.TypedChoiceField(
+        label="Type",
+        choices=[
+            ("False", "Holiday / closure (no attendance expected)"),
+            ("True", "Extra instructional day (e.g. working Saturday)"),
+        ],
+        coerce=lambda value: value == "True",
+        widget=forms.RadioSelect,
+    )
+
+    class Meta:
+        model = SchoolCalendarDay
+        fields = ["date", "is_instructional", "label"]
+        widgets = {"date": forms.DateInput(attrs={"type": "date"})}
+
+    def __init__(self, *args, academic_year=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if academic_year is not None:
+            self.instance.academic_year = academic_year
+
+    def clean(self):
+        cleaned_data = super().clean()
+        # The (academic_year, date) uniqueness rule cannot be seen by the
+        # automatic unique check because academic_year is not a form field.
+        date = cleaned_data.get("date")
+        if date and SchoolCalendarDay.objects.filter(
+            academic_year=self.instance.academic_year, date=date
+        ).exists():
+            raise ValidationError(
+                {"date": "This date already has a calendar exception for this Academic Year."}
+            )
+        return cleaned_data
+
+
+class SchoolCalendarDayLabelForm(forms.ModelForm):
+    """Change only the label of an existing calendar exception."""
+
+    class Meta:
+        model = SchoolCalendarDay
+        fields = ["label"]
+
+
+class CalendarDateCheckForm(forms.Form):
+    date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
 
 
 class ClassGradeForm(forms.ModelForm):

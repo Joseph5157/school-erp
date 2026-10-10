@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}{% if creating %}Add calendar exception{% else %}Edit calendar exception{% endif %}{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">
+    {% if creating %}Add calendar exception{% else %}Edit calendar exception{% endif %}
+    <small class="text-muted">{{ academic_year.name }}</small>
+</h1>
+{% if calendar_day %}
+<p>
+    {{ calendar_day.date }} ({{ calendar_day.date|date:"l" }}):
+    {{ calendar_day.is_instructional|yesno:"Extra instructional day,Holiday / closure" }}.
+    Date and type cannot be changed; remove the exception and add a new one instead.
+</p>
+{% endif %}
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">Save</button>
+    <a class="btn btn-link" href="{% url 'core:academic-year-calendar' academic_year.pk %}">Cancel</a>
+</form>
+{% endblock %}

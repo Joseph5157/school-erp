@@ -71,11 +71,22 @@ class School(models.Model):
 
 
 class AcademicYear(models.Model):
-    """An explicit academic year/session record (docs/DOMAIN_MODEL.md - Academic Year)."""
+    """An explicit academic year/session record (docs/DOMAIN_MODEL.md - Academic Year).
+
+    Also carries the year's weekly instructional pattern for the minimal school
+    calendar (docs/adr/0008-phase-2-school-calendar-rules.md): Monday-Friday
+    are instructional, Sunday is not, and Saturday follows
+    `saturdays_instructional`. Individual dates that differ from the pattern
+    are recorded as SchoolCalendarDay exceptions.
+    """
 
     name = models.CharField(max_length=100)
     start_date = models.DateField()
     end_date = models.DateField()
+    saturdays_instructional = models.BooleanField(
+        default=False,
+        help_text="Whether Saturdays are normally instructional days in this Academic Year.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -93,8 +104,149 @@ class AcademicYear(models.Model):
         if self.start_date and self.end_date and self.start_date >= self.end_date:
             raise ValidationError({"end_date": "End date must be after the start date."})
 
+    def contains(self, on_date):
+        on_date = _as_date(on_date)
+        return _as_date(self.start_date) <= on_date <= _as_date(self.end_date)
+
+    def default_is_instructional(self, on_date):
+        """The weekly pattern alone, ignoring calendar exceptions."""
+        weekday = _as_date(on_date).weekday()
+        if weekday == 6:  # Sunday
+            return False
+        if weekday == 5:  # Saturday
+            return self.saturdays_instructional
+        return True
+
+    def is_instructional_day(self, on_date):
+        """Is attendance expected on `on_date` in this Academic Year?
+
+        Dates outside the year are never instructional. A SchoolCalendarDay
+        exception for the date wins; otherwise the weekly pattern applies.
+        """
+        on_date = _as_date(on_date)
+        if not self.contains(on_date):
+            return False
+        override = (
+            self.calendar_days.filter(date=on_date)
+            .values_list("is_instructional", flat=True)
+            .first()
+        )
+        if override is not None:
+            return override
+        return self.default_is_instructional(on_date)
+
+    def set_saturdays_instructional(self, value):
+        """Change the year's Saturday rule, if it is still safe to do so.
+
+        Rejected when it would not change anything, when the year already has
+        attendance registers (changing the pattern would silently reclassify
+        dates that already carry attendance), or when Saturday exceptions
+        exist (they would contradict the new pattern; remove them first).
+        """
+        value = bool(value)
+        if value == self.saturdays_instructional:
+            raise ValidationError("Saturdays already have this setting for this Academic Year.")
+        if self.attendance_registers.exists():
+            raise ValidationError(
+                "The Saturday rule cannot change once attendance has been recorded "
+                "in this Academic Year."
+            )
+        if self.calendar_days.filter(date__week_day=7).exists():
+            raise ValidationError(
+                "Remove this year's Saturday calendar exceptions before changing the "
+                "Saturday rule."
+            )
+        self.saturdays_instructional = value
+        self.save(update_fields=["saturdays_instructional", "updated_at"])
+
     def __str__(self):
         return self.name
+
+
+class SchoolCalendarDay(models.Model):
+    """One date that differs from its Academic Year's weekly pattern.
+
+    Minimal Phase 2 calendar (docs/adr/0007-phase-2-attendance-model.md,
+    docs/adr/0008-phase-2-school-calendar-rules.md). Only exceptions are
+    stored: a holiday/closure on a normally instructional date
+    (`is_instructional=False`), or an extra instructional date such as a
+    working Saturday (`is_instructional=True`). An entry that merely repeats
+    the weekly pattern is rejected.
+
+    Attendance protection: an exception that makes a date non-instructional
+    cannot be added, and no exception can be deleted, while an attendance
+    register exists for that Academic Year and date. Date and type are fixed
+    once recorded; only the label may change.
+    """
+
+    academic_year = models.ForeignKey(
+        AcademicYear, on_delete=models.PROTECT, related_name="calendar_days"
+    )
+    date = models.DateField()
+    is_instructional = models.BooleanField(
+        help_text="True for an extra instructional day, False for a holiday or closure."
+    )
+    label = models.CharField(max_length=100, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["date"]
+        verbose_name = "School calendar day"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["academic_year", "date"],
+                name="schoolcalendarday_unique_academic_year_date",
+            )
+        ]
+
+    def clean(self):
+        super().clean()
+        if not (self.academic_year_id and self.date) or self.is_instructional is None:
+            return
+        year = self.academic_year
+        if not year.contains(self.date):
+            raise ValidationError({"date": "Date must fall within the selected Academic Year."})
+
+        if self.pk is not None:
+            original = SchoolCalendarDay.objects.get(pk=self.pk)
+            if (
+                original.academic_year_id != self.academic_year_id
+                or original.date != _as_date(self.date)
+                or original.is_instructional != self.is_instructional
+            ):
+                raise ValidationError(
+                    "A calendar exception's date and type cannot be changed; "
+                    "delete it and record a new one."
+                )
+            return
+
+        if self.is_instructional == year.default_is_instructional(self.date):
+            state = "instructional" if self.is_instructional else "non-instructional"
+            raise ValidationError(
+                {"date": f"This date is already {state} under the weekly pattern."}
+            )
+        if not self.is_instructional and self.attendance_registers().exists():
+            raise ValidationError(
+                {"date": "Attendance already exists on this date; it cannot become a holiday."}
+            )
+
+    def attendance_registers(self):
+        return AttendanceRegister.objects.filter(
+            academic_year_id=self.academic_year_id, date=self.date
+        )
+
+    def delete(self, *args, **kwargs):
+        if self.attendance_registers().exists():
+            raise ValidationError(
+                "Attendance already exists on this date; this calendar exception cannot be removed."
+            )
+        return super().delete(*args, **kwargs)
+
+    def __str__(self):
+        kind = "Instructional" if self.is_instructional else "Non-instructional"
+        suffix = f" - {self.label}" if self.label else ""
+        return f"{self.academic_year} {self.date} ({kind}){suffix}"
 
 
 class ClassGrade(models.Model):

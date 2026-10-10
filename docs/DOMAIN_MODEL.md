@@ -117,7 +117,7 @@ Rules:
 - Attendance is attached to the AcademicEnrollment effective on the attendance date.
 - One Section/date AttendanceRegister has a DRAFT to SUBMITTED lifecycle and its submitted roster must be complete.
 - The only statuses are PRESENT and ABSENT; ABSENT may have an optional note.
-- The Academic-Year-aware calendar identifies instructional dates, including exceptional instructional days such as working Saturdays.
+- The Academic-Year-aware calendar identifies instructional dates, including exceptional instructional days such as working Saturdays. Each Academic Year has a weekly pattern (Monday-Friday instructional, Sunday off, Saturday per-year) and stores only the dates that differ from it (ADR 0008).
 - Future attendance is prohibited. Missing or unsubmitted attendance is not ABSENT.
 - Submitted attendance corrections preserve the previous value, new value, administrator, and timestamp.
 - Percentage is PRESENT / (PRESENT + ABSENT) over submitted eligible entries only.
