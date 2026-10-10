@@ -3,7 +3,7 @@
 ## Project status
 
 This repository contains the documentation foundation and the completed
-Phase 1 and Phase 2 implementations of the School ERP.
+Phase 1, Phase 2 and Phase 4 implementations of the School ERP.
 
 Current status:
 - documentation foundation established; business and domain decisions are the source of truth
@@ -34,15 +34,32 @@ Current status:
     missing attendance, monthly Class/Section summary
   - administrator-only authorization; reconciled acceptance journey verified
     end to end; full suite passes on SQLite and PostgreSQL
-- Phase 3 Fees is deferred (not implemented); Phase 4 Assessments is in
-  research/planning only.
+- Phase 3 Fees is deferred (not implemented; the phase keeps its number).
+- Phase 4 Assessments is complete (tag `phase-4-complete`), implemented gate by
+  gate per `docs/PHASE_4_ASSESSMENTS_PLAN.md` (ADR 0009, ADR 0010):
+  - Subjects, Academic-Year-aware subject offerings (optionally limited to
+    Sections) and ordered Academic Terms
+  - minimal teacher assignment (Teachers group; one teacher per offering + Section)
+    scoping result entry and Term remarks
+  - reusable grading scales (min-percentage bands); bands are frozen onto an
+    assessment when it is finalized
+  - subject assessments with a date-effective roster from Academic Enrollment
+  - teacher DRAFT entry of MARKED / ABSENT results (ABSENT is never zero;
+    missing is never ABSENT)
+  - administrator finalization of complete rosters; audited corrections afterwards
+  - optional Term teacher remarks
+  - reports: assessment result sheet, Student result history, Subject/Section
+    results, Term report card — finalized values only, history never rewritten
+  - full acceptance journey verified end to end; full suite passes on SQLite
+    and PostgreSQL
 
 ## Documentation
 
 - [docs/PRODUCT.md](docs/PRODUCT.md) — product vision, users, principles, and module strategy
 - [docs/DOMAIN_MODEL.md](docs/DOMAIN_MODEL.md) — domain model, lifecycle, enrollment, and historical-data rules
-- [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) — Phase 1 and Phase 2 scope, out-of-scope items, and acceptance criteria
+- [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) — Phase 1, 2 and 4 scope, out-of-scope items, and acceptance criteria
 - [docs/PHASE_2_RECONCILIATION_PLAN.md](docs/PHASE_2_RECONCILIATION_PLAN.md) — Phase 2 gate-by-gate plan and completion record
+- [docs/PHASE_4_ASSESSMENTS_PLAN.md](docs/PHASE_4_ASSESSMENTS_PLAN.md) — Phase 4 gate-by-gate plan and completion record
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — engineering principles, security, architecture guidance, and source-of-truth hierarchy
 - [docs/ROADMAP.md](docs/ROADMAP.md) — directional roadmap across future phases
 - [docs/ECC_EVALUATION.md](docs/ECC_EVALUATION.md) — ECC experiment goals and evaluation framework

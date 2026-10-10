@@ -6,7 +6,7 @@ Foundation
 → Phase 1 Student Lifecycle ✅
 → Phase 2 Attendance ✅
 → Phase 3 Fees ⏸️ deferred (not implemented)
-→ Phase 4 Assessments (Gate 0: decisions frozen)
+→ Phase 4 Assessments ✅
 → Phase 5 Teacher Workflows
 → Phase 6 Parent/Student Experience
 → Phase 7 Communication & Reporting
@@ -76,8 +76,8 @@ code may be written until its Gate 0 decisions are frozen.
 - reusable grading scales, derived grades and optional pass marks
 - result sheets, Student result history and simple Term report cards with optional teacher remarks
 
-Status: Gate 0 — decisions frozen in ADR 0009 and ADR 0010; implementation
-proceeds gate by gate per `docs/PHASE_4_ASSESSMENTS_PLAN.md`.
+Status: complete (tag `phase-4-complete`). Implemented through Gates 0-11 of
+`docs/PHASE_4_ASSESSMENTS_PLAN.md`; decisions in ADR 0009 and ADR 0010.
 
 Out of scope for Phase 4: GPA, rank, weighting, rubrics, competency grading,
 online exams, exam logistics, timetable integration, automatic promotion,

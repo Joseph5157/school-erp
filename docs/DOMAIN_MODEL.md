@@ -106,7 +106,7 @@ OPEN: Online payment gateways are later work and are not part of the initial pha
 
 FROZEN: Assessment planning and student results are separate concepts.
 
-FROZEN (ADR 0009, ADR 0010): Phase 4 assessments follow these rules:
+CURRENT (ADR 0009, ADR 0010; implemented in Phase 4): Phase 4 assessments follow these rules:
 - Subject is a long-lived identity; AcademicSubjectOffering (Academic Year + Class/Grade + Subject, optionally limited to Sections) is what assessments reference; AcademicTerm is an explicitly ordered period inside an Academic Year.
 - An Assessment is one subject assessment in a Term for a Section scope, with a date, maximum marks and optional pass mark, and a DRAFT → FINALIZED lifecycle.
 - The roster comes from the AcademicEnrollment effective on the assessment date; each StudentResult references that enrollment, so transfers never rewrite results.

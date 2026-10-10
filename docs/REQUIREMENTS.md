@@ -364,8 +364,9 @@ corrections.
 
 ## Phase 4 scope
 
-Phase 4 Assessments is planned; its decisions are frozen in ADR 0009 and
-ADR 0010 and its gates are defined in `docs/PHASE_4_ASSESSMENTS_PLAN.md`.
+Phase 4 Assessments is complete (tag `phase-4-complete`); its decisions are
+recorded in ADR 0009 and ADR 0010 and its gates in
+`docs/PHASE_4_ASSESSMENTS_PLAN.md`.
 It contains only:
 
 1. Subjects, Academic-Year-aware subject offerings, and academic terms
@@ -384,6 +385,9 @@ teachers, create an assessment, derive the correct historical roster, accept
 teacher DRAFT results, finalize complete results, correct an error with audit
 history, and produce trustworthy student and Term reports without rewriting
 academic history.
+
+All of these criteria are met and verified by the end-to-end acceptance
+journey in `core/tests/test_phase4_acceptance.py`.
 
 ## Explicitly out of scope for Phase 4
 

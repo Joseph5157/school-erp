@@ -2,9 +2,29 @@
 
 ## Status
 
-PLANNED — decisions frozen for implementation planning. Gate 0 records them in
-ADR 0009 (assessment and results model) and ADR 0010 (assessment-scoped
-teacher authorization). Implementation follows the gates below, in order.
+COMPLETE — all gates implemented and merged; decisions recorded in ADR 0009
+(assessment and results model) and ADR 0010 (assessment-scoped teacher
+authorization). Tag: `phase-4-complete`.
+
+| Gate | Scope | PR |
+| --- | --- | --- |
+| 0 | Freeze Phase 4 source of truth | #12 |
+| 1 | Academic Terms and Subjects | #13 |
+| 2 | Minimal assessment teacher assignment | #14 |
+| 3 | Grading scale foundation | #15 |
+| 4 | Assessment planning | #16 |
+| 5 | Date-effective roster and DRAFT result capture | #17 |
+| 6 | Finalization | #18 |
+| 7 | Audited corrections | #19 |
+| 8 | Result UI and Term remarks | #20 |
+| 9 | Reporting and Term report cards | #21 |
+| 10 | Integration hardening | #22 |
+| 11 | Documentation closeout | this PR |
+
+Closeout verification: 674 tests pass on SQLite and PostgreSQL 16;
+`manage.py check` and `makemigrations --check` clean; Ruff clean; the
+app-wide authorization sweep covers every Phase 4 URL. No stop-and-return-to-
+planning condition arose. No Phase 4 blocker is open.
 
 Phase 4 builds a small, historically correct assessment and result system for the single-school ERP.
 
