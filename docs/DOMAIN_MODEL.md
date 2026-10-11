@@ -126,7 +126,7 @@ FROZEN (ADR 0010, ADR 0011, ADR 0012):
 
 ## Guardian portal access
 
-FROZEN (ADR 0013, ADR 0014; Phase 6):
+CURRENT (ADR 0013, ADR 0014; implemented in Phase 6):
 - A guardian logs in as an ordinary User linked to exactly one Guardian record
   (GuardianAccount); one person has one User even when they are also a
   teacher. Guardian records never log in themselves (ADR 0004).

@@ -8,7 +8,7 @@ Foundation
 → Phase 3 Fees ⏸️ deferred (not implemented)
 → Phase 4 Assessments ✅
 → Phase 5 Teacher Workflows ✅
-→ Phase 6 Guardian Portal (Gate 0: decisions frozen)
+→ Phase 6 Guardian Portal ✅
 → Phase 6B Student accounts (future; separate decisions required)
 → Phase 7 Communication & Reporting
 → Production Hardening
@@ -109,8 +109,8 @@ entry is part of Phase 4 (ADR 0010). Everything else about teachers stays here.
 - one login per person with explicit area choice for teacher-guardians
 - revocation instead of deletion; login throttling and security audit
 
-Status: Gate 0 — decisions frozen in ADR 0013 and ADR 0014; implementation
-proceeds gate by gate per `docs/PHASE_6_GUARDIAN_PORTAL_PLAN.md`.
+Status: complete (tag `phase-6-complete`). Implemented through Gates 0-9 of
+`docs/PHASE_6_GUARDIAN_PORTAL_PLAN.md`; decisions in ADR 0013 and ADR 0014.
 
 Clarifications:
 - Student accounts are deferred to Phase 6B, which needs its own decisions on
