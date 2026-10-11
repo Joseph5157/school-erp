@@ -205,3 +205,67 @@ def can_view_report_card_as_teacher(user, student, term):
     return placement is not None and class_teacher_on(
         user, placement.section, term_remark_date(term)
     )
+
+
+# --- Phase 6: guardian scope (ADR 0013, ADR 0014) ----------------------------
+
+
+def guardian_account(user):
+    """The user's active GuardianAccount, or None.
+
+    Requires an authenticated, active login. Administrator permissions never
+    make someone a guardian.
+    """
+    from core.models import GuardianAccount
+
+    if not (user and user.is_authenticated and user.is_active):
+        return None
+    return (
+        GuardianAccount.objects.filter(user=user, revoked_at__isnull=True)
+        .select_related("guardian")
+        .first()
+    )
+
+
+def is_guardian(user):
+    return guardian_account(user) is not None
+
+
+def guardian_grants(user):
+    """Active grants of the user's guardian (including ones under review)."""
+    from core.models import GuardianStudentAccess
+
+    account = guardian_account(user)
+    if account is None:
+        return GuardianStudentAccess.objects.none()
+    return GuardianStudentAccess.objects.filter(
+        student_guardian__guardian=account.guardian, revoked_at__isnull=True
+    ).select_related("student_guardian__student", "student_guardian__guardian")
+
+
+def guardian_visible_grant(user, public_id):
+    """The grant behind a portal identifier, or None if the user may not see it.
+
+    None when: not an active guardian, no active grant with that identifier
+    for the user's guardian, or a date-based access review is pending (fails
+    closed, OD-8). Portal views turn None into 404.
+    """
+    from django.core.exceptions import ValidationError
+
+    from core.guardian_access import is_review_pending
+
+    try:
+        grant = guardian_grants(user).filter(public_id=public_id).first()
+    except ValidationError:
+        return None
+    if grant is None or is_review_pending(grant):
+        return None
+    return grant
+
+
+def guardian_can_view(user, student):
+    """May this login see this Student in the Guardian Portal right now?"""
+    from core.guardian_access import is_review_pending
+
+    grant = guardian_grants(user).filter(student_guardian__student=student).first()
+    return grant is not None and not is_review_pending(grant)

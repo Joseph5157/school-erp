@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Guardian access reviews{% endblock %}
+{% block content %}
+<h1 class="h3 mb-1">Guardian access reviews</h1>
+<p class="text-muted">These Students have no current enrollment (for example after their Academic Year ended). Until you decide, their guardians see no information about them in the portal. Nothing is decided automatically.</p>
+<table class="table">
+    <thead><tr><th>Student</th><th>Guardian</th><th>Last placement</th><th>Decision</th></tr></thead>
+    <tbody>
+    {% for row in rows %}
+        <tr>
+            <td>{{ row.grant.student_guardian.student.full_name }}</td>
+            <td><a href="{% url 'core:guardian-detail' row.grant.student_guardian.guardian_id %}">{{ row.grant.student_guardian.guardian.full_name }}</a></td>
+            <td>{% if row.placement %}{{ row.placement.academic_year.name }} &middot; {{ row.placement.section }}{% else %}<span class="text-muted">No enrollment</span>{% endif %}</td>
+            <td>
+                {% if perms.core.add_guardianaccessreview %}
+                <form method="post" action="{% url 'core:guardian-access-review-decide' row.grant.pk %}" class="d-flex gap-2">
+                    {% csrf_token %}
+                    <select name="decision" class="form-select form-select-sm" required>
+                        <option value="">Choose…</option>
+                        {% for value, label in decisions %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+                    </select>
+                    <input type="text" name="note" maxlength="200" placeholder="Note (optional)" class="form-control form-control-sm">
+                    <button type="submit" class="btn btn-primary btn-sm">Record</button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+    {% empty %}
+        <tr><td colspan="4">No pending access reviews.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+<h2 class="h5 mt-4">Recent decisions</h2>
+<ul class="small">
+    {% for review in recent %}<li>{{ review.decided_at|date:"Y-m-d H:i" }} &middot; {{ review.grant.student_guardian.student.full_name }} / {{ review.grant.student_guardian.guardian.full_name }} &middot; {{ review.get_trigger_display }}: <strong>{{ review.get_decision_display }}</strong> by {{ review.decided_by }}{% if review.note %} ({{ review.note }}){% endif %}</li>{% empty %}<li class="text-muted">None yet.</li>{% endfor %}
+</ul>
+{% endblock %}
