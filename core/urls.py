@@ -107,6 +107,13 @@ urlpatterns = [
     ),
     path("my/", views.my_home, name="my-home"),
     path("my/students/", views.my_students, name="my-students"),
+    path("my/results/", views.my_results, name="my-results"),
+    path("my/results/<int:pk>/", views.my_subject_results, name="my-subject-results"),
+    path(
+        "my/report-cards/<int:term_pk>/<int:student_pk>/",
+        views.my_report_card,
+        name="my-report-card",
+    ),
     path("my/students/<int:pk>/", views.my_student_detail, name="my-student-detail"),
     path("my/attendance/<int:section_pk>/", views.my_attendance, name="my-attendance"),
     path("my/attendance/history/", views.my_attendance_history, name="my-attendance-history"),

@@ -81,16 +81,18 @@ def teacher_required(view_func):
 
 
 def can_write_term_remarks(user, term, section):
-    """Administrators, or a teacher assigned to any Subject in this Section that year."""
+    """Administrators, or the Section's class teacher for the Term (ADR 0012 D10).
+
+    The class teacher is the one effective on the Term's end date, or on the
+    business date while the Term is still running. Subject teacher
+    assignments no longer grant remark writing (this replaced the Phase 4
+    rule of ADR 0010).
+    """
     if not (user and user.is_authenticated and user.is_active):
         return False
     if user.has_perm("core.change_termremark"):
         return True
-    return (
-        teacher_assignments(user)
-        .filter(offering__academic_year_id=term.academic_year_id, section=section)
-        .exists()
-    )
+    return class_teacher_on(user, section, term_remark_date(term))
 
 
 # --- Phase 5: class teacher scope (ADR 0011, ADR 0012) ----------------------
@@ -174,3 +176,32 @@ def can_view_student_as_teacher(user, student, on_date):
 def guardian_contact_visible(user, enrollment, on_date):
     """Guardian names and contacts: only the Student's class teacher (D8)."""
     return enrollment is not None and class_teacher_on(user, enrollment.section, on_date)
+
+
+def term_remark_date(term):
+    """The date whose class teacher owns a Term's remarks (ADR 0012 D10).
+
+    The Term's end date once it has ended; while it is running, the business
+    date; before it starts, its first day.
+    """
+    from core import models
+
+    today = models.business_today()
+    if today >= term.end_date:
+        return term.end_date
+    return max(today, term.start_date)
+
+
+def term_remark_sections(user, term):
+    """Sections whose remarks for `term` the teacher may write."""
+    return class_teacher_sections(user, term_remark_date(term)).filter(
+        class_teacher_assignments__academic_year_id=term.academic_year_id
+    ).distinct()
+
+
+def can_view_report_card_as_teacher(user, student, term):
+    """Class teacher of the Student's Term placement Section (D8, D10)."""
+    placement = term.enrollment_for(student)
+    return placement is not None and class_teacher_on(
+        user, placement.section, term_remark_date(term)
+    )

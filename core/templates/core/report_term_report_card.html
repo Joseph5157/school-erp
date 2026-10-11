@@ -19,5 +19,5 @@
 {% endfor %}
 <h2 class="h5 mt-4">Teacher's remark</h2>
 <p>{% if remark %}{{ remark.remark|linebreaksbr }}{% else %}<span class="text-muted">No remark.</span>{% endif %}</p>
-<p><a href="{% url 'core:report-student-results' student.pk %}">All results for {{ student.full_name }}</a></p>
+{% if perms.core.view_studentresult %}<p><a href="{% url 'core:report-student-results' student.pk %}">All results for {{ student.full_name }}</a></p>{% endif %}
 {% endblock %}

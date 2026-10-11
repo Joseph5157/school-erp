@@ -18,16 +18,17 @@
     {% csrf_token %}
     <input type="hidden" name="section" value="{{ section.pk }}">
     <table class="table align-middle">
-        <thead><tr><th>Student</th><th>Remark</th><th>Last written by</th></tr></thead>
+        <thead><tr><th>Student</th><th>Remark</th><th>Last written by</th><th></th></tr></thead>
         <tbody>
             {% for student, remark in rows %}
             <tr>
                 <td>{{ student.full_name }}</td>
                 <td><textarea name="remark_{{ student.pk }}" rows="2" class="form-control">{{ remark.remark|default:"" }}</textarea></td>
                 <td>{% if remark %}{{ remark.written_by }}{% endif %}</td>
+                <td><a href="{% if perms.core.view_studentresult %}{% url 'core:report-term-report-card' student.pk term.pk %}{% else %}{% url 'core:my-report-card' term.pk student.pk %}{% endif %}">Report card</a></td>
             </tr>
             {% empty %}
-            <tr><td colspan="3">No Students in this Section for this Term.</td></tr>
+            <tr><td colspan="4">No Students in this Section for this Term.</td></tr>
             {% endfor %}
         </tbody>
     </table>
