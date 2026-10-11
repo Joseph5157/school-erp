@@ -433,6 +433,49 @@ journey in `core/tests/test_phase5_acceptance.py`.
 - teacher correction of submitted attendance or finalized results
 - teacher editing of student, guardian or enrollment records
 
+## Phase 6 scope
+
+Phase 6 Guardian Portal is planned (documentation only); its decisions are
+proposed in ADR 0013 and ADR 0014 and its gates are defined in
+`docs/PHASE_6_GUARDIAN_PORTAL_PLAN.md`. They become the source of truth when
+the planning PR is approved. It contains only:
+
+1. Administrator-created guardian accounts after identity verification, with
+   a normalized username, an offline temporary password, forced first-login
+   password change and administrator-only password reset
+2. One login per person: a teacher who is also a guardian uses one account,
+   with an explicit area choice
+3. Explicit, administrator-granted access per guardian–Student relationship;
+   relationship labels never authorize
+4. Revocation of account links and access grants, never deletion; a mandatory
+   retain/revoke review when a Student becomes INACTIVE
+5. A read-only Guardian Portal with a child switcher
+6. An approved read-only Student profile
+7. Submitted attendance history and summary
+8. Explicit, preview-first, idempotent Term publication of finalized results
+   and class-teacher remarks, with corrections making a publication stale
+9. Login throttling, generic sign-in errors, session invalidation, secure
+   cookies and a bounded security-event audit
+
+Phase 6 is complete when an administrator can verify, create and link a
+guardian account, grant access to specific Students and publish Term results
+through a preview; the guardian can sign in safely and see only those
+Students' approved profile, submitted attendance and published report cards;
+nothing released changes silently; and every account, access and
+publication change is audited.
+
+## Explicitly out of scope for Phase 6
+
+- Student logins and any Student-facing view (future Phase 6B)
+- self-registration, self-service password recovery, email or SMS delivery
+- guardian editing of records or change requests
+- fees, fee placeholders or fee navigation (Phase 3 remains deferred)
+- announcements and messaging (Phase 7)
+- PDF or downloadable report cards
+- attendance drafts, absence notes and correction history in the portal
+- unpublished or assessment-level result visibility
+- page-view logging and analytics
+
 ## Definition of Done
 
 FROZEN: A feature or milestone is done when, where applicable:

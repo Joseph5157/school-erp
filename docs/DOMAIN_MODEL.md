@@ -124,6 +124,26 @@ FROZEN (ADR 0010, ADR 0011, ADR 0012):
 - Losing teacher status removes access immediately and never deletes or rewrites assignments.
 - Teachers work in a separate teacher area with read-only, assignment-scoped access to Students; guardian contact details are visible to the class teacher only.
 
+## Guardian portal access
+
+PROPOSED (ADR 0013, ADR 0014; Phase 6 — becomes FROZEN when the planning PR is
+approved):
+- A guardian logs in as an ordinary User linked to exactly one Guardian record
+  (GuardianAccount); one person has one User even when they are also a
+  teacher. Guardian records never log in themselves (ADR 0004).
+- Recording a Guardian grants nothing. A guardian sees a Student only through
+  an explicit, administrator-created GuardianStudentAccess grant for that
+  StudentGuardian relationship; relationship types never authorize.
+- Account links and grants are revoked, never deleted; revocation is
+  immediate and recorded. Making a Student INACTIVE requires an explicit
+  retain/revoke decision for each active grant.
+- Guardians see only: approved profile fields, SUBMITTED attendance (current
+  values and summary) and Term results an administrator has published.
+- Finalization and publication are separate. A TermPublication is a version
+  record referencing the released results and remark with a fingerprint of
+  their values; correcting a published result or remark makes it stale and
+  hides it until republished. Released information never changes silently.
+
 ## Attendance domain principles
 
 FROZEN: Attendance is a historical, daily, enrollment-scoped record governed by

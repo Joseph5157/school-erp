@@ -8,7 +8,8 @@ Foundation
 → Phase 3 Fees ⏸️ deferred (not implemented)
 → Phase 4 Assessments ✅
 → Phase 5 Teacher Workflows ✅
-→ Phase 6 Parent/Student Experience
+→ Phase 6 Guardian Portal (planning)
+→ Phase 6B Student accounts (future; separate decisions required)
 → Phase 7 Communication & Reporting
 → Production Hardening
 
@@ -101,12 +102,28 @@ homework, teacher-to-guardian messaging, portals and mobile apps.
 Note: the minimum assessment teacher assignment needed for Phase 4 result
 entry is part of Phase 4 (ADR 0010). Everything else about teachers stays here.
 
-### Phase 6 Parent/Student Experience
-- guardian and student-facing information
-- status visibility and announcements
-- role-specific interaction model
+### Phase 6 Guardian Portal
+- administrator-created guardian accounts with explicit per-Student access
+- read-only portal: approved Student profile, submitted attendance and
+  explicitly published Term report cards
+- one login per person with explicit area choice for teacher-guardians
+- revocation instead of deletion; login throttling and security audit
+
+Status: planning — decisions proposed in ADR 0013 and ADR 0014; gates in
+`docs/PHASE_6_GUARDIAN_PORTAL_PLAN.md`.
+
+Clarifications:
+- Student accounts are deferred to Phase 6B, which needs its own decisions on
+  student age, consent, credentials, recovery and safeguarding.
+- Fees are excluded while Phase 3 remains deferred; no fee placeholders.
+- Announcements move to Phase 7 Communication.
+- PDF and downloadable report cards are excluded; on-screen views only.
+
+### Phase 6B Student accounts (future)
+- not planned; requires separate decisions before any work
 
 ### Phase 7 Communication & Reporting
+- announcements (moved from Phase 6)
 - communication channels
 - operational reporting
 - management dashboards and reports

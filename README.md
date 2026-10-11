@@ -78,6 +78,7 @@ Current status:
 - [docs/PHASE_2_RECONCILIATION_PLAN.md](docs/PHASE_2_RECONCILIATION_PLAN.md) — Phase 2 gate-by-gate plan and completion record
 - [docs/PHASE_4_ASSESSMENTS_PLAN.md](docs/PHASE_4_ASSESSMENTS_PLAN.md) — Phase 4 gate-by-gate plan and completion record
 - [docs/PHASE_5_TEACHER_WORKFLOWS_PLAN.md](docs/PHASE_5_TEACHER_WORKFLOWS_PLAN.md) — Phase 5 gate-by-gate plan and completion record
+- [docs/PHASE_6_GUARDIAN_PORTAL_PLAN.md](docs/PHASE_6_GUARDIAN_PORTAL_PLAN.md) — Phase 6 Guardian Portal plan (planning, under review)
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — engineering principles, security, architecture guidance, and source-of-truth hierarchy
 - [docs/ROADMAP.md](docs/ROADMAP.md) — directional roadmap across future phases
 - [docs/ECC_EVALUATION.md](docs/ECC_EVALUATION.md) — ECC experiment goals and evaluation framework
