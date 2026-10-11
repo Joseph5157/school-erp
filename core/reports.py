@@ -244,6 +244,12 @@ def monthly_section_summary(section, year, month):
     Section. Also returns register-level totals for the month.
     """
     start, end = month_bounds(year, month)
+    return section_summary(section, start, end)
+
+
+def section_summary(section, start, end):
+    """Report 6 over any inclusive date window (used by month and by Phase 5
+    teacher views limited to a class teacher's assignment dates)."""
     entries = reportable_entries(
         AttendanceEntry.objects.filter(
             register__section=section, register__date__gte=start, register__date__lte=end

@@ -12,6 +12,7 @@ from core.authorization import (
     can_take_attendance,
     can_write_term_remarks,
     class_teacher_assignments,
+    class_teacher_on,
     is_teacher,
     teacher_assignments,
     teacher_required,
@@ -878,6 +879,102 @@ def _teacher_capture(request, register, *, submit):
         messages.error(request, f"Draft saved but not submitted. {error.messages[0]}")
     else:
         messages.success(request, "Attendance saved and submitted.")
+
+
+# --- Phase 5 Gate 4: teacher attendance views (ADR 0012 D9) ----------------
+
+
+def _months_between(start, end):
+    months, year, month = [], start.year, start.month
+    while (year, month) <= (end.year, end.month):
+        months.append((year, month))
+        year, month = (year + 1, 1) if month == 12 else (year, month + 1)
+    return months
+
+
+def _my_class_teacher_rows(user, today):
+    """The user's class teacher assignments that have taken effect (any end)."""
+    return (
+        class_teacher_assignments(user)
+        .filter(start_date__lte=today)
+        .select_related("academic_year", "section__class_grade")
+        .order_by("-start_date")
+    )
+
+
+@teacher_required
+def my_attendance_history(request):
+    today = business_today()
+    return render(
+        request,
+        "core/my_attendance_history.html",
+        {"rows": _my_class_teacher_rows(request.user, today), "today": today},
+    )
+
+
+@teacher_required
+def my_attendance_assignment(request, pk):
+    """Attendance of one Section, limited to the teacher's assignment dates."""
+    today = business_today()
+    row = get_object_or_404(_my_class_teacher_rows(request.user, today), pk=pk)
+    first, last = row.start_date, min(row.last_effective_date, today)
+    months = _months_between(first, last)
+    chosen = months[-1]
+    try:
+        year_text, month_text = (request.GET.get("month") or "").split("-")
+        if (int(year_text), int(month_text)) in months:
+            chosen = (int(year_text), int(month_text))
+    except ValueError:
+        pass
+    month_start, month_end = reports.month_bounds(*chosen)
+    start, end = max(first, month_start), min(last, month_end)
+    summary = reports.section_summary(row.section, start, end)
+    registers = list(
+        AttendanceRegister.objects.filter(section=row.section, date__gte=start, date__lte=end)
+        .annotate(
+            present=Count("entries", filter=Q(entries__status=AttendanceStatus.PRESENT)),
+            absent=Count("entries", filter=Q(entries__status=AttendanceStatus.ABSENT)),
+        )
+        .order_by("date")
+    )
+    taken = {register.date for register in registers}
+    missing = [
+        item for item in reports.missing_attendance(start, end, section=row.section)
+        if item["date"] not in taken
+    ]
+    return render(
+        request,
+        "core/my_attendance_assignment.html",
+        {
+            "row": row,
+            "summary": summary,
+            "registers": registers,
+            "missing": missing,
+            "months": [f"{y:04d}-{m:02d}" for y, m in months],
+            "chosen": f"{chosen[0]:04d}-{chosen[1]:02d}",
+            "start": start,
+            "end": end,
+        },
+    )
+
+
+@teacher_required
+def my_attendance_register(request, pk):
+    """Read-only register for a date on which the user was class teacher."""
+    register = get_object_or_404(
+        AttendanceRegister.objects.select_related("section__class_grade", "submitted_by"),
+        pk=pk,
+    )
+    if register.date > business_today() or not class_teacher_on(
+        request.user, register.section, register.date
+    ):
+        raise PermissionDenied
+    entries = register.entries.select_related("academic_enrollment__student").order_by(
+        "academic_enrollment__student__full_name"
+    )
+    return render(
+        request, "core/my_attendance_register.html", {"register": register, "entries": entries}
+    )
 
 
 # --- Phase 4 Gate 5: teacher DRAFT result entry (ADR 0010) -----------------

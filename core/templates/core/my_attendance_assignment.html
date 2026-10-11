@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Attendance {{ row.section }}{% endblock %}
+{% block content %}
+<h1 class="h3 mb-1">Attendance: {{ row.section }}</h1>
+<p class="text-muted">{{ row.academic_year.name }} &middot; showing {{ start }} to {{ end }}</p>
+<form method="get" class="mb-3">
+    <label for="month" class="me-2">Month</label>
+    <select name="month" id="month" onchange="this.form.submit()">
+        {% for month in months %}<option value="{{ month }}"{% if month == chosen %} selected{% endif %}>{{ month }}</option>{% endfor %}
+    </select>
+    <noscript><button type="submit" class="btn btn-sm btn-outline-secondary">Show</button></noscript>
+</form>
+
+<h2 class="h5">Summary</h2>
+<p>School days expected: {{ summary.totals.expected_days }} &middot; submitted: {{ summary.totals.submitted_days }} &middot; missing: {{ summary.totals.missing_days }}.
+   Present {{ summary.totals.present }}, absent {{ summary.totals.absent }}{% if summary.totals.percentage is not None %} ({{ summary.totals.percentage }}% present){% endif %}.</p>
+<table class="table table-sm">
+    <thead><tr><th>Student</th><th>Present</th><th>Absent</th><th>%</th></tr></thead>
+    <tbody>
+    {% for student_row in summary.rows %}
+        <tr><td>{{ student_row.student.full_name }}</td><td>{{ student_row.present }}</td><td>{{ student_row.absent }}</td><td>{{ student_row.percentage|default_if_none:"&ndash;" }}</td></tr>
+    {% empty %}
+        <tr><td colspan="4">No Students in this period.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<h2 class="h5 mt-4">Registers</h2>
+<table class="table table-sm">
+    <thead><tr><th>Date</th><th>Status</th><th>Present</th><th>Absent</th></tr></thead>
+    <tbody>
+    {% for register in registers %}
+        <tr>
+            <td><a href="{% url 'core:my-attendance-register' register.pk %}">{{ register.date }}</a></td>
+            <td>{{ register.get_status_display }}</td>
+            <td>{{ register.present }}</td>
+            <td>{{ register.absent }}</td>
+        </tr>
+    {% empty %}
+        <tr><td colspan="4">No registers in this period.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% if missing %}
+<h2 class="h5 mt-4">Not taken</h2>
+<ul>{% for item in missing %}<li>{{ item.date }} ({{ item.date|date:"l" }})</li>{% endfor %}</ul>
+{% endif %}
+<p class="mt-4"><a href="{% url 'core:my-attendance-history' %}">All my Sections</a></p>
+{% endblock %}
