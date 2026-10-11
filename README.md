@@ -3,7 +3,7 @@
 ## Project status
 
 This repository contains the documentation foundation and the completed
-Phase 1, Phase 2, Phase 4 and Phase 5 implementations of the School ERP.
+Phase 1, Phase 2, Phase 4, Phase 5 and Phase 6 implementations of the School ERP.
 
 Current status:
 - documentation foundation established; business and domain decisions are the source of truth
@@ -69,10 +69,29 @@ Current status:
     year's assignments
   - full acceptance journey verified end to end; full suite passes on SQLite
     and PostgreSQL
-- Phase 6 Guardian Portal: decisions frozen (Gate 0, ADR 0013 and ADR 0014);
-  implementation proceeds gate by gate per `docs/PHASE_6_GUARDIAN_PORTAL_PLAN.md`.
-  Student accounts are deferred to Phase 6B; fees, announcements and PDFs are
-  excluded.
+- Phase 6 Guardian Portal is complete (tag `phase-6-complete`), implemented gate
+  by gate per `docs/PHASE_6_GUARDIAN_PORTAL_PLAN.md` (ADR 0013, ADR 0014):
+  - administrator-created guardian accounts after identity verification, with a
+    one-time temporary password, forced first-login change and
+    administrator-only reset; one normalized, case-insensitive username rule
+  - one login per person (a teacher who is also a parent) with explicit area
+    choice; explicit, per-relationship Student access grants
+  - links, grants, access reviews and publications are revoked or superseded,
+    never deleted or rewritten (application rules and database triggers)
+  - explicit retain/revoke review when a Student becomes inactive or a
+    placement ends; fail-closed review when a Student has no current
+    enrollment
+  - read-only portal (`guardian/`): approved profile (including optional
+    admission and roll numbers), submitted attendance and summary, and Term
+    report cards published explicitly through a preview, stored as immutable
+    snapshots and hidden again when a released result or remark is corrected
+  - database-backed sign-in throttling, generic sign-in errors, 30-minute idle
+    and 8-hour absolute sessions, hashed network sources, production HTTPS
+    settings and a security audit with routine-event retention
+  - Student accounts are deferred to Phase 6B; fees, announcements and PDFs are
+    excluded
+  - full acceptance journey verified end to end; full suite passes on SQLite
+    and PostgreSQL
 
 ## Documentation
 
@@ -82,7 +101,7 @@ Current status:
 - [docs/PHASE_2_RECONCILIATION_PLAN.md](docs/PHASE_2_RECONCILIATION_PLAN.md) — Phase 2 gate-by-gate plan and completion record
 - [docs/PHASE_4_ASSESSMENTS_PLAN.md](docs/PHASE_4_ASSESSMENTS_PLAN.md) — Phase 4 gate-by-gate plan and completion record
 - [docs/PHASE_5_TEACHER_WORKFLOWS_PLAN.md](docs/PHASE_5_TEACHER_WORKFLOWS_PLAN.md) — Phase 5 gate-by-gate plan and completion record
-- [docs/PHASE_6_GUARDIAN_PORTAL_PLAN.md](docs/PHASE_6_GUARDIAN_PORTAL_PLAN.md) — Phase 6 Guardian Portal decisions and gate-by-gate plan
+- [docs/PHASE_6_GUARDIAN_PORTAL_PLAN.md](docs/PHASE_6_GUARDIAN_PORTAL_PLAN.md) — Phase 6 gate-by-gate plan, completion record and release notes
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — engineering principles, security, architecture guidance, and source-of-truth hierarchy
 - [docs/ROADMAP.md](docs/ROADMAP.md) — directional roadmap across future phases
 - [docs/ECC_EVALUATION.md](docs/ECC_EVALUATION.md) — ECC experiment goals and evaluation framework

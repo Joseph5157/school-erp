@@ -435,8 +435,8 @@ journey in `core/tests/test_phase5_acceptance.py`.
 
 ## Phase 6 scope
 
-Phase 6 Guardian Portal is approved for implementation; its decisions are
-frozen in ADR 0013 and ADR 0014 and its gates are defined in
+Phase 6 Guardian Portal is complete (tag `phase-6-complete`); its decisions are
+recorded in ADR 0013 and ADR 0014 and its gates in
 `docs/PHASE_6_GUARDIAN_PORTAL_PLAN.md`. It contains only:
 
 1. Administrator-created guardian accounts after identity verification, with
@@ -475,6 +475,9 @@ Students' approved profile, submitted attendance and published report cards;
 nothing released changes silently and every released version can be
 reconstructed; and every account, access, review and publication change is
 audited.
+
+All of these criteria are met and verified by the end-to-end acceptance
+journeys in `core/tests/test_phase6_acceptance.py`.
 
 ## Explicitly out of scope for Phase 6
 

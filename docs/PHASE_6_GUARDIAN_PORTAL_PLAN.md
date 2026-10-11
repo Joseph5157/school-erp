@@ -2,13 +2,72 @@
 
 ## Status
 
-APPROVED (Gate 0) — product decisions P1–P14 and OD-1–OD-8 were decided by
-the product owner on 2026-10-11 and are recorded here, in ADR 0013 (guardian
+COMPLETE — all gates implemented and merged. Product decisions P1–P14 and
+OD-1–OD-8 (decided 2026-10-11) are recorded here, in ADR 0013 (guardian
 accounts, access grants, multiple roles, revocation, sessions, audit) and in
 ADR 0014 (guardian-visible information and explicit result publication),
-both Accepted. This plan is the Phase 6 source of truth; if it and an ADR
-ever differ, the ADR is authoritative. Implementation follows the gates
-below, in order.
+both Accepted and implemented. If this plan and an ADR ever differ, the ADR
+is authoritative. Tag: `phase-6-complete`.
+
+| Gate | Scope | PR |
+| --- | --- | --- |
+| 0 | Approved ADRs, requirements and implementation plan | #34 |
+| 1 | Guardian account links, explicit access grants, password change | #35 |
+| 2 | Authorization boundary, access reviews, application-wide sweep | #36 |
+| 3 | Guardian portal shell, child switcher, multi-role navigation | #37 |
+| 4 | Admission and roll numbers; approved read-only profile | #38 |
+| 5 | Submitted attendance history and summary | #39 |
+| 6 | Explicit Term publication and guardian report cards | #40 |
+| 7 | Throttling, sessions, revocation and privacy hardening | #41 |
+| 8 | End-to-end integration, database protections, migrations | #42 |
+| 9 | Documentation closeout | this PR |
+
+Closeout verification: 948 tests pass on SQLite and PostgreSQL 16;
+`manage.py check` and `makemigrations --check` clean; Ruff clean;
+`check --deploy` clean with production settings; all 14 Phase 6 migrations
+(core 0042–0052, accounts 0002–0004) reverse to the Phase 5 baseline and
+re-apply on both databases; every historical table carries its triggers.
+No stop-and-return-to-planning condition arose; no Phase 6 blocker is open.
+
+## Release notes (deployment)
+
+- **Back up the database before deploying.** Phase 6 adds permanent history
+  (accounts, grants, reviews, publications, security events). Once those
+  exist in production, going back is a restore from backup, not a
+  `migrate` backwards.
+- **Everyone is signed out once** when this release is deployed (session
+  hashes now include `session_version`).
+- **Username check:** the accounts migration stops, listing them, if any
+  existing usernames differ only by case or fall outside
+  `[a-z0-9._-]{3,30}` after normalization. Resolve those logins first; the
+  migration never renames or merges accounts.
+- **Environment:** `DJANGO_HTTPS=True` behind TLS (Secure cookies, HTTPS
+  redirect, HSTS); `DJANGO_TRUSTED_PROXIES` (comma-separated addresses or
+  CIDRs of your reverse proxies, otherwise forwarded headers are ignored);
+  `DJANGO_SOURCE_HASH_KEY` (dedicated secret for hashing network sources);
+  optional `DJANGO_HSTS_PRELOAD=True` only if the domain will be submitted
+  to the browser preload list.
+- **Retention:** run `manage.py purge_security_events --by <operator>`
+  periodically; the operator login needs `accounts.purge_securityevent`
+  (not granted to School Administrators by default). Only routine events
+  older than 365 days are removed.
+- **Existing data:** a grant created for a Student whose only placement is in
+  an Academic Year that has ended enters the fail-closed review queue at
+  once (by design).
+
+## Implementation notes
+
+- `ACCESS_REVIEW_PENDING` is recorded when the review queue first shows a
+  pending date-based review (there is no scheduler); access is denied from
+  the first business date regardless of whether the queue was opened.
+- Deactivating a login by any path (including the site administration)
+  bumps `session_version` and ends its sessions.
+- The site administration remains for staff management; it refuses password
+  changes for guardian-linked logins and shows their usernames read-only.
+- `planning/future-phases` (P14): its documents are superseded by this plan
+  and the Phase 3/production plans it contains predate Phases 4–6.
+  Recommendation: delete the branch once the product owner approves; it has
+  not been deleted.
 
 Starting point (verified 2026-10-11):
 

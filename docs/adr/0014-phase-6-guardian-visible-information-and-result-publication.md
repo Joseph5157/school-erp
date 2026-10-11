@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted (2026-10-11, Phase 6 planning PR #34).
+Accepted (2026-10-11, Phase 6 planning PR #34) — implemented in Phase 6
+(tag `phase-6-complete`).
 Planning: `docs/PHASE_6_GUARDIAN_PORTAL_PLAN.md` (decisions P7–P12, OD-1,
 OD-2).
 
