@@ -23,6 +23,7 @@
                 {% if perms.core.view_attendanceregister %}<a class="nav-link" href="{% url 'core:attendance-register-list' %}">Attendance</a>{% endif %}
                 {% if user_is_teacher %}
                     <a class="nav-link" href="{% url 'core:my-home' %}">My day</a>
+                    <a class="nav-link" href="{% url 'core:my-students' %}">My students</a>
                     <a class="nav-link" href="{% url 'core:my-assessments' %}">My assessments</a>
                 {% endif %}
             </div>

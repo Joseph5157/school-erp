@@ -13,9 +13,11 @@ from core.authorization import (
     can_write_term_remarks,
     class_teacher_assignments,
     class_teacher_on,
+    guardian_contact_visible,
     is_teacher,
     teacher_assignments,
     teacher_required,
+    teacher_student_scope,
 )
 from core.forms import (
     AcademicEnrollmentForm,
@@ -974,6 +976,95 @@ def my_attendance_register(request, pk):
     )
     return render(
         request, "core/my_attendance_register.html", {"register": register, "entries": entries}
+    )
+
+
+# --- Phase 5 Gate 5: limited student access (ADR 0012 D8, D9) --------------
+
+
+@teacher_required
+def my_students(request):
+    today = business_today()
+    enrollments = list(
+        teacher_student_scope(request.user, today)
+        .select_related("student", "section__class_grade")
+        .order_by("section__class_grade__name", "section__name", "student__full_name")
+    )
+    class_sections = set(
+        class_teacher_assignments(request.user, today).values_list("section_id", flat=True)
+    )
+    groups = []
+    for enrollment in enrollments:
+        if not groups or groups[-1]["section"].pk != enrollment.section_id:
+            groups.append(
+                {
+                    "section": enrollment.section,
+                    "is_class_teacher": enrollment.section_id in class_sections,
+                    "enrollments": [],
+                }
+            )
+        groups[-1]["enrollments"].append(enrollment)
+    return render(request, "core/my_students.html", {"groups": groups, "today": today})
+
+
+def _teacher_visible_results(user, student, academic_year):
+    """Finalized results the teacher may see for this Student and year (D8, D9).
+
+    Subject teacher: their offering + Section. Class teacher: every Subject
+    assessed in their Section on dates they were its class teacher.
+    """
+    scope = Q(pk__in=[])
+    for offering_id, section_id in teacher_assignments(user).values_list(
+        "offering_id", "section_id"
+    ):
+        scope |= Q(assessment__offering_id=offering_id, assessment__section_id=section_id)
+    for row in class_teacher_assignments(user).filter(academic_year=academic_year):
+        window = Q(
+            assessment__section_id=row.section_id,
+            assessment__assessment_date__gte=row.start_date,
+        )
+        if row.end_date is not None:
+            window &= Q(assessment__assessment_date__lte=row.end_date)
+        scope |= window
+    return list(
+        assessment_reports.finalized_results(
+            StudentResult.objects.filter(
+                scope,
+                academic_enrollment__student=student,
+                assessment__term__academic_year=academic_year,
+            )
+        ).order_by("assessment__offering__subject__name", "assessment__assessment_date", "pk")
+    )
+
+
+@teacher_required
+def my_student_detail(request, pk):
+    """Read-only teacher student profile (ADR 0012 D8)."""
+    today = business_today()
+    enrollment = (
+        teacher_student_scope(request.user, today)
+        .filter(student_id=pk)
+        .select_related("student", "academic_year", "section__class_grade")
+        .first()
+    )
+    if enrollment is None:
+        raise PermissionDenied
+    student = enrollment.student
+    year = enrollment.academic_year
+    show_guardians = guardian_contact_visible(request.user, enrollment, today)
+    return render(
+        request,
+        "core/my_student_detail.html",
+        {
+            "student": student,
+            "enrollment": enrollment,
+            "attendance": reports.student_summary(student, start=year.start_date, end=today),
+            "results": _teacher_visible_results(request.user, student, year),
+            "show_guardians": show_guardians,
+            "guardian_links": (
+                student.guardian_links.select_related("guardian") if show_guardians else []
+            ),
+        },
     )
 
 
