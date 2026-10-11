@@ -2,7 +2,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
-from django.db.models import Count, Q
+from django.db.models import Count, Exists, OuterRef, Q, Subquery
 from django.shortcuts import get_object_or_404, redirect, render
 
 from core import assessment_reports, reports
@@ -10,6 +10,7 @@ from core.authorization import (
     administrator_required,
     can_enter_results,
     can_write_term_remarks,
+    class_teacher_assignments,
     is_teacher,
     teacher_assignments,
     teacher_required,
@@ -672,6 +673,121 @@ def term_remarks(request, pk):
         request,
         "core/term_remarks.html",
         {"term": term, "sections": sections, "section": section, "rows": rows},
+    )
+
+
+# --- Phase 5 Gate 2: teacher home page (ADR 0011 D11) ---------------------
+
+
+@login_required
+def home(request):
+    """Send each login to its own landing page."""
+    if is_teacher(request.user) and not request.user.has_perm("core.view_school"):
+        return redirect("core:my-home")
+    return redirect("core:school-detail")
+
+
+def _open_assessments_needing_marks(user, today):
+    """DRAFT assessments in the teacher's Subject/Sections, open for entry,
+    with at least one roster Student still unmarked (constant queries)."""
+    duties = list(teacher_assignments(user).values_list("offering_id", "section_id"))
+    if not duties:
+        return []
+    scope = Q(pk__in=[])
+    for offering_id, section_id in duties:
+        scope |= Q(offering_id=offering_id, section_id=section_id)
+    roster = AcademicEnrollment.objects.filter(
+        academic_year_id=OuterRef("offering__academic_year_id"),
+        class_grade_id=OuterRef("offering__class_grade_id"),
+        section_id=OuterRef("section_id"),
+        start_date__lte=OuterRef("assessment_date"),
+    ).filter(Q(end_date__isnull=True) | Q(end_date__gte=OuterRef("assessment_date")))
+    unmarked = roster.exclude(
+        Exists(
+            StudentResult.objects.filter(
+                assessment_id=OuterRef(OuterRef("pk")), academic_enrollment_id=OuterRef("pk")
+            )
+        )
+    )
+    return list(
+        _assessments()
+        .filter(scope, status=Assessment.Status.DRAFT, assessment_date__lte=today)
+        .annotate(
+            unmarked_count=Subquery(
+                unmarked.order_by().values("section_id").annotate(n=Count("pk")).values("n")[:1]
+            )
+        )
+        .filter(unmarked_count__gt=0)
+        .order_by("assessment_date", "name")
+    )
+
+
+@teacher_required
+def my_home(request):
+    today = business_today()
+    duties = list(
+        class_teacher_assignments(request.user, today).select_related(
+            "academic_year", "section__class_grade"
+        )
+    )
+    registers = {
+        register.section_id: register
+        for register in AttendanceRegister.objects.filter(
+            date=today, section_id__in=[duty.section_id for duty in duties]
+        )
+    }
+    instructional = {}
+    attendance = []
+    for duty in duties:
+        year = duty.academic_year
+        if year.pk not in instructional:
+            instructional[year.pk] = year.is_instructional_day(today)
+        register = registers.get(duty.section_id)
+        if not instructional[year.pk]:
+            state = "NOT_INSTRUCTIONAL"
+        elif register is None:
+            state = AttendanceRegister.AttendanceState.NOT_TAKEN
+        elif register.is_submitted:
+            state = AttendanceRegister.AttendanceState.SUBMITTED
+        else:
+            state = AttendanceRegister.AttendanceState.DRAFT
+        attendance.append({"duty": duty, "register": register, "state": state})
+
+    remarks = []
+    terms = AcademicTerm.objects.filter(
+        academic_year_id__in={duty.academic_year_id for duty in duties},
+        start_date__lte=today,
+    ).select_related("academic_year").order_by("start_date")
+    sections_by_year = {}
+    for duty in duties:
+        sections_by_year.setdefault(duty.academic_year_id, []).append(duty.section)
+    for term in terms:
+        rosters = term.section_rosters(sections_by_year[term.academic_year_id])
+        written = set(
+            TermRemark.objects.filter(
+                term=term,
+                student_id__in=[s.pk for students in rosters.values() for s in students],
+            ).values_list("student_id", flat=True)
+        )
+        for section in sections_by_year[term.academic_year_id]:
+            students = rosters[section.pk]
+            remarks.append(
+                {
+                    "term": term,
+                    "section": section,
+                    "expected": len(students),
+                    "written": sum(1 for s in students if s.pk in written),
+                }
+            )
+    return render(
+        request,
+        "core/my_home.html",
+        {
+            "today": today,
+            "attendance": attendance,
+            "assessments": _open_assessments_needing_marks(request.user, today),
+            "remarks": remarks,
+        },
     )
 
 
