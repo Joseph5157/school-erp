@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Stale publications{% endblock %}
+{% block content %}
+<h1 class="h3 mb-1">Stale publications</h1>
+<p class="text-muted">A released result or remark was corrected. Guardians no longer see these report cards until you review and republish (or withdraw) them.</p>
+<ul>
+    {% for pub in stale %}<li><a href="{% url 'core:publication-detail' pub.pk %}">{{ pub.student.full_name }} &mdash; {{ pub.term.academic_year.name }} {{ pub.term_label }} (version {{ pub.version }})</a>{% if pub.status_reason %} &middot; {{ pub.status_reason }}{% endif %}</li>{% empty %}<li class="text-muted">None.</li>{% endfor %}
+</ul>
+{% endblock %}

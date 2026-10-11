@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Publish {{ term.name }} to guardians{% endblock %}
+{% block content %}
+<h1 class="h3 mb-1">Publish to guardians: {{ term.academic_year.name }} {{ term.name }}</h1>
+<p class="text-muted">Finalized results are not visible to guardians until published here. The preview lists exactly what will be released; nothing is written until you confirm.
+   <a href="{% url 'core:publications-stale' %}">Stale publications</a></p>
+<form method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-auto">
+        <label for="id_section">Section</label>
+        <select name="section" id="id_section" class="form-select">
+            <option value="">Choose a Section</option>
+            {% for s in sections %}<option value="{{ s.pk }}"{% if section and s.pk == section.pk %} selected{% endif %}>{{ s }}</option>{% endfor %}
+        </select>
+    </div>
+    <div class="col-auto"><button type="submit" class="btn btn-outline-secondary">Preview</button></div>
+</form>
+{% if plan %}
+<form method="get">
+    <input type="hidden" name="section" value="{{ section.pk }}">
+    <table class="table align-top">
+        <thead><tr><th>Student</th><th>Preview</th><th>Will be released</th></tr></thead>
+        <tbody>
+        {% for row in plan.rows %}
+            <tr>
+                <td>{{ row.student.full_name }}</td>
+                <td>
+                    {% if row.action == "publish" %}<span class="badge bg-primary">Will publish</span>
+                    {% elif row.action == "republish" %}<span class="badge bg-primary">Will republish</span>{% if row.current %} (replaces version {{ row.current.version }}, {{ row.current.get_status_display }}){% endif %}
+                    {% elif row.action == "incomplete" %}
+                        <span class="badge bg-warning text-dark">Incomplete</span>
+                        <div class="small">Not yet finalized: {% for a in row.pending %}{{ a.offering.subject.name }} {{ a.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</div>
+                        {% if perms.core.publish_termpublication %}
+                        <label class="small"><input type="checkbox" name="include" value="{{ row.student.pk }}"{% if row.selected %} checked{% endif %}> Publish the finalized results anyway (marked partial)</label>
+                        {% endif %}
+                    {% elif row.action == "already" %}<span class="text-muted">Skipped: already published (version {{ row.current.version }})</span>
+                    {% elif row.action == "nothing" %}<span class="text-muted">Skipped: nothing to publish</span>
+                    {% else %}<span class="text-muted">Skipped: no single Term placement</span>{% endif %}
+                </td>
+                <td class="small">
+                    {% if row.selected or row.action == "incomplete" %}
+                    {% for e in row.content.entries %}<div>{{ e.subject_label }} &middot; {{ e.assessment_label }}: {% if e.status == "MARKED" %}{{ e.score }}/{{ e.maximum_marks }}{% if e.grade_label %} ({{ e.grade_label }}){% endif %}{% else %}Absent{% endif %}</div>{% endfor %}
+                    {% if row.content.remark %}<div class="text-muted">Remark: {{ row.content.remark.text }}</div>{% endif %}
+                    {% endif %}
+                </td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="3">No Students are placed in this Section for this Term.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    <button type="submit" class="btn btn-outline-secondary btn-sm">Update preview</button>
+</form>
+{% if perms.core.publish_termpublication %}
+<form method="post" class="mt-3">
+    {% csrf_token %}
+    <input type="hidden" name="section" value="{{ section.pk }}">
+    <input type="hidden" name="token" value="{{ plan.token }}">
+    {% for value in include %}<input type="hidden" name="include" value="{{ value }}">{% endfor %}
+    <button type="submit" class="btn btn-primary"{% if not plan.selected %} disabled{% endif %}>Confirm and publish {{ plan.selected|length }} report card(s)</button>
+</form>
+{% endif %}
+{% endif %}
+{% endblock %}

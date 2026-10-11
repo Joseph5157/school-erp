@@ -199,6 +199,14 @@ urlpatterns = [
     path("students/", views.student_list, name="student-list"),
     path("students/<int:pk>/", views.student_detail, name="student-detail"),
     path("students/<int:pk>/enroll/", views.student_enroll, name="student-enroll"),
+    path("terms/<int:pk>/publication/", views.term_publication, name="term-publication"),
+    path("publications/stale/", views.publications_stale, name="publications-stale"),
+    path("publications/<int:pk>/", views.publication_detail, name="publication-detail"),
+    path(
+        "publications/<int:pk>/withdraw/",
+        views.publication_withdraw,
+        name="publication-withdraw",
+    ),
     path(
         "students/<int:pk>/admission-number/",
         views.student_admission_number,

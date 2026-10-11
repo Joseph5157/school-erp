@@ -9,7 +9,14 @@ from django.urls import reverse
 from django.utils.cache import add_never_cache_headers
 
 from accounts.models import SecurityEvent
-from core import assessment_reports, assignments, guardian_access, guardian_accounts, reports
+from core import (
+    assessment_reports,
+    assignments,
+    guardian_access,
+    guardian_accounts,
+    publication,
+    reports,
+)
 from core.authorization import (
     administrator_required,
     can_enter_results,
@@ -94,6 +101,7 @@ from core.models import (
     StudentGuardian,
     StudentResult,
     Subject,
+    TermPublication,
     TermRemark,
     business_today,
 )
@@ -682,7 +690,10 @@ def term_remarks(request, pk):
                             student=student,
                             defaults={"remark": text, "written_by": request.user},
                         )
+                        if existing is not None:
+                            publication.mark_stale_for_remark(term, student, actor=request.user)
                     elif not text and existing is not None:
+                        publication.mark_stale_for_remark(term, student, actor=request.user)
                         existing.delete()
             messages.success(request, "Remarks saved.")
             return redirect(f"{request.path}?section={section.pk}")
@@ -1737,6 +1748,92 @@ def guardian_detail(request, pk):
             guardian_id_ref=guardian.pk, event_class=SecurityEvent.EventClass.HISTORY
         ).select_related("actor", "subject_user")[:50]
     return render(request, "core/guardian_detail.html", context)
+
+
+# --- Phase 6 Gate 6: Term publication to guardians (ADR 0014) --------------
+
+
+def _include_ids(source):
+    return [value for value in source.getlist("include") if value.isdigit()]
+
+
+@administrator_required("core.view_termpublication")
+def term_publication(request, pk):
+    """Preview (GET) and confirm (POST) publication for one Term and Section."""
+    term = get_object_or_404(AcademicTerm.objects.select_related("academic_year"), pk=pk)
+    sections = Section.objects.select_related("class_grade").order_by(
+        "class_grade__name", "name"
+    )
+    source = request.POST if request.method == "POST" else request.GET
+    section = None
+    if source.get("section", "").isdigit():
+        section = sections.filter(pk=source["section"]).first()
+    include = _include_ids(source)
+    if request.method == "POST" and section is not None:
+        if not request.user.has_perm("core.publish_termpublication"):
+            raise PermissionDenied
+        try:
+            created = publication.confirm_publication(
+                term=term, section=section, include=include,
+                token=request.POST.get("token", ""), actor=request.user,
+            )
+        except ValidationError as error:
+            messages.error(request, " ".join(error.messages))
+        else:
+            messages.success(request, f"Published {len(created)} report card(s) to guardians.")
+        query = "&".join([f"section={section.pk}"] + [f"include={i}" for i in include])
+        return redirect(f"{reverse('core:term-publication', args=[term.pk])}?{query}")
+    plan = publication.plan_publication(term, section, include) if section else None
+    return render(
+        request,
+        "core/term_publication.html",
+        {"term": term, "sections": sections, "section": section, "plan": plan,
+         "include": include},
+    )
+
+
+@administrator_required("core.view_termpublication")
+def publication_detail(request, pk):
+    """Any version exactly as released, with its status history (ADR 0014)."""
+    pub = get_object_or_404(
+        TermPublication.objects.select_related(
+            "student", "term__academic_year", "published_by", "status_changed_by"
+        ),
+        pk=pk,
+    )
+    versions = TermPublication.objects.filter(student=pub.student, term=pub.term).select_related(
+        "published_by", "status_changed_by"
+    ).order_by("-version")
+    return render(
+        request,
+        "core/publication_detail.html",
+        {"pub": pub, "entries": pub.entries.all(), "versions": versions,
+         "live_matches": publication.live_fingerprint(pub) == pub.fingerprint},
+    )
+
+
+@administrator_required("core.publish_termpublication")
+def publication_withdraw(request, pk):
+    pub = get_object_or_404(TermPublication.objects.select_related("student", "term"), pk=pk)
+    form = RevocationForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            publication.withdraw(pub, actor=request.user, reason=form.cleaned_data["reason"])
+        except ValidationError as error:
+            form.add_error(None, error)
+        else:
+            messages.success(request, "Publication withdrawn; guardians no longer see it.")
+            return redirect("core:publication-detail", pk=pub.pk)
+    return render(request, "core/publication_withdraw.html", {"pub": pub, "form": form})
+
+
+@administrator_required("core.view_termpublication")
+def publications_stale(request):
+    return render(
+        request,
+        "core/publications_stale.html",
+        {"stale": publication.stale_publications()},
+    )
 
 
 # --- Phase 6 Gate 4: admission and roll numbers (ADR 0014, OD-1) ----------

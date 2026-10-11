@@ -2626,6 +2626,10 @@ class StudentResult(models.Model):
             self.status = new_status
             self.score = new_score
             self.save(update_fields=["status", "score", "updated_at"])
+            # Phase 6 (ADR 0014): released information never changes silently.
+            from core.publication import mark_stale_for_result
+
+            mark_stale_for_result(self, actor=actor)
 
     def __str__(self):
         shown = self.score if self.status == ResultStatus.MARKED else "Absent"
@@ -2901,3 +2905,117 @@ class GuardianAccessReview(models.Model):
 
     def __str__(self):
         return f"{self.grant}: {self.get_decision_display()} ({self.get_trigger_display()})"
+
+
+# ---------------------------------------------------------------------------
+# Phase 6 Gate 6 - explicit Term publication to guardians (ADR 0014)
+# ---------------------------------------------------------------------------
+
+
+class TermPublication(models.Model):
+    """One released version of a Student's Term report card (ADR 0014).
+
+    Publication is separate from finalization. Each version stores an
+    immutable snapshot of exactly what the guardian report card displays
+    (header labels here, one TermPublicationEntry per result, the remark
+    text) plus a fingerprint of the released source values. A correction of
+    a released result or remark marks the current version STALE; the portal
+    shows only the current PUBLISHED version whose fingerprint still matches
+    the live source. Versions are permanent history: database triggers refuse
+    DELETE, any change except the status fields, and status changes other
+    than PUBLISHED -> STALE/SUPERSEDED/WITHDRAWN and STALE ->
+    SUPERSEDED/WITHDRAWN.
+    """
+
+    class Status(models.TextChoices):
+        PUBLISHED = "PUBLISHED", "Published"
+        STALE = "STALE", "Stale — needs review"
+        SUPERSEDED = "SUPERSEDED", "Superseded"
+        WITHDRAWN = "WITHDRAWN", "Withdrawn"
+
+    CURRENT_STATUSES = ("PUBLISHED", "STALE")
+
+    public_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    student = models.ForeignKey(Student, on_delete=models.PROTECT, related_name="publications")
+    term = models.ForeignKey(AcademicTerm, on_delete=models.PROTECT, related_name="publications")
+    placement = models.ForeignKey(
+        AcademicEnrollment, on_delete=models.PROTECT, related_name="+"
+    )
+    version = models.PositiveIntegerField()
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.PUBLISHED)
+    is_partial = models.BooleanField(default=False)
+    pending_assessments = models.PositiveIntegerField(default=0)
+    term_label = models.CharField(max_length=100)
+    academic_year_label = models.CharField(max_length=100)
+    class_grade_label = models.CharField(max_length=100)
+    section_label = models.CharField(max_length=100)
+    remark_id_ref = models.PositiveBigIntegerField(null=True, blank=True)
+    remark_text = models.TextField(null=True, blank=True)
+    fingerprint = models.CharField(max_length=64)
+    fingerprint_scheme = models.PositiveSmallIntegerField(default=1)
+    published_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
+    )
+    published_at = models.DateTimeField(default=timezone.now)
+    status_changed_at = models.DateTimeField(null=True, blank=True)
+    status_changed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True,
+        related_name="+",
+    )
+    status_reason = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        ordering = ["student", "term", "-version"]
+        permissions = [("publish_termpublication", "Can publish Term results to guardians")]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["student", "term", "version"], name="termpublication_unique_version"
+            ),
+            models.UniqueConstraint(
+                fields=["student", "term"],
+                condition=models.Q(status__in=["PUBLISHED", "STALE"]),
+                name="termpublication_one_current",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(status__in=["PUBLISHED", "STALE", "SUPERSEDED", "WITHDRAWN"]),
+                name="termpublication_status_valid",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(version__gte=1), name="termpublication_version_positive"
+            ),
+        ]
+
+    @property
+    def is_current(self):
+        return self.status in self.CURRENT_STATUSES
+
+    def __str__(self):
+        return f"{self.student} - {self.term_label} v{self.version} ({self.get_status_display()})"
+
+
+class TermPublicationEntry(models.Model):
+    """One released result, exactly as displayed (ADR 0014). Immutable."""
+
+    publication = models.ForeignKey(
+        TermPublication, on_delete=models.PROTECT, related_name="entries"
+    )
+    result = models.ForeignKey(StudentResult, on_delete=models.PROTECT, related_name="+")
+    display_order = models.PositiveIntegerField()
+    subject_label = models.CharField(max_length=100)
+    assessment_label = models.CharField(max_length=200)
+    assessment_date = models.DateField()
+    maximum_marks = models.DecimalField(max_digits=6, decimal_places=2)
+    pass_mark = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    status = models.CharField(max_length=10)
+    score = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    percentage = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    grade_label = models.CharField(max_length=50, null=True, blank=True)
+    pass_fail_label = models.CharField(max_length=10, null=True, blank=True)
+
+    class Meta:
+        ordering = ["publication", "display_order"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["publication", "result"], name="termpublicationentry_unique_result"
+            ),
+        ]

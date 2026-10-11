@@ -89,3 +89,17 @@ def submitted_attendance(student, academic_year):
         )
     ]
     return {"days": days, "summary": reports.counts(entries)}
+
+
+def visible_publications(student):
+    """Current PUBLISHED versions whose released values are unchanged (ADR 0014)."""
+    from core import publication
+    from core.models import TermPublication
+
+    return [
+        pub
+        for pub in TermPublication.objects.filter(
+            student=student, status=TermPublication.Status.PUBLISHED
+        ).select_related("term").order_by("-term__start_date")
+        if publication.guardian_visible(pub)
+    ]

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Publication {{ pub.student.full_name }} {{ pub.term_label }} v{{ pub.version }}{% endblock %}
+{% block content %}
+<h1 class="h3 mb-1">{{ pub.student.full_name }} &mdash; {{ pub.academic_year_label }} {{ pub.term_label }}, version {{ pub.version }}</h1>
+<p class="text-muted">{{ pub.get_status_display }}. Published {{ pub.published_at|date:"Y-m-d H:i" }} by {{ pub.published_by }}.
+   {% if pub.status_changed_at %}Status changed {{ pub.status_changed_at|date:"Y-m-d H:i" }} by {{ pub.status_changed_by }}{% if pub.status_reason %} ({{ pub.status_reason }}){% endif %}.{% endif %}
+   {% if pub.is_current and not live_matches %}<strong>Source results or remark have changed since release.</strong>{% endif %}</p>
+<p>{{ pub.class_grade_label }} &middot; Section {{ pub.section_label }}{% if pub.is_partial %} &middot; partial ({{ pub.pending_assessments }} assessment(s) not finalized at release){% endif %}</p>
+<table class="table table-sm">
+    <thead><tr><th>Subject</th><th>Assessment</th><th>Date</th><th>Marks</th><th>%</th><th>Grade</th><th>Pass/Fail</th></tr></thead>
+    <tbody>
+    {% for e in entries %}
+        <tr><td>{{ e.subject_label }}</td><td>{{ e.assessment_label }}</td><td>{{ e.assessment_date }}</td>
+            <td>{% if e.status == "MARKED" %}{{ e.score }} / {{ e.maximum_marks }}{% else %}Absent{% endif %}</td>
+            <td>{% if e.percentage is not None %}{{ e.percentage }}%{% endif %}</td><td>{{ e.grade_label|default:"" }}</td><td>{{ e.pass_fail_label|default:"" }}</td></tr>
+    {% empty %}<tr><td colspan="7">No results in this version.</td></tr>{% endfor %}
+    </tbody>
+</table>
+<p><strong>Teacher's remark:</strong> {{ pub.remark_text|default:"None" }}</p>
+{% if pub.is_current and perms.core.publish_termpublication %}
+<a class="btn btn-outline-danger btn-sm" href="{% url 'core:publication-withdraw' pub.pk %}">Withdraw</a>
+<a class="btn btn-outline-primary btn-sm" href="{% url 'core:term-publication' pub.term_id %}?section={{ pub.placement.section_id }}">Review and republish</a>
+{% endif %}
+<h2 class="h5 mt-4">All versions</h2>
+<ul>
+    {% for v in versions %}<li><a href="{% url 'core:publication-detail' v.pk %}">Version {{ v.version }}</a> &middot; {{ v.get_status_display }} &middot; published {{ v.published_at|date:"Y-m-d H:i" }} by {{ v.published_by }}{% if v.status_changed_at %} &middot; {{ v.get_status_display|lower }} {{ v.status_changed_at|date:"Y-m-d H:i" }} by {{ v.status_changed_by }}{% if v.status_reason %} ({{ v.status_reason }}){% endif %}{% endif %}</li>{% endfor %}
+</ul>
+{% endblock %}

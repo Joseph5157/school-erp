@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Withdraw publication{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Withdraw {{ pub.student.full_name }} &mdash; {{ pub.term_label }} (version {{ pub.version }})</h1>
+<p class="text-muted">Guardians stop seeing this report card at once. The version is kept permanently as history.</p>
+<form method="post">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-danger">Withdraw</button>
+    <a class="btn btn-link" href="{% url 'core:publication-detail' pub.pk %}">Cancel</a>
+</form>
+{% endblock %}
