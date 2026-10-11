@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed — becomes Accepted when the Phase 6 planning PR is approved.
+Accepted (2026-10-11, Phase 6 planning PR #34).
 Planning: `docs/PHASE_6_GUARDIAN_PORTAL_PLAN.md` (decisions P7–P12, OD-1,
 OD-2).
 
@@ -87,6 +87,13 @@ FROZEN once accepted:
   disappears from the portal until an administrator reviews and
   republishes. Information already released is never silently changed, and
   every earlier version remains reconstructable from its snapshot.
+- Publication history: every version (PUBLISHED, STALE, SUPERSEDED,
+  WITHDRAWN) and its snapshot is permanent, never deleted or rewritten, and
+  outside routine-event retention. Guardians see only the current PUBLISHED
+  version with a matching fingerprint — never earlier, stale, superseded or
+  withdrawn versions, version numbers or change history. Administrators can
+  view every version exactly as released, with its publisher and every
+  status change, actor and reason.
 
 **Exclusions (P10–P12)**
 - Fees: excluded while Phase 3 is deferred — no models, placeholders or

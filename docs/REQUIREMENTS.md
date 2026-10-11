@@ -435,10 +435,9 @@ journey in `core/tests/test_phase5_acceptance.py`.
 
 ## Phase 6 scope
 
-Phase 6 Guardian Portal is planned (documentation only); its decisions are
-proposed in ADR 0013 and ADR 0014 and its gates are defined in
-`docs/PHASE_6_GUARDIAN_PORTAL_PLAN.md`. They become the source of truth when
-the planning PR is approved. It contains only:
+Phase 6 Guardian Portal is approved for implementation; its decisions are
+frozen in ADR 0013 and ADR 0014 and its gates are defined in
+`docs/PHASE_6_GUARDIAN_PORTAL_PLAN.md`. It contains only:
 
 1. Administrator-created guardian accounts after identity verification, with
    an offline temporary password, forced first-login password change and
@@ -452,7 +451,9 @@ the planning PR is approved. It contains only:
 5. Revocation of account links and access grants, never deletion; an explicit
    retain/revoke decision when a Student becomes INACTIVE, when a placement
    ends (including a move to another Section) and when a Student has no
-   current enrollment (for example after the Academic Year's end date)
+   current enrollment (for example after the Academic Year's end date); while
+   that date-based review is pending, the guardian receives no data for the
+   Student (fail closed)
 6. A read-only Guardian Portal with a child switcher
 7. An approved read-only Student profile, including an optional
    administrator-entered admission number (Student) and roll number (yearly

@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed — becomes Accepted when the Phase 6 planning PR is approved.
+Accepted (2026-10-11, Phase 6 planning PR #34).
 Planning: `docs/PHASE_6_GUARDIAN_PORTAL_PLAN.md` (decisions P1–P6, P13, P14,
 OD-3 to OD-8).
 
@@ -104,10 +104,12 @@ FROZEN once accepted:
 - Triggers 1, 2 and 4 are blocking steps inside the workflow: the
   administrator sees every active grant of that Student and must choose
   retain or revoke for each before the change is saved.
-- Trigger 3 has no workflow, so it is date-based: the grant appears in an
-  administrator review queue and, pending a decision, the guardian sees the
-  Student listed as "access under review by the school" with no data (OD-8).
-  The grant itself stays active; nothing is revoked automatically.
+- Trigger 3 has no workflow, so it is date-based and **fails closed** (OD-8):
+  the grant enters the administrator review queue and, from the first
+  business date the condition holds until an administrator records RETAINED
+  or REVOKED, the guardian receives no data for that Student (it is listed
+  only as "access under review by the school"). There is no grace period.
+  The grant is not revoked and no decision is inferred.
 - Each decision is an immutable `GuardianAccessReview` row tied to the
   trigger and the enrollment it concerns, so a retained decision for one
   ended placement is not asked again, and a later ended placement asks

@@ -126,8 +126,7 @@ FROZEN (ADR 0010, ADR 0011, ADR 0012):
 
 ## Guardian portal access
 
-PROPOSED (ADR 0013, ADR 0014; Phase 6 — becomes FROZEN when the planning PR is
-approved):
+FROZEN (ADR 0013, ADR 0014; Phase 6):
 - A guardian logs in as an ordinary User linked to exactly one Guardian record
   (GuardianAccount); one person has one User even when they are also a
   teacher. Guardian records never log in themselves (ADR 0004).
@@ -138,7 +137,9 @@ approved):
   deleted; revocation is immediate and recorded. Each active grant needs an
   explicit retain/revoke decision when the Student becomes INACTIVE, when a
   placement ends (including a move to another Section, Class/Grade or Year)
-  and when the Student has no enrollment effective on the business date.
+  and when the Student has no enrollment effective on the business date;
+  while that date-based review is pending the guardian receives no data for
+  the Student (fail closed).
 - Guardians see only: approved profile fields (name, admission number, current
   Academic Year, Class/Grade, Section, roll number, enrolment status),
   SUBMITTED attendance (current values and summary) and Term results an
@@ -152,7 +153,8 @@ approved):
   fingerprint of the source values. Correcting a published result or remark
   makes the current version stale and hides it until republished. Released
   information never changes silently, and every version stays
-  reconstructable.
+  reconstructable. All versions are permanent history; guardians see only the
+  current PUBLISHED version, administrators see every version.
 
 ## Attendance domain principles
 

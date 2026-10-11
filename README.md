@@ -69,6 +69,10 @@ Current status:
     year's assignments
   - full acceptance journey verified end to end; full suite passes on SQLite
     and PostgreSQL
+- Phase 6 Guardian Portal: decisions frozen (Gate 0, ADR 0013 and ADR 0014);
+  implementation proceeds gate by gate per `docs/PHASE_6_GUARDIAN_PORTAL_PLAN.md`.
+  Student accounts are deferred to Phase 6B; fees, announcements and PDFs are
+  excluded.
 
 ## Documentation
 
@@ -78,7 +82,7 @@ Current status:
 - [docs/PHASE_2_RECONCILIATION_PLAN.md](docs/PHASE_2_RECONCILIATION_PLAN.md) — Phase 2 gate-by-gate plan and completion record
 - [docs/PHASE_4_ASSESSMENTS_PLAN.md](docs/PHASE_4_ASSESSMENTS_PLAN.md) — Phase 4 gate-by-gate plan and completion record
 - [docs/PHASE_5_TEACHER_WORKFLOWS_PLAN.md](docs/PHASE_5_TEACHER_WORKFLOWS_PLAN.md) — Phase 5 gate-by-gate plan and completion record
-- [docs/PHASE_6_GUARDIAN_PORTAL_PLAN.md](docs/PHASE_6_GUARDIAN_PORTAL_PLAN.md) — Phase 6 Guardian Portal plan (planning, under review)
+- [docs/PHASE_6_GUARDIAN_PORTAL_PLAN.md](docs/PHASE_6_GUARDIAN_PORTAL_PLAN.md) — Phase 6 Guardian Portal decisions and gate-by-gate plan
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — engineering principles, security, architecture guidance, and source-of-truth hierarchy
 - [docs/ROADMAP.md](docs/ROADMAP.md) — directional roadmap across future phases
 - [docs/ECC_EVALUATION.md](docs/ECC_EVALUATION.md) — ECC experiment goals and evaluation framework

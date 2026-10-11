@@ -2,15 +2,13 @@
 
 ## Status
 
-PLANNED — documentation only, for review. Product decisions P1–P14 and the
-answers to OD-1–OD-7 were provided by the product owner on 2026-10-11 and are
-recorded here, in ADR 0013 (guardian accounts, access grants, multiple roles,
-revocation, sessions, audit) and in ADR 0014 (guardian-visible information
-and explicit result publication). The ADRs become Accepted, and this plan
-becomes the Phase 6 source of truth, when the planning PR is approved.
-One new decision, OD-8, arose from the requested revisions and needs
-approval (section 4). No application code, migration or template may be
-written before approval.
+APPROVED (Gate 0) — product decisions P1–P14 and OD-1–OD-8 were decided by
+the product owner on 2026-10-11 and are recorded here, in ADR 0013 (guardian
+accounts, access grants, multiple roles, revocation, sessions, audit) and in
+ADR 0014 (guardian-visible information and explicit result publication),
+both Accepted. This plan is the Phase 6 source of truth; if it and an ADR
+ever differ, the ADR is authoritative. Implementation follows the gates
+below, in order.
 
 Starting point (verified 2026-10-11):
 
@@ -83,18 +81,28 @@ reconstructed.
 | OD-6 | No bulk grants; every grant explicit and individual | ADR 0013 |
 | OD-7 | Routine authentication events 365 days; link, grant, revocation, review and publication history kept with domain records; LoginFailure 24 hours | ADR 0013 |
 
-# 4. Open decision needing approval
+# 4. OD-8 — fail closed while a date-based review is pending (approved)
 
-- **OD-8 (blocks Gate 2) — Access while a date-based review is pending.**
-  Revision 2 requires an explicit decision when a Student has no current
-  enrollment (for example after the Academic Year's end date). There is no
-  workflow at that moment to block. Recommendation: the grant stays active
-  (nothing is revoked or inferred), the grant enters the administrator review
-  queue, and until an administrator decides, the guardian sees the Student
-  listed as "access under review by the school" with no data. Alternatives:
-  (a) full access continues until a decision is made (risks indefinite
-  access if the queue is ignored); (b) a fixed grace period before the
-  pause (a new rule to choose).
+When a Student has no enrollment effective on the business date within its
+own Academic Year (for example after the year's end date), there is no
+workflow to block, so the review is date-based. The rule fails closed:
+
+- the grant is not revoked and no decision is inferred; it enters the
+  administrator review queue;
+- from the first business date the condition holds, and until an
+  administrator records RETAINED or REVOKED, the guardian receives no data
+  for that Student: the portal lists the Student only as "access under
+  review by the school", and every profile, attendance and report-card page
+  for that Student responds as not available;
+- there is no grace period and no continued access while pending;
+- RETAINED restores access immediately for that ended placement; REVOKED
+  revokes the grant in the same transaction;
+- if the condition stops holding before a decision (for example a new
+  placement is recorded, which itself requires a review), the pending date
+  review is superseded by that workflow's decision.
+
+Rejected: full access until decided (could last indefinitely if the queue is
+ignored); a grace period (an extra rule with no product basis).
 
 # 5. Proposed database model
 
@@ -262,6 +270,18 @@ match. Stale publications are listed for administrators to review and
 republish; administrators may also withdraw a publication. All transitions
 are audited as history events.
 
+**Publication history.**
+- Every version — PUBLISHED, STALE, SUPERSEDED and WITHDRAWN — and its
+  snapshot is permanent history: never deleted, never rewritten, and not
+  covered by the 365-day routine-event retention.
+- Guardians see only the current PUBLISHED version of a Term whose
+  fingerprint still matches. They never see STALE, SUPERSEDED or WITHDRAWN
+  versions, earlier versions, version numbers or the change history.
+- Administrators can view every version exactly as released, with who
+  published it, when, and every status change with its actor and reason.
+- A STALE or WITHDRAWN Term is simply absent from the portal; the guardian is
+  not shown the previous values or told what changed.
+
 # 7. Authorization matrix
 
 Legend: ✔ allowed · ✖ refused (403) · 404 = treated as not existing ·
@@ -419,7 +439,8 @@ guardian–Student match is ever guessed.
 ## Gate 0 — Approved ADRs, requirements and implementation plan
 
 Deliver ADR 0013, ADR 0014, this plan and the REQUIREMENTS, DOMAIN_MODEL and
-ROADMAP updates. Acceptance: planning PR approved and OD-8 answered.
+ROADMAP updates. Acceptance: planning PR approved (PR #34); ADRs Accepted;
+OD-1–OD-8 decided.
 
 ## Gate 1 — Guardian account links, explicit Student access grants and password change
 
@@ -453,7 +474,7 @@ Build: `core.authorization` helpers (`is_guardian`, `guardian_account`,
 `guardian_grants`, `guardian_can_view`, `pending_access_reviews`);
 `GuardianAccessReview`; blocking review steps in `Student.record_status_change`
 (INACTIVE) and `Student.enroll` (placement ended); the date-based review
-queue (OD-8); the extended sweep.
+queue with the fail-closed rule (OD-8); the extended sweep.
 
 Acceptance:
 - a guardian-only login receives 403 on every existing admin and teacher URL;
@@ -464,7 +485,8 @@ Acceptance:
   Class/Grade or Year), shows every active grant and requires retain or
   revoke for each before saving; nothing is inferred;
 - a Student with no enrollment effective on the business date enters the
-  review queue and behaves per OD-8 until decided; a decision is asked once
+  review queue and the guardian receives no data for that Student until an
+  administrator decides (OD-8, fail closed); a decision is asked once
   per ended placement and again for a later one;
 - review decisions cannot be changed or deleted (triggers) and are audited.
 
