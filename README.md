@@ -52,6 +52,8 @@ Current status:
     results, Term report card — finalized values only, history never rewritten
   - full acceptance journey verified end to end; full suite passes on SQLite
     and PostgreSQL
+- Phase 5 Teacher Workflows: decisions frozen (Gate 0, ADR 0011 and ADR 0012);
+  implementation proceeds gate by gate per `docs/PHASE_5_TEACHER_WORKFLOWS_PLAN.md`.
 
 ## Documentation
 
@@ -60,6 +62,7 @@ Current status:
 - [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) — Phase 1, 2 and 4 scope, out-of-scope items, and acceptance criteria
 - [docs/PHASE_2_RECONCILIATION_PLAN.md](docs/PHASE_2_RECONCILIATION_PLAN.md) — Phase 2 gate-by-gate plan and completion record
 - [docs/PHASE_4_ASSESSMENTS_PLAN.md](docs/PHASE_4_ASSESSMENTS_PLAN.md) — Phase 4 gate-by-gate plan and completion record
+- [docs/PHASE_5_TEACHER_WORKFLOWS_PLAN.md](docs/PHASE_5_TEACHER_WORKFLOWS_PLAN.md) — Phase 5 decisions and gate-by-gate plan
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — engineering principles, security, architecture guidance, and source-of-truth hierarchy
 - [docs/ROADMAP.md](docs/ROADMAP.md) — directional roadmap across future phases
 - [docs/ECC_EVALUATION.md](docs/ECC_EVALUATION.md) — ECC experiment goals and evaluation framework

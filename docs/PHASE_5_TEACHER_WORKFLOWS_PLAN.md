@@ -2,9 +2,11 @@
 
 ## Status
 
-DRAFT FOR REVIEW — research and planning only. No Phase 5 code may be
-written until the decisions in section 3 are reviewed and Gate 0 freezes
-them in ADRs. Every decision below is marked PROPOSED with a recommendation.
+FROZEN (Gate 0) — decisions D1–D14 in section 3 are accepted as the Phase 5
+baseline and recorded in ADR 0011 (class teacher and teacher workflow model)
+and ADR 0012 (teacher attendance and student access). If this plan and an
+ADR ever differ, the ADR is authoritative. Implementation follows the gates
+below, in order.
 
 Starting point:
 
@@ -67,13 +69,13 @@ access beyond what their assignments justify:
 
 ---
 
-# 3. Decisions to freeze (Gate 0)
+# 3. Frozen decisions (Gate 0)
 
-Each decision is PROPOSED. Recommendation first; alternatives after.
+Each decision is FROZEN (ADR 0011, ADR 0012). Rejected alternatives are kept for the record.
 
 ### D1. Class teacher is a separate assignment from subject teaching
 
-PROPOSED: Add `SectionClassTeacher` (User + Academic Year + Section). It is
+FROZEN: Add `SectionClassTeacher` (User + Academic Year + Section). It is
 independent of `AssessmentTeacherAssignment`: a class teacher need not teach
 a subject in that Section, and a subject teacher is not a class teacher.
 
@@ -82,13 +84,13 @@ ambiguous when several teachers teach one Section).
 
 ### D2. Exactly one class teacher per Section per Academic Year, at a time
 
-PROPOSED: At most one *current* class teacher per Section and Academic Year.
+FROZEN: At most one *current* class teacher per Section and Academic Year.
 A teacher may be class teacher of more than one Section (rare; allowed).
 Co-class-teachers are out of scope.
 
 ### D3. Class teacher changes are dated, not overwritten
 
-PROPOSED: `SectionClassTeacher` carries `start_date` and optional `end_date`
+FROZEN: `SectionClassTeacher` carries `start_date` and optional `end_date`
 inside the Academic Year, and ranges for one Section may not overlap
 (same pattern as effective-dated enrollment, ADR 0006). Replacing a class
 teacher ends the old row and starts a new one. Authorization uses the row
@@ -98,9 +100,14 @@ stays answerable.
 Alternative: one row per Section/year, edited in place (simpler; loses
 history, and actor fields on registers would be the only trace).
 
+FROZEN note: once a row has taken effect (start_date on or before the
+business date) or any record depends on it, normal workflows end it and
+never delete it. Only a not-yet-effective row with no dependents may be
+deleted. Gate 8 hardens application and database deletion protection.
+
 ### D4. Teachers take daily attendance for their own Section
 
-PROPOSED: The class teacher effective on a date may open, fill and **submit**
+FROZEN: The class teacher effective on a date may open, fill and **submit**
 that Section's register for that date. Submission uses the existing
 `AttendanceRegister.submit(actor=...)`; `submitted_by` records the teacher.
 Administrators keep every current attendance power.
@@ -111,7 +118,7 @@ the same day and would create a daily admin bottleneck).
 
 ### D5. Teacher attendance date window
 
-PROPOSED: A teacher may take or submit attendance for **today only**
+FROZEN: A teacher may take or submit attendance for **today only**
 (school-local business date), on an instructional day. Earlier missing or
 DRAFT registers are handled by an administrator. The missing-attendance
 report already shows them.
@@ -121,7 +128,7 @@ needs a setting and widens the window for after-the-fact edits).
 
 ### D6. No substitute/cover workflow in Phase 5
 
-PROPOSED: When the class teacher is away, an administrator takes attendance
+FROZEN: When the class teacher is away, an administrator takes attendance
 (today's behaviour) or changes the dated class-teacher assignment.
 A cover-assignment model is a stop-and-return-to-planning condition.
 
@@ -130,13 +137,13 @@ Alternative: a dated `CoverAssignment` granting temporary register access
 
 ### D7. Submitted attendance stays administrator-corrected
 
-PROPOSED: Teachers cannot change a SUBMITTED register. Corrections remain
+FROZEN: Teachers cannot change a SUBMITTED register. Corrections remain
 the audited administrator workflow from Phase 2 (ADR 0007). A teacher may
 edit their own DRAFT until submission.
 
 ### D8. Limited student access
 
-PROPOSED: A teacher may view a read-only **teacher student profile** for a
+FROZEN: A teacher may view a read-only **teacher student profile** for a
 Student whose enrollment is effective today in a Section the teacher is
 assigned to (class teacher or subject teacher):
 
@@ -152,14 +159,14 @@ Alternative: class teachers only, no subject-teacher access (stricter).
 
 ### D9. Scope follows the current date, history follows the record
 
-PROPOSED: Lists of "my Students" use enrollments effective **today**.
+FROZEN: Lists of "my Students" use enrollments effective **today**.
 Historical records (registers, results) remain visible to a teacher only for
 the Section/date or offering/Section they were assigned to at that time.
 A teacher who leaves an assignment loses access to new data immediately.
 
 ### D10. Term remarks belong to the class teacher
 
-PROPOSED (changes a Phase 4 decision): from Phase 5, the class teacher
+FROZEN (changes a Phase 4 decision): from Phase 5, the class teacher
 effective at the Term end writes the Term remark for each Student in their
 Section; subject teachers no longer may. Administrators keep their power.
 Existing remarks are unchanged.
@@ -169,33 +176,43 @@ the Section may write remarks).
 
 ### D11. Teacher area, not the admin ERP
 
-PROPOSED: All teacher pages live under `my/` with their own templates and
+FROZEN: All teacher pages live under `my/` with their own templates and
 navigation. Teachers continue to hold no model permissions; every check is
 assignment-based and centralized in `core.authorization`. The Teachers group
 remains the definition of "is a teacher".
 
 ### D12. No staff profile record yet
 
-PROPOSED: Keep teachers as Users (first/last name, email) with no Staff/HR
+FROZEN: Keep teachers as Users (first/last name, email) with no Staff/HR
 model. A staff directory or HR record is a stop-and-return-to-planning
 condition.
 
 ### D13. Assignment workflows for administrators
 
-PROPOSED: An administrator can see, per Academic Year, every Section with
+FROZEN: An administrator can see, per Academic Year, every Section with
 its class teacher and every offering/Section with its subject teacher, find
 gaps (unassigned Sections or offering/Sections), view one teacher's full
 load, and copy a previous year's assignments into a new year as a reviewed,
 explicit action (only where the same Class/Grade, Section name and Subject
 exist).
 
+FROZEN note: copy is preview-first and conservative. Nothing is written
+before the administrator confirms the preview. Matches are never guessed:
+inactive or non-teacher logins, ambiguous Sections or Subjects, missing
+equivalents and already-assigned targets are skipped, and every skip is
+reported with its reason. Confirming twice creates nothing new.
+
 ### D14. Deactivation
 
-PROPOSED: Deactivating a login or removing it from the Teachers group
+FROZEN: Deactivating a login or removing it from the Teachers group
 removes all teacher access immediately (already true for results). The
 administrator overview flags assignments held by inactive or non-teacher
 logins so they can be reassigned. No assignment rows are deleted
 automatically.
+
+FROZEN note: losing teacher status removes access immediately but never
+deletes, ends or rewrites existing class or subject teacher assignments;
+assignment history is preserved.
 
 ---
 
@@ -215,8 +232,8 @@ Rules:
 - no overlapping ranges for one Section and Academic Year
 - teacher must be an active Teachers-group login at creation
 - `section` must belong to a Class/Grade in use that Academic Year
-- rows with dependent history (registers submitted by that teacher in range)
-  are ended, not deleted
+- once effective, or once any record depends on it, a row is ended, not
+  deleted (D3); only a not-yet-effective row without dependents may be deleted
 
 ## No change to existing models
 
@@ -278,7 +295,8 @@ Each gate: build, full suite on SQLite and PostgreSQL, `check`,
   check under row lock), migrations, permissions for administrators
 - Administrator UI: assign, end, replace a class teacher per Section/year
 - Helpers: `class_teacher_on`, `class_teacher_sections`
-- Tests: overlap, dates in year, inactive/non-teacher rejected, history query
+- Tests: overlap, dates in year, inactive/non-teacher rejected, history query,
+  effective rows cannot be deleted through normal workflows (D3)
 
 ## Gate 2 — Teacher home page
 
@@ -316,8 +334,10 @@ Each gate: build, full suite on SQLite and PostgreSQL, `check`,
 ## Gate 7 — Administrator assignment workflows
 
 - Per-year assignment overview with gaps; per-teacher load page
-- Copy previous year's assignments (preview, then explicit confirm;
-  idempotent; skips unmatched Sections/Subjects and reports them)
+- Copy previous year's assignments: preview first, explicit confirm,
+  idempotent; never guesses matches; skips inactive/non-teacher logins,
+  ambiguous or missing Sections/Subjects and already-assigned targets, and
+  reports every skip with its reason (D13)
 - Inactive/non-teacher assignment flags (D14)
 
 ## Gate 8 — Integration hardening
@@ -328,6 +348,9 @@ Each gate: build, full suite on SQLite and PostgreSQL, `check`,
   teacher replaced mid-year → old teacher loses access, history intact →
   next year copy of assignments
 - Authorization sweep, query counts, transactions, migration review
+- Deletion protection for historically relevant SectionClassTeacher rows at
+  application and database level (D3); assignment history untouched by
+  deactivation (D14)
 
 ## Gate 9 — Documentation closeout
 

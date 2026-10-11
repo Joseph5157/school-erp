@@ -115,6 +115,15 @@ CURRENT (ADR 0009, ADR 0010; implemented in Phase 4): Phase 4 assessments follow
 - Administrators finalize and make audited corrections; teachers enter DRAFT results only for their assigned Subject/Section.
 - Reports are views of canonical results: no rank, GPA, weighting, promotion or transcripts.
 
+## Teacher roles
+
+FROZEN (ADR 0010, ADR 0011, ADR 0012):
+- A teacher is an active User in the Teachers group; there is no staff record. Teachers hold no model permissions; what they may do comes only from their assignments.
+- A subject teacher assignment (AssessmentTeacherAssignment) links a teacher to an AcademicSubjectOffering and a Section: one teacher per offering + Section.
+- A class teacher assignment (SectionClassTeacher) links a teacher to a Section in an Academic Year for a dated range; ranges for one Section never overlap. Changes end the old row and start a new one; effective rows are ended, never deleted.
+- Losing teacher status removes access immediately and never deletes or rewrites assignments.
+- Teachers work in a separate teacher area with read-only, assignment-scoped access to Students; guardian contact details are visible to the class teacher only.
+
 ## Attendance domain principles
 
 FROZEN: Attendance is a historical, daily, enrollment-scoped record governed by
@@ -130,6 +139,8 @@ Rules:
 - Percentage is PRESENT / (PRESENT + ABSENT) over submitted eligible entries only.
 
 CURRENT: Attendance is administrator-facing in Phase 2. Teacher attendance is deferred to Phase 5; Guardian and Student attendance access is deferred to later phases. (Phase 4 introduces assessment-scoped teacher assignment for result entry only; ADR 0010.)
+
+FROZEN (ADR 0012, Phase 5): the class teacher effective on a date may take and submit that Section's register for the business date only, on an instructional day; corrections of submitted attendance remain administrator-only.
 
 OPEN: Period/slot-level attendance, leave workflows, portals, notifications, and timetable integration are later work and are not part of Phase 2.
 
