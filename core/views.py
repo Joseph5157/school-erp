@@ -31,6 +31,7 @@ from core.forms import (
     AcademicTermForm,
     AcademicYearForm,
     AdmissionDecisionForm,
+    AdmissionNumberForm,
     ApplicantForm,
     ApplicantGuardianForm,
     AssessmentFilterForm,
@@ -57,6 +58,7 @@ from core.forms import (
     ResultCorrectionForm,
     ResultEntryForm,
     RevocationForm,
+    RollNumberForm,
     SchoolCalendarDayForm,
     SchoolCalendarDayLabelForm,
     SchoolForm,
@@ -1735,6 +1737,58 @@ def guardian_detail(request, pk):
             guardian_id_ref=guardian.pk, event_class=SecurityEvent.EventClass.HISTORY
         ).select_related("actor", "subject_user")[:50]
     return render(request, "core/guardian_detail.html", context)
+
+
+# --- Phase 6 Gate 4: admission and roll numbers (ADR 0014, OD-1) ----------
+
+
+@administrator_required("core.change_student")
+def student_admission_number(request, pk):
+    student = get_object_or_404(Student, pk=pk)
+    form = AdmissionNumberForm(
+        request.POST or None, initial={"admission_number": student.admission_number}
+    )
+    if request.method == "POST" and form.is_valid():
+        try:
+            student.set_admission_number(form.cleaned_data["admission_number"])
+        except ValidationError as error:
+            form.add_error("admission_number", error)
+        else:
+            messages.success(request, "Admission number saved.")
+            return redirect("core:student-detail", pk=student.pk)
+    return render(
+        request,
+        "core/identifier_form.html",
+        {"form": form, "student": student, "title": "Admission number"},
+    )
+
+
+@administrator_required("core.change_academicenrollment")
+def enrollment_roll_number(request, pk):
+    enrollment = get_object_or_404(
+        AcademicEnrollment.objects.select_related(
+            "student", "academic_year", "section__class_grade"
+        ),
+        pk=pk,
+    )
+    form = RollNumberForm(request.POST or None, initial={"roll_number": enrollment.roll_number})
+    if request.method == "POST" and form.is_valid():
+        try:
+            enrollment.set_roll_number(form.cleaned_data["roll_number"])
+        except ValidationError as error:
+            form.add_error("roll_number", error)
+        else:
+            messages.success(request, "Roll number saved.")
+            return redirect("core:student-detail", pk=enrollment.student_id)
+    return render(
+        request,
+        "core/identifier_form.html",
+        {
+            "form": form,
+            "student": enrollment.student,
+            "title": f"Roll number — {enrollment.academic_year} {enrollment.section}",
+        },
+    )
 
 
 # --- Phase 6 Gate 2: guardian access reviews (ADR 0013, OD-8) --------------

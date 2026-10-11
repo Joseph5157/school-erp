@@ -833,3 +833,20 @@ class GuardianUsernameForm(forms.Form):
 
 class RevocationForm(forms.Form):
     reason = forms.CharField(max_length=200, help_text="Recorded permanently with the revocation.")
+
+
+# --- Phase 6 Gate 4: administrator-entered identifiers (ADR 0014, OD-1) ------
+
+
+class AdmissionNumberForm(forms.Form):
+    admission_number = forms.CharField(
+        max_length=30, required=False,
+        help_text="Leave empty to clear. Never generated; must be unique in the school.",
+    )
+
+
+class RollNumberForm(forms.Form):
+    roll_number = forms.IntegerField(
+        min_value=1, max_value=32767, required=False,
+        help_text="Leave empty to clear. Unique within this Section and Academic Year.",
+    )

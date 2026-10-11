@@ -24,3 +24,33 @@ def portal_children(user):
         }
         for grant in grants
     ]
+
+
+def student_profile(student, on_date=None):
+    """Exactly the P7 fields, nothing else (ADR 0014).
+
+    Name, admission number, current placement (Academic Year, Class/Grade,
+    Section, roll number) and enrolment status. Never date of birth, Student
+    contact details, internal ids, other guardians or staff-only data.
+    """
+    from core import models as core_models
+
+    on_date = on_date or core_models.business_today()
+    placement = None
+    for enrollment in core_models.AcademicEnrollment.objects.filter(
+        student=student
+    ).select_related("academic_year", "class_grade", "section").order_by("-start_date"):
+        if guardian_access._effective_within_year(enrollment, on_date):
+            placement = {
+                "academic_year": enrollment.academic_year.name,
+                "class_grade": enrollment.class_grade.name,
+                "section": enrollment.section.name,
+                "roll_number": enrollment.roll_number,
+            }
+            break
+    return {
+        "name": student.full_name,
+        "admission_number": student.admission_number,
+        "placement": placement,
+        "status": student.get_status_display(),
+    }

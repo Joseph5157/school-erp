@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<h1 class="h3 mb-1">{{ title }}</h1>
+<p class="text-muted">{{ student.full_name }}. Entered by the school; never generated automatically.</p>
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">Save</button>
+    <a class="btn btn-link" href="{% url 'core:student-detail' student.pk %}">Cancel</a>
+</form>
+{% endblock %}
