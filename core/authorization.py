@@ -269,3 +269,39 @@ def guardian_can_view(user, student):
 
     grant = guardian_grants(user).filter(student_guardian__student=student).first()
     return grant is not None and not is_review_pending(grant)
+
+
+def guardian_required(view_func):
+    """Require an active guardian login; anonymous users go to the login page."""
+    from functools import wraps
+
+    from django.core.exceptions import PermissionDenied
+
+    @login_required
+    @wraps(view_func)
+    def wrapped(request, *args, **kwargs):
+        account = guardian_account(request.user)
+        if account is None:
+            raise PermissionDenied
+        request.guardian_account = account
+        return view_func(request, *args, **kwargs)
+
+    return wrapped
+
+
+def user_areas(user):
+    """The areas this login may enter, in a fixed order (ADR 0013 multi-role).
+
+    ("admin", label, url name), ("teacher", ...), ("guardian", ...). A login
+    with more than one area chooses explicitly; none is hidden.
+    """
+    if not (user and user.is_authenticated and user.is_active):
+        return []
+    areas = []
+    if user.has_perm("core.view_school"):
+        areas.append(("admin", "School administration", "core:school-detail"))
+    if is_teacher(user):
+        areas.append(("teacher", "My day (teaching)", "core:my-home"))
+    if is_guardian(user):
+        areas.append(("guardian", "Guardian Portal", "portal:home"))
+    return areas

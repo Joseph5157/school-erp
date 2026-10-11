@@ -1,0 +1,6 @@
+{% extends "portal/base.html" %}
+{% block title %}{{ student.full_name }}{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">{{ student.full_name }}</h1>
+{% block child_content %}{% endblock %}
+{% endblock %}

@@ -32,5 +32,7 @@ urlpatterns = [
     ),
     path("accounts/logout/", auth_views.LogoutView.as_view(), name="logout"),
     path("accounts/password/change/", account_views.password_change, name="password_change"),
+    path("choose-area/", core_views.choose_area, name="choose-area"),
+    path("guardian/", include("core.portal_urls")),
     path("", include("core.urls")),
 ]

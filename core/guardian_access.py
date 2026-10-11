@@ -129,6 +129,31 @@ def is_review_pending(grant, on_date=None):
     return review_state(grant, on_date)[0]
 
 
+def pending_map(grants, on_date=None):
+    """{grant pk: (is_pending, placement)} for many grants in two queries."""
+    on_date = on_date or core_models.business_today()
+    grants = list(grants)
+    student_ids = {g.student_guardian.student_id for g in grants}
+    enrollments = {}
+    for enrollment in core_models.AcademicEnrollment.objects.filter(
+        student_id__in=student_ids
+    ).select_related("academic_year", "class_grade", "section__class_grade"):
+        enrollments.setdefault(enrollment.student_id, []).append(enrollment)
+    decided = {}
+    for grant_id, enrollment_id in GuardianAccessReview.objects.filter(
+        grant__in=[g.pk for g in grants], trigger=Trigger.NO_CURRENT_ENROLLMENT
+    ).values_list("grant_id", "enrollment_id"):
+        decided.setdefault(grant_id, set()).add(enrollment_id)
+    return {
+        grant.pk: pending_placement(
+            enrollments.get(grant.student_guardian.student_id, []),
+            decided.get(grant.pk, set()),
+            on_date,
+        )
+        for grant in grants
+    }
+
+
 def pending_reviews(on_date=None):
     """Every active grant whose date-based review is pending, in bulk."""
     on_date = on_date or core_models.business_today()
@@ -137,26 +162,12 @@ def pending_reviews(on_date=None):
             "student_guardian__student", "student_guardian__guardian", "granted_by"
         )
     )
-    student_ids = {g.student_guardian.student_id for g in grants}
-    enrollments = {}
-    for enrollment in core_models.AcademicEnrollment.objects.filter(
-        student_id__in=student_ids
-    ).select_related("academic_year", "class_grade", "section"):
-        enrollments.setdefault(enrollment.student_id, []).append(enrollment)
-    decided = {}
-    for grant_id, enrollment_id in GuardianAccessReview.objects.filter(
-        grant__in=grants, trigger=Trigger.NO_CURRENT_ENROLLMENT
-    ).values_list("grant_id", "enrollment_id"):
-        decided.setdefault(grant_id, set()).add(enrollment_id)
-    rows = []
-    for grant in grants:
-        pending, placement = pending_placement(
-            enrollments.get(grant.student_guardian.student_id, []),
-            decided.get(grant.pk, set()),
-            on_date,
-        )
-        if pending:
-            rows.append({"grant": grant, "placement": placement})
+    states = pending_map(grants, on_date)
+    rows = [
+        {"grant": grant, "placement": states[grant.pk][1]}
+        for grant in grants
+        if states[grant.pk][0]
+    ]
     rows.sort(key=lambda row: (row["grant"].student_guardian.student.full_name,
                                row["grant"].pk))
     return rows
