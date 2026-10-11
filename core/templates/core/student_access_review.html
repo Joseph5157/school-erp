@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Guardian access review{% endblock %}
+{% block content %}
+<h1 class="h3 mb-1">Guardian access review</h1>
+<p class="text-muted">{{ student.full_name }} &middot; {{ trigger }}</p>
+<p>This Student has active Guardian Portal access. Decide explicitly, for each guardian, whether access is retained or revoked. Nothing is decided automatically, and the change is not saved until every guardian is decided.</p>
+<form method="post" action="{{ action }}">
+    {% csrf_token %}
+    {% for name, value in hidden %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
+    <input type="hidden" name="access_review" value="1">
+    <table class="table">
+        <thead><tr><th>Guardian</th><th>Relationship</th><th>Granted</th><th>Decision</th></tr></thead>
+        <tbody>
+        {% for grant in grants %}
+            <tr>
+                <td>{{ grant.student_guardian.guardian.full_name }}</td>
+                <td>{{ grant.student_guardian.get_relationship_type_display }}</td>
+                <td>{{ grant.granted_at|date:"Y-m-d" }}</td>
+                <td>
+                    {% for value, label in decisions %}
+                    <label class="me-3"><input type="radio" name="decision_{{ grant.pk }}" value="{{ value }}" required> {{ label }}</label>
+                    {% endfor %}
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    <p><label for="access_note">Note (optional, recorded with the decisions)</label>
+       <input type="text" name="access_note" id="access_note" maxlength="200" class="form-control"></p>
+    <button type="submit" class="btn btn-primary">Record decisions and continue</button>
+    <a class="btn btn-link" href="{% url 'core:student-detail' student.pk %}">Cancel</a>
+</form>
+{% endblock %}

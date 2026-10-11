@@ -5,10 +5,11 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Exists, OuterRef, Q, Subquery
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils.cache import add_never_cache_headers
 
 from accounts.models import SecurityEvent
-from core import assessment_reports, assignments, guardian_accounts, reports
+from core import assessment_reports, assignments, guardian_access, guardian_accounts, reports
 from core.authorization import (
     administrator_required,
     can_enter_results,
@@ -79,6 +80,7 @@ from core.models import (
     GradeBoundary,
     GradingScale,
     Guardian,
+    GuardianAccessReview,
     GuardianAccount,
     GuardianStudentAccess,
     School,
@@ -1701,10 +1703,13 @@ def guardian_detail(request, pk):
             "access_grants__granted_by", "access_grants__revoked_by"
         ):
             grants = list(link.access_grants.all())
+            active_grant = next((g for g in grants if g.is_active), None)
             relationships.append(
                 {
                     "link": link,
-                    "active_grant": next((g for g in grants if g.is_active), None),
+                    "active_grant": active_grant,
+                    "under_review": active_grant is not None
+                    and guardian_access.is_review_pending(active_grant),
                     "grants": grants,
                 }
             )
@@ -1714,6 +1719,89 @@ def guardian_detail(request, pk):
             guardian_id_ref=guardian.pk, event_class=SecurityEvent.EventClass.HISTORY
         ).select_related("actor", "subject_user")[:50]
     return render(request, "core/guardian_detail.html", context)
+
+
+# --- Phase 6 Gate 2: guardian access reviews (ADR 0013, OD-8) --------------
+
+
+def _posted_decisions(request):
+    """{grant pk: decision} from `decision_<pk>` fields of a review form."""
+    return {
+        key.removeprefix("decision_"): value
+        for key, value in request.POST.items()
+        if key.startswith("decision_") and key.removeprefix("decision_").isdigit()
+    }
+
+
+def _grants_needing_review(request, student, *, ending_placement=False):
+    """Active grants still to decide, or None when no review step is needed.
+
+    The review step is shown when the Student has active guardian grants and
+    the administrator has not yet submitted the review form. For a new
+    placement it applies only if a current placement would end.
+    """
+    if request.POST.get("access_review") == "1":
+        return None
+    if ending_placement and not student.enrollments.filter(
+        status=AcademicEnrollment.Status.ACTIVE
+    ).exists():
+        return None
+    grants = list(guardian_access.active_grants_for(student))
+    return grants or None
+
+
+def _access_review_page(request, student, grants, *, trigger, action):
+    hidden = [
+        (name, value)
+        for name, value in request.POST.items()
+        if name != "csrfmiddlewaretoken" and not name.startswith("decision_")
+    ]
+    return render(
+        request,
+        "core/student_access_review.html",
+        {
+            "student": student,
+            "grants": grants,
+            "trigger": GuardianAccessReview.Trigger(trigger).label,
+            "action": action,
+            "hidden": hidden,
+            "decisions": GuardianAccessReview.Decision.choices,
+        },
+    )
+
+
+@administrator_required("core.view_guardianaccessreview")
+def guardian_access_reviews(request):
+    """Date-based reviews pending (fail closed) and recent decisions."""
+    rows = guardian_access.pending_reviews()
+    guardian_access.record_pending_events(rows, actor=request.user)
+    recent = GuardianAccessReview.objects.select_related(
+        "grant__student_guardian__student", "grant__student_guardian__guardian",
+        "decided_by", "enrollment__section__class_grade", "enrollment__academic_year",
+    )[:50]
+    return render(
+        request,
+        "core/guardian_access_reviews.html",
+        {"rows": rows, "recent": recent, "decisions": GuardianAccessReview.Decision.choices},
+    )
+
+
+@administrator_required("core.add_guardianaccessreview")
+def guardian_access_review_decide(request, pk):
+    grant = get_object_or_404(GuardianStudentAccess, pk=pk)
+    if request.method == "POST":
+        try:
+            guardian_access.decide_date_review(
+                grant=grant,
+                decision=request.POST.get("decision", ""),
+                actor=request.user,
+                note=request.POST.get("note", ""),
+            )
+        except ValidationError as error:
+            messages.error(request, " ".join(error.messages))
+        else:
+            messages.success(request, "Access review recorded.")
+    return redirect("core:guardian-access-reviews")
 
 
 # --- Phase 6 Gate 1: guardian accounts and access grants (ADR 0013) ---------
@@ -1922,12 +2010,22 @@ def student_enroll(request, pk):
     if request.method == "POST":
         form = AcademicEnrollmentForm(request.POST)
         if form.is_valid():
+            grants = _grants_needing_review(request, student, ending_placement=True)
+            if grants is not None:
+                return _access_review_page(
+                    request, student, grants,
+                    trigger=GuardianAccessReview.Trigger.PLACEMENT_ENDED,
+                    action=reverse("core:student-enroll", args=[student.pk]),
+                )
             try:
                 student.enroll(
                     academic_year=form.cleaned_data["academic_year"],
                     class_grade=form.cleaned_data["class_grade"],
                     section=form.cleaned_data["section"],
                     start_date=form.cleaned_data["start_date"],
+                    actor=request.user,
+                    access_decisions=_posted_decisions(request),
+                    access_note=request.POST.get("access_note", ""),
                 )
             except ValidationError as error:
                 messages.error(request, error.messages[0])
@@ -1954,8 +2052,21 @@ def student_status_change(request, pk):
         messages.error(request, "Invalid Student status.")
         return redirect("core:student-detail", pk=student.pk)
 
+    if form.cleaned_data["status"] == Student.Status.INACTIVE:
+        grants = _grants_needing_review(request, student)
+        if grants is not None:
+            return _access_review_page(
+                request, student, grants,
+                trigger=GuardianAccessReview.Trigger.STUDENT_INACTIVE,
+                action=reverse("core:student-status-change", args=[student.pk]),
+            )
     try:
-        student.record_status_change(form.cleaned_data["status"])
+        student.record_status_change(
+            form.cleaned_data["status"],
+            actor=request.user,
+            access_decisions=_posted_decisions(request),
+            access_note=request.POST.get("access_note", ""),
+        )
     except ValidationError as error:
         messages.error(request, error.messages[0])
         return redirect("core:student-detail", pk=student.pk)

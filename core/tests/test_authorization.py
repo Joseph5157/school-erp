@@ -127,6 +127,8 @@ class SchoolAdministratorsGroupMigrationTests(TestCase):
                 "change_guardianstudentaccess",
                 "view_guardianstudentaccess",
                 "view_securityevent",
+                "add_guardianaccessreview",
+                "view_guardianaccessreview",
             },
         )
 

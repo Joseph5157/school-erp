@@ -492,7 +492,8 @@ class Student(models.Model):
     class Meta:
         ordering = ["full_name"]
 
-    def record_status_change(self, new_status):
+    def record_status_change(self, new_status, *, actor=None, access_decisions=None,
+                             access_note=""):
         """Change the Student's lifecycle status between ACTIVE and INACTIVE.
 
         Per docs/adr/0003-phase-1-status-and-transition-rules.md the frozen
@@ -508,11 +509,29 @@ class Student(models.Model):
             raise ValidationError("Invalid Student status.")
         if new_status == self.status:
             raise ValidationError("Student already has this status.")
-        self.status = new_status
-        self.status_changed_at = timezone.now()
-        self.save(update_fields=["status", "status_changed_at", "updated_at"])
+        with transaction.atomic():
+            list(Student.objects.select_for_update().filter(pk=self.pk).values_list("pk"))
+            if new_status == self.Status.INACTIVE:
+                # Phase 6 (ADR 0013): every active guardian grant needs an
+                # explicit retain/revoke decision; nothing is inferred.
+                from core.guardian_access import apply_review_decisions
 
-    def enroll(self, *, academic_year, class_grade, section, start_date):
+                apply_review_decisions(
+                    student=self,
+                    trigger=GuardianAccessReview.Trigger.STUDENT_INACTIVE,
+                    enrollment=self.enrollments.filter(
+                        status=AcademicEnrollment.Status.ACTIVE
+                    ).first(),
+                    decisions=access_decisions,
+                    actor=actor,
+                    note=access_note,
+                )
+            self.status = new_status
+            self.status_changed_at = timezone.now()
+            self.save(update_fields=["status", "status_changed_at", "updated_at"])
+
+    def enroll(self, *, academic_year, class_grade, section, start_date, actor=None,
+               access_decisions=None, access_note=""):
         """Place the Student into a new academic placement effective `start_date`.
 
         Per docs/adr/0003-phase-1-status-and-transition-rules.md, a Student has
@@ -570,6 +589,18 @@ class Student(models.Model):
                             "The new placement must start after the current placement's "
                             f"start date ({current.start_date.isoformat()})."
                         )
+                    # Phase 6 (ADR 0013): ending a placement needs an explicit
+                    # retain/revoke decision for every active guardian grant.
+                    from core.guardian_access import apply_review_decisions
+
+                    apply_review_decisions(
+                        student=self,
+                        trigger=GuardianAccessReview.Trigger.PLACEMENT_ENDED,
+                        enrollment=current,
+                        decisions=access_decisions,
+                        actor=actor,
+                        note=access_note,
+                    )
                     AcademicEnrollment.objects.filter(pk=current.pk).update(
                         status=AcademicEnrollment.Status.COMPLETED,
                         end_date=start_date - datetime.timedelta(days=1),
@@ -2720,3 +2751,59 @@ class GuardianStudentAccess(models.Model):
     def __str__(self):
         state = "" if self.is_active else " (revoked)"
         return f"{self.student_guardian}{state}"
+
+
+class GuardianAccessReview(models.Model):
+    """An administrator's explicit retain/revoke decision for one grant (ADR 0013).
+
+    Required when a Student is made INACTIVE (STUDENT_INACTIVE), when a new
+    placement ends the current one (PLACEMENT_ENDED), and when the Student
+    has no enrollment effective on the business date (NO_CURRENT_ENROLLMENT,
+    date-based, fail closed until decided — OD-8). `enrollment` is the
+    placement the decision concerns, so a later ended placement asks again.
+    Immutable: database triggers refuse UPDATE and DELETE.
+    """
+
+    class Trigger(models.TextChoices):
+        STUDENT_INACTIVE = "STUDENT_INACTIVE", "Student made inactive"
+        PLACEMENT_ENDED = "PLACEMENT_ENDED", "Placement ended"
+        NO_CURRENT_ENROLLMENT = "NO_CURRENT_ENROLLMENT", "No current enrollment"
+
+    class Decision(models.TextChoices):
+        RETAINED = "RETAINED", "Retain access"
+        REVOKED = "REVOKED", "Revoke access"
+
+    grant = models.ForeignKey(
+        GuardianStudentAccess, on_delete=models.PROTECT, related_name="reviews"
+    )
+    trigger = models.CharField(max_length=30, choices=Trigger.choices)
+    enrollment = models.ForeignKey(
+        AcademicEnrollment, on_delete=models.PROTECT, null=True, blank=True, related_name="+"
+    )
+    decision = models.CharField(max_length=10, choices=Decision.choices)
+    decided_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
+    )
+    decided_at = models.DateTimeField(default=timezone.now)
+    note = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        ordering = ["-decided_at", "-pk"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["grant", "trigger", "enrollment"],
+                name="guardianaccessreview_one_per_placement",
+            ),
+            models.UniqueConstraint(
+                fields=["grant", "trigger"],
+                condition=models.Q(enrollment__isnull=True),
+                name="guardianaccessreview_one_without_placement",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(decision__in=["RETAINED", "REVOKED"]),
+                name="guardianaccessreview_decision_valid",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.grant}: {self.get_decision_display()} ({self.get_trigger_display()})"

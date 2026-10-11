@@ -238,6 +238,14 @@ urlpatterns = [
         name="guardian-access-grant",
     ),
     path(
+        "guardian-access/reviews/", views.guardian_access_reviews, name="guardian-access-reviews"
+    ),
+    path(
+        "guardian-access/<int:pk>/review/",
+        views.guardian_access_review_decide,
+        name="guardian-access-review-decide",
+    ),
+    path(
         "guardian-access/<int:pk>/revoke/",
         views.guardian_access_revoke,
         name="guardian-access-revoke",
