@@ -1643,6 +1643,16 @@ class SectionClassTeacherQuerySet(models.QuerySet):
             | models.Q(end_date__isnull=True, academic_year__end_date__gte=on_date)
         )
 
+    def delete(self):
+        """Bulk deletes obey the same rule as single ones (ADR 0011 D3)."""
+        rows = list(self.select_related("academic_year"))
+        if any(row.is_historically_relevant for row in rows):
+            raise ValidationError(
+                "Class teacher assignments that have taken effect or have dependent records "
+                "cannot be deleted; end them instead."
+            )
+        return super().delete()
+
 
 class SectionClassTeacher(models.Model):
     """The class teacher of one Section for a dated range in an Academic Year.
