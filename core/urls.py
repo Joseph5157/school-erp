@@ -201,6 +201,7 @@ urlpatterns = [
     path("students/<int:pk>/enroll/", views.student_enroll, name="student-enroll"),
     path("terms/<int:pk>/publication/", views.term_publication, name="term-publication"),
     path("publications/stale/", views.publications_stale, name="publications-stale"),
+    path("sign-in-lockouts/", views.login_lockouts, name="login-lockouts"),
     path("publications/<int:pk>/", views.publication_detail, name="publication-detail"),
     path(
         "publications/<int:pk>/withdraw/",

@@ -114,6 +114,9 @@ class SecurityEvent(models.Model):
 
     class Meta:
         ordering = ["-occurred_at", "-pk"]
+        permissions = [
+            ("purge_securityevent", "Can purge routine security events older than 365 days"),
+        ]
         constraints = [
             models.CheckConstraint(
                 condition=models.Q(event_class__in=["ROUTINE", "HISTORY"]),
@@ -143,3 +146,25 @@ class SecurityEvent(models.Model):
 
     def __str__(self):
         return f"{self.get_event_type_display()} at {self.occurred_at:%Y-%m-%d %H:%M}"
+
+
+class LoginFailure(models.Model):
+    """Throttling state for failed sign-ins (ADR 0013, plan §8). Operational.
+
+    `username_key` is the normalized attempted username; `source_key` is a
+    keyed hash of the client address (never the raw address). Rows older
+    than 24 hours are purged on each sign-in attempt; an administrator may
+    clear a username's rows to lift a lockout.
+    """
+
+    username_key = models.CharField(max_length=150)
+    source_key = models.CharField(max_length=64)
+    occurred_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["username_key", "source_key", "occurred_at"],
+                         name="loginfailure_lookup"),
+            models.Index(fields=["occurred_at"], name="loginfailure_age"),
+        ]
+        permissions = [("clear_login_lockout", "Can clear a sign-in lockout")]
