@@ -18,14 +18,11 @@ Including another URLconf
 from django.contrib import admin
 from django.contrib.auth import views as auth_views
 from django.urls import include, path
-from django.views.generic import RedirectView
+
+from core import views as core_views
 
 urlpatterns = [
-    path(
-        "",
-        RedirectView.as_view(pattern_name="core:school-detail", permanent=False),
-        name="home",
-    ),
+    path("", core_views.home, name="home"),
     path("admin/", admin.site.urls),
     path(
         "accounts/login/",

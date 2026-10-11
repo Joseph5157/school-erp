@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}My day{% endblock %}
+{% block content %}
+<h1 class="h3 mb-1">My day</h1>
+<p class="text-muted mb-4">{{ today|date:"l, j F Y" }}</p>
+
+<h2 class="h5">Attendance</h2>
+{% if attendance %}
+<table class="table">
+    <thead><tr><th>Section</th><th>Today</th><th></th></tr></thead>
+    <tbody>
+    {% for row in attendance %}
+        <tr>
+            <td>{{ row.duty.section }}</td>
+            <td>
+                {% if row.state == "NOT_INSTRUCTIONAL" %}<span class="text-muted">Not a school day</span>
+                {% elif row.state == "NOT_TAKEN" %}<strong>Not taken</strong>
+                {% elif row.state == "DRAFT" %}Draft &mdash; not yet submitted
+                {% else %}Submitted{% endif %}
+            </td>
+            <td class="text-end"></td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>You are not a class teacher today.</p>
+{% endif %}
+
+<h2 class="h5 mt-4">Marks to enter</h2>
+<table class="table">
+    <thead><tr><th>Date</th><th>Subject</th><th>Section</th><th>Assessment</th><th>Unmarked</th></tr></thead>
+    <tbody>
+    {% for assessment in assessments %}
+        <tr>
+            <td>{{ assessment.assessment_date }}</td>
+            <td>{{ assessment.offering.subject.name }}</td>
+            <td>{{ assessment.section }}</td>
+            <td><a href="{% url 'core:assessment-marks-entry' assessment.pk %}">{{ assessment.name }}</a></td>
+            <td>{{ assessment.unmarked_count }}</td>
+        </tr>
+    {% empty %}
+        <tr><td colspan="5">Nothing waiting. <a href="{% url 'core:my-assessments' %}">All my assessments</a></td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+{% if remarks %}
+<h2 class="h5 mt-4">Term remarks</h2>
+<table class="table">
+    <thead><tr><th>Term</th><th>Section</th><th>Written</th></tr></thead>
+    <tbody>
+    {% for row in remarks %}
+        <tr>
+            <td>{{ row.term.academic_year.name }} {{ row.term.name }}</td>
+            <td>{{ row.section }}</td>
+            <td><a href="{% url 'core:term-remarks' row.term.pk %}?section={{ row.section.pk }}">{{ row.written }} of {{ row.expected }}</a></td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% endblock %}

@@ -105,6 +105,7 @@ urlpatterns = [
         views.report_subject_section_results,
         name="report-subject-section-results",
     ),
+    path("my/", views.my_home, name="my-home"),
     path("my/assessments/", views.my_assessments, name="my-assessments"),
     path(
         "my/assessments/<int:pk>/marks/",

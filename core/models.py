@@ -1386,6 +1386,50 @@ class AcademicTerm(models.Model):
                     students.append(student)
         return students
 
+    def section_rosters(self, sections):
+        """`section_roster` for several Sections at once, in two queries.
+
+        Returns {section_id: [Student, ...]} using exactly the placement rule
+        of `enrollment_for`, ordered by Student name.
+        """
+        section_ids = {section.pk for section in sections}
+        candidate_ids = (
+            AcademicEnrollment.objects.filter(
+                academic_year_id=self.academic_year_id,
+                section_id__in=section_ids,
+                start_date__lte=self.end_date,
+            )
+            .filter(models.Q(end_date__isnull=True) | models.Q(end_date__gte=self.start_date))
+            .values("student_id")
+        )
+        by_student = {}
+        for enrollment in (
+            AcademicEnrollment.objects.filter(
+                academic_year_id=self.academic_year_id, student_id__in=candidate_ids
+            )
+            .select_related("student")
+            .order_by("-start_date")
+        ):
+            by_student.setdefault(enrollment.student_id, []).append(enrollment)
+        end, start = _as_date(self.end_date), _as_date(self.start_date)
+        rosters = {section_id: [] for section_id in section_ids}
+        for enrollments in by_student.values():
+            placement = next((e for e in enrollments if e.is_effective_on(end)), None)
+            if placement is None:
+                placement = next(
+                    (
+                        e for e in enrollments
+                        if _as_date(e.start_date) <= end
+                        and (e.end_date is None or _as_date(e.end_date) >= start)
+                    ),
+                    None,
+                )
+            if placement is not None and placement.section_id in rosters:
+                rosters[placement.section_id].append(placement.student)
+        for students in rosters.values():
+            students.sort(key=lambda student: (student.full_name, student.pk))
+        return rosters
+
     def __str__(self):
         return f"{self.academic_year} - {self.name}"
 

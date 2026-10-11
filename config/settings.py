@@ -103,7 +103,7 @@ AUTH_USER_MODEL = "accounts.User"
 
 # Phase 1 administrative authorization (docs/adr/0004-phase-1-authorization-foundation.md)
 LOGIN_URL = "login"
-LOGIN_REDIRECT_URL = "core:school-detail"
+LOGIN_REDIRECT_URL = "home"
 LOGOUT_REDIRECT_URL = "login"
 
 
