@@ -3,7 +3,7 @@
 ## Project status
 
 This repository contains the documentation foundation and the completed
-Phase 1, Phase 2 and Phase 4 implementations of the School ERP.
+Phase 1, Phase 2, Phase 4 and Phase 5 implementations of the School ERP.
 
 Current status:
 - documentation foundation established; business and domain decisions are the source of truth
@@ -52,8 +52,23 @@ Current status:
     results, Term report card — finalized values only, history never rewritten
   - full acceptance journey verified end to end; full suite passes on SQLite
     and PostgreSQL
-- Phase 5 Teacher Workflows: decisions frozen (Gate 0, ADR 0011 and ADR 0012);
-  implementation proceeds gate by gate per `docs/PHASE_5_TEACHER_WORKFLOWS_PLAN.md`.
+- Phase 5 Teacher Workflows is complete (tag `phase-5-complete`), implemented
+  gate by gate per `docs/PHASE_5_TEACHER_WORKFLOWS_PLAN.md` (ADR 0011, ADR 0012):
+  - dated class teacher assignment per Section (one at a time; hand-overs end
+    the old row; effective rows are ended, never deleted or rewritten —
+    enforced in the application and by database triggers)
+  - teacher area (`my/`): My day, today's attendance for the class teacher's
+    Section (business date only; submitted registers read-only to teachers),
+    attendance history for their own assignment dates
+  - limited, read-only teacher student profiles; guardian contacts for the
+    class teacher only; no date of birth, Student contacts or edits
+  - teacher result views; Term remarks and report cards owned by the class
+    teacher on the Term's last day
+  - administrator assignment overview with gaps and inactive holders flagged,
+    per-teacher load, and a preview-first, never-guessing copy of another
+    year's assignments
+  - full acceptance journey verified end to end; full suite passes on SQLite
+    and PostgreSQL
 
 ## Documentation
 
@@ -62,7 +77,7 @@ Current status:
 - [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) — Phase 1, 2 and 4 scope, out-of-scope items, and acceptance criteria
 - [docs/PHASE_2_RECONCILIATION_PLAN.md](docs/PHASE_2_RECONCILIATION_PLAN.md) — Phase 2 gate-by-gate plan and completion record
 - [docs/PHASE_4_ASSESSMENTS_PLAN.md](docs/PHASE_4_ASSESSMENTS_PLAN.md) — Phase 4 gate-by-gate plan and completion record
-- [docs/PHASE_5_TEACHER_WORKFLOWS_PLAN.md](docs/PHASE_5_TEACHER_WORKFLOWS_PLAN.md) — Phase 5 decisions and gate-by-gate plan
+- [docs/PHASE_5_TEACHER_WORKFLOWS_PLAN.md](docs/PHASE_5_TEACHER_WORKFLOWS_PLAN.md) — Phase 5 gate-by-gate plan and completion record
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — engineering principles, security, architecture guidance, and source-of-truth hierarchy
 - [docs/ROADMAP.md](docs/ROADMAP.md) — directional roadmap across future phases
 - [docs/ECC_EVALUATION.md](docs/ECC_EVALUATION.md) — ECC experiment goals and evaluation framework

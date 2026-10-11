@@ -138,7 +138,7 @@ Rules:
 - Submitted attendance corrections preserve the previous value, new value, administrator, and timestamp.
 - Percentage is PRESENT / (PRESENT + ABSENT) over submitted eligible entries only.
 
-CURRENT: Attendance is administrator-facing in Phase 2. Teacher attendance is deferred to Phase 5; Guardian and Student attendance access is deferred to later phases. (Phase 4 introduces assessment-scoped teacher assignment for result entry only; ADR 0010.)
+CURRENT: Attendance was administrator-facing in Phase 2; Phase 5 adds class-teacher capture (below). Guardian and Student attendance access is deferred to later phases.
 
 FROZEN (ADR 0012, Phase 5): the class teacher effective on a date may take and submit that Section's register for the business date only, on an instructional day; corrections of submitted attendance remain administrator-only.
 

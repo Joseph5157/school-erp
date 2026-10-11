@@ -7,7 +7,7 @@ Foundation
 → Phase 2 Attendance ✅
 → Phase 3 Fees ⏸️ deferred (not implemented)
 → Phase 4 Assessments ✅
-→ Phase 5 Teacher Workflows (Gate 0: decisions frozen)
+→ Phase 5 Teacher Workflows ✅
 → Phase 6 Parent/Student Experience
 → Phase 7 Communication & Reporting
 → Production Hardening
@@ -91,8 +91,8 @@ co-scholastic grading.
 - teacher-facing attendance and result views; Term remarks by the class teacher
 - administrator assignment overview and conservative copy-from-last-year
 
-Status: Gate 0 — decisions frozen in ADR 0011 and ADR 0012; implementation
-proceeds gate by gate per `docs/PHASE_5_TEACHER_WORKFLOWS_PLAN.md`.
+Status: complete (tag `phase-5-complete`). Implemented through Gates 0-9 of
+`docs/PHASE_5_TEACHER_WORKFLOWS_PLAN.md`; decisions in ADR 0011 and ADR 0012.
 
 Out of scope for Phase 5: timetable and period attendance, substitute/cover
 workflows, staff/HR records, leave and staff attendance, lesson plans and

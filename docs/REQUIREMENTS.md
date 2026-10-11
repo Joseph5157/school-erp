@@ -401,8 +401,8 @@ journey in `core/tests/test_phase4_acceptance.py`.
 
 ## Phase 5 scope
 
-Phase 5 Teacher Workflows is planned; its decisions are frozen in ADR 0011
-and ADR 0012 and its gates are defined in
+Phase 5 Teacher Workflows is complete (tag `phase-5-complete`); its decisions
+are recorded in ADR 0011 and ADR 0012 and its gates in
 `docs/PHASE_5_TEACHER_WORKFLOWS_PLAN.md`. It contains only:
 
 1. Dated class teacher assignment (one per Section at a time)
@@ -418,6 +418,9 @@ Phase 5 is complete when a teacher can see today's work, take and submit
 their own Section's attendance, enter marks, write remarks and look up their
 own Students, cannot see or change anything outside their dated assignments,
 and every historical record still shows who did what, when.
+
+All of these criteria are met and verified by the end-to-end acceptance
+journey in `core/tests/test_phase5_acceptance.py`.
 
 ## Explicitly out of scope for Phase 5
 
