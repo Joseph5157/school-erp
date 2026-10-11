@@ -31,6 +31,8 @@ from core.forms import (
     AttendanceRegisterForm,
     CalendarDateCheckForm,
     ClassGradeForm,
+    ClassTeacherAssignForm,
+    ClassTeacherEndForm,
     GradeBoundaryForm,
     GradingScaleForm,
     GuardianForm,
@@ -66,10 +68,12 @@ from core.models import (
     School,
     SchoolCalendarDay,
     Section,
+    SectionClassTeacher,
     Student,
     StudentResult,
     Subject,
     TermRemark,
+    business_today,
 )
 
 
@@ -924,6 +928,108 @@ def teacher_assignment_delete(request, pk):
         assignment.delete()
         messages.success(request, "Teacher assignment removed.")
     return redirect("core:academic-year-teacher-assignments", pk=year_pk)
+
+
+# --- Phase 5 Gate 1: class teacher assignment (ADR 0011) --------------------
+
+
+@administrator_required("core.view_sectionclassteacher")
+def academic_year_class_teachers(request, pk):
+    academic_year = get_object_or_404(AcademicYear, pk=pk)
+    today = business_today()
+    by_section = {}
+    for row in (
+        SectionClassTeacher.objects.filter(academic_year=academic_year)
+        .select_related("teacher")
+        .order_by("start_date")
+    ):
+        by_section.setdefault(row.section_id, []).append(row)
+    sections = []
+    for section in Section.objects.select_related("class_grade").order_by(
+        "class_grade__name", "name"
+    ):
+        history = by_section.get(section.pk, [])
+        current = next((row for row in history if row.is_effective_on(today)), None)
+        sections.append({"section": section, "current": current, "history": history})
+    return render(
+        request,
+        "core/academic_year_class_teachers.html",
+        {
+            "academic_year": academic_year,
+            "sections": sections,
+            "today": today,
+            "year_is_current": academic_year.contains(today),
+        },
+    )
+
+
+@administrator_required("core.add_sectionclassteacher")
+def class_teacher_assign(request, pk):
+    academic_year = get_object_or_404(AcademicYear, pk=pk)
+    today = business_today()
+    default_start = min(max(today, academic_year.start_date), academic_year.end_date)
+    initial = {"start_date": default_start, "section": request.GET.get("section")}
+    form = ClassTeacherAssignForm(
+        request.POST or None, academic_year=academic_year, initial=initial
+    )
+    if request.method == "POST" and form.is_valid():
+        try:
+            SectionClassTeacher.assign(
+                teacher=form.cleaned_data["teacher"],
+                academic_year=academic_year,
+                section=form.cleaned_data["section"],
+                start_date=form.cleaned_data["start_date"],
+            )
+        except ValidationError as error:
+            form.add_error(None, error)
+        except IntegrityError:
+            form.add_error(None, "Another class teacher assignment starts on that date.")
+        else:
+            messages.success(request, "Class teacher assigned.")
+            return redirect("core:academic-year-class-teachers", pk=academic_year.pk)
+    return render(
+        request,
+        "core/class_teacher_form.html",
+        {"form": form, "academic_year": academic_year},
+    )
+
+
+@administrator_required("core.change_sectionclassteacher")
+def class_teacher_end(request, pk):
+    assignment = get_object_or_404(
+        SectionClassTeacher.objects.select_related(
+            "teacher", "academic_year", "section__class_grade"
+        ),
+        pk=pk,
+    )
+    form = ClassTeacherEndForm(request.POST or None, initial={"end_date": business_today()})
+    if request.method == "POST" and form.is_valid():
+        try:
+            assignment.end(form.cleaned_data["end_date"])
+        except ValidationError as error:
+            form.add_error(None, error)
+        else:
+            messages.success(request, "Class teacher assignment ended.")
+            return redirect(
+                "core:academic-year-class-teachers", pk=assignment.academic_year_id
+            )
+    return render(
+        request, "core/class_teacher_end_form.html", {"form": form, "assignment": assignment}
+    )
+
+
+@administrator_required("core.delete_sectionclassteacher")
+def class_teacher_delete(request, pk):
+    assignment = get_object_or_404(SectionClassTeacher, pk=pk)
+    year_pk = assignment.academic_year_id
+    if request.method == "POST":
+        try:
+            assignment.delete()
+        except ValidationError as error:
+            messages.error(request, " ".join(error.messages))
+        else:
+            messages.success(request, "Planned class teacher assignment deleted.")
+    return redirect("core:academic-year-class-teachers", pk=year_pk)
 
 
 @administrator_required("core.view_classgrade")
