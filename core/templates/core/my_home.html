@@ -18,7 +18,11 @@
                 {% elif row.state == "DRAFT" %}Draft &mdash; not yet submitted
                 {% else %}Submitted{% endif %}
             </td>
-            <td class="text-end"></td>
+            <td class="text-end">
+                {% if row.state == "NOT_TAKEN" %}<a class="btn btn-primary btn-sm" href="{% url 'core:my-attendance' row.duty.section.pk %}">Take attendance</a>
+                {% elif row.state == "DRAFT" %}<a class="btn btn-outline-primary btn-sm" href="{% url 'core:my-attendance' row.duty.section.pk %}">Continue</a>
+                {% elif row.state == "SUBMITTED" %}<a href="{% url 'core:my-attendance' row.duty.section.pk %}">View</a>{% endif %}
+            </td>
         </tr>
     {% endfor %}
     </tbody>

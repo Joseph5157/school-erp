@@ -125,3 +125,18 @@ def class_teacher_sections(user, on_date):
     return Section.objects.filter(
         pk__in=class_teacher_assignments(user, on_date).values("section_id")
     ).select_related("class_grade")
+
+
+def can_take_attendance(user, section, on_date):
+    """May a teacher take or submit `section`'s register for `on_date`? (ADR 0012)
+
+    Only the class teacher effective on that date, and only for the
+    school-local business date (D5). Whether the date is instructional is
+    enforced by the register itself. Administrators use the Phase 2
+    administrator workflow and permissions instead.
+    """
+    from core import models
+
+    if on_date != models.business_today():
+        return False
+    return class_teacher_on(user, section, on_date)
