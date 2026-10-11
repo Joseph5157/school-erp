@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Choose where to go{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Where would you like to go?</h1>
+<p class="text-muted">Your login has more than one role. Choose an area; you can switch at any time from the menu.</p>
+<div class="list-group" style="max-width: 28rem">
+    {% for key, label, url_name in areas %}
+    <a class="list-group-item list-group-item-action" href="{% url url_name %}">{{ label }}</a>
+    {% endfor %}
+</div>
+{% endblock %}

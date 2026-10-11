@@ -1,0 +1,17 @@
+{% extends "portal/base.html" %}
+{% block content %}
+<h1 class="h3 mb-3">Your students</h1>
+{% if children %}
+<div class="list-group" style="max-width: 32rem">
+    {% for item in children %}
+        {% if item.visible %}
+        <a class="list-group-item list-group-item-action" href="{% url 'portal:child' item.grant.public_id %}">{{ item.student.full_name }}</a>
+        {% else %}
+        <div class="list-group-item">{{ item.student.full_name }} <span class="text-muted">&mdash; access under review by the school</span></div>
+        {% endif %}
+    {% endfor %}
+</div>
+{% else %}
+<p>No students are linked to your account yet. Please contact the school office.</p>
+{% endif %}
+{% endblock %}

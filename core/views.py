@@ -24,6 +24,7 @@ from core.authorization import (
     teacher_required,
     teacher_student_scope,
     term_remark_sections,
+    user_areas,
 )
 from core.forms import (
     AcademicEnrollmentForm,
@@ -696,10 +697,25 @@ def term_remarks(request, pk):
 
 @login_required
 def home(request):
-    """Send each login to its own landing page."""
-    if is_teacher(request.user) and not request.user.has_perm("core.view_school"):
-        return redirect("core:my-home")
+    """Send each login to its own landing page (ADR 0013 multi-role).
+
+    One area: go there. Several: choose explicitly — no role is silently
+    picked or hidden. None: the School page, which refuses without access.
+    """
+    areas = user_areas(request.user)
+    if len(areas) > 1:
+        return redirect("choose-area")
+    if len(areas) == 1:
+        return redirect(areas[0][2])
     return redirect("core:school-detail")
+
+
+@login_required
+def choose_area(request):
+    areas = user_areas(request.user)
+    if len(areas) <= 1:
+        return redirect("home")
+    return render(request, "core/choose_area.html", {"areas": areas})
 
 
 def _open_assessments_needing_marks(user, today):

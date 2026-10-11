@@ -55,9 +55,10 @@ class LandingTests(TeacherHomeFixture, TestCase):
         self.assertRedirects(self.client.get(reverse("home")), reverse("core:school-detail"),
                              fetch_redirect_response=False)
 
-    def test_teacher_with_admin_rights_lands_on_school(self):
+    def test_teacher_with_admin_rights_chooses_an_area(self):
+        # Phase 6 (ADR 0013): a login with several areas chooses explicitly.
         self.rao.groups.add(self.admins)
-        self.assertRedirects(self.teacher.get(reverse("home")), reverse("core:school-detail"),
+        self.assertRedirects(self.teacher.get(reverse("home")), reverse("choose-area"),
                              fetch_redirect_response=False)
 
     def test_anonymous_home_requires_login(self):
