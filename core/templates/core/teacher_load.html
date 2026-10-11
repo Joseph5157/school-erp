@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Teacher load - {{ teacher }}{% endblock %}
+{% block content %}
+<h1 class="h3 mb-1">{{ teacher.get_full_name|default:teacher.username }}</h1>
+<p class="text-muted">{{ teacher.username }} &middot;
+    {% if is_active_teacher %}Active teacher{% else %}<strong>Not an active teacher</strong> &mdash; has no teacher access; existing assignments are kept for history.{% endif %}</p>
+{% for year, rows in years %}
+<h2 class="h5 mt-4">{{ year.name }}</h2>
+<p class="mb-1"><strong>Class teacher</strong></p>
+<ul>
+    {% for row in rows.class %}<li>{{ row.section }}: {{ row.start_date }} &ndash; {{ row.end_date|default:"open" }}</li>{% empty %}<li class="text-muted">None</li>{% endfor %}
+</ul>
+<p class="mb-1"><strong>Subjects</strong></p>
+<ul>
+    {% for row in rows.subject %}<li>{{ row.offering.subject.name }} &middot; {{ row.section }}</li>{% empty %}<li class="text-muted">None</li>{% endfor %}
+</ul>
+{% empty %}
+<p>No assignments.</p>
+{% endfor %}
+{% endblock %}

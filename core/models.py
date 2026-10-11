@@ -1632,10 +1632,15 @@ class AssessmentTeacherAssignment(models.Model):
 
 class SectionClassTeacherQuerySet(models.QuerySet):
     def effective_on(self, on_date):
-        """Assignments whose inclusive date range contains `on_date`."""
+        """Assignments whose inclusive date range contains `on_date`.
+
+        An open-ended assignment runs to the end of its own Academic Year;
+        Sections are year-agnostic, so it never carries into the next year.
+        """
         on_date = _as_date(on_date)
         return self.filter(start_date__lte=on_date).filter(
-            models.Q(end_date__isnull=True) | models.Q(end_date__gte=on_date)
+            models.Q(end_date__gte=on_date)
+            | models.Q(end_date__isnull=True, academic_year__end_date__gte=on_date)
         )
 
 
@@ -1721,10 +1726,12 @@ class SectionClassTeacher(models.Model):
             )
 
     def overlapping(self):
-        """Other assignments for this Section whose date range meets this one."""
+        """Other assignments for this Section in this year whose range meets this one."""
         start_date = _as_date(self.start_date)
         end_date = _as_date(self.end_date)
-        others = SectionClassTeacher.objects.filter(section_id=self.section_id).filter(
+        others = SectionClassTeacher.objects.filter(
+            section_id=self.section_id, academic_year_id=self.academic_year_id
+        ).filter(
             models.Q(end_date__isnull=True) | models.Q(end_date__gte=start_date)
         )
         if end_date is not None:
@@ -1737,9 +1744,7 @@ class SectionClassTeacher(models.Model):
 
     def is_effective_on(self, on_date):
         on_date = _as_date(on_date)
-        return _as_date(self.start_date) <= on_date and (
-            self.end_date is None or on_date <= _as_date(self.end_date)
-        )
+        return _as_date(self.start_date) <= on_date <= self.last_effective_date
 
     @property
     def last_effective_date(self):
@@ -1747,14 +1752,12 @@ class SectionClassTeacher(models.Model):
 
     def dependent_registers(self):
         """Registers this teacher submitted for this Section inside the range."""
-        registers = AttendanceRegister.objects.filter(
+        return AttendanceRegister.objects.filter(
             section_id=self.section_id,
             submitted_by_id=self.teacher_id,
             date__gte=self.start_date,
+            date__lte=self.last_effective_date,
         )
-        if self.end_date is not None:
-            registers = registers.filter(date__lte=self.end_date)
-        return registers
 
     def has_dependents(self):
         return self.dependent_registers().exists()
@@ -1782,7 +1785,9 @@ class SectionClassTeacher(models.Model):
         with transaction.atomic():
             cls._lock_section(section)
             current = (
-                cls.objects.filter(section=section, start_date__lt=start_date)
+                cls.objects.filter(
+                    section=section, academic_year=academic_year, start_date__lt=start_date
+                )
                 .filter(models.Q(end_date__isnull=True) | models.Q(end_date__gte=start_date))
                 .first()
             )

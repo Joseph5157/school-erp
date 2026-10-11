@@ -50,6 +50,17 @@ urlpatterns = [
     ),
     path("subject-offerings/<int:pk>/edit/", views.offering_update, name="offering-update"),
     path(
+        "academic-years/<int:pk>/assignments/",
+        views.academic_year_assignments,
+        name="academic-year-assignments",
+    ),
+    path(
+        "academic-years/<int:pk>/assignments/copy/",
+        views.assignment_copy,
+        name="assignment-copy",
+    ),
+    path("teachers/<int:pk>/load/", views.teacher_load, name="teacher-load"),
+    path(
         "academic-years/<int:pk>/class-teachers/",
         views.academic_year_class_teachers,
         name="academic-year-class-teachers",
