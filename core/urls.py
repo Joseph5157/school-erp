@@ -200,6 +200,16 @@ urlpatterns = [
     path("students/<int:pk>/", views.student_detail, name="student-detail"),
     path("students/<int:pk>/enroll/", views.student_enroll, name="student-enroll"),
     path(
+        "students/<int:pk>/admission-number/",
+        views.student_admission_number,
+        name="student-admission-number",
+    ),
+    path(
+        "enrollments/<int:pk>/roll-number/",
+        views.enrollment_roll_number,
+        name="enrollment-roll-number",
+    ),
+    path(
         "students/<int:pk>/status/",
         views.student_status_change,
         name="student-status-change",

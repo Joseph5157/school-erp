@@ -5,7 +5,7 @@ from django.shortcuts import render
 from django.views.decorators.http import require_safe
 
 from core.authorization import guardian_required, guardian_visible_grant
-from core.portal import portal_children
+from core.portal import portal_children, student_profile
 
 
 def _visible_grant_or_404(request, public_id):
@@ -29,8 +29,9 @@ def home(request):
 @guardian_required
 def child(request, public_id):
     grant = _visible_grant_or_404(request, public_id)
+    student = grant.student_guardian.student
     return render(
         request,
         "portal/child.html",
-        _context(request, grant=grant, student=grant.student_guardian.student),
+        _context(request, grant=grant, student=student, profile=student_profile(student)),
     )

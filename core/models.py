@@ -4,7 +4,9 @@ from decimal import Decimal
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator, RegexValidator
 from django.db import IntegrityError, models, transaction
+from django.db.models.functions import Upper
 from django.utils import timezone
 
 
@@ -462,6 +464,18 @@ class ApplicantGuardian(models.Model):
         return f"{self.applicant} - {self.guardian} ({self.get_relationship_type_display()})"
 
 
+ADMISSION_NUMBER_VALIDATOR = RegexValidator(
+    r"^[A-Za-z0-9][A-Za-z0-9/._-]{0,29}\Z",
+    "Use letters, digits, slash, dot, underscore or hyphen (up to 30).",
+)
+
+
+def normalize_admission_number(value):
+    """Trim; empty means not recorded (None). Case is kept as entered."""
+    value = (value or "").strip()
+    return value or None
+
+
 class Student(models.Model):
     """The long-lived school identity created by explicit progression.
 
@@ -486,11 +500,49 @@ class Student(models.Model):
     phone = models.CharField(max_length=50, blank=True)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.ACTIVE)
     status_changed_at = models.DateTimeField(null=True, blank=True)
+    admission_number = models.CharField(
+        max_length=30,
+        null=True,
+        blank=True,
+        validators=[ADMISSION_NUMBER_VALIDATOR],
+        help_text="Optional, entered by the school; never generated (ADR 0014).",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ["full_name"]
+        constraints = [
+            models.UniqueConstraint(
+                Upper("admission_number"),
+                condition=models.Q(admission_number__isnull=False),
+                name="student_admission_number_ci_unique",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(admission_number__isnull=True)
+                | ~models.Q(admission_number=""),
+                name="student_admission_number_not_blank",
+            ),
+        ]
+
+    def set_admission_number(self, value):
+        """Record (or clear) the admission number entered by an administrator."""
+        value = normalize_admission_number(value)
+        if value is not None:
+            ADMISSION_NUMBER_VALIDATOR(value)
+            clash = Student.objects.annotate(_key=Upper("admission_number")).filter(
+                _key=value.upper()
+            ).exclude(pk=self.pk)
+            if clash.exists():
+                raise ValidationError("Another Student already has this admission number.")
+        self.admission_number = value
+        try:
+            with transaction.atomic():
+                self.save(update_fields=["admission_number", "updated_at"])
+        except IntegrityError as error:
+            raise ValidationError(
+                "Another Student already has this admission number."
+            ) from error
 
     def record_status_change(self, new_status, *, actor=None, access_decisions=None,
                              access_note=""):
@@ -689,6 +741,13 @@ class AcademicEnrollment(models.Model):
         blank=True,
         help_text="Last date this placement is effective (inclusive). Empty while ACTIVE.",
     )
+    roll_number = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1)],
+        help_text="Optional, entered by the school; never generated. Unique within the "
+        "Academic Year and Section (ADR 0014).",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -715,6 +774,15 @@ class AcademicEnrollment(models.Model):
                     | models.Q(end_date__gte=models.F("start_date"))
                 ),
                 name="academicenrollment_end_date_not_before_start_date",
+            ),
+            models.UniqueConstraint(
+                fields=["academic_year", "section", "roll_number"],
+                condition=models.Q(roll_number__isnull=False),
+                name="academicenrollment_roll_number_unique_in_year_section",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(roll_number__isnull=True) | models.Q(roll_number__gte=1),
+                name="academicenrollment_roll_number_positive",
             ),
         ]
 
@@ -749,6 +817,32 @@ class AcademicEnrollment(models.Model):
             raise ValidationError(
                 "This placement's effective dates overlap another enrollment for this Student."
             )
+
+    def set_roll_number(self, value):
+        """Record (or clear) the roll number entered by an administrator."""
+        if value in ("", None):
+            value = None
+        else:
+            value = int(value)
+            if value < 1:
+                raise ValidationError("A roll number must be a positive whole number.")
+            if AcademicEnrollment.objects.filter(
+                academic_year_id=self.academic_year_id, section_id=self.section_id,
+                roll_number=value,
+            ).exclude(pk=self.pk).exists():
+                raise ValidationError(
+                    "This roll number is already used in this Section for this Academic Year."
+                )
+        self.roll_number = value
+        try:
+            with transaction.atomic():
+                AcademicEnrollment.objects.filter(pk=self.pk).update(
+                    roll_number=value, updated_at=timezone.now()
+                )
+        except IntegrityError as error:
+            raise ValidationError(
+                "This roll number is already used in this Section for this Academic Year."
+            ) from error
 
     def overlapping_enrollments(self):
         """Other enrollments of this Student whose effective range meets this one."""

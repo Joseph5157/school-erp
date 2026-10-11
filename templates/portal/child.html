@@ -1,6 +1,22 @@
 {% extends "portal/base.html" %}
-{% block title %}{{ student.full_name }}{% endblock %}
+{% block title %}{{ profile.name }}{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">{{ student.full_name }}</h1>
-{% block child_content %}{% endblock %}
+<h1 class="h3 mb-3">{{ profile.name }}</h1>
+<dl class="row" style="max-width: 40rem">
+    {% if profile.admission_number %}
+    <dt class="col-sm-5">Admission number</dt><dd class="col-sm-7">{{ profile.admission_number }}</dd>
+    {% endif %}
+    {% if profile.placement %}
+    <dt class="col-sm-5">Academic Year</dt><dd class="col-sm-7">{{ profile.placement.academic_year }}</dd>
+    <dt class="col-sm-5">Class/Grade</dt><dd class="col-sm-7">{{ profile.placement.class_grade }}</dd>
+    <dt class="col-sm-5">Section</dt><dd class="col-sm-7">{{ profile.placement.section }}</dd>
+    {% if profile.placement.roll_number %}
+    <dt class="col-sm-5">Roll number</dt><dd class="col-sm-7">{{ profile.placement.roll_number }}</dd>
+    {% endif %}
+    {% else %}
+    <dt class="col-sm-5">Current placement</dt><dd class="col-sm-7">None at present</dd>
+    {% endif %}
+    <dt class="col-sm-5">Enrolment status</dt><dd class="col-sm-7">{{ profile.status }}</dd>
+</dl>
+{% block child_sections %}{% endblock %}
 {% endblock %}
