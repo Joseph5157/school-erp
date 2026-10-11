@@ -433,6 +433,61 @@ journey in `core/tests/test_phase5_acceptance.py`.
 - teacher correction of submitted attendance or finalized results
 - teacher editing of student, guardian or enrollment records
 
+## Phase 6 scope
+
+Phase 6 Guardian Portal is approved for implementation; its decisions are
+frozen in ADR 0013 and ADR 0014 and its gates are defined in
+`docs/PHASE_6_GUARDIAN_PORTAL_PLAN.md`. It contains only:
+
+1. Administrator-created guardian accounts after identity verification, with
+   an offline temporary password, forced first-login password change and
+   administrator-only password reset that ends sessions
+2. One username normalization and comparison rule used by account creation,
+   username changes, sign-in, the site administration and the database
+3. One login per person: a teacher who is also a guardian uses one account,
+   with an explicit area choice
+4. Explicit, administrator-granted access per guardian–Student relationship,
+   one at a time; relationship labels never authorize
+5. Revocation of account links and access grants, never deletion; an explicit
+   retain/revoke decision when a Student becomes INACTIVE, when a placement
+   ends (including a move to another Section) and when a Student has no
+   current enrollment (for example after the Academic Year's end date); while
+   that date-based review is pending, the guardian receives no data for the
+   Student (fail closed)
+6. A read-only Guardian Portal with a child switcher
+7. An approved read-only Student profile, including an optional
+   administrator-entered admission number (Student) and roll number (yearly
+   placement)
+8. Submitted attendance history and summary
+9. Explicit, preview-first, idempotent Term publication of finalized results
+   and class-teacher remarks, allowed before the Term ends, with incomplete
+   Students flagged; each version stores an immutable snapshot of what was
+   displayed; corrections make a publication stale
+10. Login throttling, generic sign-in errors, 30-minute idle and 8-hour
+    absolute sessions enforced on every request, secure cookies, and a
+    security-event audit with 365-day retention for routine events and
+    permanent history for account, access and publication changes
+
+Phase 6 is complete when an administrator can verify, create and link a
+guardian account, grant access to specific Students and publish Term results
+through a preview; the guardian can sign in safely and see only those
+Students' approved profile, submitted attendance and published report cards;
+nothing released changes silently and every released version can be
+reconstructed; and every account, access, review and publication change is
+audited.
+
+## Explicitly out of scope for Phase 6
+
+- Student logins and any Student-facing view (future Phase 6B)
+- self-registration, self-service password recovery, email or SMS delivery
+- guardian editing of records or change requests
+- fees, fee placeholders or fee navigation (Phase 3 remains deferred)
+- announcements and messaging (Phase 7)
+- PDF or downloadable report cards
+- attendance drafts, absence notes and correction history in the portal
+- unpublished or assessment-level result visibility
+- page-view logging and analytics
+
 ## Definition of Done
 
 FROZEN: A feature or milestone is done when, where applicable:

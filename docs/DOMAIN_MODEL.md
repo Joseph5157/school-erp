@@ -124,6 +124,38 @@ FROZEN (ADR 0010, ADR 0011, ADR 0012):
 - Losing teacher status removes access immediately and never deletes or rewrites assignments.
 - Teachers work in a separate teacher area with read-only, assignment-scoped access to Students; guardian contact details are visible to the class teacher only.
 
+## Guardian portal access
+
+FROZEN (ADR 0013, ADR 0014; Phase 6):
+- A guardian logs in as an ordinary User linked to exactly one Guardian record
+  (GuardianAccount); one person has one User even when they are also a
+  teacher. Guardian records never log in themselves (ADR 0004).
+- Recording a Guardian grants nothing. A guardian sees a Student only through
+  an explicit, administrator-created GuardianStudentAccess grant for that
+  StudentGuardian relationship; relationship types never authorize.
+- Account links, grants and review decisions are revoked or superseded, never
+  deleted; revocation is immediate and recorded. Each active grant needs an
+  explicit retain/revoke decision when the Student becomes INACTIVE, when a
+  placement ends (including a move to another Section, Class/Grade or Year)
+  and when the Student has no enrollment effective on the business date;
+  while that date-based review is pending the guardian receives no data for
+  the Student (fail closed).
+- Guardians see only: approved profile fields (name, admission number, current
+  Academic Year, Class/Grade, Section, roll number, enrolment status),
+  SUBMITTED attendance (current values and summary) and Term results an
+  administrator has published.
+- Admission number belongs to the Student; roll number belongs to the yearly
+  placement (AcademicEnrollment) and is unique within its Academic Year and
+  Section. Neither is ever generated.
+- Finalization and publication are separate. A TermPublication version
+  stores an immutable snapshot of exactly the result and remark fields the
+  report card displays, with references to the source results and a
+  fingerprint of the source values. Correcting a published result or remark
+  makes the current version stale and hides it until republished. Released
+  information never changes silently, and every version stays
+  reconstructable. All versions are permanent history; guardians see only the
+  current PUBLISHED version, administrators see every version.
+
 ## Attendance domain principles
 
 FROZEN: Attendance is a historical, daily, enrollment-scoped record governed by
