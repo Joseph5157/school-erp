@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Guardians{% endblock %}
 {% block content %}
-{% if perms.core.view_guardianaccessreview %}<p><a href="{% url 'core:guardian-access-reviews' %}">Guardian access reviews</a></p>{% endif %}
+{% if perms.core.view_guardianaccessreview %}<p><a href="{% url 'core:guardian-access-reviews' %}">Guardian access reviews</a>{% if perms.accounts.clear_login_lockout %} &middot; <a href="{% url 'core:login-lockouts' %}">Sign-in lockouts</a>{% endif %}</p>{% endif %}
 <h1 class="h3 mb-3">Guardians</h1>
 {% if perms.core.add_guardian %}
     <a class="btn btn-primary mb-3" href="{% url 'core:guardian-create' %}">Create Guardian</a>

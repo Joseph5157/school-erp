@@ -109,6 +109,43 @@ LOGIN_REDIRECT_URL = "home"
 LOGOUT_REDIRECT_URL = "login"
 
 
+# Phase 6 Gate 7 (ADR 0013): sessions, cookies, network source.
+# 30 minutes of inactivity or 8 hours since sign-in, whichever comes first
+# (OD-5); enforced server-side by accounts.middleware on every request.
+SESSION_IDLE_SECONDS = 30 * 60
+SESSION_ABSOLUTE_SECONDS = 8 * 60 * 60
+SESSION_COOKIE_AGE = SESSION_IDLE_SECONDS
+SESSION_SAVE_EVERY_REQUEST = True
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SAMESITE = "Lax"
+
+# Production HTTPS (set DJANGO_HTTPS=True behind TLS): Secure cookies, HTTPS
+# redirect and HSTS. Off by default so local development and tests run on
+# plain HTTP.
+HTTPS = os.environ.get("DJANGO_HTTPS", "False") == "True"
+SESSION_COOKIE_SECURE = HTTPS
+CSRF_COOKIE_SECURE = HTTPS
+SECURE_SSL_REDIRECT = HTTPS
+SECURE_HSTS_SECONDS = 31536000 if HTTPS else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = HTTPS
+SECURE_HSTS_PRELOAD = os.environ.get("DJANGO_HSTS_PRELOAD", "False") == "True"
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = "DENY"
+
+# OD-3: forwarded headers are trusted only from these proxy addresses/CIDRs
+# (comma-separated). Empty: X-Forwarded-For is ignored.
+TRUSTED_PROXIES = [
+    value.strip()
+    for value in os.environ.get("DJANGO_TRUSTED_PROXIES", "").split(",")
+    if value.strip()
+]
+if TRUSTED_PROXIES and HTTPS:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+# Dedicated key for hashing network sources; defaults to a value derived from
+# SECRET_KEY so raw addresses are never stored.
+SOURCE_HASH_KEY = os.environ.get("DJANGO_SOURCE_HASH_KEY", "source-hash:" + SECRET_KEY)
+
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 

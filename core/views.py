@@ -1750,6 +1750,25 @@ def guardian_detail(request, pk):
     return render(request, "core/guardian_detail.html", context)
 
 
+# --- Phase 6 Gate 7: sign-in lockouts (ADR 0013) ----------------------------
+
+
+@administrator_required("accounts.clear_login_lockout")
+def login_lockouts(request):
+    from accounts import security
+
+    if request.method == "POST":
+        username = request.POST.get("username", "")
+        if username in security.locked_usernames():
+            security.clear_lockout(username)
+            SecurityEvent.record(SecurityEvent.EventType.LOCKOUT_CLEARED, actor=request.user,
+                                 detail={"username": username})
+            messages.success(request, f"Sign-in lockout cleared for {username}.")
+        return redirect("core:login-lockouts")
+    return render(request, "core/login_lockouts.html",
+                  {"locked": security.locked_usernames()})
+
+
 # --- Phase 6 Gate 6: Term publication to guardians (ADR 0014) --------------
 
 
