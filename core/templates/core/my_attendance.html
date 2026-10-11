@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Attendance {{ section }}{% endblock %}
+{% block content %}
+<h1 class="h3 mb-1">Attendance: {{ section }}</h1>
+<p class="text-muted mb-3">{{ today|date:"l, j F Y" }} &middot; {{ year.name }}</p>
+
+{% if register is None %}
+    {% if is_instructional %}
+    <p>Attendance has not been taken today.</p>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" name="action" value="open" class="btn btn-primary">Start today's register</button>
+    </form>
+    {% else %}
+    <p>Today is not a school day for {{ year.name }}; no attendance is expected.</p>
+    {% endif %}
+{% elif register.is_submitted %}
+    <p><span class="badge bg-success">Submitted</span> {{ register.submitted_at }} by {{ register.submitted_by.get_full_name|default:register.submitted_by.username }}.
+       Submitted attendance can only be changed by an administrator, through a correction.</p>
+    <table class="table">
+        <thead><tr><th>Student</th><th>Status</th><th>Absence note</th></tr></thead>
+        <tbody>
+        {% for entry in entries %}
+            <tr><td>{{ entry.academic_enrollment.student.full_name }}</td><td>{{ entry.get_status_display }}</td><td>{{ entry.absence_note }}</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p><span class="badge bg-secondary">Draft</span>
+       Students enrolled today: {{ capture_form.enrollments|length }}. Marked: {{ marked_count }}.
+       Unmarked Students are <strong>not</strong> treated as absent.</p>
+    {% if capture_form.enrollments %}
+    <form method="post" id="attendance-capture">
+        {% csrf_token %}
+        {% include "core/_attendance_capture_table.html" %}
+        <button type="submit" name="action" value="save" class="btn btn-primary">Save draft</button>
+        <button type="submit" name="action" value="submit" class="btn btn-success">Save and submit</button>
+        <span class="form-text ms-2">Submitting requires Present or Absent for every Student.</span>
+    </form>
+    {% else %}
+    <p>No Students are enrolled in this Section today.</p>
+    {% endif %}
+{% endif %}
+<p class="mt-4"><a href="{% url 'core:my-home' %}">Back to My day</a></p>
+{% endblock %}

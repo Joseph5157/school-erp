@@ -9,6 +9,7 @@ from core import assessment_reports, reports
 from core.authorization import (
     administrator_required,
     can_enter_results,
+    can_take_attendance,
     can_write_term_remarks,
     class_teacher_assignments,
     is_teacher,
@@ -789,6 +790,94 @@ def my_home(request):
             "remarks": remarks,
         },
     )
+
+
+# --- Phase 5 Gate 3: class teacher attendance (ADR 0012 D4, D5, D7) -------
+
+
+@teacher_required
+def my_attendance(request, section_pk):
+    """Today's register for a Section the user is class teacher of today."""
+    section = get_object_or_404(Section.objects.select_related("class_grade"), pk=section_pk)
+    today = business_today()
+    if not can_take_attendance(request.user, section, today):
+        raise PermissionDenied
+    duty = (
+        class_teacher_assignments(request.user, today)
+        .filter(section=section)
+        .select_related("academic_year")
+        .get()
+    )
+    year = duty.academic_year
+    register = (
+        AttendanceRegister.objects.filter(section=section, date=today)
+        .select_related("submitted_by")
+        .first()
+    )
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "open" and register is None:
+            register = AttendanceRegister(
+                academic_year=year, class_grade=section.class_grade, section=section, date=today
+            )
+            try:
+                with transaction.atomic():
+                    register.full_clean()
+                    register.save()
+            except ValidationError as error:
+                messages.error(request, " ".join(error.messages))
+            except IntegrityError:
+                messages.info(request, "A register for today already exists.")
+            else:
+                messages.success(request, "Register opened as a draft.")
+        elif action in ("save", "submit") and register is not None:
+            _teacher_capture(request, register, submit=action == "submit")
+        return redirect("core:my-attendance", section_pk=section.pk)
+
+    context = {
+        "section": section,
+        "today": today,
+        "year": year,
+        "register": register,
+        "is_instructional": year.is_instructional_day(today),
+    }
+    if register is not None and register.is_submitted:
+        context["entries"] = register.entries.select_related(
+            "academic_enrollment__student"
+        ).order_by("academic_enrollment__student__full_name")
+    elif register is not None:
+        context["capture_form"] = AttendanceCaptureForm(register=register)
+        context["marked_count"] = register.entries.count()
+    return render(request, "core/my_attendance.html", context)
+
+
+def _teacher_capture(request, register, *, submit):
+    if register.is_submitted:
+        messages.error(
+            request, "Today's attendance is already submitted; ask an administrator to correct it."
+        )
+        return
+    form = AttendanceCaptureForm(request.POST, register=register)
+    if not form.is_valid():
+        errors = [message for field_errors in form.errors.values() for message in field_errors]
+        messages.error(request, f"Attendance was not saved. {errors[0]}")
+        return
+    try:
+        with transaction.atomic():
+            for enrollment, status, note in form.statuses():
+                register.save_draft_entry(enrollment=enrollment, status=status, absence_note=note)
+    except ValidationError as error:
+        messages.error(request, error.messages[0])
+        return
+    if not submit:
+        messages.success(request, "Draft saved.")
+        return
+    try:
+        register.submit(actor=request.user)
+    except ValidationError as error:
+        messages.error(request, f"Draft saved but not submitted. {error.messages[0]}")
+    else:
+        messages.success(request, "Attendance saved and submitted.")
 
 
 # --- Phase 4 Gate 5: teacher DRAFT result entry (ADR 0010) -----------------

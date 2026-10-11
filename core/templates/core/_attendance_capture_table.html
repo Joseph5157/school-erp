@@ -1,0 +1,32 @@
+{# Roster rows for a DRAFT register; used inside a form with id attendance-capture. #}
+        <button type="button" class="btn btn-outline-secondary btn-sm mb-2" id="mark-all-present">Mark unanswered as present</button>
+        <table class="table align-middle">
+            <thead>
+                <tr><th>Student</th><th>Status</th><th>Absence note</th></tr>
+            </thead>
+            <tbody>
+                {% for enrollment, status_field, note_field in capture_form.rows %}
+                <tr>
+                    <td>{{ enrollment.student.full_name }}</td>
+                    <td>
+                        {% for radio in status_field %}
+                            <label class="me-3">{{ radio.tag }} {{ radio.choice_label }}</label>
+                        {% endfor %}
+                    </td>
+                    <td>{{ note_field }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    <script>
+        // UI convenience only: fills Present for rows not yet answered and never
+        // overrides a choice already made. Nothing is saved until the form is
+        // submitted, so an unopened register is never treated as present.
+        document.getElementById("mark-all-present").addEventListener("click", function () {
+            var form = document.getElementById("attendance-capture");
+            form.querySelectorAll('input[type="radio"][value="PRESENT"]').forEach(function (radio) {
+                var answered = form.querySelector('input[name="' + radio.name + '"]:checked');
+                if (!answered) { radio.checked = true; }
+            });
+        });
+    </script>
