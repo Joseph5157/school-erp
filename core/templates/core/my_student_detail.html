@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}{{ student.full_name }}{% endblock %}
+{% block content %}
+<h1 class="h3 mb-1">{{ student.full_name }}</h1>
+<p class="text-muted">{{ enrollment.section }} &middot; {{ enrollment.academic_year.name }} &middot; {{ student.get_status_display }}</p>
+
+<h2 class="h5 mt-4">Attendance this year</h2>
+<p>Present {{ attendance.present }}, absent {{ attendance.absent }}{% if attendance.percentage is not None %} &mdash; {{ attendance.percentage }}% present{% endif %}.</p>
+
+<h2 class="h5 mt-4">Results</h2>
+<table class="table table-sm">
+    <thead><tr><th>Subject</th><th>Assessment</th><th>Date</th><th>Score</th><th>%</th><th>Grade</th><th>Pass/fail</th></tr></thead>
+    <tbody>
+    {% for result in results %}
+        <tr>
+            <td>{{ result.assessment.offering.subject.name }}</td>
+            <td>{{ result.assessment.name }}</td>
+            <td>{{ result.assessment.assessment_date }}</td>
+            {% include "core/_result_cells.html" %}
+        </tr>
+    {% empty %}
+        <tr><td colspan="7">No finalized results you can see yet.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+{% if show_guardians %}
+<h2 class="h5 mt-4">Guardians</h2>
+<table class="table table-sm">
+    <thead><tr><th>Name</th><th>Relationship</th><th>Phone</th><th>Email</th></tr></thead>
+    <tbody>
+    {% for link in guardian_links %}
+        <tr><td>{{ link.guardian.full_name }}</td><td>{{ link.get_relationship_type_display }}</td><td>{{ link.guardian.phone }}</td><td>{{ link.guardian.email }}</td></tr>
+    {% empty %}
+        <tr><td colspan="4">No guardians recorded.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+<p class="mt-4"><a href="{% url 'core:my-students' %}">All my students</a></p>
+{% endblock %}

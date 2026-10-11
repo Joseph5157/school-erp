@@ -140,3 +140,37 @@ def can_take_attendance(user, section, on_date):
     if on_date != models.business_today():
         return False
     return class_teacher_on(user, section, on_date)
+
+
+def teacher_student_scope(user, on_date):
+    """AcademicEnrollments effective on `on_date` that a teacher may look up.
+
+    Per ADR 0012 D8/D9: enrollments in a Section where the user is class
+    teacher on that date, or in a Section where the user holds a subject
+    teacher assignment for that enrollment's Academic Year and Class/Grade.
+    """
+    from django.db.models import Q
+
+    from core.models import AcademicEnrollment
+
+    if not is_teacher(user):
+        return AcademicEnrollment.objects.none()
+    scope = Q(section_id__in=class_teacher_assignments(user, on_date).values("section_id"))
+    for academic_year_id, class_grade_id, section_id in teacher_assignments(user).values_list(
+        "offering__academic_year_id", "offering__class_grade_id", "section_id"
+    ):
+        scope |= Q(
+            academic_year_id=academic_year_id,
+            class_grade_id=class_grade_id,
+            section_id=section_id,
+        )
+    return AcademicEnrollment.objects.effective_on(on_date).filter(scope)
+
+
+def can_view_student_as_teacher(user, student, on_date):
+    return teacher_student_scope(user, on_date).filter(student=student).exists()
+
+
+def guardian_contact_visible(user, enrollment, on_date):
+    """Guardian names and contacts: only the Student's class teacher (D8)."""
+    return enrollment is not None and class_teacher_on(user, enrollment.section, on_date)
