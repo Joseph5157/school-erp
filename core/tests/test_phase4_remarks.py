@@ -8,7 +8,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from core.authorization import can_write_term_remarks
-from core.models import Assessment, TermRemark
+from core.models import Assessment, SectionClassTeacher, TermRemark
 from core.tests.phase4_fixtures import Phase4Fixture
 
 TODAY = date(2026, 10, 10)
@@ -44,6 +44,10 @@ class TermRemarkTests(Phase4Fixture, TestCase):
         self.ravi, _ = self.make_student("Ravi Rao")
         self.assign(self.rao, self.maths, self.six_a)
         self.assign(self.iyer, self.maths, self.six_b)
+        # Phase 5 (ADR 0012 D10): remarks belong to the class teacher.
+        for teacher, section in ((self.rao, self.six_a), (self.iyer, self.six_b)):
+            SectionClassTeacher.assign(teacher=teacher, academic_year=self.year,
+                                       section=section, start_date=date(2026, 6, 1))
         self.url = reverse("core:term-remarks", args=[self.term1.pk])
         self.client.login(username="admin", password="pass-12345")
         self.rao_client = self.client_class()

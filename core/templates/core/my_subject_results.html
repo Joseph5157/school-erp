@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}{{ duty.offering.subject.name }} {{ duty.section }}{% endblock %}
+{% block content %}
+<h1 class="h3 mb-1">{{ duty.offering.subject.name }} &middot; {{ duty.section }}</h1>
+<p class="text-muted">{{ duty.offering.academic_year.name }}. Finalized assessments only; "Absent" is never counted as zero.</p>
+<form method="get" class="mb-3">
+    <label>Term <select name="term" onchange="this.form.submit()">
+        <option value="">All Terms</option>
+        {% for t in terms %}<option value="{{ t.pk }}"{% if term and t.pk == term.pk %} selected{% endif %}>{{ t.name }}</option>{% endfor %}
+    </select></label>
+    <noscript><button type="submit">Show</button></noscript>
+</form>
+<table class="table table-sm">
+    <thead><tr><th>Student</th>{% for a in assessments %}<th>{{ a.name }}<br><small>{{ a.assessment_date }} / {{ a.maximum_marks }}</small></th>{% endfor %}</tr></thead>
+    <tbody>
+        {% for student, cells in rows %}
+        <tr>
+            <td>{{ student.full_name }}</td>
+            {% for result in cells %}<td>{% if result %}{% if result.status == "MARKED" %}{{ result.score }}{% if result.grade %} ({{ result.grade }}){% endif %}{% else %}Absent{% endif %}{% else %}&mdash;{% endif %}</td>{% endfor %}
+        </tr>
+        {% empty %}
+        <tr><td colspan="{{ assessments|length|add:1 }}">No finalized results yet.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

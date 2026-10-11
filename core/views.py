@@ -10,6 +10,7 @@ from core.authorization import (
     administrator_required,
     can_enter_results,
     can_take_attendance,
+    can_view_report_card_as_teacher,
     can_write_term_remarks,
     class_teacher_assignments,
     class_teacher_on,
@@ -18,6 +19,7 @@ from core.authorization import (
     teacher_assignments,
     teacher_required,
     teacher_student_scope,
+    term_remark_sections,
 )
 from core.forms import (
     AcademicEnrollmentForm,
@@ -638,10 +640,7 @@ def term_remarks(request, pk):
     if request.user.has_perm("core.change_termremark"):
         sections = Section.objects.select_related("class_grade")
     else:
-        sections = Section.objects.filter(
-            teacher_assignments__teacher=request.user,
-            teacher_assignments__offering__academic_year=term.academic_year,
-        ).select_related("class_grade").distinct()
+        sections = term_remark_sections(request.user, term)
     section_id = request.POST.get("section") or request.GET.get("section")
     section = None
     if section_id:
@@ -1068,6 +1067,48 @@ def my_student_detail(request, pk):
     )
 
 
+# --- Phase 5 Gate 6: teacher result views (ADR 0012 D8-D10) ----------------
+
+
+@teacher_required
+def my_results(request):
+    duties = teacher_assignments(request.user).order_by(
+        "-offering__academic_year__start_date", "offering__subject__name", "section__name"
+    )
+    return render(request, "core/my_results.html", {"duties": duties})
+
+
+@teacher_required
+def my_subject_results(request, pk):
+    """Finalized results for one of the teacher's Subject/Section assignments."""
+    duty = get_object_or_404(teacher_assignments(request.user), pk=pk)
+    terms = duty.offering.academic_year.terms.all()
+    term_id = request.GET.get("term", "")
+    term = terms.filter(pk=term_id).first() if term_id.isdigit() else None
+    assessments, rows = assessment_reports.subject_section_results(
+        duty.offering, duty.section, term
+    )
+    return render(
+        request,
+        "core/my_subject_results.html",
+        {"duty": duty, "terms": terms, "term": term, "assessments": assessments, "rows": rows},
+    )
+
+
+@teacher_required
+def my_report_card(request, term_pk, student_pk):
+    """A Term report card, for the class teacher of the Student's Term Section."""
+    term = get_object_or_404(AcademicTerm.objects.select_related("academic_year"), pk=term_pk)
+    student = get_object_or_404(Student, pk=student_pk)
+    if not can_view_report_card_as_teacher(request.user, student, term):
+        raise PermissionDenied
+    return render(
+        request,
+        "core/report_term_report_card.html",
+        assessment_reports.term_report_card(student, term),
+    )
+
+
 # --- Phase 4 Gate 5: teacher DRAFT result entry (ADR 0010) -----------------
 
 
@@ -1079,13 +1120,14 @@ def my_assessments(request):
         query |= Q(offering=duty.offering, section=duty.section)
     assessments = _assessments().filter(query).order_by("-assessment_date", "name")
     remark_links = []
-    seen = set()
-    for duty in duties:
-        for term in duty.offering.academic_year.terms.all():
-            key = (term.pk, duty.section_id)
-            if key not in seen:
-                seen.add(key)
-                remark_links.append((term, duty.section))
+    years = {
+        row.academic_year
+        for row in class_teacher_assignments(request.user).select_related("academic_year")
+    }
+    for year in sorted(years, key=lambda y: y.start_date):
+        for term in year.terms.all():
+            for section in term_remark_sections(request.user, term):
+                remark_links.append((term, section))
     return render(
         request,
         "core/my_assessments.html",

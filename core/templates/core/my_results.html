@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Results{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Results for my Subjects</h1>
+<p class="text-muted">Finalized results only, for the Subjects and Sections you teach.</p>
+<ul>
+    {% for duty in duties %}
+    <li><a href="{% url 'core:my-subject-results' duty.pk %}">{{ duty.offering.academic_year.name }} &middot; {{ duty.offering.subject.name }} &middot; {{ duty.section }}</a></li>
+    {% empty %}
+    <li>You do not teach a Subject yet.</li>
+    {% endfor %}
+</ul>
+{% endblock %}
