@@ -9,4 +9,7 @@ app_name = "portal"
 urlpatterns = [
     path("", portal_views.home, name="home"),
     path("children/<uuid:public_id>/", portal_views.child, name="child"),
+    path(
+        "children/<uuid:public_id>/attendance/", portal_views.attendance, name="attendance"
+    ),
 ]

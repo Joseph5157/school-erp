@@ -54,3 +54,38 @@ def student_profile(student, on_date=None):
         "placement": placement,
         "status": student.get_status_display(),
     }
+
+
+def attendance_years(student):
+    """Academic Years in which the Student had a placement, newest first."""
+    from core.models import AcademicYear
+
+    return list(
+        AcademicYear.objects.filter(enrollments__student=student)
+        .distinct()
+        .order_by("-start_date")
+    )
+
+
+def submitted_attendance(student, academic_year):
+    """Reportable (SUBMITTED, instructional, in-placement) entries and summary.
+
+    Only the date and the current accepted status are exposed: never absence
+    notes, correction history, correctors or DRAFT registers (ADR 0014, P8).
+    Missing attendance is simply absent from the list, never shown as absent.
+    """
+    from core import reports
+    from core.models import AttendanceEntry
+
+    entries = reports.reportable_entries(
+        AttendanceEntry.objects.filter(
+            academic_enrollment__student=student, register__academic_year=academic_year
+        )
+    )
+    days = [
+        {"date": on_date, "status": status}
+        for on_date, status in entries.order_by("-register__date").values_list(
+            "register__date", "status"
+        )
+    ]
+    return {"days": days, "summary": reports.counts(entries)}

@@ -5,7 +5,12 @@ from django.shortcuts import render
 from django.views.decorators.http import require_safe
 
 from core.authorization import guardian_required, guardian_visible_grant
-from core.portal import portal_children, student_profile
+from core.portal import (
+    attendance_years,
+    portal_children,
+    student_profile,
+    submitted_attendance,
+)
 
 
 def _visible_grant_or_404(request, public_id):
@@ -34,4 +39,24 @@ def child(request, public_id):
         request,
         "portal/child.html",
         _context(request, grant=grant, student=student, profile=student_profile(student)),
+    )
+
+
+@require_safe
+@guardian_required
+def attendance(request, public_id):
+    """Submitted attendance for one Academic Year (ADR 0014, P8)."""
+    grant = _visible_grant_or_404(request, public_id)
+    student = grant.student_guardian.student
+    years = attendance_years(student)
+    chosen = years[0] if years else None
+    requested = request.GET.get("year", "")
+    for year in years:
+        if year.start_date.isoformat() == requested:
+            chosen = year
+    data = submitted_attendance(student, chosen) if chosen else {"days": [], "summary": None}
+    return render(
+        request,
+        "portal/attendance.html",
+        _context(request, grant=grant, student=student, years=years, year=chosen, **data),
     )

@@ -18,5 +18,5 @@
     {% endif %}
     <dt class="col-sm-5">Enrolment status</dt><dd class="col-sm-7">{{ profile.status }}</dd>
 </dl>
-{% block child_sections %}{% endblock %}
+<p><a class="btn btn-outline-primary" href="{% url 'portal:attendance' grant.public_id %}">Attendance</a></p>
 {% endblock %}
