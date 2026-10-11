@@ -107,6 +107,17 @@ urlpatterns = [
     ),
     path("my/", views.my_home, name="my-home"),
     path("my/attendance/<int:section_pk>/", views.my_attendance, name="my-attendance"),
+    path("my/attendance/history/", views.my_attendance_history, name="my-attendance-history"),
+    path(
+        "my/attendance/history/<int:pk>/",
+        views.my_attendance_assignment,
+        name="my-attendance-assignment",
+    ),
+    path(
+        "my/attendance/registers/<int:pk>/",
+        views.my_attendance_register,
+        name="my-attendance-register",
+    ),
     path("my/assessments/", views.my_assessments, name="my-assessments"),
     path(
         "my/assessments/<int:pk>/marks/",

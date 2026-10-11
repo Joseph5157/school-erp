@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}My attendance history{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Attendance history</h1>
+<p class="text-muted">You can see each Section's attendance for the dates you were its class teacher.</p>
+<table class="table">
+    <thead><tr><th>Academic Year</th><th>Section</th><th>Class teacher from</th><th>Until</th><th></th></tr></thead>
+    <tbody>
+    {% for row in rows %}
+        <tr>
+            <td>{{ row.academic_year.name }}</td>
+            <td>{{ row.section }}</td>
+            <td>{{ row.start_date }}</td>
+            <td>{{ row.end_date|default:"now" }}</td>
+            <td class="text-end"><a href="{% url 'core:my-attendance-assignment' row.pk %}">Open</a></td>
+        </tr>
+    {% empty %}
+        <tr><td colspan="5">You have not been a class teacher yet.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
