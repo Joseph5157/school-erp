@@ -186,6 +186,33 @@ class SubjectOfferingForm(forms.Form):
         return cleaned_data
 
 
+class ClassTeacherAssignForm(forms.Form):
+    """Make a teacher class teacher of a Section from a date (ADR 0011)."""
+
+    section = forms.ModelChoiceField(queryset=Section.objects.select_related("class_grade"))
+    teacher = forms.ModelChoiceField(queryset=get_user_model().objects.none())
+    start_date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
+
+    def __init__(self, *args, academic_year=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.academic_year = academic_year
+        self.fields["teacher"].queryset = (
+            get_user_model()
+            .objects.filter(groups__name=TEACHERS_GROUP_NAME, is_active=True)
+            .order_by("username")
+        )
+        self.fields["teacher"].label_from_instance = (
+            lambda user: f"{user.get_full_name() or user.username} ({user.username})"
+        )
+
+
+class ClassTeacherEndForm(forms.Form):
+    end_date = forms.DateField(
+        widget=forms.DateInput(attrs={"type": "date"}),
+        help_text="Last day (inclusive) this teacher is class teacher.",
+    )
+
+
 class TeacherAssignmentForm(forms.Form):
     """Assign the teacher who enters results for one offering in one Section."""
 

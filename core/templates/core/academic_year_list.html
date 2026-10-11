@@ -41,6 +41,9 @@
                 {% if perms.core.view_assessmentteacherassignment %}
                     &middot; <a href="{% url 'core:academic-year-teacher-assignments' academic_year.pk %}">Teachers</a>
                 {% endif %}
+                {% if perms.core.view_sectionclassteacher %}
+                    &middot; <a href="{% url 'core:academic-year-class-teachers' academic_year.pk %}">Class teachers</a>
+                {% endif %}
             </td>
         </tr>
         {% empty %}

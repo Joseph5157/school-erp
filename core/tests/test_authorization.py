@@ -114,6 +114,10 @@ class SchoolAdministratorsGroupMigrationTests(TestCase):
                 "change_termremark",
                 "delete_termremark",
                 "view_termremark",
+                "add_sectionclassteacher",
+                "change_sectionclassteacher",
+                "delete_sectionclassteacher",
+                "view_sectionclassteacher",
             },
         )
 

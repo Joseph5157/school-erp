@@ -1582,6 +1582,209 @@ class AssessmentTeacherAssignment(models.Model):
 
 
 # ---------------------------------------------------------------------------
+# Phase 5 Gate 1 - class teacher assignment (ADR 0011)
+# ---------------------------------------------------------------------------
+
+
+class SectionClassTeacherQuerySet(models.QuerySet):
+    def effective_on(self, on_date):
+        """Assignments whose inclusive date range contains `on_date`."""
+        on_date = _as_date(on_date)
+        return self.filter(start_date__lte=on_date).filter(
+            models.Q(end_date__isnull=True) | models.Q(end_date__gte=on_date)
+        )
+
+
+class SectionClassTeacher(models.Model):
+    """The class teacher of one Section for a dated range in an Academic Year.
+
+    Per ADR 0011: independent of subject teaching (D1); at most one class
+    teacher is effective for a Section on any date (D2); assignments are
+    dated and never overwritten - a change of class teacher ends the current
+    row and starts a new one (D3). Once a row has taken effect, or once any
+    record depends on it, normal workflows end it and never delete it; only a
+    not-yet-effective row without dependents may be deleted. Losing teacher
+    status removes access but never changes these rows (D14).
+    """
+
+    teacher = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="class_teacher_assignments",
+    )
+    academic_year = models.ForeignKey(
+        AcademicYear, on_delete=models.PROTECT, related_name="class_teacher_assignments"
+    )
+    section = models.ForeignKey(
+        Section, on_delete=models.PROTECT, related_name="class_teacher_assignments"
+    )
+    start_date = models.DateField(help_text="First date this assignment is effective.")
+    end_date = models.DateField(
+        null=True, blank=True, help_text="Last date this assignment is effective (inclusive)."
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    objects = SectionClassTeacherQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["section", "start_date"]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(end_date__isnull=True)
+                    | models.Q(end_date__gte=models.F("start_date"))
+                ),
+                name="sectionclassteacher_end_not_before_start",
+            ),
+            models.UniqueConstraint(
+                fields=["section", "start_date"],
+                name="sectionclassteacher_unique_section_start",
+            ),
+        ]
+
+    # --- validation ---
+
+    def clean(self):
+        super().clean()
+        if self.pk is None and self.teacher_id:
+            teacher = self.teacher
+            if not teacher.is_active or not teacher.groups.filter(
+                name=TEACHERS_GROUP_NAME
+            ).exists():
+                raise ValidationError(
+                    {"teacher": "Choose an active login in the Teachers group."}
+                )
+        start_date = _as_date(self.start_date)
+        end_date = _as_date(self.end_date)
+        if start_date is None:
+            return
+        if end_date is not None and end_date < start_date:
+            raise ValidationError({"end_date": "End date cannot be before the start date."})
+        if self.academic_year_id:
+            year = self.academic_year
+            if not year.contains(start_date):
+                raise ValidationError(
+                    {"start_date": "Start date must fall within the Academic Year."}
+                )
+            if end_date is not None and not year.contains(end_date):
+                raise ValidationError(
+                    {"end_date": "End date must fall within the Academic Year."}
+                )
+        if self.section_id and self.overlapping().exists():
+            raise ValidationError(
+                "These dates overlap another class teacher assignment for this Section."
+            )
+
+    def overlapping(self):
+        """Other assignments for this Section whose date range meets this one."""
+        start_date = _as_date(self.start_date)
+        end_date = _as_date(self.end_date)
+        others = SectionClassTeacher.objects.filter(section_id=self.section_id).filter(
+            models.Q(end_date__isnull=True) | models.Q(end_date__gte=start_date)
+        )
+        if end_date is not None:
+            others = others.filter(start_date__lte=end_date)
+        if self.pk is not None:
+            others = others.exclude(pk=self.pk)
+        return others
+
+    # --- state ---
+
+    def is_effective_on(self, on_date):
+        on_date = _as_date(on_date)
+        return _as_date(self.start_date) <= on_date and (
+            self.end_date is None or on_date <= _as_date(self.end_date)
+        )
+
+    @property
+    def last_effective_date(self):
+        return _as_date(self.end_date) or _as_date(self.academic_year.end_date)
+
+    def dependent_registers(self):
+        """Registers this teacher submitted for this Section inside the range."""
+        registers = AttendanceRegister.objects.filter(
+            section_id=self.section_id,
+            submitted_by_id=self.teacher_id,
+            date__gte=self.start_date,
+        )
+        if self.end_date is not None:
+            registers = registers.filter(date__lte=self.end_date)
+        return registers
+
+    def has_dependents(self):
+        return self.dependent_registers().exists()
+
+    @property
+    def is_historically_relevant(self):
+        """Taken effect, or depended on: end it, never delete it (ADR 0011 D3)."""
+        return _as_date(self.start_date) <= business_today() or self.has_dependents()
+
+    # --- workflows ---
+
+    @classmethod
+    def _lock_section(cls, section):
+        Section.objects.select_for_update().filter(pk=section.pk).get()
+
+    @classmethod
+    def assign(cls, *, teacher, academic_year, section, start_date):
+        """Make `teacher` class teacher of `section` from `start_date`.
+
+        If another assignment is effective on the day before `start_date` and
+        is open-ended or runs past it, that assignment is ended the day before
+        (a hand-over). Any other overlap is rejected; nothing is overwritten.
+        """
+        start_date = _as_date(start_date)
+        with transaction.atomic():
+            cls._lock_section(section)
+            current = (
+                cls.objects.filter(section=section, start_date__lt=start_date)
+                .filter(models.Q(end_date__isnull=True) | models.Q(end_date__gte=start_date))
+                .first()
+            )
+            if current is not None:
+                current.end(start_date - datetime.timedelta(days=1), _locked=True)
+            assignment = cls(
+                teacher=teacher, academic_year=academic_year, section=section,
+                start_date=start_date,
+            )
+            assignment.full_clean()
+            assignment.save()
+            return assignment
+
+    def end(self, end_date, *, _locked=False):
+        """End this assignment on `end_date` (inclusive); history is kept."""
+        end_date = _as_date(end_date)
+        with transaction.atomic():
+            if not _locked:
+                self._lock_section(self.section)
+            self.refresh_from_db()
+            if self.end_date is not None and end_date > _as_date(self.end_date):
+                raise ValidationError("An assignment can only be ended earlier, not extended.")
+            later = self.dependent_registers().filter(date__gt=end_date)
+            if later.exists():
+                raise ValidationError(
+                    "This teacher submitted attendance for this Section after that date; "
+                    "choose a later end date."
+                )
+            self.end_date = end_date
+            self.full_clean()
+            self.save(update_fields=["end_date", "updated_at"])
+
+    def delete(self, *args, **kwargs):
+        if self.is_historically_relevant:
+            raise ValidationError(
+                "This class teacher assignment has taken effect or has dependent records; "
+                "end it instead of deleting it."
+            )
+        return super().delete(*args, **kwargs)
+
+    def __str__(self):
+        until = f" to {self.end_date}" if self.end_date else ""
+        return f"{self.teacher} - {self.section} from {self.start_date}{until}"
+
+
+# ---------------------------------------------------------------------------
 # Phase 4 Gate 3 - grading scales (ADR 0009)
 # ---------------------------------------------------------------------------
 

@@ -91,3 +91,37 @@ def can_write_term_remarks(user, term, section):
         .filter(offering__academic_year_id=term.academic_year_id, section=section)
         .exists()
     )
+
+
+# --- Phase 5: class teacher scope (ADR 0011, ADR 0012) ----------------------
+
+
+def class_teacher_assignments(user, on_date=None):
+    """SectionClassTeacher rows that currently grant `user` class teacher rights.
+
+    Empty unless the user is an active Teachers-group login (ADR 0011 D14):
+    losing teacher status removes access without touching the rows. With
+    `on_date`, only assignments effective on that date.
+    """
+    from core.models import SectionClassTeacher
+
+    if not is_teacher(user):
+        return SectionClassTeacher.objects.none()
+    rows = SectionClassTeacher.objects.filter(teacher=user)
+    if on_date is not None:
+        rows = rows.effective_on(on_date)
+    return rows
+
+
+def class_teacher_on(user, section, on_date):
+    """Is `user` the class teacher of `section` on `on_date`?"""
+    return class_teacher_assignments(user, on_date).filter(section=section).exists()
+
+
+def class_teacher_sections(user, on_date):
+    """Sections of which `user` is class teacher on `on_date`."""
+    from core.models import Section
+
+    return Section.objects.filter(
+        pk__in=class_teacher_assignments(user, on_date).values("section_id")
+    ).select_related("class_grade")
