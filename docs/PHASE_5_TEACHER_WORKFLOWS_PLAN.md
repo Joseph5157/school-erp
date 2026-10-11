@@ -2,11 +2,33 @@
 
 ## Status
 
-FROZEN (Gate 0) — decisions D1–D14 in section 3 are accepted as the Phase 5
-baseline and recorded in ADR 0011 (class teacher and teacher workflow model)
-and ADR 0012 (teacher attendance and student access). If this plan and an
-ADR ever differ, the ADR is authoritative. Implementation follows the gates
-below, in order.
+COMPLETE — all gates implemented and merged; decisions D1–D14 recorded in
+ADR 0011 (class teacher and teacher workflow model) and ADR 0012 (teacher
+attendance and student access). If this plan and an ADR ever differ, the ADR
+is authoritative. Tag: `phase-5-complete`.
+
+| Gate | Scope | PR |
+| --- | --- | --- |
+| 0 | Freeze Phase 5 source of truth | #24 |
+| 1 | Class teacher assignment | #25 |
+| 2 | Teacher home page | #26 |
+| 3 | Teacher attendance capture | #27 |
+| 4 | Teacher attendance views | #28 |
+| 5 | Limited student access | #29 |
+| 6 | Teacher result views and Term remark ownership | #30 |
+| 7 | Administrator assignment workflows | #31 |
+| 8 | Integration hardening | #32 |
+| 9 | Documentation closeout | this PR |
+
+Closeout verification: 796 tests pass on SQLite and PostgreSQL 16;
+`manage.py check` and `makemigrations --check` clean; Ruff clean; migration
+0041 reverses on both databases; the app-wide authorization sweep covers
+every Phase 5 URL. No stop-and-return-to-planning condition arose; no
+Phase 5 blocker is open.
+
+Found and fixed during implementation (Gate 7): open-ended class teacher
+assignments must end with their own Academic Year because Sections are
+year-agnostic (recorded in ADR 0011).
 
 Starting point:
 

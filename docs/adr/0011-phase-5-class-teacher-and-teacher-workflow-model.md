@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted — implemented in Phase 5 (tag `phase-5-complete`)
 
 ## Context
 
@@ -61,6 +61,15 @@ FROZEN:
   existing class teacher or subject teacher assignments; history is
   preserved. The administrator overview flags assignments held by inactive or
   non-teacher logins so an administrator can deliberately end or replace them.
+
+Implementation notes (Phase 5 Gates 1-8):
+- Sections are year-agnostic, so an open-ended assignment runs only to the
+  end of its own Academic Year; it never carries into, or blocks, the next.
+- D3 is enforced in `SectionClassTeacher` (single and bulk deletes) and by
+  database triggers (migration 0041) that refuse rewriting teacher, Section,
+  year or start date, deleting a row with dependent attendance, or ending it
+  before the last register its teacher submitted. The clock-dependent part
+  ("taken effect") stays in the application.
 
 ## Consequences
 

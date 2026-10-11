@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted — implemented in Phase 5 (tag `phase-5-complete`)
 
 ## Context
 
