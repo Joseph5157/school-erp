@@ -134,15 +134,25 @@ approved):
 - Recording a Guardian grants nothing. A guardian sees a Student only through
   an explicit, administrator-created GuardianStudentAccess grant for that
   StudentGuardian relationship; relationship types never authorize.
-- Account links and grants are revoked, never deleted; revocation is
-  immediate and recorded. Making a Student INACTIVE requires an explicit
-  retain/revoke decision for each active grant.
-- Guardians see only: approved profile fields, SUBMITTED attendance (current
-  values and summary) and Term results an administrator has published.
-- Finalization and publication are separate. A TermPublication is a version
-  record referencing the released results and remark with a fingerprint of
-  their values; correcting a published result or remark makes it stale and
-  hides it until republished. Released information never changes silently.
+- Account links, grants and review decisions are revoked or superseded, never
+  deleted; revocation is immediate and recorded. Each active grant needs an
+  explicit retain/revoke decision when the Student becomes INACTIVE, when a
+  placement ends (including a move to another Section, Class/Grade or Year)
+  and when the Student has no enrollment effective on the business date.
+- Guardians see only: approved profile fields (name, admission number, current
+  Academic Year, Class/Grade, Section, roll number, enrolment status),
+  SUBMITTED attendance (current values and summary) and Term results an
+  administrator has published.
+- Admission number belongs to the Student; roll number belongs to the yearly
+  placement (AcademicEnrollment) and is unique within its Academic Year and
+  Section. Neither is ever generated.
+- Finalization and publication are separate. A TermPublication version
+  stores an immutable snapshot of exactly the result and remark fields the
+  report card displays, with references to the source results and a
+  fingerprint of the source values. Correcting a published result or remark
+  makes the current version stale and hides it until republished. Released
+  information never changes silently, and every version stays
+  reconstructable.
 
 ## Attendance domain principles
 

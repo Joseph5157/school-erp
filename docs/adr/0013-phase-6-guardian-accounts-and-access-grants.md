@@ -3,7 +3,8 @@
 ## Status
 
 Proposed — becomes Accepted when the Phase 6 planning PR is approved.
-Planning: `docs/PHASE_6_GUARDIAN_PORTAL_PLAN.md` (decisions P1–P6, P13, P14).
+Planning: `docs/PHASE_6_GUARDIAN_PORTAL_PLAN.md` (decisions P1–P6, P13, P14,
+OD-3 to OD-8).
 
 ## Context
 
@@ -23,78 +24,139 @@ must not depend on an external messaging provider).
 
 FROZEN once accepted:
 
-**Identity and provisioning (P3, P4)**
+**Identity and provisioning (P3)**
 - A guardian logs in as an ordinary `User`. There is no self-registration and
   no self-service password recovery in Phase 6.
 - Only an administrator creates a guardian account, after verifying the
-  person's identity against the institution's existing records. The
-  administrator records that verification (method and a short note) at
-  creation; the record is audited.
-- The login identifier is a normalized username, never the guardian's phone
-  number or email (neither is unique, neither is an identity key).
-  Normalization: Unicode NFKC, surrounding whitespace removed, lower-cased.
-  A database constraint on `Lower(username)` rejects case-only duplicates on
-  SQLite and PostgreSQL.
-- An account is created with a system-generated temporary password, shown
+  person's identity against the institution's existing records, and records
+  the verification method and a short note. Creation is audited.
+- The account is created with a system-generated temporary password shown
   once to the administrator for offline delivery (printed slip or another
-  institution-controlled method). It is never stored in plain text, logged or
-  emailed. The account must change its password at first login.
+  institution-controlled method). It is never stored in plain text, logged,
+  emailed or rendered a second time. The account must change its password at
+  first login.
 - Password reset is an administrator action that issues a new temporary
-  password, forces a change at next login and invalidates every existing
-  session of that account.
+  password, forces a change at next login and ends every existing session of
+  that account.
 
-**Linking (P4)**
+**Usernames (P4, revision 3)**
+- The login identifier is a username, never a phone number or email.
+- One rule, implemented once (`normalize_username`) and used by every path
+  that creates, changes or looks up a username: Unicode NFKC, surrounding
+  whitespace removed, lower-cased. New and changed usernames must match
+  `[a-z0-9._-]`, 3–30 characters, after normalization.
+- The same comparison is used by: account creation, the username-change
+  workflow, the authentication backend (looks up by the normalized value),
+  the site-administration user forms, and the database constraint
+  `UniqueConstraint(Lower("username"))`. Restricting new usernames to ASCII
+  makes SQL `LOWER` (ASCII-only on SQLite) and Python lower-casing agree.
+- Existing usernames are not rewritten. A migration pre-check lists any
+  case-only duplicates or usernames outside the allowed form and stops; it
+  never merges, renames or guesses.
+
+**Linking and multiple roles (P4)**
 - `GuardianAccount` links one `User` to one `Guardian`. At most one active
   link per User and per Guardian.
 - A person who is both a teacher and a guardian uses one User linked to both
-  roles. Duplicate accounts for the same person are not created; linking an
-  existing User is an explicit administrator choice by exact username, never a
-  guessed match by name, phone or email.
+  roles. Linking an existing User is an explicit administrator choice by
+  exact (normalized) username, never a guessed match by name, phone or email.
 - A login with more than one area (administration, My day, Guardian Portal)
   is shown an explicit area choice and role-aware navigation. No role is
   silently chosen or hidden.
 
-**Explicit access grants (P5)**
+**Explicit access grants (P5, OD-6)**
 - Being recorded as a Guardian grants nothing. Portal visibility of a Student
   requires an explicit, administrator-created `GuardianStudentAccess` grant
-  for that exact `StudentGuardian` relationship.
+  for that exact `StudentGuardian` relationship. Grants are created one at a
+  time; there is no bulk grant in Phase 6.
 - Relationship labels (father, mother, guardian, ...) never decide
   authorization. Restricted and non-custodial relationships are simply not
   granted.
 - A guardian may see a Student only while all of these hold: the User is
-  active; the User has an active `GuardianAccount`; that Guardian has an active
-  grant for that Student. Checks run on every request.
+  active; it has an active `GuardianAccount`; that Guardian has an active
+  grant for that Student; and no access review for that grant is pending.
+  Checks run on every request.
 
 **Revocation and history (P6)**
-- Account links and access grants are revoked, never deleted. Revocation
-  records who, when and why, takes effect immediately, and cannot be undone
-  (re-granting creates a new grant, so the history shows the gap).
-- Database triggers refuse deleting these rows, rewriting their identity
-  columns, or clearing a revocation.
-- Revoking a guardian's account link invalidates that account's sessions.
-  Revoking one Student grant takes effect on the next request through the
-  per-request check; sessions are not needed to enforce it.
-- While a grant is active the guardian may see the Student's approved
-  historical information (earlier Academic Years included).
-- When a Student is made INACTIVE, the administrator is shown every active
-  grant for that Student in the same workflow and must explicitly retain or
-  revoke each one. The system never infers the decision. The decision and
-  any retained grants are audited, and retained grants stay visible in an
-  administrator review list.
+- Account links, grants and review decisions are revoked or superseded,
+  never deleted. Revocation records who, when and why, takes effect
+  immediately and cannot be undone (re-granting creates a new grant, so the
+  history shows the gap). Database triggers refuse deleting these rows,
+  rewriting their identity columns or clearing a revocation.
+- Revoking a guardian account link ends that account's sessions. Revoking one
+  Student grant takes effect on the next request through the per-request
+  check.
+- While a grant is active and not under review, the guardian may see the
+  Student's approved historical information (earlier Academic Years included).
+
+**Access review when a Student's placement ends (P6, revision 2)**
+- A grant must be explicitly retained or revoked by an administrator, never
+  inferred, when any of these happens:
+  1. the Student is made INACTIVE;
+  2. the Student's current enrollment ends because a new placement is
+     recorded (`Student.enroll`), including a move to another Section,
+     Class/Grade or Academic Year;
+  3. the Student has no enrollment effective on the business date within its
+     own Academic Year (this covers the end of an Academic Year: the code has
+     no year-closing workflow, so the year's end date is the trigger);
+  4. any future workflow that ends an enrollment (it must call the same
+     review rule).
+- Triggers 1, 2 and 4 are blocking steps inside the workflow: the
+  administrator sees every active grant of that Student and must choose
+  retain or revoke for each before the change is saved.
+- Trigger 3 has no workflow, so it is date-based: the grant appears in an
+  administrator review queue and, pending a decision, the guardian sees the
+  Student listed as "access under review by the school" with no data (OD-8).
+  The grant itself stays active; nothing is revoked automatically.
+- Each decision is an immutable `GuardianAccessReview` row tied to the
+  trigger and the enrollment it concerns, so a retained decision for one
+  ended placement is not asked again, and a later ended placement asks
+  again. Decisions are audited.
+
+**Sessions (P13, OD-5, revision 4)**
+- A per-user `session_version` is part of the session authentication hash.
+  Bumping it ends every session of that login: on administrator password
+  reset, deactivation through the ERP and revocation of a guardian account
+  link.
+- Enforcement point: `AccountSecurityMiddleware`, placed immediately after Django's
+  authentication middleware runs on every request. It resolves the user
+  (which verifies the session hash, including `session_version`, and signs
+  out a mismatched or inactive session), enforces a 30-minute inactivity
+  limit and an 8-hour absolute limit from sign-in, and enforces forced
+  password change.
+- A login that must change its password reaches only: the password-change
+  page (GET and POST), sign-out (POST), static files, and the 403/404/500
+  error responses. Every other request, including the site administration,
+  redirects to the password-change page.
+- Production cookies are Secure, HttpOnly and SameSite=Lax.
 
 **Student logins (P2)**
 - Out of scope. Recorded as future Phase 6B (age, consent, credentials,
   recovery and safeguarding decisions required). No Student login-link model
   is created in Phase 6.
 
-**Security (P13)**
-- Database-backed login throttling, generic login errors, forced first-login
-  password change, session invalidation on reset/deactivation/link
-  revocation, secure production cookie and session settings, and an
-  append-only security-event audit of account creation, sign-in success and
-  failure, password reset, link and grant changes and result publication.
-  No passwords, page contents or unnecessary raw personal data are logged, and
-  there is no page-view logging. Details: Phase 6 plan, sections 7–8.
+**Security and audit (P13, OD-3, OD-4, OD-7, revision 6)**
+- Database-backed login throttling with generic errors (plan §8). Network
+  sources are stored only as a keyed hash of the canonical client address;
+  forwarded headers are trusted only from explicitly configured trusted
+  proxy addresses.
+- Guardian-linked usernames and passwords change only through the dedicated
+  audited workflows; the site administration refuses those changes.
+- Security events fall into two classes:
+  - **routine authentication events** (sign-in succeeded, failed or
+    throttled, lockout cleared, password changed by the user, password reset
+    by an administrator) are append-only and kept 365 days; an authorized
+    retention purge removes only routine events older than 365 days and
+    records that it ran;
+  - **history events** (account created, linked or link revoked; access
+    granted, revoked, retained or put under review; publication made, stale
+    or withdrawn; retention purge run) are never deleted.
+- The domain records themselves (`GuardianAccount`, `GuardianStudentAccess`,
+  `GuardianAccessReview`, publications) are the permanent history and are
+  immutable apart from their allowed revocation and status transitions.
+- Login-failure throttling records are operational and expire after 24 hours.
+- No passwords, page contents or unnecessary raw personal data are logged;
+  there is no page-view logging.
 
 ## Alternatives rejected
 
@@ -105,20 +167,24 @@ FROZEN once accepted:
 - Deleting links or grants: loses the audit trail of who could see what.
 - Separate accounts for a teacher who is also a parent: duplicate identities,
   split password and audit history.
+- Reviewing access only on INACTIVE status: misses transfers and year end.
+- Automatically revoking at year end: infers a decision the school must make.
 
 ## Consequences
 
 - ADR 0004's "Guardian is never the login" holds; Guardians gain an optional,
   explicit login link.
-- The `User` model gains a forced-password-change flag and a case-insensitive
-  username constraint; existing usernames must be checked for case-only
-  duplicates before the constraint migration runs.
-- Student status changes to INACTIVE gain a mandatory access-review step.
+- `User` gains `must_change_password`, `session_version` and a
+  case-insensitive username constraint; introducing `session_version` ends all
+  existing sessions once at deployment.
+- `Student.record_status_change` and `Student.enroll` gain a blocking access
+  review step when the Student has active grants.
 
 ## Related
 
 - `docs/PHASE_6_GUARDIAN_PORTAL_PLAN.md`
 - `docs/adr/0002-applicant-student-and-guardian-lifecycle.md`
 - `docs/adr/0004-phase-1-authorization-foundation.md`
+- `docs/adr/0006-academic-enrollment-effective-dating.md`
 - `docs/adr/0011-phase-5-class-teacher-and-teacher-workflow-model.md`
 - `docs/adr/0014-phase-6-guardian-visible-information-and-result-publication.md`

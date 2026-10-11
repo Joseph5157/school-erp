@@ -441,28 +441,39 @@ proposed in ADR 0013 and ADR 0014 and its gates are defined in
 the planning PR is approved. It contains only:
 
 1. Administrator-created guardian accounts after identity verification, with
-   a normalized username, an offline temporary password, forced first-login
-   password change and administrator-only password reset
-2. One login per person: a teacher who is also a guardian uses one account,
+   an offline temporary password, forced first-login password change and
+   administrator-only password reset that ends sessions
+2. One username normalization and comparison rule used by account creation,
+   username changes, sign-in, the site administration and the database
+3. One login per person: a teacher who is also a guardian uses one account,
    with an explicit area choice
-3. Explicit, administrator-granted access per guardian–Student relationship;
-   relationship labels never authorize
-4. Revocation of account links and access grants, never deletion; a mandatory
-   retain/revoke review when a Student becomes INACTIVE
-5. A read-only Guardian Portal with a child switcher
-6. An approved read-only Student profile
-7. Submitted attendance history and summary
-8. Explicit, preview-first, idempotent Term publication of finalized results
-   and class-teacher remarks, with corrections making a publication stale
-9. Login throttling, generic sign-in errors, session invalidation, secure
-   cookies and a bounded security-event audit
+4. Explicit, administrator-granted access per guardian–Student relationship,
+   one at a time; relationship labels never authorize
+5. Revocation of account links and access grants, never deletion; an explicit
+   retain/revoke decision when a Student becomes INACTIVE, when a placement
+   ends (including a move to another Section) and when a Student has no
+   current enrollment (for example after the Academic Year's end date)
+6. A read-only Guardian Portal with a child switcher
+7. An approved read-only Student profile, including an optional
+   administrator-entered admission number (Student) and roll number (yearly
+   placement)
+8. Submitted attendance history and summary
+9. Explicit, preview-first, idempotent Term publication of finalized results
+   and class-teacher remarks, allowed before the Term ends, with incomplete
+   Students flagged; each version stores an immutable snapshot of what was
+   displayed; corrections make a publication stale
+10. Login throttling, generic sign-in errors, 30-minute idle and 8-hour
+    absolute sessions enforced on every request, secure cookies, and a
+    security-event audit with 365-day retention for routine events and
+    permanent history for account, access and publication changes
 
 Phase 6 is complete when an administrator can verify, create and link a
 guardian account, grant access to specific Students and publish Term results
 through a preview; the guardian can sign in safely and see only those
 Students' approved profile, submitted attendance and published report cards;
-nothing released changes silently; and every account, access and
-publication change is audited.
+nothing released changes silently and every released version can be
+reconstructed; and every account, access, review and publication change is
+audited.
 
 ## Explicitly out of scope for Phase 6
 
