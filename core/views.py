@@ -5,8 +5,10 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Exists, OuterRef, Q, Subquery
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.cache import add_never_cache_headers
 
-from core import assessment_reports, assignments, reports
+from accounts.models import SecurityEvent
+from core import assessment_reports, assignments, guardian_accounts, reports
 from core.authorization import (
     administrator_required,
     can_enter_results,
@@ -43,12 +45,16 @@ from core.forms import (
     ClassTeacherEndForm,
     GradeBoundaryForm,
     GradingScaleForm,
+    GuardianAccountCreateForm,
+    GuardianAccountLinkForm,
     GuardianForm,
+    GuardianUsernameForm,
     MissingAttendanceForm,
     MonthlySectionSummaryForm,
     OfferedSubjectsLookupForm,
     ResultCorrectionForm,
     ResultEntryForm,
+    RevocationForm,
     SchoolCalendarDayForm,
     SchoolCalendarDayLabelForm,
     SchoolForm,
@@ -73,11 +79,14 @@ from core.models import (
     GradeBoundary,
     GradingScale,
     Guardian,
+    GuardianAccount,
+    GuardianStudentAccess,
     School,
     SchoolCalendarDay,
     Section,
     SectionClassTeacher,
     Student,
+    StudentGuardian,
     StudentResult,
     Subject,
     TermRemark,
@@ -1678,10 +1687,195 @@ def guardian_create(request):
 def guardian_detail(request, pk):
     guardian = get_object_or_404(Guardian, pk=pk)
     applicant_links = guardian.applicant_links.select_related("applicant")
+    context = {"guardian": guardian, "applicant_links": applicant_links}
+    if request.user.has_perm("core.view_guardianaccount"):
+        context["accounts"] = guardian.accounts.select_related(
+            "user", "created_by", "revoked_by", "identity_verified_by"
+        )
+        context["active_account"] = next(
+            (account for account in context["accounts"] if account.is_active), None
+        )
+    if request.user.has_perm("core.view_guardianstudentaccess"):
+        relationships = []
+        for link in guardian.student_links.select_related("student").prefetch_related(
+            "access_grants__granted_by", "access_grants__revoked_by"
+        ):
+            grants = list(link.access_grants.all())
+            relationships.append(
+                {
+                    "link": link,
+                    "active_grant": next((g for g in grants if g.is_active), None),
+                    "grants": grants,
+                }
+            )
+        context["relationships"] = relationships
+    if request.user.has_perm("accounts.view_securityevent"):
+        context["events"] = SecurityEvent.objects.filter(
+            guardian_id_ref=guardian.pk, event_class=SecurityEvent.EventClass.HISTORY
+        ).select_related("actor", "subject_user")[:50]
+    return render(request, "core/guardian_detail.html", context)
+
+
+# --- Phase 6 Gate 1: guardian accounts and access grants (ADR 0013) ---------
+
+
+def _credential_slip(request, account, password, *, heading):
+    """Render the one-time temporary password; never cached, never stored."""
+    response = render(
+        request,
+        "core/guardian_credential_slip.html",
+        {"account": account, "password": password, "heading": heading},
+    )
+    add_never_cache_headers(response)
+    response["Cache-Control"] = "no-store, no-cache, must-revalidate, private"
+    return response
+
+
+@administrator_required("core.add_guardianaccount")
+def guardian_account_create(request, pk):
+    guardian = get_object_or_404(Guardian, pk=pk)
+    form = GuardianAccountCreateForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            account, password = guardian_accounts.create_guardian_account(
+                guardian=guardian,
+                username=form.cleaned_data["username"],
+                method=form.cleaned_data["identity_verification_method"],
+                note=form.cleaned_data["identity_verification_note"],
+                actor=request.user,
+            )
+        except ValidationError as error:
+            form.add_error(None, error)
+        else:
+            return _credential_slip(request, account, password, heading="Guardian account created")
     return render(
         request,
-        "core/guardian_detail.html",
-        {"guardian": guardian, "applicant_links": applicant_links},
+        "core/guardian_account_form.html",
+        {"guardian": guardian, "form": form, "mode": "create"},
+    )
+
+
+@administrator_required("core.add_guardianaccount")
+def guardian_account_link(request, pk):
+    guardian = get_object_or_404(Guardian, pk=pk)
+    form = GuardianAccountLinkForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            guardian_accounts.link_existing_login(
+                guardian=guardian,
+                username=form.cleaned_data["username"],
+                method=form.cleaned_data["identity_verification_method"],
+                note=form.cleaned_data["identity_verification_note"],
+                actor=request.user,
+            )
+        except ValidationError as error:
+            form.add_error(None, error)
+        else:
+            messages.success(request, "Existing login linked to this guardian.")
+            return redirect("core:guardian-detail", pk=guardian.pk)
+    return render(
+        request,
+        "core/guardian_account_form.html",
+        {"guardian": guardian, "form": form, "mode": "link"},
+    )
+
+
+@administrator_required("core.change_guardianaccount")
+def guardian_account_revoke(request, pk):
+    account = get_object_or_404(GuardianAccount.objects.select_related("guardian", "user"), pk=pk)
+    form = RevocationForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            guardian_accounts.revoke_account_link(
+                account=account, actor=request.user, reason=form.cleaned_data["reason"]
+            )
+        except ValidationError as error:
+            form.add_error(None, error)
+        else:
+            messages.success(request, "Guardian account link revoked; its sessions were ended.")
+            return redirect("core:guardian-detail", pk=account.guardian_id)
+    return render(
+        request,
+        "core/guardian_revoke_form.html",
+        {"form": form, "subject": f"the portal account link for {account.user.username}",
+         "guardian": account.guardian},
+    )
+
+
+@administrator_required("core.change_guardian_username")
+def guardian_account_username(request, pk):
+    account = get_object_or_404(GuardianAccount.objects.select_related("guardian", "user"), pk=pk)
+    form = GuardianUsernameForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            guardian_accounts.change_guardian_username(
+                account=account, new_username=form.cleaned_data["username"], actor=request.user
+            )
+        except ValidationError as error:
+            form.add_error(None, error)
+        else:
+            messages.success(request, "Username changed.")
+            return redirect("core:guardian-detail", pk=account.guardian_id)
+    return render(
+        request,
+        "core/guardian_username_form.html",
+        {"form": form, "account": account},
+    )
+
+
+@administrator_required("core.reset_guardian_password")
+def guardian_account_reset_password(request, pk):
+    account = get_object_or_404(GuardianAccount.objects.select_related("guardian", "user"), pk=pk)
+    if request.method == "POST":
+        try:
+            password = guardian_accounts.reset_guardian_password(
+                account=account, actor=request.user
+            )
+        except ValidationError as error:
+            messages.error(request, " ".join(error.messages))
+            return redirect("core:guardian-detail", pk=account.guardian_id)
+        return _credential_slip(request, account, password, heading="Password reset")
+    return render(request, "core/guardian_reset_confirm.html", {"account": account})
+
+
+@administrator_required("core.add_guardianstudentaccess")
+def guardian_access_grant(request, pk):
+    link = get_object_or_404(StudentGuardian.objects.select_related("guardian"), pk=pk)
+    if request.method == "POST":
+        try:
+            guardian_accounts.grant_student_access(student_guardian=link, actor=request.user)
+        except ValidationError as error:
+            messages.error(request, " ".join(error.messages))
+        else:
+            messages.success(request, "Portal access granted for this Student.")
+    return redirect("core:guardian-detail", pk=link.guardian_id)
+
+
+@administrator_required("core.change_guardianstudentaccess")
+def guardian_access_revoke(request, pk):
+    grant = get_object_or_404(
+        GuardianStudentAccess.objects.select_related(
+            "student_guardian__guardian", "student_guardian__student"
+        ),
+        pk=pk,
+    )
+    guardian = grant.student_guardian.guardian
+    form = RevocationForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            guardian_accounts.revoke_student_access(
+                grant=grant, actor=request.user, reason=form.cleaned_data["reason"]
+            )
+        except ValidationError as error:
+            form.add_error(None, error)
+        else:
+            messages.success(request, "Portal access revoked for this Student.")
+            return redirect("core:guardian-detail", pk=guardian.pk)
+    return render(
+        request,
+        "core/guardian_revoke_form.html",
+        {"form": form, "subject": f"portal access to {grant.student_guardian.student}",
+         "guardian": guardian},
     )
 
 

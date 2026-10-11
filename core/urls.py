@@ -207,6 +207,41 @@ urlpatterns = [
     path("guardians/", views.guardian_list, name="guardian-list"),
     path("guardians/create/", views.guardian_create, name="guardian-create"),
     path("guardians/<int:pk>/", views.guardian_detail, name="guardian-detail"),
+    path(
+        "guardians/<int:pk>/account/create/",
+        views.guardian_account_create,
+        name="guardian-account-create",
+    ),
+    path(
+        "guardians/<int:pk>/account/link/",
+        views.guardian_account_link,
+        name="guardian-account-link",
+    ),
+    path(
+        "guardian-accounts/<int:pk>/revoke/",
+        views.guardian_account_revoke,
+        name="guardian-account-revoke",
+    ),
+    path(
+        "guardian-accounts/<int:pk>/username/",
+        views.guardian_account_username,
+        name="guardian-account-username",
+    ),
+    path(
+        "guardian-accounts/<int:pk>/reset-password/",
+        views.guardian_account_reset_password,
+        name="guardian-account-reset-password",
+    ),
+    path(
+        "student-guardians/<int:pk>/grant-access/",
+        views.guardian_access_grant,
+        name="guardian-access-grant",
+    ),
+    path(
+        "guardian-access/<int:pk>/revoke/",
+        views.guardian_access_revoke,
+        name="guardian-access-revoke",
+    ),
     path("attendance/", views.attendance_register_list, name="attendance-register-list"),
     path(
         "attendance/create/",

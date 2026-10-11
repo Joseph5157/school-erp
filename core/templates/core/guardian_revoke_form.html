@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Revoke{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Revoke {{ subject }}</h1>
+<p class="text-muted">Revocation takes effect immediately and is permanent; it is recorded, never deleted. Access can only be given again by a new grant.</p>
+<form method="post">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-danger">Revoke</button>
+    <a class="btn btn-link" href="{% url 'core:guardian-detail' guardian.pk %}">Cancel</a>
+</form>
+{% endblock %}

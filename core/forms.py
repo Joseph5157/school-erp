@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator
 
+from accounts.usernames import USERNAME_HELP
 from core.models import (
     TEACHERS_GROUP_NAME,
     AcademicEnrollment,
@@ -19,6 +20,7 @@ from core.models import (
     GradeBoundary,
     GradingScale,
     Guardian,
+    GuardianAccount,
     ResultStatus,
     School,
     SchoolCalendarDay,
@@ -795,3 +797,39 @@ class AttendanceRegisterFilterForm(AttendanceRangeForm):
     section = forms.ModelChoiceField(
         queryset=Section.objects.select_related("class_grade"), required=False
     )
+
+
+# --- Phase 6 Gate 1: guardian accounts (ADR 0013) ----------------------------
+
+
+class GuardianVerificationForm(forms.Form):
+    identity_verification_method = forms.ChoiceField(
+        choices=GuardianAccount.VerificationMethod.choices,
+        label="How was the guardian's identity verified?",
+    )
+    identity_verification_note = forms.CharField(
+        max_length=200, label="Verification note",
+        help_text="For example which document was seen and by whom. No document numbers.",
+    )
+
+
+class GuardianAccountCreateForm(GuardianVerificationForm):
+    username = forms.CharField(max_length=30, help_text=USERNAME_HELP)
+    field_order = ["username", "identity_verification_method", "identity_verification_note"]
+
+
+class GuardianAccountLinkForm(GuardianVerificationForm):
+    username = forms.CharField(
+        max_length=150, label="Existing login username",
+        help_text="The exact username of the person's existing login. Nothing is matched "
+                  "by name, phone or email.",
+    )
+    field_order = ["username", "identity_verification_method", "identity_verification_note"]
+
+
+class GuardianUsernameForm(forms.Form):
+    username = forms.CharField(max_length=30, label="New username", help_text=USERNAME_HELP)
+
+
+class RevocationForm(forms.Form):
+    reason = forms.CharField(max_length=200, help_text="Recorded permanently with the revocation.")

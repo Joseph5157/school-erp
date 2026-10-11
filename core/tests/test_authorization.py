@@ -118,6 +118,15 @@ class SchoolAdministratorsGroupMigrationTests(TestCase):
                 "change_sectionclassteacher",
                 "delete_sectionclassteacher",
                 "view_sectionclassteacher",
+                "add_guardianaccount",
+                "change_guardianaccount",
+                "view_guardianaccount",
+                "reset_guardian_password",
+                "change_guardian_username",
+                "add_guardianstudentaccess",
+                "change_guardianstudentaccess",
+                "view_guardianstudentaccess",
+                "view_securityevent",
             },
         )
 

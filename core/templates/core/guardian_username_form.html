@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Change username{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Change username</h1>
+<p class="text-muted">Current username: <code>{{ account.user.username }}</code> ({{ account.guardian.full_name }}). The change is audited.</p>
+<form method="post">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">Change username</button>
+    <a class="btn btn-link" href="{% url 'core:guardian-detail' account.guardian_id %}">Cancel</a>
+</form>
+{% endblock %}
