@@ -399,6 +399,37 @@ journey in `core/tests/test_phase4_acceptance.py`.
 - parent/student result publication, co-scholastic grading
 - teacher workload, substitute-teacher workflows
 
+## Phase 5 scope
+
+Phase 5 Teacher Workflows is planned; its decisions are frozen in ADR 0011
+and ADR 0012 and its gates are defined in
+`docs/PHASE_5_TEACHER_WORKFLOWS_PLAN.md`. It contains only:
+
+1. Dated class teacher assignment (one per Section at a time)
+2. A teacher home page in a separate teacher area
+3. Class teacher capture and submission of today's attendance for their Section
+4. Teacher read-only attendance views for their Section and assignment dates
+5. Limited, read-only teacher student profiles scoped to their Sections
+6. Teacher read-only result views; Term remarks owned by the class teacher
+7. Administrator assignment overview, per-teacher load and conservative,
+   preview-first copy of the previous year's assignments
+
+Phase 5 is complete when a teacher can see today's work, take and submit
+their own Section's attendance, enter marks, write remarks and look up their
+own Students, cannot see or change anything outside their dated assignments,
+and every historical record still shows who did what, when.
+
+## Explicitly out of scope for Phase 5
+
+- timetable, periods, period/slot-level attendance
+- substitute/cover workflows, co-class-teachers, workload tracking
+- staff profiles, HR, payroll, leave, staff attendance
+- lesson plans, homework, gradebooks outside assessments
+- teacher-to-guardian messaging, announcements, notifications
+- guardian and student portals, mobile applications
+- teacher correction of submitted attendance or finalized results
+- teacher editing of student, guardian or enrollment records
+
 ## Definition of Done
 
 FROZEN: A feature or milestone is done when, where applicable:

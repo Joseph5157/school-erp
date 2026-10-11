@@ -56,6 +56,10 @@ FROZEN:
   portals, notifications, timetable, or period-level workflows without a new
   decision.
 
+Later change: ADR 0012 (Phase 5) lets the class teacher take and submit the
+business date's register for their Section. Corrections of submitted
+attendance remain administrator-only.
+
 ## Related requirements/domain decisions
 
 - `docs/PHASE_2_RECONCILIATION_PLAN.md`

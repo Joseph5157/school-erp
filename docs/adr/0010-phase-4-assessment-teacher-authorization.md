@@ -60,6 +60,10 @@ DECIDED (Gate 2):
   narrowed: minimal assessment assignment is Phase 4; everything else about
   teachers remains Phase 5.
 
+Later change: ADR 0012 D10 (Phase 5) moves Term remarks to the class
+teacher; subject teacher assignments no longer grant remark writing.
+ADR 0011 adds dated class teacher assignment alongside this one.
+
 ## Related requirements/domain decisions
 
 - `docs/adr/0004-phase-1-authorization-foundation.md`
