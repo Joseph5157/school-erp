@@ -129,6 +129,8 @@ class SchoolAdministratorsGroupMigrationTests(TestCase):
                 "view_securityevent",
                 "add_guardianaccessreview",
                 "view_guardianaccessreview",
+                "publish_termpublication",
+                "view_termpublication",
             },
         )
 

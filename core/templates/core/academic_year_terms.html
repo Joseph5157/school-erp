@@ -17,6 +17,7 @@
             <td>{{ term.end_date }}</td>
             <td>
                 {% if perms.core.change_academicterm %}<a href="{% url 'core:term-update' term.pk %}">Edit</a>{% endif %}
+                {% if perms.core.view_termpublication %} &middot; <a href="{% url 'core:term-publication' term.pk %}">Publish to guardians</a>{% endif %}
                 {% if perms.core.change_termremark %} &middot; <a href="{% url 'core:term-remarks' term.pk %}">Remarks</a>{% endif %}
             </td>
         </tr>

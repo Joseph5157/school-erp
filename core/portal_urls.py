@@ -12,4 +12,14 @@ urlpatterns = [
     path(
         "children/<uuid:public_id>/attendance/", portal_views.attendance, name="attendance"
     ),
+    path(
+        "children/<uuid:public_id>/report-cards/",
+        portal_views.report_cards,
+        name="report-cards",
+    ),
+    path(
+        "children/<uuid:public_id>/report-cards/<uuid:publication_id>/",
+        portal_views.report_card,
+        name="report-card",
+    ),
 ]

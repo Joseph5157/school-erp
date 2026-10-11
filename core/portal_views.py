@@ -10,6 +10,7 @@ from core.portal import (
     portal_children,
     student_profile,
     submitted_attendance,
+    visible_publications,
 )
 
 
@@ -59,4 +60,34 @@ def attendance(request, public_id):
         request,
         "portal/attendance.html",
         _context(request, grant=grant, student=student, years=years, year=chosen, **data),
+    )
+
+
+@require_safe
+@guardian_required
+def report_cards(request, public_id):
+    grant = _visible_grant_or_404(request, public_id)
+    student = grant.student_guardian.student
+    return render(
+        request,
+        "portal/report_cards.html",
+        _context(request, grant=grant, student=student,
+                 publications=visible_publications(student)),
+    )
+
+
+@require_safe
+@guardian_required
+def report_card(request, public_id, publication_id):
+    """One released report card, rendered only from its snapshot."""
+    grant = _visible_grant_or_404(request, public_id)
+    student = grant.student_guardian.student
+    pub = next((p for p in visible_publications(student) if p.public_id == publication_id),
+               None)
+    if pub is None:
+        raise Http404("No such report card.")
+    return render(
+        request,
+        "portal/report_card.html",
+        _context(request, grant=grant, student=student, pub=pub, entries=pub.entries.all()),
     )
