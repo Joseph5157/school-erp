@@ -228,3 +228,32 @@ class ClassTeacherViewTests(ClassTeacherFixture, TestCase):
 
     def test_year_list_links_to_class_teachers(self):
         self.assertContains(self.client.get(reverse("core:academic-year-list")), self.list_url)
+
+
+@today_patch
+class CrossYearTests(ClassTeacherFixture, TestCase):
+    """Sections are year-agnostic: an open assignment ends with its own year."""
+
+    def setUp(self):
+        super().setUp()
+        from core.models import AcademicYear
+
+        self.next_year = AcademicYear.objects.create(
+            name="2027-28", start_date=date(2027, 6, 1), end_date=date(2028, 3, 31)
+        )
+
+    def test_open_row_is_not_effective_next_year(self):
+        row = self.assign_ct(self.rao, self.six_a, date(2026, 6, 1))
+        self.assertTrue(row.is_effective_on(date(2027, 3, 31)))
+        self.assertFalse(row.is_effective_on(date(2027, 6, 1)))
+        self.assertFalse(SectionClassTeacher.objects.effective_on(date(2027, 6, 1)).exists())
+        self.assertFalse(class_teacher_on(self.rao, self.six_a, date(2027, 7, 1)))
+
+    def test_next_year_assignment_does_not_touch_previous_year(self):
+        old = self.assign_ct(self.rao, self.six_a, date(2026, 6, 1))
+        new = self.assign_ct(self.iyer, self.six_a, date(2027, 6, 1), year=self.next_year)
+        old.refresh_from_db()
+        self.assertIsNone(old.end_date)
+        self.assertEqual(
+            list(SectionClassTeacher.objects.effective_on(date(2027, 7, 1))), [new]
+        )

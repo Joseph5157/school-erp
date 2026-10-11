@@ -1,11 +1,12 @@
 from django.contrib import messages
+from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Exists, OuterRef, Q, Subquery
 from django.shortcuts import get_object_or_404, redirect, render
 
-from core import assessment_reports, reports
+from core import assessment_reports, assignments, reports
 from core.authorization import (
     administrator_required,
     can_enter_results,
@@ -1017,14 +1018,14 @@ def _teacher_visible_results(user, student, academic_year):
         "offering_id", "section_id"
     ):
         scope |= Q(assessment__offering_id=offering_id, assessment__section_id=section_id)
-    for row in class_teacher_assignments(user).filter(academic_year=academic_year):
-        window = Q(
+    for row in class_teacher_assignments(user).filter(academic_year=academic_year).select_related(
+        "academic_year"
+    ):
+        scope |= Q(
             assessment__section_id=row.section_id,
             assessment__assessment_date__gte=row.start_date,
+            assessment__assessment_date__lte=row.last_effective_date,
         )
-        if row.end_date is not None:
-            window &= Q(assessment__assessment_date__lte=row.end_date)
-        scope |= window
     return list(
         assessment_reports.finalized_results(
             StudentResult.objects.filter(
@@ -1465,6 +1466,60 @@ def class_teacher_delete(request, pk):
         else:
             messages.success(request, "Planned class teacher assignment deleted.")
     return redirect("core:academic-year-class-teachers", pk=year_pk)
+
+
+# --- Phase 5 Gate 7: administrator assignment workflows (ADR 0011 D13, D14) --
+
+
+@administrator_required("core.view_sectionclassteacher")
+def academic_year_assignments(request, pk):
+    academic_year = get_object_or_404(AcademicYear, pk=pk)
+    context = assignments.overview(academic_year, business_today())
+    context["academic_year"] = academic_year
+    return render(request, "core/academic_year_assignments.html", context)
+
+
+@administrator_required("core.view_sectionclassteacher")
+def teacher_load(request, pk):
+    teacher = get_object_or_404(get_user_model(), pk=pk)
+    return render(
+        request,
+        "core/teacher_load.html",
+        {
+            "teacher": teacher,
+            "is_active_teacher": is_teacher(teacher),
+            "years": assignments.teacher_load(teacher),
+        },
+    )
+
+
+@administrator_required("core.add_sectionclassteacher")
+def assignment_copy(request, pk):
+    """Preview-first, conservative copy of another year's assignments (D13)."""
+    if not request.user.has_perm("core.add_assessmentteacherassignment"):
+        raise PermissionDenied
+    target = get_object_or_404(AcademicYear, pk=pk)
+    sources = AcademicYear.objects.exclude(pk=target.pk).order_by("-start_date")
+    source_id = request.POST.get("source") or request.GET.get("source")
+    source = None
+    if source_id and str(source_id).isdigit():
+        source = sources.filter(pk=source_id).first()
+    if source is None and not source_id:
+        source = sources.filter(start_date__lt=target.start_date).first()
+    if request.method == "POST" and source is not None:
+        try:
+            created = assignments.apply_copy(source, target, request.POST.get("token", ""))
+        except ValidationError as error:
+            messages.error(request, " ".join(error.messages))
+        else:
+            messages.success(request, f"Copied {created} assignment(s) from {source.name}.")
+            return redirect("core:academic-year-assignments", pk=target.pk)
+    plan = assignments.plan_copy(source, target) if source is not None else None
+    return render(
+        request,
+        "core/assignment_copy.html",
+        {"target": target, "sources": sources, "source": source, "plan": plan},
+    )
 
 
 @administrator_required("core.view_classgrade")

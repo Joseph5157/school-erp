@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Assignment overview - {{ academic_year.name }}{% endblock %}
+{% block content %}
+<h1 class="h3 mb-1">Assignment overview: {{ academic_year.name }}</h1>
+<p class="text-muted">Class teachers as of {{ on_date }}. Gaps: {{ class_gaps }} Section(s) without a class teacher, {{ subject_gaps }} Subject/Section(s) without a teacher. Held by inactive or non-teacher logins: {{ inactive }}.</p>
+<p>
+    {% if perms.core.add_sectionclassteacher and perms.core.add_assessmentteacherassignment %}
+    <a class="btn btn-outline-primary btn-sm" href="{% url 'core:assignment-copy' academic_year.pk %}">Copy from another year&hellip;</a>
+    {% endif %}
+    <a class="btn btn-link btn-sm" href="{% url 'core:academic-year-class-teachers' academic_year.pk %}">Class teachers</a>
+    {% if perms.core.view_assessmentteacherassignment %}<a class="btn btn-link btn-sm" href="{% url 'core:academic-year-teacher-assignments' academic_year.pk %}">Subject teachers</a>{% endif %}
+</p>
+
+<h2 class="h5 mt-3">Class teachers</h2>
+<table class="table table-sm">
+    <thead><tr><th>Section</th><th>Class teacher</th><th></th></tr></thead>
+    <tbody>
+    {% for row in class_rows %}
+        <tr{% if row.gap or row.inactive %} class="table-warning"{% endif %}>
+            <td>{{ row.section }}</td>
+            <td>{% if row.assignment %}<a href="{% url 'core:teacher-load' row.assignment.teacher_id %}">{{ row.assignment.teacher.get_full_name|default:row.assignment.teacher.username }}</a>{% else %}&mdash;{% endif %}</td>
+            <td>{% if row.gap %}No class teacher{% elif row.inactive %}Login inactive or not a teacher &mdash; end or replace{% endif %}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<h2 class="h5 mt-4">Subject teachers</h2>
+<table class="table table-sm">
+    <thead><tr><th>Class/Grade</th><th>Subject</th><th>Section</th><th>Teacher</th><th></th></tr></thead>
+    <tbody>
+    {% for row in subject_rows %}
+        <tr{% if row.gap or row.inactive %} class="table-warning"{% endif %}>
+            <td>{{ row.offering.class_grade }}</td>
+            <td>{{ row.offering.subject.name }}</td>
+            <td>{{ row.section.name }}</td>
+            <td>{% if row.assignment %}<a href="{% url 'core:teacher-load' row.assignment.teacher_id %}">{{ row.assignment.teacher.get_full_name|default:row.assignment.teacher.username }}</a>{% else %}&mdash;{% endif %}</td>
+            <td>{% if row.gap %}No teacher{% elif row.inactive %}Login inactive or not a teacher &mdash; reassign{% endif %}</td>
+        </tr>
+    {% empty %}
+        <tr><td colspan="5">No Subjects offered in this Academic Year.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

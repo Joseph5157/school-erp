@@ -43,6 +43,7 @@
                 {% endif %}
                 {% if perms.core.view_sectionclassteacher %}
                     &middot; <a href="{% url 'core:academic-year-class-teachers' academic_year.pk %}">Class teachers</a>
+                    &middot; <a href="{% url 'core:academic-year-assignments' academic_year.pk %}">Assignment overview</a>
                 {% endif %}
             </td>
         </tr>

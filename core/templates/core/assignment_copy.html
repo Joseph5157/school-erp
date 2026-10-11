@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Copy assignments - {{ target.name }}{% endblock %}
+{% block content %}
+<h1 class="h3 mb-1">Copy assignments into {{ target.name }}</h1>
+<p class="text-muted">Preview first: nothing is written until you confirm. Only exact matches are copied; everything else is listed with the reason it was skipped.</p>
+<form method="get" class="mb-3">
+    <label>Copy from <select name="source" onchange="this.form.submit()">
+        {% for year in sources %}<option value="{{ year.pk }}"{% if source and year.pk == source.pk %} selected{% endif %}>{{ year.name }}</option>{% endfor %}
+    </select></label>
+    <noscript><button type="submit">Preview</button></noscript>
+</form>
+{% if plan %}
+<h2 class="h5">Will be copied ({{ plan.copies|length }})</h2>
+<ul>{% for item in plan.copies %}<li>{{ item.label }}</li>{% empty %}<li class="text-muted">Nothing to copy.</li>{% endfor %}</ul>
+<h2 class="h5 mt-3">Skipped ({{ plan.skips|length }})</h2>
+<table class="table table-sm">
+    <thead><tr><th>Assignment</th><th>Reason</th></tr></thead>
+    <tbody>{% for skip in plan.skips %}<tr><td>{{ skip.label }}</td><td>{{ skip.reason }}</td></tr>{% empty %}<tr><td colspan="2" class="text-muted">None.</td></tr>{% endfor %}</tbody>
+</table>
+{% if plan.copies %}
+<form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="source" value="{{ source.pk }}">
+    <input type="hidden" name="token" value="{{ plan.token }}">
+    <button type="submit" class="btn btn-primary">Confirm and copy {{ plan.copies|length }} assignment(s)</button>
+</form>
+{% endif %}
+{% else %}
+<p>Choose an Academic Year to copy from.</p>
+{% endif %}
+<p class="mt-4"><a href="{% url 'core:academic-year-assignments' target.pk %}">Back to overview</a></p>
+{% endblock %}
