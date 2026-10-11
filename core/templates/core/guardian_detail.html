@@ -30,5 +30,71 @@
         {% endfor %}
     </tbody>
 </table>
+{% if accounts is not None %}
+<h2 class="h5 mt-4">Guardian Portal account</h2>
+{% if active_account %}
+<p>
+    Login <strong>{{ active_account.user.username }}</strong>
+    {% if active_account.user.must_change_password %}<span class="badge bg-warning text-dark">must change password</span>{% endif %}
+    {% if not active_account.user.is_active %}<span class="badge bg-danger">login inactive</span>{% endif %}
+    &middot; verified by {{ active_account.identity_verified_by }} ({{ active_account.get_identity_verification_method_display }}) on {{ active_account.created_at|date:"Y-m-d" }}
+</p>
+<p>
+    {% if perms.core.reset_guardian_password %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'core:guardian-account-reset-password' active_account.pk %}">Reset password</a>{% endif %}
+    {% if perms.core.change_guardian_username %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'core:guardian-account-username' active_account.pk %}">Change username</a>{% endif %}
+    {% if perms.core.change_guardianaccount %}<a class="btn btn-outline-danger btn-sm" href="{% url 'core:guardian-account-revoke' active_account.pk %}">Revoke account link</a>{% endif %}
+</p>
+{% else %}
+<p class="text-muted">No active portal account. Recording a Guardian grants no access.</p>
+{% if perms.core.add_guardianaccount %}
+<p>
+    <a class="btn btn-primary btn-sm" href="{% url 'core:guardian-account-create' guardian.pk %}">Create portal account</a>
+    <a class="btn btn-outline-primary btn-sm" href="{% url 'core:guardian-account-link' guardian.pk %}">Link an existing login</a>
+</p>
+{% endif %}
+{% endif %}
+{% for account in accounts %}{% if not account.is_active %}
+<p class="small text-muted mb-1">Earlier link: {{ account.user.username }}, {{ account.created_at|date:"Y-m-d" }} &ndash; revoked {{ account.revoked_at|date:"Y-m-d" }} by {{ account.revoked_by }} ({{ account.revocation_reason }})</p>
+{% endif %}{% endfor %}
+{% endif %}
+
+{% if relationships is not None %}
+<h2 class="h5 mt-4">Student access</h2>
+<p class="text-muted small">Access is granted explicitly for each relationship. The relationship type never grants access by itself.</p>
+<table class="table">
+    <thead><tr><th>Student</th><th>Relationship</th><th>Portal access</th><th></th></tr></thead>
+    <tbody>
+    {% for row in relationships %}
+        <tr>
+            <td>{{ row.link.student.full_name }}</td>
+            <td>{{ row.link.get_relationship_type_display }}</td>
+            <td>
+                {% if row.active_grant %}Granted {{ row.active_grant.granted_at|date:"Y-m-d" }} by {{ row.active_grant.granted_by }}{% else %}<span class="text-muted">Not granted</span>{% endif %}
+                {% for grant in row.grants %}{% if not grant.is_active %}<div class="small text-muted">Revoked {{ grant.revoked_at|date:"Y-m-d" }} by {{ grant.revoked_by }} ({{ grant.revocation_reason }})</div>{% endif %}{% endfor %}
+            </td>
+            <td class="text-end">
+                {% if row.active_grant %}
+                    {% if perms.core.change_guardianstudentaccess %}<a class="btn btn-outline-danger btn-sm" href="{% url 'core:guardian-access-revoke' row.active_grant.pk %}">Revoke</a>{% endif %}
+                {% elif perms.core.add_guardianstudentaccess %}
+                <form method="post" action="{% url 'core:guardian-access-grant' row.link.pk %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-primary btn-sm">Grant access</button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+    {% empty %}
+        <tr><td colspan="4">Not associated with any Student.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+{% if events is not None %}
+<h2 class="h5 mt-4">Account and access history</h2>
+<ul class="small">
+    {% for event in events %}<li>{{ event.occurred_at|date:"Y-m-d H:i" }} &middot; {{ event.get_event_type_display }}{% if event.actor %} by {{ event.actor }}{% endif %}</li>{% empty %}<li class="text-muted">None.</li>{% endfor %}
+</ul>
+{% endif %}
 <a class="btn btn-link" href="{% url 'core:guardian-list' %}">Back to Guardians</a>
 {% endblock %}

@@ -1,4 +1,5 @@
 import datetime
+import uuid
 from decimal import Decimal
 
 from django.conf import settings
@@ -2588,3 +2589,134 @@ class TermRemark(models.Model):
 
     def __str__(self):
         return f"{self.term} - {self.student}"
+
+
+# ---------------------------------------------------------------------------
+# Phase 6 Gate 1 - guardian accounts and explicit access grants (ADR 0013)
+# ---------------------------------------------------------------------------
+
+
+class GuardianAccount(models.Model):
+    """Links one login to one Guardian record (ADR 0013).
+
+    Created only by an administrator after verifying identity. Revoked, never
+    deleted: database triggers refuse deleting a row, changing who it links
+    or how it was verified, and clearing a revocation. At most one active
+    link per login and per Guardian.
+    """
+
+    class VerificationMethod(models.TextChoices):
+        IN_PERSON_DOCUMENTS = "IN_PERSON_DOCUMENTS", "In person, with identity documents"
+        EXISTING_RECORDS = "EXISTING_RECORDS", "Against existing school records"
+        OTHER = "OTHER", "Other (described in the note)"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="guardian_accounts"
+    )
+    guardian = models.ForeignKey(Guardian, on_delete=models.PROTECT, related_name="accounts")
+    identity_verified_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
+    )
+    identity_verification_method = models.CharField(
+        max_length=30, choices=VerificationMethod.choices
+    )
+    identity_verification_note = models.CharField(max_length=200)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    revoked_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True,
+        related_name="+",
+    )
+    revocation_reason = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
+        permissions = [
+            ("reset_guardian_password", "Can reset a guardian's password"),
+            ("change_guardian_username", "Can change a guardian's username"),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user"], condition=models.Q(revoked_at__isnull=True),
+                name="guardianaccount_one_active_per_user",
+            ),
+            models.UniqueConstraint(
+                fields=["guardian"], condition=models.Q(revoked_at__isnull=True),
+                name="guardianaccount_one_active_per_guardian",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(revoked_at__isnull=True, revoked_by__isnull=True,
+                             revocation_reason="")
+                    | (models.Q(revoked_at__isnull=False, revoked_by__isnull=False)
+                       & ~models.Q(revocation_reason=""))
+                ),
+                name="guardianaccount_revocation_complete",
+            ),
+            models.CheckConstraint(
+                condition=~models.Q(identity_verification_note=""),
+                name="guardianaccount_verification_note_required",
+            ),
+        ]
+
+    @property
+    def is_active(self):
+        return self.revoked_at is None
+
+    def __str__(self):
+        state = "" if self.is_active else " (revoked)"
+        return f"{self.user} → {self.guardian}{state}"
+
+
+class GuardianStudentAccess(models.Model):
+    """An explicit grant: this Guardian may see this Student (ADR 0013, P5).
+
+    Attached to the recorded StudentGuardian relationship; the relationship
+    type never decides anything. Created one at a time by an administrator.
+    Revoked, never deleted (database triggers). `public_id` identifies the
+    Student in portal URLs instead of database ids (ADR 0014).
+    """
+
+    student_guardian = models.ForeignKey(
+        StudentGuardian, on_delete=models.PROTECT, related_name="access_grants"
+    )
+    public_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    granted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
+    )
+    granted_at = models.DateTimeField(default=timezone.now)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    revoked_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True,
+        related_name="+",
+    )
+    revocation_reason = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        ordering = ["-granted_at", "-pk"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["student_guardian"], condition=models.Q(revoked_at__isnull=True),
+                name="guardianstudentaccess_one_active_per_relationship",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(revoked_at__isnull=True, revoked_by__isnull=True,
+                             revocation_reason="")
+                    | (models.Q(revoked_at__isnull=False, revoked_by__isnull=False)
+                       & ~models.Q(revocation_reason=""))
+                ),
+                name="guardianstudentaccess_revocation_complete",
+            ),
+        ]
+
+    @property
+    def is_active(self):
+        return self.revoked_at is None
+
+    def __str__(self):
+        state = "" if self.is_active else " (revoked)"
+        return f"{self.student_guardian}{state}"

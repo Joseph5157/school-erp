@@ -19,6 +19,7 @@ from django.contrib import admin
 from django.contrib.auth import views as auth_views
 from django.urls import include, path
 
+from accounts import views as account_views
 from core import views as core_views
 
 urlpatterns = [
@@ -30,5 +31,6 @@ urlpatterns = [
         name="login",
     ),
     path("accounts/logout/", auth_views.LogoutView.as_view(), name="logout"),
+    path("accounts/password/change/", account_views.password_change, name="password_change"),
     path("", include("core.urls")),
 ]

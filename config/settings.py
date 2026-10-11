@@ -44,6 +44,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "accounts.middleware.AccountSecurityMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -100,6 +101,7 @@ else:
 
 # Custom user model (docs/adr/0004-phase-1-authorization-foundation.md)
 AUTH_USER_MODEL = "accounts.User"
+AUTHENTICATION_BACKENDS = ["accounts.backends.NormalizedUsernameBackend"]
 
 # Phase 1 administrative authorization (docs/adr/0004-phase-1-authorization-foundation.md)
 LOGIN_URL = "login"
