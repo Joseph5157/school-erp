@@ -1,1 +1,215 @@
 /* School ERP design layer over Bootstrap 5.3.3. Tokens first, then layout, then components. */
+
+:root {
+  --erp-ink: #18212b;
+  --erp-ink-soft: #4a5562;
+  --erp-paper: #f5f6f3;
+  --erp-surface: #ffffff;
+  --erp-rule: #dde1dc;
+  --erp-accent: #1f6b52;
+  --erp-accent-strong: #185842;
+  --erp-accent-wash: #e3efe9;
+  --erp-warn: #9a5b00;
+  --erp-warn-wash: #fbf0dc;
+  --erp-crit: #a3322a;
+  --erp-crit-wash: #f8e4e1;
+  --erp-radius: 10px;
+  --erp-topbar-h: 3.5rem;
+  --erp-sidebar-w: 15.5rem;
+  --erp-tabbar-h: 3.75rem;
+
+  --bs-body-bg: var(--erp-paper);
+  --bs-body-color: var(--erp-ink);
+  --bs-secondary-color: var(--erp-ink-soft);
+  --bs-border-color: var(--erp-rule);
+  --bs-link-color: var(--erp-accent);
+  --bs-link-color-rgb: 31, 107, 82;
+  --bs-link-hover-color: var(--erp-accent-strong);
+  --bs-primary: var(--erp-accent);
+  --bs-primary-rgb: 31, 107, 82;
+}
+
+.btn-primary {
+  --bs-btn-bg: var(--erp-accent);
+  --bs-btn-border-color: var(--erp-accent);
+  --bs-btn-hover-bg: var(--erp-accent-strong);
+  --bs-btn-hover-border-color: var(--erp-accent-strong);
+  --bs-btn-active-bg: var(--erp-accent-strong);
+  --bs-btn-active-border-color: var(--erp-accent-strong);
+  --bs-btn-disabled-bg: var(--erp-accent);
+  --bs-btn-disabled-border-color: var(--erp-accent);
+}
+.btn-outline-primary {
+  --bs-btn-color: var(--erp-accent);
+  --bs-btn-border-color: var(--erp-accent);
+  --bs-btn-hover-bg: var(--erp-accent);
+  --bs-btn-hover-border-color: var(--erp-accent);
+  --bs-btn-active-bg: var(--erp-accent-strong);
+}
+.form-control:focus, .form-select:focus, .btn:focus-visible {
+  border-color: var(--erp-accent);
+  box-shadow: 0 0 0 .2rem rgba(31, 107, 82, .25);
+}
+
+/* ---------- Layout ---------- */
+
+body.erp { min-height: 100vh; }
+
+.erp-topbar {
+  position: sticky; top: 0; z-index: 1030;
+  height: var(--erp-topbar-h);
+  display: flex; align-items: center; gap: .75rem;
+  padding-inline: 1rem;
+  background: var(--erp-surface);
+  border-bottom: 1px solid var(--erp-rule);
+}
+.erp-brand { font-weight: 700; color: var(--erp-ink); text-decoration: none; white-space: nowrap; }
+.erp-topbar-links { gap: .25rem; min-width: 0; overflow-x: auto; }
+.erp-topbar-links a {
+  padding: .4rem .6rem; border-radius: 6px; color: var(--erp-ink);
+  text-decoration: none; white-space: nowrap;
+}
+.erp-topbar-links a.active { background: var(--erp-accent-wash); color: var(--erp-accent); font-weight: 600; }
+.erp-spacer { flex: 1; }
+
+.erp-main { min-width: 0; }
+.erp-content { max-width: 75rem; padding-block: 1.5rem 2.5rem; padding-inline: 1rem; }
+
+.erp-sidebar { background: var(--erp-surface); }
+.erp-nav-heading {
+  margin: 1rem 0 .25rem; padding-inline: .75rem;
+  font-size: .72rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--erp-ink-soft);
+}
+.erp-sidebar .nav-link { color: var(--erp-ink); border-radius: 6px; padding: .4rem .75rem; }
+.erp-sidebar .nav-link:hover { background: var(--erp-paper); }
+.erp-sidebar .nav-link.active { background: var(--erp-accent-wash); color: var(--erp-accent); font-weight: 600; }
+
+@media (min-width: 992px) {
+  body.has-sidebar .erp-sidebar {
+    position: fixed; top: var(--erp-topbar-h); bottom: 0; left: 0;
+    width: var(--erp-sidebar-w); overflow-y: auto;
+    border-right: 1px solid var(--erp-rule); padding: .5rem;
+  }
+  body.has-sidebar .erp-main { margin-left: var(--erp-sidebar-w); }
+  .erp-content { padding-inline: 2rem; }
+}
+
+.erp-tabbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 1030;
+  background: var(--erp-surface); border-top: 1px solid var(--erp-rule);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.erp-tabbar ul { display: flex; margin: 0; padding: 0; list-style: none; }
+.erp-tabbar li { flex: 1; }
+.erp-tabbar a {
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  min-height: var(--erp-tabbar-h); padding: .25rem; font-size: .8rem; line-height: 1.2;
+  color: var(--erp-ink-soft); text-decoration: none;
+}
+.erp-tabbar a.active { color: var(--erp-accent); font-weight: 700; box-shadow: inset 0 3px 0 var(--erp-accent); }
+@media (max-width: 991.98px) {
+  body.has-tabbar .erp-content {
+    padding-bottom: calc(var(--erp-tabbar-h) + 2rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* ---------- Account menu (details/summary, works without JS) ---------- */
+
+.erp-account { position: relative; }
+.erp-account > summary {
+  list-style: none; cursor: pointer; display: flex; align-items: center; gap: .5rem;
+  padding: .3rem .5rem; border-radius: 999px; border: 1px solid var(--erp-rule);
+}
+.erp-account > summary::-webkit-details-marker { display: none; }
+.erp-avatar {
+  width: 1.9rem; height: 1.9rem; border-radius: 50%;
+  display: inline-grid; place-items: center;
+  background: var(--erp-accent-wash); color: var(--erp-accent); font-weight: 700; font-size: .85rem;
+}
+.erp-account-panel {
+  position: absolute; right: 0; top: calc(100% + .4rem); z-index: 1040;
+  width: min(18rem, calc(100vw - 2rem));
+  background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
+  box-shadow: 0 8px 24px rgba(24, 33, 43, .12); padding: .5rem;
+}
+.erp-account-panel .erp-nav-heading { margin-top: .5rem; }
+.erp-account-panel a, .erp-account-panel .erp-menu-item {
+  display: flex; justify-content: space-between; align-items: center; width: 100%;
+  padding: .55rem .75rem; border-radius: 6px; border: 0; background: none;
+  color: var(--erp-ink); text-decoration: none; text-align: left; font: inherit;
+}
+.erp-account-panel a:hover, .erp-account-panel .erp-menu-item:hover { background: var(--erp-paper); }
+.erp-account-panel [aria-current="true"] { font-weight: 600; color: var(--erp-accent); }
+.erp-check { color: var(--erp-accent); font-weight: 700; }
+
+/* ---------- Auth pages ---------- */
+
+.erp-auth {
+  max-width: 26rem; margin: 2rem auto; padding: 1.75rem;
+  background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
+}
+.erp-auth h1 { font-size: 1.6rem; font-weight: 700; margin-bottom: .25rem; }
+.erp-password { position: relative; }
+.erp-password .form-control { padding-right: 4.5rem; }
+.erp-password [data-erp-toggle-password] {
+  position: absolute; right: .25rem; top: 50%; transform: translateY(-50%);
+  font-size: .85rem; font-weight: 600; text-decoration: none;
+}
+.erp-auth .form-text ul { padding-left: 1.1rem; margin: .35rem 0 0; }
+
+/* ---------- Components ---------- */
+
+.erp-empty {
+  display: grid; justify-items: center; gap: .35rem; text-align: center;
+  padding: 2.5rem 1rem; border: 1px dashed var(--erp-rule); border-radius: var(--erp-radius);
+  background: var(--erp-surface); color: var(--erp-ink-soft);
+}
+.erp-empty-icon { font-size: 1.6rem; line-height: 1; }
+.erp-empty-title { font-weight: 600; color: var(--erp-ink); margin: 0; }
+.erp-empty p { margin: 0; max-width: 34rem; }
+
+.erp-messages {
+  position: fixed; z-index: 1050; display: grid; gap: .5rem;
+  left: 1rem; right: 1rem; bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+}
+body.has-tabbar .erp-messages {
+  bottom: calc(var(--erp-tabbar-h) + 1rem + env(safe-area-inset-bottom, 0px));
+}
+@media (min-width: 992px) {
+  .erp-messages, body.has-tabbar .erp-messages {
+    left: auto; right: 1.5rem; top: calc(var(--erp-topbar-h) + 1rem); bottom: auto; width: 24rem;
+  }
+}
+.erp-messages .alert { margin: 0; box-shadow: 0 6px 18px rgba(24, 33, 43, .12); }
+
+.erp-chips { display: flex; gap: .4rem; overflow-x: auto; padding-block: .25rem; }
+.erp-chips a {
+  white-space: nowrap; padding: .3rem .8rem; border-radius: 999px; border: 1px solid var(--erp-rule);
+  color: var(--erp-ink); text-decoration: none; background: var(--erp-surface); font-size: .9rem;
+}
+.erp-chips a.active { background: var(--erp-accent); border-color: var(--erp-accent); color: #fff; }
+
+.erp-pill {
+  display: inline-block; padding: .1rem .55rem; border-radius: 999px;
+  font-size: .78rem; font-weight: 600; line-height: 1.5;
+  background: var(--erp-paper); color: var(--erp-ink-soft); border: 1px solid var(--erp-rule);
+}
+.erp-pill.is-submitted, .erp-pill.is-present, .erp-pill.is-accepted {
+  background: var(--erp-accent-wash); color: var(--erp-accent); border-color: transparent;
+}
+.erp-pill.is-draft, .erp-pill.is-pending {
+  background: var(--erp-warn-wash); color: var(--erp-warn); border-color: transparent;
+}
+.erp-pill.is-absent, .erp-pill.is-rejected {
+  background: var(--erp-crit-wash); color: var(--erp-crit); border-color: transparent;
+}
+
+/* Wide tables scroll inside their own box on phones instead of widening the page. */
+@media (max-width: 575.98px) {
+  .erp-content table:not(.erp-keep) { display: block; overflow-x: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
