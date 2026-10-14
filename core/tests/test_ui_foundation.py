@@ -1,10 +1,12 @@
 """U1 UI foundation: static files, shell, navigation, auth pages, components."""
 
 from django.conf import settings
-from django.test import TestCase
-from django.urls import reverse
+from django.contrib.auth.models import AnonymousUser, Permission
+from django.test import RequestFactory, TestCase
+from django.urls import resolve, reverse
 
 from core.models import School
+from core.navigation import current_area, office_nav, teacher_tabs
 from core.tests.phase4_fixtures import Phase4Fixture
 
 VIEWPORT = '<meta name="viewport" content="width=device-width, initial-scale=1">'
@@ -30,3 +32,69 @@ class StaticFilesTests(Phase4Fixture, TestCase):
         self.assertContains(page, VIEWPORT)
         self.assertContains(page, "/static/css/erp.css")
         self.assertContains(page, "/static/js/erp.js")
+
+
+class NavigationDataTests(Phase4Fixture, TestCase):
+    def setUp(self):
+        self.build_phase4()
+        School.objects.create(name="Greenwood High")
+
+    def titles(self, groups):
+        return [group["title"] for group in groups]
+
+    def labels(self, groups):
+        return [link["label"] for group in groups for link in group["links"]]
+
+    def area_for(self, user, path):
+        request = RequestFactory().get(path)
+        request.user = user
+        request.resolver_match = resolve(path)
+        return current_area(request)
+
+    def test_admin_sees_all_office_groups(self):
+        groups = office_nav(self.admin, "school-detail")
+        self.assertEqual(
+            self.titles(groups),
+            ["School setup", "Admissions", "Daily", "Results", "Access and security"],
+        )
+        self.assertIn("Academic Years", self.labels(groups))
+        self.assertIn("Sign-in lockouts", self.labels(groups))
+
+    def test_teacher_sees_no_office_groups(self):
+        self.assertEqual(office_nav(self.rao, "my-home"), [])
+
+    def test_links_need_their_permission(self):
+        clerk = self.make_user("clerk")
+        clerk.user_permissions.add(
+            Permission.objects.get(codename="view_student", content_type__app_label="core")
+        )
+        groups = office_nav(clerk, None)
+        self.assertEqual(self.titles(groups), ["Admissions"])
+        self.assertEqual(self.labels(groups), ["Students"])
+
+    def test_active_link_follows_url_name(self):
+        groups = office_nav(self.admin, "student-list")
+        active = [link["label"] for g in groups for link in g["links"] if link["active"]]
+        self.assertEqual(active, ["Students"])
+
+    def test_teacher_tabs(self):
+        tabs = teacher_tabs("my-assessments")
+        self.assertEqual([t["label"] for t in tabs],
+                         ["My day", "My students", "My assessments", "Results"])
+        self.assertEqual([t["label"] for t in tabs if t["active"]], ["My assessments"])
+        self.assertEqual(tabs[0]["url"], reverse("core:my-home"))
+
+    def test_current_area(self):
+        self.assertEqual(self.area_for(self.admin, reverse("core:school-detail")), "admin")
+        self.assertEqual(self.area_for(self.rao, reverse("core:my-home")), "teacher")
+        self.assertEqual(self.area_for(self.rao, reverse("core:my-students")), "teacher")
+
+    def test_current_area_none_for_anonymous(self):
+        self.assertIsNone(self.area_for(AnonymousUser(), reverse("login")))
+
+    def test_context_exposes_navigation(self):
+        self.client.login(username="admin", password="pass-12345")
+        page = self.client.get(reverse("core:school-detail"))
+        self.assertEqual(page.context["current_area"], "admin")
+        self.assertTrue(page.context["office_nav"])
+        self.assertEqual(len(page.context["teacher_tabs"]), 4)
