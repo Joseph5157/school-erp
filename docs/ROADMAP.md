@@ -6,9 +6,9 @@ Foundation
 → Phase 1 Student Lifecycle ✅
 → Phase 2 Attendance ✅
 → Phase 3 Fees ⏸️ deferred (not implemented)
-→ Phase 4 Assessments (research/planning)
-→ Phase 5 Teacher Workflows
-→ Phase 6 Parent/Student Experience
+→ Phase 4 Assessments ✅
+→ Phase 5 Teacher Workflows ✅
+→ Phase 6 Parent/Student Experience ✅
 → Phase 7 Communication & Reporting
 → Production Hardening
 
@@ -73,18 +73,21 @@ code may be written until its Gate 0 decisions are frozen.
 - result capture
 - grade philosophy and reporting
 
-Status: next phase; research and planning only. Implementation starts only
-after its decisions are frozen.
+Status: complete (tag `phase-4-complete`). Closed out in PR #23 (Gate 11 documentation closeout).
 
 ### Phase 5 Teacher Workflows
 - teacher assignment workflows
 - class-specific operations
 - daily teaching tasks and limited student access
 
+Status: complete (tag `phase-5-complete`). Closed out in PR #33 (Gate 9 documentation closeout).
+
 ### Phase 6 Parent/Student Experience
 - guardian and student-facing information
 - status visibility and announcements
 - role-specific interaction model
+
+Status: complete (tag `phase-6-complete`). Closed out in PR #43 (Gate 9 documentation closeout).
 
 ### Phase 7 Communication & Reporting
 - communication channels
