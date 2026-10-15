@@ -4,14 +4,17 @@ import threading
 from datetime import date
 from unittest import mock, skipUnless
 
+from django.core.exceptions import ValidationError
 from django.db import DatabaseError, connection, connections, transaction
 from django.test import SimpleTestCase, TestCase, TransactionTestCase
+from django.urls import reverse
 
 from accounts.models import SecurityEvent
-from core.documents import serials, service
+from core.documents import bonafide, serials, service
 from core.documents.engine import render_pdf
 from core.forms import SchoolForm
-from core.models import AcademicYear, IssuedDocument, School
+from core.models import AcademicYear, Applicant, IssuedDocument, School, Student
+from core.tests.test_phase7_announcements import AnnouncementFixture
 
 TELUGU = "క్ష స్త్ర శ్రీ విద్యార్థి"  # conjuncts: ksha, stra, shri, vidyarthi
 
@@ -141,3 +144,69 @@ class IssueServiceTests(TestCase):
         School.objects.all().delete()
         doc = self.issue()
         self.assertEqual(doc.payload["letterhead"]["school_name"], "")
+
+
+class BonafideTests(AnnouncementFixture, TestCase):
+    def stranger(self):
+        return Student.objects.create(
+            applicant=Applicant.objects.create(full_name="No Enrolment"),
+            full_name="No Enrolment")
+
+    def issue(self, student=None, key="BANK", text=""):
+        return bonafide.issue_bonafide(student=student or self.asha, purpose_key=key,
+                                       purpose_text=text, actor=self.admin)
+
+    def test_issue_for_enrolled_student(self):
+        doc = self.issue()
+        self.assertTrue(doc.serial.startswith("BON/"))
+        self.assertEqual(doc.payload["student_name"], self.asha.full_name)
+        self.assertEqual(doc.payload["section_label"], self.six_a.name)
+        self.assertEqual(doc.payload["purpose"], "Opening a bank account")
+        self.assertEqual(doc.student, self.asha)
+        self.assertEqual(doc.issued_by, self.admin)
+
+    def test_other_requires_text_and_uses_it(self):
+        with self.assertRaises(ValidationError):
+            self.issue(key="OTHER", text="  ")
+        doc = self.issue(key="OTHER", text="Visa application")
+        self.assertEqual(doc.payload["purpose"], "Visa application")
+
+    def test_unknown_purpose_is_refused(self):
+        with self.assertRaises(ValidationError):
+            self.issue(key="HOLIDAY")
+
+    def test_student_without_current_enrolment_is_refused(self):
+        stranger = self.stranger()
+        with self.assertRaises(ValidationError) as caught:
+            self.issue(student=stranger)
+        self.assertIn("no current enrolment", caught.exception.messages[0])
+
+    def test_student_whose_year_has_ended_is_refused(self):
+        self.today = date(2028, 1, 1)  # after the fixture's academic year
+        with self.assertRaises(ValidationError):
+            self.issue()
+
+    def test_view_issues_and_serves_pdf(self):
+        page = self.client.post(reverse("core:bonafide-create"), {
+            "student": self.asha.pk, "purpose": "PASSPORT", "purpose_text": ""})
+        doc = IssuedDocument.objects.get()
+        self.assertRedirects(page, reverse("core:document-pdf", args=[doc.pk]),
+                             fetch_redirect_response=False)
+        pdf = self.client.get(reverse("core:document-pdf", args=[doc.pk]))
+        self.assertEqual(pdf["Content-Type"], "application/pdf")
+        self.assertTrue(pdf.content.startswith(b"%PDF"))
+
+    def test_view_shows_the_refusal_for_a_student_without_enrolment(self):
+        stranger = self.stranger()
+        page = self.client.post(reverse("core:bonafide-create"), {
+            "student": stranger.pk, "purpose": "BANK", "purpose_text": ""})
+        self.assertContains(page, "no current enrolment")
+        self.assertEqual(IssuedDocument.objects.count(), 0)
+
+    def test_teachers_and_guardians_are_forbidden(self):
+        teacher = self.client_class()
+        teacher.login(username="rao", password="pass-12345")
+        for client in (teacher, self.guardian_client()):
+            for name in ("core:document-index", "core:bonafide-create"):
+                with self.subTest(name=name):
+                    self.assertEqual(client.get(reverse(name)).status_code, 403)

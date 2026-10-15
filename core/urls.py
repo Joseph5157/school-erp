@@ -1,6 +1,6 @@
 from django.urls import path
 
-from core import announcement_views, import_views, notification_views, views
+from core import announcement_views, document_views, import_views, notification_views, views
 
 app_name = "core"
 
@@ -352,4 +352,8 @@ urlpatterns = [
          name="announcement-prepare"),
     path("announcements/<int:pk>/withdraw/", announcement_views.announcement_withdraw,
          name="announcement-withdraw"),
+    # Phase 7 piece C: documents
+    path("documents/", document_views.document_index, name="document-index"),
+    path("documents/bonafide/", document_views.bonafide_create, name="bonafide-create"),
+    path("documents/<int:pk>/pdf/", document_views.document_pdf, name="document-pdf"),
 ]

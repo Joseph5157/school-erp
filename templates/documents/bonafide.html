@@ -1,0 +1,10 @@
+{% extends "documents/base.html" %}
+{% block title %}Bonafide certificate {{ serial }}{% endblock %}
+{% block body %}
+{% include "documents/_letterhead.html" %}
+<div class="meta"><span>Serial no. {{ serial }}</span><span>Date: {{ payload.issued_on }}</span></div>
+<h1>Bonafide certificate</h1>
+<p>This is to certify that <strong>{{ payload.student_name }}</strong>{% if payload.date_of_birth %} (date of birth {{ payload.date_of_birth }}){% endif %}{% if payload.admission_number %}, admission no. {{ payload.admission_number }},{% endif %} is a bonafide student of this school, studying in Class {{ payload.class_label }}, Section {{ payload.section_label }}, in the academic year {{ payload.academic_year_label }}.</p>
+<p>This certificate is issued for: {{ payload.purpose }}.</p>
+<div class="signature">Principal{% if payload.letterhead.principal_name %}<br>{{ payload.letterhead.principal_name }}{% endif %}</div>
+{% endblock %}

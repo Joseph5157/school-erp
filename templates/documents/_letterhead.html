@@ -1,0 +1,5 @@
+<div class="letterhead">
+  <div class="name">{{ payload.letterhead.school_name }}</div>
+  {% if payload.letterhead.address %}<div>{{ payload.letterhead.address|linebreaksbr }}</div>{% endif %}
+  {% if payload.letterhead.affiliation_number %}<div>Affiliation no. {{ payload.letterhead.affiliation_number }}</div>{% endif %}
+</div>
