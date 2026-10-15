@@ -12,7 +12,8 @@
 
     {% for enrollment, status_field, note_field in capture_form.rows %}
     <fieldset class="erp-roster-row" data-erp-row>
-        <legend class="erp-roster-name">{{ enrollment.student.full_name }}</legend>
+        <legend class="visually-hidden">{{ enrollment.student.full_name }}</legend>
+        <span class="erp-roster-name" aria-hidden="true">{{ enrollment.student.full_name }}</span>
         <span class="erp-initials" aria-hidden="true">{{ enrollment.student.full_name|slice:":1"|upper }}</span>
         <div class="erp-toggles">
             {% for radio in status_field %}

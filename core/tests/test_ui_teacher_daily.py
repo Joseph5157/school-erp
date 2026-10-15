@@ -1,8 +1,10 @@
 """U2 teacher daily screens: take attendance, My day, attendance history."""
 
 from datetime import date
+from pathlib import Path
 from unittest import mock
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.test import TestCase
@@ -76,7 +78,8 @@ class CapturePartialTests(U2Fixture, TestCase):
     def test_rows_are_fieldsets_named_by_student(self):
         self.draft()
         page = self.teacher.get(self.url)
-        self.assertContains(page, '<legend class="erp-roster-name">Asha</legend>')
+        self.assertContains(page, '<legend class="visually-hidden">Asha</legend>')
+        self.assertContains(page, '<span class="erp-roster-name" aria-hidden="true">Asha</span>')
         self.assertEqual(page.content.decode().count("<fieldset"), 3)
 
     def test_static_counts(self):
@@ -233,3 +236,18 @@ class HistoryTests(U2Fixture, TestCase):
         register.submit(actor=self.rao)
         page = self.teacher.get(reverse("core:my-attendance-register", args=[register.pk]))
         self.assertContains(page, '<span class="erp-pill is-absent">Absent</span>')
+
+
+class RosterStyleTests(U2Fixture, TestCase):
+    """CSS rules the roster depends on; layout itself is checked manually at 360 px."""
+
+    def css(self):
+        return (Path(settings.BASE_DIR) / "static" / "css" / "erp.css").read_text(encoding="utf-8")
+
+    def test_typed_note_stays_visible_after_switching_to_present(self):
+        self.draft()
+        self.assertContains(self.teacher.get(self.url), 'placeholder="Optional, absent only"')
+        self.assertIn(".erp-note:has(input:not(:placeholder-shown))", self.css())
+
+    def test_messages_sit_above_the_action_bar(self):
+        self.assertIn("body:has(.erp-actionbar) .erp-messages", self.css())

@@ -224,9 +224,7 @@ body.has-tabbar .erp-messages {
   padding: .75rem; margin-bottom: .5rem;
 }
 .erp-roster-row[hidden] { display: none; }
-.erp-roster-name {
-  grid-column: 2; grid-row: 1; float: none; width: auto; margin: 0; font-size: 1rem; font-weight: 600;
-}
+.erp-roster-name { grid-column: 2; grid-row: 1; font-weight: 600; }
 .erp-initials {
   grid-column: 1; grid-row: 1; width: 2.25rem; height: 2.25rem; border-radius: 50%;
   display: grid; place-items: center; background: var(--erp-accent-wash); color: var(--erp-accent);
@@ -249,7 +247,8 @@ body.has-tabbar .erp-messages {
 /* Without :has() support the note simply stays visible. */
 @supports selector(:has(*)) {
   .erp-note:not(.is-filled) { display: none; }
-  .erp-roster-row:has(input[value="ABSENT"]:checked) .erp-note { display: block; }
+  .erp-roster-row:has(input[value="ABSENT"]:checked) .erp-note,
+  .erp-note:has(input:not(:placeholder-shown)) { display: block; }
 }
 
 .erp-actionbar {
@@ -259,6 +258,10 @@ body.has-tabbar .erp-messages {
 }
 .erp-actionbar-status { flex: 1 1 100%; font-size: .9rem; color: var(--erp-ink-soft); }
 .erp-actionbar .btn { flex: 1; min-height: 2.75rem; }
+/* On phones, messages sit above the sticky action bar instead of covering Save/Submit. */
+@media (max-width: 991.98px) {
+  body:has(.erp-actionbar) .erp-messages { bottom: calc(7rem + env(safe-area-inset-bottom, 0px)); }
+}
 @media (min-width: 576px) {
   .erp-actionbar-status { flex: 1 1 auto; }
   .erp-actionbar .btn { flex: 0 0 auto; }
