@@ -121,12 +121,13 @@
       return "unmarked";
     }
 
-    function refresh() {
+    // reapply is false while typing so a row never vanishes mid-keystroke.
+    function refresh(reapply) {
       var counts = { all: rows.length, marked: 0, absent: 0, unmarked: 0 };
       rows.forEach(function (row) {
         var status = statusOf(row);
         counts[status] += 1;
-        row.hidden = filter !== "all" && filter !== status;
+        if (reapply) row.hidden = filter !== "all" && filter !== status;
         var p = parts(row);
         if (p.score) p.score.disabled = status === "absent";
       });
@@ -146,7 +147,7 @@
           tabs.querySelectorAll("[data-erp-filter]").forEach(function (other) {
             other.setAttribute("aria-pressed", other === button ? "true" : "false");
           });
-          refresh();
+          refresh(true);
         });
       });
     }
@@ -157,14 +158,14 @@
       if (event.target.value.trim() !== "" && (!p.checked || p.checked.value === "")) {
         p.marked.checked = true;
       }
-      refresh();
+      refresh(false);
     });
     sheet.addEventListener("change", function (event) {
       if (event.target.type !== "radio") return;
       var p = parts(event.target.closest("[data-erp-row]"));
       if (event.target.value === "ABSENT" && p.score) p.score.value = "";
-      refresh();
+      refresh(true);
     });
-    refresh();
+    refresh(true);
   });
 })();
