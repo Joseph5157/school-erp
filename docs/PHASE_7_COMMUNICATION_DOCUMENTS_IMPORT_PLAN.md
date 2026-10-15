@@ -53,6 +53,15 @@ Scope chosen by the owner:
 - To send page: WhatsApp link with the text pre-filled, Mark as sent, Dismiss with a reason; unusable phone numbers show a link to fix the guardian record.
 - No producers yet: absence alerts (Gate 2), announcements (Gate 3) and result-published notices (Gate 4) create the messages.
 
+## Implementation notes (Gates 2 and 4, absence alerts and report-card notices)
+
+- Recipients: guardians with portal access to the student (active grant, not under access review, active portal login). Other linked guardians get nothing. Gate 1 consent applies on top.
+- Absence alert: prepared when a register is submitted, for ABSENT entries, only if the register date is today. A correction to Present dismisses a waiting alert ("Attendance corrected to Present"); a sent alert is never retracted. A correction to Absent prepares an alert on the same day only.
+- Report card notice: prepared when Term results are published; once per student and Term, so republishing never sends again.
+- Links point at the guardian's own portal page and need `PORTAL_BASE_URL` (env); the school cannot choose WhatsApp sending without it.
+- A message that cannot be prepared is logged and skipped; it never blocks submitting a register or publishing results.
+- Message texts (`absence-alert`, `report-card-published`, version 1, English) are seeded by migration 0059.
+
 ---
 
 # 1. Goals
