@@ -2,15 +2,16 @@
 
 import threading
 from datetime import date
-from unittest import skipUnless
+from unittest import mock, skipUnless
 
 from django.db import DatabaseError, connection, connections, transaction
 from django.test import SimpleTestCase, TestCase, TransactionTestCase
 
-from core.documents import serials
+from accounts.models import SecurityEvent
+from core.documents import serials, service
 from core.documents.engine import render_pdf
 from core.forms import SchoolForm
-from core.models import AcademicYear, IssuedDocument
+from core.models import AcademicYear, IssuedDocument, School
 
 TELUGU = "క్ష స్త్ర శ్రీ విద్యార్థి"  # conjuncts: ksha, stra, shri, vidyarthi
 
@@ -99,3 +100,44 @@ class SerialConcurrencyTests(TransactionTestCase):
         for thread in threads:
             thread.join()
         self.assertEqual(sorted(results), [f"BON/2026-27/{n:04d}" for n in range(1, 5)])
+
+
+class IssueServiceTests(TestCase):
+    def setUp(self):
+        self.year = make_year()
+        self.school = School.objects.create(
+            name="Sri Vidya", address="1 Main Road", affiliation_number="AP/1",
+            principal_name="K. Lakshmi")
+
+    def issue(self):
+        return service.issue(document_type="BONAFIDE", academic_year=self.year,
+                             payload={"student_name": "Asha"}, actor=None)
+
+    def test_issue_stores_letterhead_and_records_event(self):
+        doc = self.issue()
+        self.assertEqual(doc.serial, "BON/2026-27/0001")
+        self.assertEqual(doc.payload["letterhead"]["principal_name"], "K. Lakshmi")
+        event = SecurityEvent.objects.get(event_type="DOCUMENT_ISSUED")
+        self.assertEqual(event.detail["serial"], doc.serial)
+
+    def test_reprint_keeps_the_letterhead_it_was_issued_with(self):
+        doc = self.issue()
+        self.school.principal_name = "New Principal"
+        self.school.save()
+        captured = {}
+
+        def fake_render(template, context):
+            captured.update(context)
+            return b"%PDF-fake"
+
+        with mock.patch("core.documents.service.render_pdf", fake_render):
+            service.pdf_for(doc, actor=None)
+        self.assertEqual(captured["payload"]["letterhead"]["principal_name"], "K. Lakshmi")
+        self.assertEqual(
+            SecurityEvent.objects.filter(event_type="DOCUMENT_DOWNLOADED").count(), 1)
+        self.assertEqual(IssuedDocument.objects.count(), 1)  # a reprint adds no row
+
+    def test_issue_without_a_school_row_uses_blank_letterhead(self):
+        School.objects.all().delete()
+        doc = self.issue()
+        self.assertEqual(doc.payload["letterhead"]["school_name"], "")
