@@ -1,6 +1,6 @@
 # UI References (Mobbin)
 
-Status: 34 team picks recorded 2026-10-14 (two search rounds). Direction for the UI/UX redesign; not yet implemented.
+Status: 34 team picks recorded 2026-10-14. U1 Foundation implemented on branch `ui/u1-foundation`; U2–U7 pending (see roadmap).
 Implementation plans: `docs/superpowers/plans/2026-10-14-ui-redesign-roadmap.md`.
 
 Full illustrated report (private artifact, share from its Share menu):
