@@ -341,3 +341,15 @@ class AttendanceSummaryTests(AlertFixture, TestCase):
         page = self.client.get(reverse("core:attendance-summary"), {
             "section": self.six_a.pk, "start": "2026-10-12", "end": "2026-10-01"})
         self.assertContains(page, "end date is before")
+
+
+class DocumentIndexTests(AnnouncementFixture, TestCase):
+    def test_index_lists_links_and_recent_documents(self):
+        doc = bonafide.issue_bonafide(student=self.asha, purpose_key="BANK",
+                                      purpose_text="", actor=self.admin)
+        page = self.client.get(reverse("core:document-index"))
+        self.assertContains(page, doc.serial)
+        self.assertContains(page, reverse("core:bonafide-create"))
+        self.assertContains(page, reverse("core:attendance-summary"))
+        self.assertContains(page, reverse("core:document-report-cards"))
+        self.assertContains(page, reverse("core:document-pdf", args=[doc.pk]))
