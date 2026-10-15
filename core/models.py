@@ -3215,12 +3215,21 @@ class NotificationTemplate(models.Model):
     def clean(self):
         super().clean()
         try:
-            names = {name for _, name, _, _ in string.Formatter().parse(self.body) if name}
+            fields = [
+                (name, spec, conversion)
+                for _, name, spec, conversion in string.Formatter().parse(self.body)
+                if name is not None
+            ]
         except ValueError:
             raise ValidationError({"body": "The text has an unmatched { or }."}) from None
-        if names - set(NOTIFICATION_PARAMETERS):
-            allowed = ", ".join(f"{{{name}}}" for name in NOTIFICATION_PARAMETERS)
+        allowed = ", ".join(f"{{{name}}}" for name in NOTIFICATION_PARAMETERS)
+        if any(name not in NOTIFICATION_PARAMETERS for name, _, _ in fields):
             raise ValidationError({"body": f"Only these placeholders are allowed: {allowed}."})
+        if any(spec or conversion for _, spec, conversion in fields):
+            raise ValidationError({
+                "body": "Placeholders cannot have formatting; use "
+                "{first_name}, {date} or {portal_url} as they are."
+            })
 
     def __str__(self):
         return f"{self.key} v{self.version} ({self.language})"

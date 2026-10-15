@@ -60,7 +60,9 @@ def notification_mark_sent(request, pk):
         if result.status == Notification.Status.SENT:
             messages.success(request, "Marked as sent.")
         else:
-            messages.info(request, "The guardian has opted out; the message was not sent.")
+            messages.info(
+                request, "The guardian has opted out, so this message is recorded as not sent."
+            )
     return redirect("core:notifications-to-send")
 
 

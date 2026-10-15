@@ -117,9 +117,13 @@ def _opted_in_ids(guardian_ids):
 
 def to_send():
     """PREPARED messages, oldest first, after skipping any without current consent."""
-    pending = Notification.objects.filter(status=PREPARED)
-    allowed = _opted_in_ids(set(pending.values_list("guardian_id", flat=True)))
-    pending.exclude(guardian_id__in=allowed).update(status=SKIPPED, updated_at=timezone.now())
+    snapshot = list(Notification.objects.filter(status=PREPARED).values_list("pk", "guardian_id"))
+    allowed = _opted_in_ids({guardian_id for _, guardian_id in snapshot})
+    blocked = [pk for pk, guardian_id in snapshot if guardian_id not in allowed]
+    if blocked:
+        Notification.objects.filter(pk__in=blocked, status=PREPARED).update(
+            status=SKIPPED, updated_at=timezone.now()
+        )
     return (
         Notification.objects.filter(status=PREPARED)
         .select_related("guardian", "student", "template")

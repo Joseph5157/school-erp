@@ -1,5 +1,7 @@
 """Phase 7 Gate 1: consent, notification outbox and ASSIST sending (ADR 0015)."""
 
+from unittest import mock
+
 from django.core.exceptions import ValidationError
 from django.db import DatabaseError, transaction
 from django.test import TestCase
@@ -69,6 +71,12 @@ class ModelTests(NotificationFixture, TestCase):
     def test_template_rejects_broken_braces(self):
         with self.assertRaises(ValidationError):
             NotificationTemplate(key="x", version=1, body="Hello {first_name").full_clean()
+
+    def test_template_rejects_positional_nested_and_formatted_fields(self):
+        bodies = ("Hi {}", "Hi {0}", "{first_name:{date}}", "{first_name!r}", "{first_name:>10}")
+        for body in bodies:
+            with self.subTest(body=body), self.assertRaises(ValidationError):
+                NotificationTemplate(key="x", version=1, body=body).full_clean()
 
     def test_consent_history_newest_first(self):
         first = self.opt_in()
@@ -144,6 +152,31 @@ class ServiceTests(NotificationFixture, TestCase):
         self.assertTrue(notifications.is_opted_in(self.guardian))
         self.opt_out()
         self.assertFalse(notifications.is_opted_in(self.guardian))
+
+    def test_to_send_does_not_skip_message_created_mid_call(self):
+        self.opt_in()
+        self.enqueue()
+        other = Guardian.objects.create(full_name="Sita Rao", phone="98765 00000")
+        StudentGuardian.objects.create(
+            student=self.asha, guardian=other, relationship_type=RelationshipType.MOTHER
+        )
+        self.opt_in(other)
+        real = notifications._opted_in_ids
+        created = []
+
+        def racing(guardian_ids):
+            result = real(guardian_ids)
+            if not created:
+                created.append(self.enqueue(guardian=other))
+            return result
+
+        with mock.patch("core.notifications._opted_in_ids", racing):
+            listed = list(notifications.to_send())
+        late = created[0]
+        late.refresh_from_db()
+        self.assertEqual(late.status, Notification.Status.PREPARED)
+        self.assertIn(late, listed)
+        self.assertIn(late, list(notifications.to_send()))
 
     def test_portal_only_creates_nothing(self):
         School.objects.filter(pk=self.school.pk).update(notification_channel="PORTAL_ONLY")
@@ -329,6 +362,14 @@ class ToSendPageTests(NotificationFixture, TestCase):
         self.assertContains(response, "Marked as sent.")
         self.assertContains(response, "0 waiting")
         self.assertContains(response, "1 sent today")
+
+    def test_mark_sent_after_opt_out_wording(self):
+        self.opt_out()
+        response = self.client.post(self.mark_sent_url(), follow=True)
+        self.assertContains(
+            response, "The guardian has opted out, so this message is recorded as not sent."
+        )
+        self.assertNotContains(response, "the message was not sent")
 
     def test_mark_sent_twice_is_refused(self):
         self.client.post(self.mark_sent_url())
