@@ -1,11 +1,14 @@
 """Phase 7 Gate 3: announcements (ADR 0015)."""
 
+from datetime import date
+
 from django.core.exceptions import ValidationError
 from django.db import DatabaseError, transaction
 from django.test import TestCase
 
 from core import announcements
-from core.models import Announcement, NotificationTemplate
+from core import guardian_accounts as ga
+from core.models import Announcement, GuardianContactConsent, NotificationTemplate
 from core.tests.test_phase7_alerts import AlertFixture
 
 TEXT = "Dear parent, there is a new notice from the school. Read it here: {portal_url}"
@@ -116,3 +119,62 @@ class HistoryGuardTests(AnnouncementFixture, TestCase):
         rows = Announcement.objects.filter(pk=notice.pk)
         self.refused(rows, withdrawn_at=None, withdrawn_by=None, withdrawal_reason="")
         self.refused(rows, withdrawal_reason="Other reason")
+
+
+class AudienceTests(AnnouncementFixture, TestCase):
+    def guardians(self, notice):
+        return {g.student_guardian.guardian for g in announcements.recipient_grants(notice)}
+
+    def test_whole_school_reaches_every_portal_guardian(self):
+        self.assertEqual(self.guardians(self.notice()), {self.meena, self.other})
+
+    def test_class_and_section_reach_only_matching_guardians(self):
+        ravi_grant = ga.grant_student_access(student_guardian=self.ravi_link, actor=self.admin)
+        self.assertEqual(self.guardians(self.notice(CLASS, class_grade=self.grade6)),
+                         {self.meena, self.other})
+        self.assertEqual(self.guardians(self.notice(SECTION, section=self.six_a)),
+                         {self.meena, self.other})
+        only_b = announcements.recipient_grants(self.notice(SECTION, section=self.six_b))
+        self.assertEqual(only_b, [ravi_grant])
+
+    def test_one_grant_per_guardian_with_two_children(self):
+        ga.grant_student_access(student_guardian=self.ravi_link, actor=self.admin)
+        grants = announcements.recipient_grants(self.notice())
+        self.assertEqual(sorted(g.student_guardian.guardian.pk for g in grants),
+                         sorted([self.meena.pk, self.other.pk]))
+
+    def test_without_portal_access_or_with_inactive_login_reaches_nobody(self):
+        ga.revoke_student_access(grant=self.bina_grant, actor=self.admin, reason="Left")
+        self.user.is_active = False
+        self.user.save(update_fields=["is_active"])
+        self.assertEqual(self.guardians(self.notice()), set())
+
+    def test_audience_is_todays_enrollments(self):
+        notice = self.notice(SECTION, section=self.six_a)
+        self.assertEqual(set(announcements.audience_students(notice)), {self.asha, self.bina})
+        after_year = date(2027, 4, 5)
+        self.assertEqual(list(announcements.audience_students(notice, on_date=after_year)), [])
+
+    def test_counts_portal_guardians_and_whatsapp_opt_ins(self):
+        self.consent(self.other, GuardianContactConsent.Status.OPTED_OUT)
+        self.assertEqual(announcements.audience_counts(self.notice()),
+                         {"guardians": 2, "opted_in": 1})
+
+
+class VisibilityTests(AnnouncementFixture, TestCase):
+    def test_guardian_sees_matching_live_notices_newest_first(self):
+        everyone = self.notice(title="Everyone")
+        mine = self.notice(SECTION, section=self.six_a, title="6A")
+        self.notice(SECTION, section=self.six_b, title="6B")  # Ravi is not granted
+        withdrawn = self.notice(title="Withdrawn")
+        announcements.withdraw(withdrawn, actor=self.admin, reason="Wrong")
+        self.assertEqual(announcements.visible_announcements(self.user), [mine, everyone])
+
+    def test_no_current_enrollment_sees_nothing(self):
+        self.notice()
+        self.today = date(2027, 4, 5)  # after the year: Asha's access is under review
+        self.assertEqual(announcements.visible_announcements(self.user), [])
+
+    def test_non_guardian_sees_nothing(self):
+        self.notice()
+        self.assertEqual(announcements.visible_announcements(self.admin), [])
