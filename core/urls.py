@@ -355,5 +355,9 @@ urlpatterns = [
     # Phase 7 piece C: documents
     path("documents/", document_views.document_index, name="document-index"),
     path("documents/bonafide/", document_views.bonafide_create, name="bonafide-create"),
+    path("documents/report-cards/", document_views.document_report_cards,
+         name="document-report-cards"),
+    path("documents/report-cards/<int:pk>/pdf/", document_views.document_report_card_pdf,
+         name="document-report-card-pdf"),
     path("documents/<int:pk>/pdf/", document_views.document_pdf, name="document-pdf"),
 ]

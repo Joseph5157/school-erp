@@ -3,6 +3,7 @@
 {% block content %}
 <h1 class="h3 mb-1">{{ pub.term_label }} report card</h1>
 <p class="text-muted"><a href="{% url 'portal:child' grant.public_id %}">{{ student.full_name }}</a> &middot; {{ pub.academic_year_label }} &middot; {{ pub.class_grade_label }}, Section {{ pub.section_label }}</p>
+<p><a class="btn btn-outline-primary btn-sm" href="{% url 'portal:report-card-pdf' grant.public_id pub.public_id %}">Download PDF</a></p>
 {% if pub.is_partial %}<div class="alert alert-secondary">Some results for this Term are not yet published.</div>{% endif %}
 <table class="table table-sm">
     <thead><tr><th>Subject</th><th>Assessment</th><th>Date</th><th>Marks</th><th>%</th><th>Grade</th><th>Pass/Fail</th></tr></thead>

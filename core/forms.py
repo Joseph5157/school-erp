@@ -969,6 +969,10 @@ class ContactConsentForm(forms.Form):
     )
 
 
+class DocumentStudentForm(forms.Form):
+    student = forms.ModelChoiceField(Student.objects.order_by("full_name"))
+
+
 class BonafideForm(forms.Form):
     student = forms.ModelChoiceField(Student.objects.order_by("full_name"))
     purpose = forms.ChoiceField(choices=bonafide.PURPOSES)

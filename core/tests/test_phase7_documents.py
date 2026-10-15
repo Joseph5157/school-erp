@@ -10,10 +10,12 @@ from django.test import SimpleTestCase, TestCase, TransactionTestCase
 from django.urls import reverse
 
 from accounts.models import SecurityEvent
+from core import publication
 from core.documents import bonafide, serials, service
 from core.documents.engine import render_pdf
 from core.forms import SchoolForm
-from core.models import AcademicYear, Applicant, IssuedDocument, School, Student
+from core.models import AcademicYear, Applicant, IssuedDocument, School, Student, TermPublication
+from core.tests.test_phase6_publication import PublicationFixture
 from core.tests.test_phase7_announcements import AnnouncementFixture
 
 TELUGU = "క్ష స్త్ర శ్రీ విద్యార్థి"  # conjuncts: ksha, stra, shri, vidyarthi
@@ -210,3 +212,63 @@ class BonafideTests(AnnouncementFixture, TestCase):
             for name in ("core:document-index", "core:bonafide-create"):
                 with self.subTest(name=name):
                     self.assertEqual(client.get(reverse(name)).status_code, 403)
+
+
+class ReportCardPdfTests(PublicationFixture, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.publish()
+        self.pub = TermPublication.objects.get(student=self.asha, term=self.term1)
+        self.guardian_url = reverse(
+            "portal:report-card-pdf", args=[self.asha_grant.public_id, self.pub.public_id])
+        self.office_url = reverse("core:document-report-card-pdf", args=[self.pub.pk])
+
+    def test_guardian_downloads_own_childs_card(self):
+        response = self.portal.get(self.guardian_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertTrue(response.content.startswith(b"%PDF"))
+        doc = IssuedDocument.objects.get()
+        self.assertTrue(doc.serial.startswith("RC/"))
+        self.assertIsNone(doc.issued_by)
+        self.assertEqual(doc.student, self.asha)
+        self.assertEqual(doc.payload["entries"][0]["score"], "15.00")
+
+    def test_second_download_reuses_serial_and_snapshot(self):
+        self.portal.get(self.guardian_url)
+        self.portal.get(self.guardian_url)
+        self.assertEqual(IssuedDocument.objects.count(), 1)
+        self.assertEqual(
+            SecurityEvent.objects.filter(event_type="DOCUMENT_DOWNLOADED").count(), 2)
+
+    def test_other_guardians_child_is_404(self):
+        bina_pub = TermPublication.objects.get(student=self.bina, term=self.term1)
+        url = reverse("portal:report-card-pdf",
+                      args=[self.asha_grant.public_id, bina_pub.public_id])
+        self.assertEqual(self.portal.get(url).status_code, 404)
+
+    def test_stale_publication_gives_nothing_to_guardian_or_office(self):
+        publication.mark_stale_for_result(self.result, actor=self.admin)
+        self.assertEqual(self.portal.get(self.guardian_url).status_code, 404)
+        self.assertEqual(self.client.get(self.office_url).status_code, 404)
+        self.assertEqual(IssuedDocument.objects.count(), 0)
+
+    def test_office_prints_any_published_card(self):
+        response = self.client.get(self.office_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.content.startswith(b"%PDF"))
+        self.assertEqual(IssuedDocument.objects.get().issued_by, self.admin)
+
+    def test_office_lookup_lists_a_students_cards(self):
+        page = self.client.get(reverse("core:document-report-cards"),
+                               {"student": self.asha.pk})
+        self.assertContains(page, self.pub.term_label)
+        self.assertContains(page, self.office_url)
+
+    def test_download_button_is_on_the_portal_card_page(self):
+        page = self.portal.get(reverse(
+            "portal:report-card", args=[self.asha_grant.public_id, self.pub.public_id]))
+        self.assertContains(page, self.guardian_url)
+
+    def test_guardian_cannot_use_the_office_route(self):
+        self.assertEqual(self.portal.get(self.office_url).status_code, 403)

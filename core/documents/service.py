@@ -30,6 +30,10 @@ def letterhead(school=None):
     }
 
 
+def _may_issue(actor):
+    return bool(getattr(actor, "pk", None)) and actor.has_perm("core.issue_document")
+
+
 def issue(*, document_type, academic_year, payload, actor, student=None, publication=None):
     with transaction.atomic():
         document = IssuedDocument.objects.create(
@@ -39,7 +43,9 @@ def issue(*, document_type, academic_year, payload, actor, student=None, publica
             student=student,
             publication=publication,
             payload={**payload, "letterhead": letterhead()},
-            issued_by=actor if getattr(actor, "pk", None) else None,
+            # Only staff who may issue are recorded as the issuer; a guardian's first
+            # download is still audited through the security event's actor.
+            issued_by=actor if _may_issue(actor) else None,
         )
         SecurityEvent.record(
             Event.DOCUMENT_ISSUED, actor=actor, student=student,
