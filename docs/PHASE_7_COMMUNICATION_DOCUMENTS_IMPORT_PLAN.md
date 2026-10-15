@@ -72,6 +72,19 @@ Scope chosen by the owner:
 - The message text (`announcement`, version 1, English) is seeded by migration 0062.
 - A guardian recorded as "no consent" when messages were prepared is not reached later for that notice, even after opting in (the outbox never repeats a message).
 
+## Implementation notes (Gates 5 and 6 and the Gate 7 attendance summary, documents)
+
+- PDFs are rendered by WeasyPrint from HTML templates with bundled fonts (Noto Sans for Latin, Noto Sans Telugu; SIL OFL, in `static/fonts/`). The spike (Telugu conjuncts such as క్ష, స్త్ర, శ్రీ, విద్యార్థి next to English) rendered correctly; `core/tests/test_phase7_documents.py` keeps a regression check that both fonts are embedded.
+- Every issued document is an immutable `IssuedDocument` (database triggers refuse UPDATE and DELETE) holding the exact printed content and the letterhead as it was. Reprints render from that snapshot, never from live data, and add no new row. Serial numbers are `BON/`, `RC/`, `ATT/` + academic year + a four-digit counter, allocated under a row lock per type and year.
+- Every issue and every download writes a security event (`DOCUMENT_ISSUED`, `DOCUMENT_DOWNLOADED`).
+- Bonafide certificate: administrators pick a student and a purpose (bank account, passport, scholarship, or typed text for Other). The student must be enrolled today inside the academic year; otherwise nothing is issued.
+- Report card PDF: made from the immutable publication snapshot. Only PUBLISHED, unchanged publications produce a PDF (STALE, superseded and withdrawn ones give nothing, for guardians and office alike). The first download issues the document and its serial; later downloads reuse it. Guardians download only their own child's current card from the portal report card page; office staff use Documents → Report card PDF.
+- Attendance summary: per section and date range inside one academic year; counts only submitted, eligible entries (the Phase 2 rule). Shown on screen and issued as a PDF with a serial number.
+- School settings gained address, affiliation number and principal's name for the letterhead. A logo is not included yet: the app has no image library or persistent media storage.
+- Permission: `issue_document` and `view_issueddocument` for School Administrators (migration 0066). Teachers and guardians have no office document access.
+- Deploy: WeasyPrint needs the Pango text libraries on the server (Linux: `libpango-1.0-0`, `libpangoft2-1.0-0`, `libharfbuzz0b`; no font packages are needed because the fonts are bundled). On Windows development machines install MSYS2 and `pacman -S mingw-w64-x86_64-pango`; the engine finds `C:\msys64\mingw64\bin` itself.
+- Still open: Transfer Certificate (waiting for the school's format), a letterhead logo, and dues-cleared checks (Fees).
+
 ---
 
 # 1. Goals
