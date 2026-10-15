@@ -1,7 +1,10 @@
 """U1 UI foundation: static files, shell, navigation, auth pages, components."""
 
 from django.conf import settings
+from django.contrib import messages as django_messages
 from django.contrib.auth.models import AnonymousUser, Permission
+from django.contrib.messages.storage.fallback import FallbackStorage
+from django.template.loader import render_to_string
 from django.test import RequestFactory, TestCase
 from django.urls import resolve, reverse
 
@@ -246,3 +249,42 @@ class AuthPageTests(Phase4Fixture, TestCase):
         self.client.login(username="admin", password="pass-12345")
         page = self.client.get(reverse("password_change"))
         self.assertContains(page, "You must choose a new password before you continue.")
+
+
+class ComponentTests(Phase4Fixture, TestCase):
+    def setUp(self):
+        self.build_phase4()
+
+    def render_messages(self, level, text):
+        request = RequestFactory().get("/")
+        request.session = self.client.session
+        request._messages = FallbackStorage(request)
+        django_messages.add_message(request, level, text)
+        context = {"messages": django_messages.get_messages(request)}
+        return render_to_string("partials/_messages.html", context)
+
+    def test_messages_live_region(self):
+        html = self.render_messages(django_messages.SUCCESS, "Saved.")
+        self.assertIn('role="status"', html)
+        self.assertIn("alert-success", html)
+        self.assertIn("data-erp-autohide", html)
+
+    def test_error_message_uses_danger_and_stays(self):
+        html = self.render_messages(django_messages.ERROR, "Could not save.")
+        self.assertIn("alert-danger", html)
+        self.assertNotIn("alert-error", html)
+        self.assertNotIn("data-erp-autohide", html)
+
+    def test_empty_partial(self):
+        context = {"title": "Nothing yet", "text": "Add one."}
+        html = render_to_string("partials/_empty.html", context)
+        self.assertIn('class="erp-empty"', html)
+        self.assertIn("Nothing yet", html)
+        self.assertIn("Add one.", html)
+
+    def test_teacher_without_duty_sees_empty_state(self):
+        self.make_user("newteacher", self.teachers)
+        self.client.login(username="newteacher", password="pass-12345")
+        page = self.client.get(reverse("core:my-home"))
+        self.assertContains(page, "You are not a class teacher today.")
+        self.assertContains(page, 'class="erp-empty"')

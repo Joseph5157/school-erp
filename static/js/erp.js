@@ -16,4 +16,16 @@
       input.focus();
     });
   });
+
+  // Success and info messages close after 6 seconds; warnings and errors stay until dismissed.
+  var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  document.querySelectorAll("[data-erp-autohide]").forEach(function (alert) {
+    window.setTimeout(function () {
+      if (window.bootstrap && window.bootstrap.Alert && !reduceMotion) {
+        window.bootstrap.Alert.getOrCreateInstance(alert).close();
+      } else {
+        alert.remove();
+      }
+    }, 6000);
+  });
 })();

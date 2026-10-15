@@ -12,6 +12,6 @@
     {% endfor %}
 </div>
 {% else %}
-<p>No students are linked to your account yet. Please contact the school office.</p>
+{% include "partials/_empty.html" with title="No students yet" text="No students are linked to your account yet. Please contact the school office." %}
 {% endif %}
 {% endblock %}
