@@ -53,6 +53,7 @@ from core.forms import (
     ClassGradeForm,
     ClassTeacherAssignForm,
     ClassTeacherEndForm,
+    ContactConsentForm,
     GradeBoundaryForm,
     GradingScaleForm,
     GuardianAccountCreateForm,
@@ -1798,6 +1799,10 @@ def guardian_detail(request, pk):
         context["events"] = SecurityEvent.objects.filter(
             guardian_id_ref=guardian.pk, event_class=SecurityEvent.EventClass.HISTORY
         ).select_related("actor", "subject_user")[:50]
+    if request.user.has_perm("core.view_guardiancontactconsent"):
+        context["consents"] = list(guardian.contact_consents.select_related("recorded_by"))
+        if request.user.has_perm("core.add_guardiancontactconsent"):
+            context["consent_form"] = ContactConsentForm()
     return render(request, "core/guardian_detail.html", context)
 
 

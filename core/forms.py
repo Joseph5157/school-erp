@@ -21,6 +21,7 @@ from core.models import (
     GradingScale,
     Guardian,
     GuardianAccount,
+    GuardianContactConsent,
     ResultStatus,
     School,
     SchoolCalendarDay,
@@ -32,9 +33,19 @@ from core.models import (
 
 
 class SchoolForm(forms.ModelForm):
+    SELECTABLE_MODES = (School.NotificationMode.PORTAL_ONLY, School.NotificationMode.ASSIST)
+
     class Meta:
         model = School
-        fields = ["name"]
+        fields = ["name", "notification_channel"]
+        widgets = {"notification_channel": forms.RadioSelect}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["notification_channel"].choices = [
+            (value, label) for value, label in School.NotificationMode.choices
+            if value in self.SELECTABLE_MODES
+        ]
 
 
 class AcademicYearForm(forms.ModelForm):
@@ -924,3 +935,20 @@ class ImportUploadForm(forms.Form):
             elif start > business_today():
                 self.add_error("enrollment_start_date", "The start date cannot be in the future.")
         return cleaned
+
+
+# --- Phase 7 Gate 1: guardian consent (ADR 0015) ---------------------------
+
+
+class ContactConsentForm(forms.Form):
+    status = forms.ChoiceField(
+        choices=GuardianContactConsent.Status.choices, widget=forms.RadioSelect, label="Decision"
+    )
+    source = forms.ChoiceField(
+        choices=GuardianContactConsent.Source.choices, label="How",
+        widget=forms.Select(attrs={"class": "form-select form-select-sm"}),
+    )
+    note = forms.CharField(
+        max_length=200, required=False, label="Note (optional)",
+        widget=forms.TextInput(attrs={"class": "form-control form-control-sm"}),
+    )

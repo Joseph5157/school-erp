@@ -45,6 +45,14 @@ Scope chosen by the owner:
 - Permissions: `core.run_import` and `core.view_importbatch`, granted to the
   School Administrators group. New dependency: openpyxl.
 
+## Implementation notes (Gate 1, notifications foundation)
+
+- Consent is recorded by administrators on the guardian page (source: paper form, in person, phone call, other). Append-only; the latest record is current; no record means no messages.
+- School setting "Messages to guardians": Portal only (default) or WhatsApp sent by office staff (ASSIST).
+- Outbox idempotency key: `type:guardian:student:subject`. Parameters are limited to first_name, date and portal_url, enforced in code and in template validation.
+- To send page: WhatsApp link with the text pre-filled, Mark as sent, Dismiss with a reason; unusable phone numbers show a link to fix the guardian record.
+- No producers yet: absence alerts (Gate 2), announcements (Gate 3) and result-published notices (Gate 4) create the messages.
+
 ---
 
 # 1. Goals

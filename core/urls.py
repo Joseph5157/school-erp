@@ -1,6 +1,6 @@
 from django.urls import path
 
-from core import import_views, views
+from core import import_views, notification_views, views
 
 app_name = "core"
 
@@ -228,6 +228,11 @@ urlpatterns = [
     path("guardians/create/", views.guardian_create, name="guardian-create"),
     path("guardians/<int:pk>/", views.guardian_detail, name="guardian-detail"),
     path(
+        "guardians/<int:pk>/consent/",
+        notification_views.guardian_consent_record,
+        name="guardian-consent-record",
+    ),
+    path(
         "guardians/<int:pk>/account/create/",
         views.guardian_account_create,
         name="guardian-account-create",
@@ -324,5 +329,17 @@ urlpatterns = [
         "imports/<int:pk>/problems.csv",
         import_views.import_issues_csv,
         name="import-issues-csv",
+    ),
+    # Phase 7 Gate 1: notifications (ADR 0015)
+    path("notifications/to-send/", notification_views.to_send, name="notifications-to-send"),
+    path(
+        "notifications/<int:pk>/sent/",
+        notification_views.notification_mark_sent,
+        name="notification-mark-sent",
+    ),
+    path(
+        "notifications/<int:pk>/dismiss/",
+        notification_views.notification_dismiss,
+        name="notification-dismiss",
     ),
 ]

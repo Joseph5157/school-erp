@@ -1,4 +1,5 @@
 import datetime
+import string
 import uuid
 from decimal import Decimal
 
@@ -50,7 +51,19 @@ class School(models.Model):
 
     SINGLETON_ID = 1
 
+    class NotificationMode(models.TextChoices):
+        PORTAL_ONLY = "PORTAL_ONLY", "Portal only (no WhatsApp messages)"
+        ASSIST = "ASSIST", "WhatsApp, sent by office staff (ASSIST)"
+        API = "API", "WhatsApp Business API"
+        SMS = "SMS", "SMS"
+
     name = models.CharField(max_length=255)
+    notification_channel = models.CharField(
+        "Messages to guardians",
+        max_length=12,
+        choices=NotificationMode.choices,
+        default=NotificationMode.PORTAL_ONLY,
+    )
     singleton_id = models.PositiveSmallIntegerField(
         default=SINGLETON_ID, unique=True, editable=False
     )
@@ -3127,3 +3140,159 @@ class ImportRowResult(models.Model):
 
     def __str__(self):
         return f"{self.sheet} row {self.row_number}: {self.message}"
+
+
+# --- Phase 7 Gate 1: consent and notification outbox (ADR 0015) -------------
+
+NOTIFICATION_PARAMETERS = ("first_name", "date", "portal_url")
+
+
+class GuardianContactConsent(models.Model):
+    """One recorded opt-in or opt-out. Append-only; the latest row is current."""
+
+    class Channel(models.TextChoices):
+        WHATSAPP = "WHATSAPP", "WhatsApp"
+
+    class Status(models.TextChoices):
+        OPTED_IN = "OPTED_IN", "Opted in"
+        OPTED_OUT = "OPTED_OUT", "Opted out"
+
+    class Source(models.TextChoices):
+        PAPER_FORM = "PAPER_FORM", "Paper form"
+        IN_PERSON = "IN_PERSON", "In person"
+        PHONE_CALL = "PHONE_CALL", "Phone call"
+        OTHER = "OTHER", "Other"
+
+    guardian = models.ForeignKey(
+        Guardian, on_delete=models.PROTECT, related_name="contact_consents"
+    )
+    channel = models.CharField(max_length=12, choices=Channel.choices, default=Channel.WHATSAPP)
+    status = models.CharField(max_length=10, choices=Status.choices)
+    source = models.CharField(max_length=12, choices=Source.choices)
+    note = models.CharField(max_length=200, blank=True)
+    recorded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
+    )
+    recorded_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-recorded_at", "-pk"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(status__in=["OPTED_IN", "OPTED_OUT"]),
+                name="guardiancontactconsent_status_valid",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.guardian} {self.get_channel_display()} {self.get_status_display()}"
+
+
+class NotificationTemplate(models.Model):
+    """A versioned message text. Approved bodies never change; edit = new version."""
+
+    key = models.SlugField(max_length=50)
+    channel = models.CharField(
+        max_length=12,
+        choices=GuardianContactConsent.Channel.choices,
+        default=GuardianContactConsent.Channel.WHATSAPP,
+    )
+    language = models.CharField(max_length=10, default="en")
+    version = models.PositiveIntegerField()
+    body = models.TextField()
+    approved = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["key", "channel", "language", "-version"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["key", "channel", "language", "version"],
+                name="notificationtemplate_unique_version",
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        try:
+            fields = [
+                (name, spec, conversion)
+                for _, name, spec, conversion in string.Formatter().parse(self.body)
+                if name is not None
+            ]
+        except ValueError:
+            raise ValidationError({"body": "The text has an unmatched { or }."}) from None
+        allowed = ", ".join(f"{{{name}}}" for name in NOTIFICATION_PARAMETERS)
+        if any(name not in NOTIFICATION_PARAMETERS for name, _, _ in fields):
+            raise ValidationError({"body": f"Only these placeholders are allowed: {allowed}."})
+        if any(spec or conversion for _, spec, conversion in fields):
+            raise ValidationError({
+                "body": "Placeholders cannot have formatting; use "
+                "{first_name}, {date} or {portal_url} as they are."
+            })
+
+    def __str__(self):
+        return f"{self.key} v{self.version} ({self.language})"
+
+
+class Notification(models.Model):
+    """One message to one guardian, in the outbox (ADR 0015)."""
+
+    class Type(models.TextChoices):
+        ABSENCE = "ABSENCE", "Absence alert"
+        RESULT_PUBLISHED = "RESULT_PUBLISHED", "Report card published"
+        ANNOUNCEMENT = "ANNOUNCEMENT", "Announcement"
+
+    class Status(models.TextChoices):
+        QUEUED = "QUEUED", "Queued"
+        PREPARED = "PREPARED", "Ready to send"
+        SENT = "SENT", "Sent"
+        DELIVERED = "DELIVERED", "Delivered"
+        FAILED = "FAILED", "Failed"
+        SKIPPED_NO_CONSENT = "SKIPPED_NO_CONSENT", "Skipped — no consent"
+        DISMISSED = "DISMISSED", "Dismissed"
+
+    guardian = models.ForeignKey(Guardian, on_delete=models.PROTECT, related_name="notifications")
+    student = models.ForeignKey(
+        "Student", on_delete=models.PROTECT, null=True, blank=True, related_name="notifications"
+    )
+    type = models.CharField(max_length=20, choices=Type.choices)
+    template = models.ForeignKey(
+        NotificationTemplate, on_delete=models.PROTECT, related_name="notifications"
+    )
+    parameters = models.JSONField(default=dict)
+    channel_mode = models.CharField(max_length=12, choices=School.NotificationMode.choices)
+    status = models.CharField(max_length=20, choices=Status.choices)
+    idempotency_key = models.CharField(max_length=200, unique=True)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    error_code = models.CharField(max_length=50, blank=True)
+    provider_message_id = models.CharField(max_length=100, blank=True)
+    marked_sent_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True,
+        related_name="+",
+    )
+    marked_sent_at = models.DateTimeField(null=True, blank=True)
+    dismissed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True,
+        related_name="+",
+    )
+    dismissed_at = models.DateTimeField(null=True, blank=True)
+    dismiss_reason = models.CharField(max_length=200, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["created_at", "pk"]
+        permissions = [("send_notification", "Can send prepared notifications")]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(status__in=[
+                    "QUEUED", "PREPARED", "SENT", "DELIVERED", "FAILED",
+                    "SKIPPED_NO_CONSENT", "DISMISSED",
+                ]),
+                name="notification_status_valid",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.get_type_display()} to {self.guardian} ({self.get_status_display()})"
