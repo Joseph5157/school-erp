@@ -15,6 +15,7 @@ from core.models import (
     School,
     StudentGuardian,
 )
+from core.navigation import office_nav
 from core.tests.phase4_fixtures import Phase4Fixture
 
 BODY = "Dear parent, {first_name} was absent on {date}. Details: {portal_url}"
@@ -300,3 +301,73 @@ class ConsentPageTests(NotificationFixture, TestCase):
                          {"name": "Greenwood High", "notification_channel": "API"})
         self.school.refresh_from_db()
         self.assertEqual(self.school.notification_channel, School.NotificationMode.ASSIST)
+
+
+class ToSendPageTests(NotificationFixture, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.client.login(username="admin", password="pass-12345")
+        self.url = reverse("core:notifications-to-send")
+        self.opt_in()
+        self.message = notifications.enqueue(
+            guardian=self.guardian, student=self.asha, type=Notification.Type.ABSENCE,
+            template_key="absence_alert", parameters=self.params(), subject="2026-10-12",
+        )
+
+    def mark_sent_url(self):
+        return reverse("core:notification-mark-sent", args=[self.message.pk])
+
+    def test_lists_prepared_with_send_link(self):
+        page = self.client.get(self.url)
+        self.assertContains(page, "1 waiting")
+        self.assertContains(page, "Ravi Kumar")
+        self.assertContains(page, "https://wa.me/919876543210?text=")
+        self.assertContains(page, "Asha was absent on 12 Oct 2026")
+
+    def test_mark_sent_and_sent_today(self):
+        response = self.client.post(self.mark_sent_url(), follow=True)
+        self.assertContains(response, "Marked as sent.")
+        self.assertContains(response, "0 waiting")
+        self.assertContains(response, "1 sent today")
+
+    def test_mark_sent_twice_is_refused(self):
+        self.client.post(self.mark_sent_url())
+        response = self.client.post(self.mark_sent_url(), follow=True)
+        self.assertContains(response, "no longer waiting to be sent")
+        self.assertEqual(Notification.objects.get().marked_sent_by, self.admin)
+
+    def test_dismiss_needs_reason(self):
+        url = reverse("core:notification-dismiss", args=[self.message.pk])
+        response = self.client.post(url, {"reason": ""}, follow=True)
+        self.assertContains(response, "Give a reason")
+        self.client.post(url, {"reason": "Parent already informed"})
+        self.message.refresh_from_db()
+        self.assertEqual(self.message.status, Notification.Status.DISMISSED)
+
+    def test_unusable_phone_shows_fix_link(self):
+        Guardian.objects.filter(pk=self.guardian.pk).update(phone="N/A")
+        page = self.client.get(self.url)
+        self.assertContains(page, "Phone number missing or not usable")
+        self.assertContains(page, reverse("core:guardian-detail", args=[self.guardian.pk]))
+        self.assertNotContains(page, "https://wa.me/")
+
+    def test_portal_only_notice(self):
+        School.objects.filter(pk=self.school.pk).update(notification_channel="PORTAL_ONLY")
+        self.assertContains(self.client.get(self.url), "WhatsApp messages are switched off")
+
+    def test_empty_state(self):
+        notifications.dismiss(self.message, user=self.admin, reason="test")
+        self.assertContains(self.client.get(self.url), "Nothing to send.")
+
+    def test_access(self):
+        teacher = self.client_class()
+        teacher.login(username="rao", password="pass-12345")
+        self.assertEqual(teacher.get(self.url).status_code, 403)
+        self.assertEqual(teacher.post(self.mark_sent_url()).status_code, 403)
+        self.assertEqual(self.client_class().get(self.url).status_code, 302)
+        self.assertEqual(self.client.get(self.mark_sent_url()).status_code, 405)
+
+    def test_nav_link_for_admin_only(self):
+        self.assertContains(self.client.get(self.url), f'href="{self.url}"')
+        labels = [link["label"] for group in office_nav(self.rao, "") for link in group["links"]]
+        self.assertNotIn("To send", labels)

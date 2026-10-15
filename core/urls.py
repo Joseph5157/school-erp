@@ -329,4 +329,16 @@ urlpatterns = [
         import_views.import_issues_csv,
         name="import-issues-csv",
     ),
+    # Phase 7 Gate 1: notifications (ADR 0015)
+    path("notifications/to-send/", notification_views.to_send, name="notifications-to-send"),
+    path(
+        "notifications/<int:pk>/sent/",
+        notification_views.notification_mark_sent,
+        name="notification-mark-sent",
+    ),
+    path(
+        "notifications/<int:pk>/dismiss/",
+        notification_views.notification_dismiss,
+        name="notification-dismiss",
+    ),
 ]
