@@ -224,6 +224,7 @@ body.has-tabbar .erp-messages {
   padding: .75rem; margin-bottom: .5rem;
 }
 .erp-roster-row[hidden] { display: none; }
+.erp-roster-row.is-invalid { border: 2px solid var(--erp-crit); }
 .erp-roster-name { grid-column: 2; grid-row: 1; font-weight: 600; }
 .erp-initials {
   grid-column: 1; grid-row: 1; width: 2.25rem; height: 2.25rem; border-radius: 50%;

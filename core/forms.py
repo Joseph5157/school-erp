@@ -368,7 +368,9 @@ class ResultEntryForm(forms.Form):
         for enrollment in self.enrollments:
             result = saved.get(enrollment.pk)
             self.fields[self.status_name(enrollment)] = forms.ChoiceField(
-                choices=[("", "Not entered"), *ResultStatus.choices],
+                # A saved result cannot be un-entered here, so do not offer it.
+                choices=(list(ResultStatus.choices) if result
+                         else [("", "Not entered"), *ResultStatus.choices]),
                 required=False,
                 label=str(enrollment.student),
                 initial=result.status if result else "",

@@ -163,9 +163,23 @@
     sheet.addEventListener("change", function (event) {
       if (event.target.type !== "radio") return;
       var p = parts(event.target.closest("[data-erp-row]"));
-      if (event.target.value === "ABSENT" && p.score) p.score.value = "";
+      if ((event.target.value === "ABSENT" || event.target.value === "") && p.score) p.score.value = "";
       refresh(true);
     });
+    // Keypad Next/Enter moves to the next student instead of submitting the form.
+    sheet.addEventListener("keydown", function (event) {
+      if (event.key !== "Enter" || !event.target.classList.contains("erp-score")) return;
+      event.preventDefault();
+      var index = rows.indexOf(event.target.closest("[data-erp-row]"));
+      for (var i = index + 1; i < rows.length; i++) {
+        var next = rows[i].querySelector("input.erp-score");
+        if (!rows[i].hidden && next && !next.disabled) { next.focus(); return; }
+      }
+      var save = sheet.querySelector('button[type="submit"]');
+      if (save) save.focus();
+    });
+    var firstInvalid = sheet.querySelector(".erp-roster-row.is-invalid");
+    if (firstInvalid && firstInvalid.scrollIntoView) firstInvalid.scrollIntoView({ block: "center" });
     refresh(true);
   });
 })();

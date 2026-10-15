@@ -67,6 +67,14 @@ class ResultFormTests(MarksFixture, TestCase):
         self.assertContains(page, 'inputmode="decimal"')
         self.assertContains(page, 'enterkeyhint="next"')
 
+    def test_saved_row_offers_no_not_entered_radio(self):
+        self.result(self.test1, self.asha, "MARKED", "18")
+        page = self.teacher.get(self.entry_url(self.test1))
+        self.assertNotContains(page, f'type="radio" name="status_{self.asha.pk}" value=""')
+        self.assertContains(page, f'type="radio" name="status_{self.asha.pk}" value="MARKED"')
+        self.assertContains(page, f'type="radio" name="status_{self.asha.pk}" value="ABSENT"')
+        self.assertContains(page, f'type="radio" name="status_{self.bina.pk}" value=""')
+
 
 class MarksEntryPageTests(MarksFixture, TestCase):
     def test_rows_are_fieldsets_with_static_counts(self):
@@ -86,6 +94,14 @@ class MarksEntryPageTests(MarksFixture, TestCase):
         self.assertContains(page, "An absent Student has no score.")
         self.assertContains(page, 'value="11"')
         self.assertContains(page, "All 3 · Not entered 1 · Marked 1 · Absent 1")
+
+    def test_invalid_post_highlights_only_the_bad_row(self):
+        data = {f"status_{self.asha.pk}": "ABSENT", f"score_{self.asha.pk}": "5"}
+        page = self.teacher.post(self.entry_url(self.test1), data)
+        html = page.content.decode()
+        self.assertEqual(html.count("is-invalid"), 1)
+        self.assertContains(page, "Marks were not saved. Fix the highlighted rows.")
+        self.assertRegex(html, r'<fieldset class="erp-roster-row is-invalid"')
 
     def test_saving_still_works(self):
         data = {f"status_{self.asha.pk}": "", f"score_{self.asha.pk}": "0",
