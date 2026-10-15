@@ -22,6 +22,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from accounts.models import SecurityEvent
+from core import notification_producers
 from core.models import (
     AcademicEnrollment,
     Assessment,
@@ -219,6 +220,7 @@ def confirm_publication(*, term, section, include, token, actor):
         now = timezone.now()
         for row in plan["selected"]:
             created.append(_publish(term, row, actor, now))
+        notification_producers.report_card_notices(created)
         return created
 
 

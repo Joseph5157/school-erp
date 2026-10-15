@@ -1,4 +1,5 @@
 from django import forms
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator
@@ -46,6 +47,14 @@ class SchoolForm(forms.ModelForm):
             (value, label) for value, label in School.NotificationMode.choices
             if value in self.SELECTABLE_MODES
         ]
+
+    def clean_notification_channel(self):
+        mode = self.cleaned_data["notification_channel"]
+        if mode == School.NotificationMode.ASSIST and not settings.PORTAL_BASE_URL:
+            raise forms.ValidationError(
+                "Set the portal address (PORTAL_BASE_URL) before sending WhatsApp messages."
+            )
+        return mode
 
 
 class AcademicYearForm(forms.ModelForm):

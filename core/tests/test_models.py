@@ -2223,6 +2223,23 @@ class AttendanceLegacyStatusMigrationTests(TransactionTestCase):
         executor.loader.build_graph()
         executor.migrate(executor.loader.graph.leaf_nodes())
 
+    def _fixture_teardown(self):
+        # The flush after each test DELETEs every row, but approved notification
+        # templates (seeded by migration 0059) are guarded against deletion on
+        # SQLite. Lift that one guard for the flush, then put it back.
+        if connection.vendor != "sqlite":
+            return super()._fixture_teardown()
+        with connection.cursor() as cursor:
+            cursor.execute("DROP TRIGGER IF EXISTS core_nt_no_delete")
+        try:
+            super()._fixture_teardown()
+        finally:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "CREATE TRIGGER core_nt_no_delete BEFORE DELETE ON core_notificationtemplate "
+                    "BEGIN SELECT RAISE(ABORT, 'Notification templates are never deleted.'); END;"
+                )
+
     def _migrate(self, targets):
         executor = MigrationExecutor(connection)
         executor.loader.build_graph()

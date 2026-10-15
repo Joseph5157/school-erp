@@ -51,7 +51,16 @@ Scope chosen by the owner:
 - School setting "Messages to guardians": Portal only (default) or WhatsApp sent by office staff (ASSIST).
 - Outbox idempotency key: `type:guardian:student:subject`. Parameters are limited to first_name, date and portal_url, enforced in code and in template validation.
 - To send page: WhatsApp link with the text pre-filled, Mark as sent, Dismiss with a reason; unusable phone numbers show a link to fix the guardian record.
-- No producers yet: absence alerts (Gate 2), announcements (Gate 3) and result-published notices (Gate 4) create the messages.
+- Producers: absence alerts and result-published notices are added by Gates 2 and 4 (below); announcements (Gate 3) are still to come.
+
+## Implementation notes (Gates 2 and 4, absence alerts and report-card notices)
+
+- Recipients: guardians with portal access to the student (active grant, not under access review, active portal login). Other linked guardians get nothing. Gate 1 consent applies on top.
+- Absence alert: prepared when a register is submitted, for ABSENT entries, only if the register date is today. A correction to Present dismisses a waiting alert ("Attendance corrected to Present"); a sent alert is never retracted. A correction to Absent prepares an alert on the same day only.
+- Report card notice: prepared when Term results are published; once per student and Term, so republishing never sends again.
+- Links point at the guardian's own portal page and need `PORTAL_BASE_URL` (env); the school cannot choose WhatsApp sending without it.
+- A message that cannot be prepared (no approved text, no portal address) is logged and skipped; submitting the register or publishing the results still succeeds.
+- Message texts (`absence-alert`, `report-card-published`, version 1, English) are seeded by migration 0059.
 
 ---
 
