@@ -491,6 +491,34 @@ journeys in `core/tests/test_phase6_acceptance.py`.
 - unpublished or assessment-level result visibility
 - page-view logging and analytics
 
+## Phase 7 scope
+
+APPROVED (Gate 0 accepted 2026-10-15). Decisions are recorded in ADR 0015,
+ADR 0016 and ADR 0017; the plan is `docs/PHASE_7_COMMUNICATION_DOCUMENTS_IMPORT_PLAN.md`.
+It contains only:
+
+1. Recorded guardian consent per channel, with immediate opt-out
+2. A notification outbox with per-school delivery mode (ASSIST first; API, SMS
+   or portal-only optional), idempotent and auditable
+3. Absence alerts on register submission, "result published" notices, and
+   explicitly sent announcements, with minimal message content
+4. Issued documents with serial numbers and immutable snapshots: Term report
+   card PDF (from the published snapshot only), bonafide certificate,
+   attendance summary and Transfer Certificate
+5. Bulk Excel import of classes, sections, guardians, students, guardian links
+   and academic enrollment, through applicant progression, with dry-run
+   preview and one atomic commit
+
+## Explicitly out of scope for Phase 7
+
+- two-way chat, parent replies, chatbots and marketing campaigns
+- automation of an ordinary WhatsApp account
+- fees, fee reminders and fee placeholders (Phase 3 remains deferred)
+- digital signatures and public verification pages
+- import of historical attendance or marks
+- Student accounts (Phase 6B)
+- government formats and APAAR/UDISE+ fields (separate planning)
+
 ## Definition of Done
 
 FROZEN: A feature or milestone is done when, where applicable:
