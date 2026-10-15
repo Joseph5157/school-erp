@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{% block title %}Document{% endblock %}</title>
+<style>
+  @page { size: A4; margin: 22mm 18mm; }
+  body { font-family: 'DocLatin', 'DocTelugu', sans-serif; font-size: 12pt; line-height: 1.5; color: #111; }
+  h1 { font-size: 18pt; text-align: center; margin: 18mm 0 10mm; text-transform: uppercase; }
+  .letterhead { text-align: center; border-bottom: 1px solid #111; padding-bottom: 4mm; }
+  .letterhead .name { font-size: 16pt; font-weight: 700; }
+  .meta { display: flex; justify-content: space-between; margin-top: 6mm; }
+  .signature { margin-top: 28mm; text-align: right; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border: 1px solid #555; padding: 2mm 3mm; text-align: left; }
+</style>
+</head>
+<body>{% block body %}{% endblock %}</body>
+</html>
