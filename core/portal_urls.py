@@ -22,4 +22,6 @@ urlpatterns = [
         portal_views.report_card,
         name="report-card",
     ),
+    path("notices/", portal_views.notices, name="notices"),
+    path("notices/<uuid:notice_id>/", portal_views.notice, name="notice"),
 ]

@@ -14,4 +14,13 @@
 {% else %}
 {% include "partials/_empty.html" with title="No students yet" text="No students are linked to your account yet. Please contact the school office." %}
 {% endif %}
+{% if notices %}
+<h2 class="h5 mt-4">Latest notices</h2>
+<div class="list-group mb-2" style="max-width: 32rem">
+    {% for notice in notices %}
+    <a class="list-group-item list-group-item-action" href="{% url 'portal:notice' notice.public_id %}">{{ notice.title }} <span class="text-muted small">&middot; {{ notice.published_at|date:"j M" }}</span></a>
+    {% endfor %}
+</div>
+<p class="mb-4"><a href="{% url 'portal:notices' %}">All notices</a></p>
+{% endif %}
 {% endblock %}

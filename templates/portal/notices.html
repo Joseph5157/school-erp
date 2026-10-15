@@ -1,0 +1,17 @@
+{% extends "portal/base.html" %}
+{% block title %}Notices{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Notices</h1>
+{% if notices %}
+<div class="list-group" style="max-width: 40rem">
+    {% for notice in notices %}
+    <a class="list-group-item list-group-item-action" href="{% url 'portal:notice' notice.public_id %}">
+        <span class="fw-semibold">{{ notice.title }}</span>
+        <span class="d-block text-muted small">{{ notice.published_at|date:"j M Y" }}</span>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+{% include "partials/_empty.html" with title="No notices" text="Notices from the school will appear here." %}
+{% endif %}
+{% endblock %}

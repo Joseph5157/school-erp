@@ -51,7 +51,7 @@ Scope chosen by the owner:
 - School setting "Messages to guardians": Portal only (default) or WhatsApp sent by office staff (ASSIST).
 - Outbox idempotency key: `type:guardian:student:subject`. Parameters are limited to first_name, date and portal_url, enforced in code and in template validation.
 - To send page: WhatsApp link with the text pre-filled, Mark as sent, Dismiss with a reason; unusable phone numbers show a link to fix the guardian record.
-- Producers: absence alerts and result-published notices are added by Gates 2 and 4 (below); announcements (Gate 3) are still to come.
+- Producers: absence alerts and result-published notices (Gates 2 and 4) and announcements (Gate 3), below.
 
 ## Implementation notes (Gates 2 and 4, absence alerts and report-card notices)
 
@@ -61,6 +61,16 @@ Scope chosen by the owner:
 - Links point at the guardian's own portal page and need `PORTAL_BASE_URL` (env); the school cannot choose WhatsApp sending without it.
 - A message that cannot be prepared (no approved text, no portal address) is logged and skipped; submitting the register or publishing the results still succeeds.
 - Message texts (`absence-alert`, `report-card-published`, version 1, English) are seeded by migration 0059.
+
+## Implementation notes (Gate 3, announcements)
+
+- Administrators publish a notice (title, plain-text body) to the whole school, one class or one section. Saving publishes; there are no drafts and no editing. A mistake is withdrawn with a reason and a new notice published. Database triggers keep published notices unchanged and undeletable.
+- Guardians with portal access to a student enrolled today in the audience read it under Notices in the portal; the home page shows the latest three. Withdrawn notices disappear at once.
+- WhatsApp is a separate step on the notice page (WhatsApp sending mode only), after an audience count: guardians with portal access and how many opted in. One link-only message per guardian ("there is a new notice from the school"), never the title or body. Repeating prepares nothing new.
+- Withdrawing a notice dismisses its messages not yet sent ("Announcement withdrawn"); sent ones are not retracted.
+- Permissions: publish, view and withdraw announcements (School Administrators); preparing messages uses the Gate 1 send permission.
+- The message text (`announcement`, version 1, English) is seeded by migration 0062.
+- A guardian recorded as "no consent" when messages were prepared is not reached later for that notice, even after opting in (the outbox never repeats a message).
 
 ---
 

@@ -15,7 +15,7 @@
 {% with n=row.notification %}
 <div class="card mb-2"><div class="card-body">
     <p class="fw-semibold mb-0">{{ n.guardian.full_name }}</p>
-    <p class="text-muted small mb-0">{{ n.get_type_display }}{% if n.parameters.first_name %} &middot; {{ n.parameters.first_name }}{% endif %} &middot; prepared {{ n.created_at|date:"j M, H:i" }}</p>
+    <p class="text-muted small mb-0">{{ n.get_type_display }}{% if n.parameters.first_name %} &middot; {{ n.parameters.first_name }}{% elif not n.student_id %} &middot; School notice{% endif %} &middot; prepared {{ n.created_at|date:"j M, H:i" }}</p>
     <p class="border rounded p-2 my-2 small bg-light">{{ row.text }}</p>
     <div class="d-flex flex-wrap gap-2 align-items-start">
         {% if row.link %}
@@ -40,7 +40,7 @@
 {% if sent_today %}
 <h2 class="h5 mt-4">Sent today</h2>
 <ul class="list-unstyled small">
-    {% for n in sent_today %}<li>{{ n.marked_sent_at|date:"H:i" }} &middot; {{ n.guardian.full_name }} &middot; {{ n.get_type_display }}{% if n.parameters.first_name %} ({{ n.parameters.first_name }}){% endif %} &middot; by {{ n.marked_sent_by.username }}</li>{% endfor %}
+    {% for n in sent_today %}<li>{{ n.marked_sent_at|date:"H:i" }} &middot; {{ n.guardian.full_name }} &middot; {{ n.get_type_display }}{% if n.parameters.first_name %} ({{ n.parameters.first_name }}){% elif not n.student_id %} (School notice){% endif %} &middot; by {{ n.marked_sent_by.username }}</li>{% endfor %}
 </ul>
 {% endif %}
 {% endblock %}

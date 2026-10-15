@@ -35,6 +35,11 @@ def _assist():
 
 
 def portal_grants(student):
+    """Active, non-pending grants for one student (see portal_grants_for_students)."""
+    return portal_grants_for_students([student.pk])
+
+
+def portal_grants_for_students(student_ids):
     """Active, non-pending grants whose guardian has an active portal login."""
     active_login = GuardianAccount.objects.filter(
         guardian=OuterRef("student_guardian__guardian"),
@@ -42,7 +47,7 @@ def portal_grants(student):
     )
     grants = list(
         GuardianStudentAccess.objects.filter(
-            student_guardian__student=student, revoked_at__isnull=True
+            student_guardian__student_id__in=student_ids, revoked_at__isnull=True
         )
         .filter(Exists(active_login))
         .select_related("student_guardian__guardian", "student_guardian__student")

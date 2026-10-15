@@ -5,7 +5,7 @@ from decimal import Decimal
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.core.validators import MinValueValidator, RegexValidator
+from django.core.validators import MaxLengthValidator, MinValueValidator, RegexValidator
 from django.db import IntegrityError, models, transaction
 from django.db.models.functions import Upper
 from django.utils import timezone
@@ -3302,3 +3302,100 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"{self.get_type_display()} to {self.guardian} ({self.get_status_display()})"
+
+
+
+
+# --- Phase 7 Gate 3: announcements (ADR 0015) --------------------------------
+
+
+class Announcement(models.Model):
+    """A school notice for guardians. Immutable once published; withdrawn, never deleted.
+
+    Published by administrators to the whole school, one Class/Grade or one
+    Section; guardians with portal access read it in the portal. Database
+    triggers refuse deleting a row, changing its content, and changing a
+    withdrawal once recorded.
+    """
+
+    class Audience(models.TextChoices):
+        ALL = "ALL", "Whole school"
+        CLASS = "CLASS", "One class"
+        SECTION = "SECTION", "One section"
+
+    public_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    title = models.CharField(max_length=120)
+    body = models.TextField(validators=[MaxLengthValidator(2000)])
+    audience = models.CharField(max_length=10, choices=Audience.choices)
+    class_grade = models.ForeignKey(
+        ClassGrade, on_delete=models.PROTECT, null=True, blank=True,
+        related_name="announcements",
+    )
+    section = models.ForeignKey(
+        Section, on_delete=models.PROTECT, null=True, blank=True,
+        related_name="announcements",
+    )
+    published_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
+    )
+    published_at = models.DateTimeField(default=timezone.now)
+    withdrawn_at = models.DateTimeField(null=True, blank=True)
+    withdrawn_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True,
+        related_name="+",
+    )
+    withdrawal_reason = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        ordering = ["-published_at", "-pk"]
+        permissions = [("withdraw_announcement", "Can withdraw an announcement")]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(audience__in=["ALL", "CLASS", "SECTION"]),
+                name="announcement_audience_valid",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(audience="ALL", class_grade__isnull=True, section__isnull=True)
+                    | models.Q(audience="CLASS", class_grade__isnull=False,
+                               section__isnull=True)
+                    | models.Q(audience="SECTION", class_grade__isnull=True,
+                               section__isnull=False)
+                ),
+                name="announcement_audience_target",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(withdrawn_at__isnull=True, withdrawn_by__isnull=True,
+                             withdrawal_reason="")
+                    | (models.Q(withdrawn_at__isnull=False, withdrawn_by__isnull=False)
+                       & ~models.Q(withdrawal_reason=""))
+                ),
+                name="announcement_withdrawal_complete",
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        if self.audience == self.Audience.CLASS and not self.class_grade_id:
+            raise ValidationError({"class_grade": "Choose the class."})
+        if self.audience == self.Audience.SECTION and not self.section_id:
+            raise ValidationError({"section": "Choose the section."})
+        if self.audience != self.Audience.CLASS and self.class_grade_id:
+            raise ValidationError({"class_grade": "Only a notice to one class has a class."})
+        if self.audience != self.Audience.SECTION and self.section_id:
+            raise ValidationError({"section": "Only a notice to one section has a section."})
+
+    @property
+    def is_withdrawn(self):
+        return self.withdrawn_at is not None
+
+    def audience_label(self):
+        if self.audience == self.Audience.CLASS:
+            return str(self.class_grade)
+        if self.audience == self.Audience.SECTION:
+            return str(self.section)
+        return self.get_audience_display()
+
+    def __str__(self):
+        return self.title

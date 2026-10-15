@@ -115,6 +115,11 @@ def _opted_in_ids(guardian_ids):
     return {guardian_id for guardian_id, status in latest.items() if status == OPTED_IN}
 
 
+def opted_in_count(guardian_ids):
+    """How many of these guardians are currently opted in to WhatsApp."""
+    return len(_opted_in_ids(set(guardian_ids)))
+
+
 def to_send():
     """PREPARED messages, oldest first, after skipping any without current consent."""
     snapshot = list(Notification.objects.filter(status=PREPARED).values_list("pk", "guardian_id"))
