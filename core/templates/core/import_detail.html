@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Import {{ batch.pk }}{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Import {{ batch.pk }} — {{ batch.get_status_display }}</h1>
+<dl class="row">
+    <dt class="col-sm-3">File</dt><dd class="col-sm-9">{{ batch.file_name }}</dd>
+    <dt class="col-sm-3">Uploaded</dt><dd class="col-sm-9">{{ batch.uploaded_at|date:"Y-m-d H:i" }} by {{ batch.uploaded_by }}</dd>
+    <dt class="col-sm-3">Academic Year</dt><dd class="col-sm-9">{{ batch.academic_year }}</dd>
+    <dt class="col-sm-3">Enrollment start date</dt><dd class="col-sm-9">{{ batch.enrollment_start_date|date:"Y-m-d" }}</dd>
+    <dt class="col-sm-3">Rows</dt><dd class="col-sm-9">{{ batch.student_rows }} student rows, {{ batch.class_rows }} class rows</dd>
+    {% if batch.finished_at %}
+        <dt class="col-sm-3">Finished</dt><dd class="col-sm-9">{{ batch.finished_at|date:"Y-m-d H:i" }}{% if batch.finished_by %} by {{ batch.finished_by }}{% endif %}</dd>
+    {% endif %}
+    {% if batch.failure_reason %}
+        <dt class="col-sm-3">Reason</dt><dd class="col-sm-9">{{ batch.failure_reason }}</dd>
+    {% endif %}
+</dl>
+
+{% if batch.status == "COMMITTED" %}
+    <div class="alert alert-success">
+        Imported {{ batch.summary.students }} students; created {{ batch.summary.classes_new }} classes,
+        {{ batch.summary.sections_new }} sections and {{ batch.summary.guardians_new }} guardians;
+        reused {{ batch.summary.guardians_existing }} existing guardians.
+    </div>
+{% elif batch.status == "REJECTED" %}
+    <div class="alert alert-danger">This file has {{ batch.error_count }} error{{ batch.error_count|pluralize }}. Nothing was imported. Fix the file and upload it again.</div>
+{% endif %}
+
+{% if plan %}
+    <h2 class="h5">Preview</h2>
+    <p>Confirming will create {{ plan.students|length }} students, {{ plan.classes|length }} new classes and {{ plan.sections|length }} new sections, and link {{ plan.guardians|length }} guardians.</p>
+    {% if live_errors %}
+        <div class="alert alert-danger">
+            School records changed since this file was checked:
+            <ul class="mb-0">{% for issue in live_errors %}<li>{{ issue.sheet }}{% if issue.row %} row {{ issue.row }}{% endif %}{% if issue.column %} ({{ issue.column }}){% endif %}: {{ issue.message }}</li>{% endfor %}</ul>
+            Upload the file again.
+        </div>
+    {% endif %}
+    <table class="table table-sm">
+        <thead><tr><th>Row</th><th>Name</th><th>Date of birth</th><th>Admission no.</th><th>Placement</th><th>Roll</th><th>Guardians</th></tr></thead>
+        <tbody>
+        {% for student in plan.students %}
+            <tr>
+                <td>{{ student.row }}</td>
+                <td>{{ student.full_name }}</td>
+                <td>{{ student.date_of_birth|date:"Y-m-d"|default:"—" }}</td>
+                <td>{{ student.admission_number|default:"—" }}</td>
+                <td>{{ student.placement }}</td>
+                <td>{{ student.roll_number|default:"—" }}</td>
+                <td>{{ student.links|length }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+{% endif %}
+
+{% if errors %}
+    <h2 class="h5 text-danger">Errors ({{ errors|length }})</h2>
+    <table class="table table-sm">
+        <thead><tr><th>Sheet</th><th>Row</th><th>Column</th><th>Problem</th></tr></thead>
+        <tbody>{% for r in errors %}<tr><td>{{ r.sheet }}</td><td>{{ r.row_number|default:"" }}</td><td>{{ r.column }}</td><td>{{ r.message }}</td></tr>{% endfor %}</tbody>
+    </table>
+{% endif %}
+{% if warnings %}
+    <h2 class="h5 text-warning">Warnings ({{ warnings|length }})</h2>
+    <table class="table table-sm">
+        <thead><tr><th>Sheet</th><th>Row</th><th>Column</th><th>Check</th></tr></thead>
+        <tbody>{% for r in warnings %}<tr><td>{{ r.sheet }}</td><td>{{ r.row_number|default:"" }}</td><td>{{ r.column }}</td><td>{{ r.message }}</td></tr>{% endfor %}</tbody>
+    </table>
+{% endif %}
+{% if errors or warnings %}
+    <p><a href="{% url 'core:import-issues-csv' batch.pk %}">Download problems as CSV</a></p>
+{% endif %}
+
+{% if batch.is_pending and can_run %}
+    <div class="d-flex gap-2">
+        {% if not live_errors %}
+        <form method="post" action="{% url 'core:import-commit' batch.pk %}">
+            {% csrf_token %}
+            {% if batch.warning_count %}
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" name="reviewed_warnings" value="yes" id="reviewed" required>
+                    <label class="form-check-label" for="reviewed">I have reviewed the warnings above.</label>
+                </div>
+            {% endif %}
+            <button type="submit" class="btn btn-primary">Confirm import</button>
+        </form>
+        {% endif %}
+        <form method="post" action="{% url 'core:import-discard' batch.pk %}" class="align-self-end">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-secondary">Discard</button>
+        </form>
+    </div>
+    <p class="text-muted mt-2">A checked file can be confirmed within 24 hours of upload.</p>
+{% endif %}
+<p class="mt-3"><a href="{% url 'core:import-list' %}">All imports</a></p>
+{% endblock %}

@@ -132,6 +132,8 @@ class SchoolAdministratorsGroupMigrationTests(TestCase):
                 "publish_termpublication",
                 "view_termpublication",
                 "clear_login_lockout",
+                "run_import",
+                "view_importbatch",
             },
         )
 

@@ -20,6 +20,7 @@
                 {% if perms.core.view_applicant %}<a class="nav-link" href="{% url 'core:applicant-list' %}">Applicants</a>{% endif %}
                 {% if perms.core.view_student %}<a class="nav-link" href="{% url 'core:student-list' %}">Students</a>{% endif %}
                 {% if perms.core.view_guardian %}<a class="nav-link" href="{% url 'core:guardian-list' %}">Guardians</a>{% endif %}
+                {% if perms.core.view_importbatch %}<a class="nav-link" href="{% url 'core:import-list' %}">Import</a>{% endif %}
                 {% if perms.core.view_attendanceregister %}<a class="nav-link" href="{% url 'core:attendance-register-list' %}">Attendance</a>{% endif %}
                 {% if user_is_guardian %}
                     <a class="nav-link" href="{% url 'portal:home' %}">Guardian Portal</a>

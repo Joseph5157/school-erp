@@ -360,6 +360,15 @@ class Applicant(models.Model):
         default=AdmissionStatus.PENDING,
     )
     admission_decided_at = models.DateTimeField(null=True, blank=True)
+    import_batch = models.ForeignKey(
+        "ImportBatch",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        editable=False,
+        related_name="applicants",
+        help_text="Set only for Applicants created by a bulk import (ADR 0017).",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -3019,3 +3028,102 @@ class TermPublicationEntry(models.Model):
                 fields=["publication", "result"], name="termpublicationentry_unique_result"
             ),
         ]
+
+
+# --- Phase 7: bulk import (ADR 0017) ----------------------------------------
+
+
+class ImportBatch(models.Model):
+    """One uploaded import workbook and its outcome (ADR 0017).
+
+    Validation (a dry run) creates the batch. A batch without errors is
+    VALIDATED and keeps its parsed rows in `payload` until it is committed,
+    discarded or expires; a batch with errors is REJECTED and keeps no
+    payload. Database triggers refuse DELETE, refuse changes to the upload
+    facts, allow status changes only out of VALIDATED, and freeze the batch
+    once it leaves VALIDATED.
+    """
+
+    class Status(models.TextChoices):
+        VALIDATED = "VALIDATED", "Validated — awaiting confirmation"
+        REJECTED = "REJECTED", "Rejected — has errors"
+        COMMITTED = "COMMITTED", "Imported"
+        DISCARDED = "DISCARDED", "Discarded"
+        EXPIRED = "EXPIRED", "Expired"
+        FAILED = "FAILED", "Failed at import"
+
+    FINAL_STATUSES = ("COMMITTED", "DISCARDED", "EXPIRED", "FAILED")
+
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
+    )
+    uploaded_at = models.DateTimeField(default=timezone.now)
+    file_name = models.CharField(max_length=255)
+    file_sha256 = models.CharField(max_length=64)
+    academic_year = models.ForeignKey(
+        AcademicYear, on_delete=models.PROTECT, related_name="import_batches"
+    )
+    enrollment_start_date = models.DateField()
+    student_rows = models.PositiveIntegerField(default=0)
+    class_rows = models.PositiveIntegerField(default=0)
+    error_count = models.PositiveIntegerField(default=0)
+    warning_count = models.PositiveIntegerField(default=0)
+    status = models.CharField(max_length=10, choices=Status.choices)
+    payload = models.JSONField(default=dict, blank=True)
+    summary = models.JSONField(default=dict, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    finished_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True,
+        related_name="+",
+    )
+    failure_reason = models.CharField(max_length=500, blank=True)
+
+    class Meta:
+        ordering = ["-uploaded_at", "-pk"]
+        permissions = [("run_import", "Can run bulk imports")]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(
+                    status__in=["VALIDATED", "REJECTED", "COMMITTED", "DISCARDED",
+                                "EXPIRED", "FAILED"]
+                ),
+                name="importbatch_status_valid",
+            ),
+        ]
+
+    @property
+    def is_pending(self):
+        return self.status == self.Status.VALIDATED
+
+    def __str__(self):
+        return f"Import {self.pk} ({self.get_status_display()})"
+
+
+class ImportRowResult(models.Model):
+    """A validation message for one row of an import batch. Immutable.
+
+    Messages name sheets, rows and columns, never personal data.
+    """
+
+    class Level(models.TextChoices):
+        ERROR = "ERROR", "Error"
+        WARNING = "WARNING", "Warning"
+
+    batch = models.ForeignKey(ImportBatch, on_delete=models.PROTECT, related_name="row_results")
+    sheet = models.CharField(max_length=50)
+    row_number = models.PositiveIntegerField(null=True, blank=True)
+    column = models.CharField(max_length=50, blank=True)
+    level = models.CharField(max_length=10, choices=Level.choices)
+    message = models.CharField(max_length=500)
+
+    class Meta:
+        ordering = ["batch", "sheet", "row_number", "pk"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(level__in=["ERROR", "WARNING"]),
+                name="importrowresult_level_valid",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.sheet} row {self.row_number}: {self.message}"

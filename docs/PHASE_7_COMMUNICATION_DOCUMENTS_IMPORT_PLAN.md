@@ -12,6 +12,39 @@ Scope chosen by the owner:
   study certificate, attendance summary.
 - Bulk Excel import: classes, sections, students, guardians and academic enrollment.
 
+## Implementation notes (Gates 8-9, bulk import)
+
+- Workbook: a "Students" sheet (one row per student, up to two guardians) and
+  an optional "Classes" sheet. A student row may only name a Class/Section
+  that already exists or is listed on the Classes sheet, so a typo never
+  creates a class. Names match without regard to case or extra spaces.
+  The template is downloadable from the Import page.
+- The Academic Year and one enrollment start date are chosen on the upload
+  form; the date must fall in the year and not be in the future (the
+  existing `Student.enroll` rule).
+- Clarification of ADR 0017 guardian matching: a guardian is reused when the
+  normalised phone number and the name both match (an existing guardian or
+  another row). Phone alone is not enough, because parents often share one
+  phone; matching on phone alone would merge father and mother. A phone that
+  belongs to a guardian with a different name produces a warning and a new
+  record. Guardians without phone or email are never matched.
+- Phone numbers are stored as +91XXXXXXXXXX (10-digit mobiles, with or
+  without 0, 91 or +91) or +<digits> when written with a leading +.
+- Dates: date cells, YYYY-MM-DD or day-first DD/MM/YYYY.
+- Warnings (possible duplicates, shared phone, guardian without contact)
+  never block, but confirming requires ticking "I have reviewed the warnings".
+- A checked batch keeps its parsed rows only until it is committed,
+  discarded, fails, or expires after 24 hours; then the rows are cleared and
+  only the counts and row messages remain. Messages never contain personal
+  data.
+- Commit re-validates against current records, then runs Applicant ->
+  accepted decision -> `progress_to_student()` -> admission number ->
+  `enroll()` -> roll number for each row in one transaction. Any failure
+  rolls back everything and marks the batch FAILED. A successful commit
+  records an `IMPORT_COMMITTED` security event (history class).
+- Permissions: `core.run_import` and `core.view_importbatch`, granted to the
+  School Administrators group. New dependency: openpyxl.
+
 ---
 
 # 1. Goals

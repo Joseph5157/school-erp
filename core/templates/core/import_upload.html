@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}New import{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">New import</h1>
+<p>Use the <a href="{% url 'core:import-template' %}">import template</a>. The file is checked first and nothing is saved until you confirm the preview.</p>
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">Check file</button>
+    <a class="btn btn-link" href="{% url 'core:import-list' %}">Cancel</a>
+</form>
+{% endblock %}
