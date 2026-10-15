@@ -64,6 +64,12 @@ duties from 13 May 2027) expects clear, recorded consent and minimal data.
   before alerts reach any parent.
 - API mode adds provider template approval, cost and an INR-billed account.
 
+## Amendment (Gate 1, 2026-10-15)
+
+- Status `DISMISSED` added: a staff member may decide not to send a PREPARED message, with a required reason, recorded with who and when.
+- Consent is re-checked when the To send page loads and when a message is marked sent; a PREPARED message whose guardian has opted out becomes `SKIPPED_NO_CONSENT`.
+- Gate 1 offers only PORTAL_ONLY (default) and ASSIST in the school settings; API and SMS wait for Gate 4B.
+
 ## Related
 
 ADR 0013, ADR 0014; `docs/REQUIREMENTS.md` Phase 7 scope.
