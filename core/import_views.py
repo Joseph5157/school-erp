@@ -47,17 +47,27 @@ def import_detail(request, pk):
     batch = get_object_or_404(
         ImportBatch.objects.select_related("academic_year", "uploaded_by", "finished_by"), pk=pk
     )
-    plan = live_issues = None
+    plan = live_errors = None
+    new_warnings = []
+    results = batch.row_results.all()
+    warnings = [r for r in results if r.level == "WARNING"]
     if batch.is_pending:
         plan, live = imports.preview(batch)
-        live_issues = [issue for issue in live if issue.level == "ERROR"]
-    results = batch.row_results.all()
+        live_errors = [issue for issue in live if issue.level == "ERROR"]
+        recorded = {(r.sheet, r.row_number, r.column, r.message) for r in warnings}
+        new_warnings = [
+            issue for issue in live
+            if issue.level == "WARNING"
+            and (issue.sheet, issue.row, issue.column[:50], issue.message[:500]) not in recorded
+        ]
     return render(request, "core/import_detail.html", {
         "batch": batch,
         "plan": plan,
-        "live_errors": live_issues,
+        "live_errors": live_errors,
+        "new_warnings": new_warnings,
+        "needs_review": bool(warnings or new_warnings),
         "errors": [r for r in results if r.level == "ERROR"],
-        "warnings": [r for r in results if r.level == "WARNING"],
+        "warnings": warnings,
         "can_run": request.user.has_perm("core.run_import"),
     })
 
@@ -66,11 +76,12 @@ def import_detail(request, pk):
 @require_POST
 def import_commit(request, pk):
     batch = get_object_or_404(ImportBatch, pk=pk)
-    if batch.warning_count and request.POST.get("reviewed_warnings") != "yes":
-        messages.error(request, "Confirm that you have reviewed the warnings before importing.")
-        return redirect("core:import-detail", pk=pk)
     try:
-        batch = imports.commit_batch(batch, user=request.user)
+        batch = imports.commit_batch(
+            batch,
+            user=request.user,
+            warnings_reviewed=request.POST.get("reviewed_warnings") == "yes",
+        )
     except imports.CommitError as problem:
         messages.error(request, str(problem))
     else:

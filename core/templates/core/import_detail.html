@@ -36,6 +36,12 @@
             Upload the file again.
         </div>
     {% endif %}
+    {% if new_warnings %}
+        <div class="alert alert-warning">
+            New warnings since this file was checked:
+            <ul class="mb-0">{% for issue in new_warnings %}<li>{{ issue.sheet }}{% if issue.row %} row {{ issue.row }}{% endif %}{% if issue.column %} ({{ issue.column }}){% endif %}: {{ issue.message }}</li>{% endfor %}</ul>
+        </div>
+    {% endif %}
     <table class="table table-sm">
         <thead><tr><th>Row</th><th>Name</th><th>Date of birth</th><th>Admission no.</th><th>Placement</th><th>Roll</th><th>Guardians</th></tr></thead>
         <tbody>
@@ -77,10 +83,10 @@
         {% if not live_errors %}
         <form method="post" action="{% url 'core:import-commit' batch.pk %}">
             {% csrf_token %}
-            {% if batch.warning_count %}
+            {% if needs_review %}
                 <div class="form-check mb-2">
                     <input class="form-check-input" type="checkbox" name="reviewed_warnings" value="yes" id="reviewed" required>
-                    <label class="form-check-label" for="reviewed">I have reviewed the warnings above.</label>
+                    <label class="form-check-label" for="reviewed">I have reviewed the warnings.</label>
                 </div>
             {% endif %}
             <button type="submit" class="btn btn-primary">Confirm import</button>

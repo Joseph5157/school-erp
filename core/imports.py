@@ -31,7 +31,7 @@ import re
 import zipfile
 from dataclasses import dataclass, field
 
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.validators import EmailValidator
 from django.db import IntegrityError, transaction
 from django.utils import timezone
@@ -647,8 +647,16 @@ class CommitError(Exception):
     pass
 
 
-def commit_batch(batch, *, user):
-    """Import a VALIDATED batch atomically. Raises CommitError on failure."""
+REVIEW_WARNINGS = "Confirm that you have reviewed the warnings before importing."
+
+
+def commit_batch(batch, *, user, warnings_reviewed=False):
+    """Import a VALIDATED batch atomically. Raises CommitError on failure.
+
+    Warnings are checked again against current records, so a warning that
+    appeared after the upload still needs `warnings_reviewed`. A missing
+    review leaves the batch VALIDATED.
+    """
     expire_stale_batches()
     try:
         with transaction.atomic():
@@ -659,6 +667,8 @@ def commit_batch(batch, *, user):
             if any(issue.level == "ERROR" for issue in issues):
                 raise _Failed("School records changed since the file was checked; "
                               "upload the file again to see the problems.")
+            if any(issue.level == "WARNING" for issue in issues) and not warnings_reviewed:
+                raise _NeedsReview(REVIEW_WARNINGS)
             counts = _apply(locked, plan, user)
             ImportBatch.objects.filter(pk=locked.pk).update(
                 status=ImportBatch.Status.COMMITTED,
@@ -672,10 +682,12 @@ def commit_batch(batch, *, user):
                 actor=user,
                 detail={"batch": locked.pk, **counts},
             )
+    except _NeedsReview as problem:
+        raise CommitError(str(problem)) from None
     except _Failed as failure:
         _mark_failed(batch, user, str(failure))
         raise CommitError(str(failure)) from None
-    except (ValidationError, IntegrityError):
+    except (ValidationError, IntegrityError, ObjectDoesNotExist):
         reason = "The import could not be completed and nothing was imported."
         _mark_failed(batch, user, reason)
         raise CommitError(reason) from None
@@ -684,6 +696,10 @@ def commit_batch(batch, *, user):
 
 
 class _Failed(Exception):
+    pass
+
+
+class _NeedsReview(Exception):
     pass
 
 
@@ -794,7 +810,8 @@ def template_workbook():
         "Dates: use a date cell, or YYYY-MM-DD, or DD/MM/YYYY.",
         "Relationship: Father, Mother, Guardian, Grandparent or Other.",
         "Phone: 10-digit mobile number; it is saved as +91XXXXXXXXXX.",
-        "Guardians with the same phone and name are shared between siblings.",
+        "Guardians with the same phone and name are shared between siblings and matched to "
+        "existing guardians. A guardian with only an email is always added as a new record.",
         "Do not use formulas. Do not add example rows to the Students sheet.",
         "Choose the Academic Year and the enrollment start date when you upload.",
         "Nothing is saved until you review the preview and confirm.",

@@ -308,6 +308,39 @@ class CommitTests(ImportFixture):
         self.assertEqual(batch.status, ImportBatch.Status.COMMITTED)
         self.assertEqual(Guardian.objects.filter(phone="+919876543210").count(), 1)
 
+    def test_warnings_that_appear_after_the_check_need_review(self):
+        batch = self.batch_for(workbook([student_row("Asha")]))
+        self.assertEqual(batch.warning_count, 0)
+        Guardian.objects.create(full_name="Someone Else", phone="9876543210")
+
+        page = self.client.get(reverse("core:import-detail", args=[batch.pk]))
+        self.assertContains(page, 'name="reviewed_warnings"')
+        self.client.post(reverse("core:import-commit", args=[batch.pk]))
+        batch.refresh_from_db()
+        self.assertEqual(batch.status, ImportBatch.Status.VALIDATED)
+        self.assertEqual(Student.objects.count(), 0)
+
+        self.client.post(reverse("core:import-commit", args=[batch.pk]),
+                         {"reviewed_warnings": "yes"})
+        batch.refresh_from_db()
+        self.assertEqual(batch.status, ImportBatch.Status.COMMITTED)
+
+    def test_unexpected_missing_record_fails_the_batch_cleanly(self):
+        batch = self.batch_for(workbook([student_row("Asha")]))
+        original = imports._apply
+
+        def missing(*args, **kwargs):
+            raise Guardian.DoesNotExist
+
+        imports._apply = missing
+        try:
+            with self.assertRaises(imports.CommitError):
+                imports.commit_batch(batch, user=self.admin)
+        finally:
+            imports._apply = original
+        batch.refresh_from_db()
+        self.assertEqual(batch.status, ImportBatch.Status.FAILED)
+
     def test_discard_and_expiry(self):
         batch = self.batch_for(workbook([student_row("Asha")]))
         self.client.post(reverse("core:import-discard", args=[batch.pk]))
