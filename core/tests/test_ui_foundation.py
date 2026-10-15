@@ -8,6 +8,7 @@ from django.urls import resolve, reverse
 from core.models import School
 from core.navigation import current_area, office_nav, teacher_tabs
 from core.tests.phase4_fixtures import Phase4Fixture
+from core.tests.test_phase6_access_boundary import BoundaryFixture
 
 VIEWPORT = '<meta name="viewport" content="width=device-width, initial-scale=1">'
 
@@ -141,3 +142,65 @@ class StaffShellTests(Phase4Fixture, TestCase):
         page = self.client.get(reverse("core:school-detail"))
         self.assertContains(page, 'href="#main"')
         self.assertContains(page, 'id="main"')
+
+
+class AccountMenuTests(Phase4Fixture, TestCase):
+    def setUp(self):
+        self.build_phase4()
+
+    def test_account_menu_lists_all_areas_and_marks_current(self):
+        self.admin.groups.add(self.teachers)
+        self.client.login(username="admin", password="pass-12345")
+        page = self.client.get(reverse("core:my-home"))
+        self.assertContains(page, 'class="erp-account"')
+        self.assertContains(page, reverse("core:school-detail"))
+        self.assertContains(page, 'aria-current="true"', count=1)
+        self.assertContains(page, reverse("password_change"))
+
+    def test_single_area_user_has_no_switch_heading(self):
+        self.client.login(username="rao", password="pass-12345")
+        page = self.client.get(reverse("core:my-home"))
+        self.assertNotContains(page, "Switch to")
+
+    def test_choose_area_page_lists_areas(self):
+        self.admin.groups.add(self.teachers)
+        self.client.login(username="admin", password="pass-12345")
+        page = self.client.get(reverse("choose-area"))
+        self.assertContains(page, "School administration")
+        self.assertContains(page, "My day (teaching)")
+
+
+class GuardianShellTests(BoundaryFixture, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.portal = self.guardian_client()
+
+    def portal_url(self, name):
+        return reverse(name, args=[self.asha_grant.public_id])
+
+    def test_portal_home_has_only_home_tab(self):
+        page = self.portal.get(reverse("portal:home"))
+        self.assertContains(page, 'class="erp-tabbar')
+        self.assertNotContains(page, self.portal_url("portal:attendance"))
+
+    def test_child_page_tabs_link_to_that_child(self):
+        page = self.portal.get(self.portal_url("portal:child"))
+        for name in ("portal:child", "portal:attendance", "portal:report-cards"):
+            self.assertContains(page, self.portal_url(name))
+        self.assertContains(page, "Report cards")
+
+    def test_portal_pages_still_have_no_excluded_words(self):
+        urls = [reverse("portal:home")] + [
+            self.portal_url(name)
+            for name in ("portal:child", "portal:attendance", "portal:report-cards")
+        ]
+        for url in urls:
+            html = self.portal.get(url).content.decode().lower()
+            for word in ("fee", "announcement", "pdf", "download"):
+                self.assertNotIn(word, html, f"{word!r} found on {url}")
+            self.assertNotIn(f"/students/{self.asha.pk}/", html)
+
+    def test_portal_has_viewport_and_stylesheet(self):
+        page = self.portal.get(reverse("portal:home"))
+        self.assertContains(page, VIEWPORT)
+        self.assertContains(page, "/static/css/erp.css")
