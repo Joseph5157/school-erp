@@ -226,7 +226,6 @@ class PrepareMessagesTests(AnnouncementFixture, TestCase):
     def test_refused_when_withdrawn_portal_only_or_no_address(self):
         withdrawn = self.notice()
         announcements.withdraw(withdrawn, actor=self.admin, reason="Wrong")
-        withdrawn.refresh_from_db()
         with self.assertRaisesMessage(ValidationError, "This notice has been withdrawn."):
             announcements.prepare_messages(withdrawn)
         live = self.notice()
@@ -238,6 +237,13 @@ class PrepareMessagesTests(AnnouncementFixture, TestCase):
         with self.assertRaisesMessage(ValidationError,
                                       "WhatsApp sending is switched off for this school."):
             announcements.prepare_messages(live)
+        self.assertEqual(self.sent(), [])
+
+    def test_stale_instance_of_a_withdrawn_notice_is_refused(self):
+        notice = self.notice()
+        announcements.withdraw(notice, actor=self.admin, reason="Wrong")
+        with self.assertRaisesMessage(ValidationError, "This notice has been withdrawn."):
+            announcements.prepare_messages(notice)
         self.assertEqual(self.sent(), [])
 
     def test_missing_text_is_counted_as_failed_and_logged(self):

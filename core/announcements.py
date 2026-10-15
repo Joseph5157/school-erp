@@ -141,28 +141,33 @@ def prepare_messages(announcement):
     Counts describe the audience's messages: an existing message (from an
     earlier click) counts as prepared, or skipped if it had no consent.
     """
-    if announcement.is_withdrawn:
-        raise ValidationError("This notice has been withdrawn.")
-    if notifications.school_mode() != School.NotificationMode.ASSIST:
-        raise ValidationError("WhatsApp sending is switched off for this school.")
-    parameters = {"portal_url": notice_url(announcement)}
-    result = {"prepared": 0, "skipped": 0, "failed": 0}
-    for grant in recipient_grants(announcement):
-        guardian = grant.student_guardian.guardian
-        try:
-            with transaction.atomic():
-                message = notifications.enqueue(
-                    guardian=guardian, student=None, type=Notification.Type.ANNOUNCEMENT,
-                    template_key=TEMPLATE_KEY, parameters=parameters,
-                    subject=f"announcement-{announcement.pk}",
+    with transaction.atomic():
+        # Serialise with withdraw(): re-read the notice under a row lock.
+        announcement = Announcement.objects.select_for_update().get(pk=announcement.pk)
+        if announcement.is_withdrawn:
+            raise ValidationError("This notice has been withdrawn.")
+        if notifications.school_mode() != School.NotificationMode.ASSIST:
+            raise ValidationError("WhatsApp sending is switched off for this school.")
+        parameters = {"portal_url": notice_url(announcement)}
+        result = {"prepared": 0, "skipped": 0, "failed": 0}
+        for grant in recipient_grants(announcement):
+            guardian = grant.student_guardian.guardian
+            try:
+                with transaction.atomic():
+                    message = notifications.enqueue(
+                        guardian=guardian, student=None, type=Notification.Type.ANNOUNCEMENT,
+                        template_key=TEMPLATE_KEY, parameters=parameters,
+                        subject=f"announcement-{announcement.pk}",
+                    )
+            except notifications.NotificationError as problem:
+                logger.warning(
+                    "ANNOUNCEMENT message not prepared (announcement %s, guardian %s): %s",
+                    announcement.pk, guardian.pk, problem,
                 )
-        except notifications.NotificationError as problem:
-            logger.warning("ANNOUNCEMENT message not prepared (announcement %s, guardian %s): %s",
-                           announcement.pk, guardian.pk, problem)
-            result["failed"] += 1
-            continue
-        if message.status == Notification.Status.SKIPPED_NO_CONSENT:
-            result["skipped"] += 1
-        else:
-            result["prepared"] += 1
-    return result
+                result["failed"] += 1
+                continue
+            if message.status == Notification.Status.SKIPPED_NO_CONSENT:
+                result["skipped"] += 1
+            else:
+                result["prepared"] += 1
+        return result
