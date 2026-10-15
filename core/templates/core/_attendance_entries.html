@@ -1,0 +1,12 @@
+{# Read-only submitted entries. Expects `entries` with academic_enrollment__student selected. #}
+<ul class="erp-entries list-unstyled">
+    {% for entry in entries %}
+    <li class="erp-entry">
+        <span class="erp-entry-name">{{ entry.academic_enrollment.student.full_name }}</span>
+        <span class="erp-pill is-{{ entry.status|lower }}">{{ entry.get_status_display }}</span>
+        {% if entry.absence_note %}<span class="erp-entry-note">{{ entry.absence_note }}</span>{% endif %}
+    </li>
+    {% empty %}
+    <li>No entries.</li>
+    {% endfor %}
+</ul>

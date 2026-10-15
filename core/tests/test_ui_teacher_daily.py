@@ -119,3 +119,32 @@ class CapturePartialTests(U2Fixture, TestCase):
         page = self.client.get(reverse("core:attendance-register-detail", args=[register.pk]))
         self.assertContains(page, "Save draft")
         self.assertNotContains(page, "Save and submit")
+
+
+class TakeAttendancePageTests(U2Fixture, TestCase):
+    def test_tab_bar_hidden_only_while_draft_open(self):
+        start = self.teacher.get(self.url)
+        self.assertContains(start, "Start today's register")
+        self.assertContains(start, 'class="erp-tabbar')
+        self.draft()
+        drafting = self.teacher.get(self.url)
+        self.assertNotContains(drafting, 'class="erp-tabbar')
+        self.assertNotContains(drafting, "has-tabbar")
+        self.assertContains(drafting, reverse("core:my-home"))
+        self.assertContains(self.teacher.get(reverse("core:my-home")), 'class="erp-tabbar')
+
+    def test_tab_bar_back_after_submit(self):
+        self.draft(asha="PRESENT", ravi="PRESENT", bina="ABSENT")
+        self.register().submit(actor=self.rao)
+        self.assertContains(self.teacher.get(self.url), 'class="erp-tabbar')
+
+    def test_draft_and_submitted_pills(self):
+        self.draft(asha="PRESENT")
+        self.assertContains(self.teacher.get(self.url),
+                            '<span class="erp-pill is-draft">Draft</span>')
+        self.draft(asha="PRESENT", ravi="PRESENT", bina="ABSENT")
+        self.register().submit(actor=self.rao)
+        page = self.teacher.get(self.url)
+        self.assertContains(page, '<span class="erp-pill is-submitted">Submitted</span>')
+        self.assertContains(page, '<span class="erp-pill is-absent">Absent</span>')
+        self.assertContains(page, "only be changed by an administrator")

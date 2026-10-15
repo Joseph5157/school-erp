@@ -264,6 +264,21 @@ body.has-tabbar .erp-messages {
   .erp-actionbar .btn { flex: 0 0 auto; }
 }
 
+.erp-card {
+  background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
+  padding: .9rem 1rem; margin-bottom: .6rem;
+}
+.erp-card-row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; justify-content: space-between; }
+.erp-card-title { font-weight: 600; margin: 0; }
+.erp-card-meta { color: var(--erp-ink-soft); font-size: .9rem; margin: 0; }
+.erp-entry {
+  display: flex; flex-wrap: wrap; gap: .25rem .75rem; align-items: center;
+  background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
+  padding: .6rem .8rem; margin-bottom: .4rem;
+}
+.erp-entry-name { flex: 1; font-weight: 600; }
+.erp-entry-note { flex-basis: 100%; color: var(--erp-ink-soft); font-size: .9rem; }
+
 /* Wide tables scroll inside their own box on phones instead of widening the page. */
 @media (max-width: 575.98px) {
   .erp-content table:not(.erp-keep) { display: block; overflow-x: auto; }
