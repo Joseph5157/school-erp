@@ -1,0 +1,8 @@
+{# Bottom tab bar for phones. Expects `tabs` and `tabbar_label`. #}
+<nav class="erp-tabbar d-lg-none" aria-label="{{ tabbar_label }}">
+    <ul>
+        {% for tab in tabs %}
+        <li><a href="{{ tab.url }}"{% if tab.active %} class="active" aria-current="page"{% endif %}>{{ tab.label }}</a></li>
+        {% endfor %}
+    </ul>
+</nav>

@@ -1,10 +1,35 @@
 {% extends "base.html" %}
 {% block title %}Log in{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">Log in</h1>
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit" class="btn btn-primary">Log in</button>
-</form>
+<div class="erp-auth">
+    <h1>Log in</h1>
+    <p class="text-secondary">Use the username the school gave you.</p>
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger" role="alert">{% for error in form.non_field_errors %}{{ error }}{% endfor %}</div>
+    {% endif %}
+    <form method="post" novalidate>
+        {% csrf_token %}
+        <div class="mb-3">
+            <label class="form-label" for="{{ form.username.id_for_label }}">Username</label>
+            <input type="text" class="form-control form-control-lg{% if form.username.errors %} is-invalid{% endif %}"
+                   name="{{ form.username.html_name }}" id="{{ form.username.id_for_label }}"
+                   value="{{ form.username.value|default_if_none:'' }}"
+                   autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus>
+            {% for error in form.username.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+        </div>
+        <div class="mb-4">
+            <label class="form-label" for="{{ form.password.id_for_label }}">Password</label>
+            <div class="erp-password">
+                <input type="password" class="form-control form-control-lg{% if form.password.errors %} is-invalid{% endif %}"
+                       name="{{ form.password.html_name }}" id="{{ form.password.id_for_label }}"
+                       autocomplete="current-password" required>
+                <button type="button" class="btn btn-link" data-erp-toggle-password aria-controls="{{ form.password.id_for_label }}" hidden>Show</button>
+            </div>
+            {% for error in form.password.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+        </div>
+        {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+        <button type="submit" class="btn btn-primary btn-lg w-100">Log in</button>
+    </form>
+    <p class="small text-secondary mt-3 mb-0">Forgot your password? Ask the school office to reset it.</p>
+</div>
 {% endblock %}

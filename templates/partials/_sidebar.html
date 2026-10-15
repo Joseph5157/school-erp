@@ -1,0 +1,17 @@
+{# Office navigation: fixed sidebar from 992px, off-canvas drawer below. Display only. #}
+<nav class="erp-sidebar offcanvas-lg offcanvas-start" tabindex="-1" id="erp-sidebar" aria-label="School administration">
+    <div class="offcanvas-header">
+        <span class="h6 mb-0">Menu</span>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#erp-sidebar" aria-label="Close menu"></button>
+    </div>
+    <div class="offcanvas-body d-block">
+        {% for group in office_nav %}
+        <p class="erp-nav-heading">{{ group.title }}</p>
+        <ul class="nav flex-column">
+            {% for link in group.links %}
+            <li class="nav-item"><a class="nav-link{% if link.active %} active{% endif %}" href="{{ link.url }}"{% if link.active %} aria-current="page"{% endif %}>{{ link.label }}</a></li>
+            {% endfor %}
+        </ul>
+        {% endfor %}
+    </div>
+</nav>

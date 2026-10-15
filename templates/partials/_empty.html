@@ -1,0 +1,6 @@
+{# Empty state. Use: {% include "partials/_empty.html" with title="…" text="…" %} #}
+<div class="erp-empty">
+    <span class="erp-empty-icon" aria-hidden="true">○</span>
+    {% if title %}<p class="erp-empty-title">{{ title }}</p>{% endif %}
+    <p>{{ text }}</p>
+</div>
