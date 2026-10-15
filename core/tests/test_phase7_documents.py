@@ -1,9 +1,11 @@
 """Phase 7 piece C: documents (spec 2026-10-15-phase7-documents-design.md)."""
 
+import threading
 from datetime import date
+from unittest import skipUnless
 
-from django.db import DatabaseError, transaction
-from django.test import SimpleTestCase, TestCase
+from django.db import DatabaseError, connection, connections, transaction
+from django.test import SimpleTestCase, TestCase, TransactionTestCase
 
 from core.documents import serials
 from core.documents.engine import render_pdf
@@ -75,3 +77,25 @@ class IssuedDocumentHistoryTests(TestCase):
     def test_delete_is_refused(self):
         with self.assertRaises(DatabaseError), transaction.atomic():
             IssuedDocument.objects.filter(pk=self.doc.pk).delete()
+
+
+@skipUnless(connection.vendor == "postgresql", "row locks need PostgreSQL")
+class SerialConcurrencyTests(TransactionTestCase):
+    def test_simultaneous_issues_get_distinct_serials(self):
+        year = make_year()
+        results, barrier = [], threading.Barrier(4)
+
+        def worker():
+            try:
+                barrier.wait()
+                with transaction.atomic():
+                    results.append(serials.next_serial("BONAFIDE", year))
+            finally:
+                connections.close_all()
+
+        threads = [threading.Thread(target=worker) for _ in range(4)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        self.assertEqual(sorted(results), [f"BON/2026-27/{n:04d}" for n in range(1, 5)])
