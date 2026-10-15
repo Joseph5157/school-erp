@@ -272,3 +272,86 @@ class PrepareMessagesTests(AnnouncementFixture, TestCase):
         statuses = {(m.idempotency_key.rsplit("-", 1)[1], m.status) for m in self.sent()}
         self.assertEqual(statuses, {(str(keep.pk), Notification.Status.PREPARED),
                                     (str(drop.pk), Notification.Status.DISMISSED)})
+
+
+class OfficePageTests(AnnouncementFixture, TestCase):
+    def test_publish_from_the_form(self):
+        page = self.client.post(reverse("core:announcement-create"), {
+            "title": "Holiday", "body": "Closed on Friday.", "audience": "SECTION",
+            "section": self.six_a.pk,
+        })
+        notice = Announcement.objects.get()
+        self.assertRedirects(page, reverse("core:announcement-detail", args=[notice.pk]))
+        self.assertEqual((notice.audience, notice.section), (SECTION, self.six_a))
+
+    def test_form_requires_the_matching_class_or_section(self):
+        page = self.client.post(reverse("core:announcement-create"), {
+            "title": "Holiday", "body": "Closed.", "audience": "CLASS"})
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "Choose the class.")
+        self.assertFalse(Announcement.objects.exists())
+
+    def test_detail_shows_body_counts_and_actions(self):
+        notice = self.notice(body="Line one\nLine two <b>x</b>")
+        page = self.client.get(reverse("core:announcement-detail", args=[notice.pk]))
+        self.assertContains(page, "Line one<br>Line two &lt;b&gt;x&lt;/b&gt;", html=False)
+        self.assertEqual(page.context["counts"], {"guardians": 2, "opted_in": 2})
+        self.assertContains(page, reverse("core:announcement-prepare", args=[notice.pk]))
+        self.assertContains(page, reverse("core:announcement-withdraw", args=[notice.pk]))
+
+    def test_prepare_button_hidden_in_portal_only(self):
+        School.objects.filter(pk=self.school.pk).update(notification_channel="PORTAL_ONLY")
+        notice = self.notice()
+        page = self.client.get(reverse("core:announcement-detail", args=[notice.pk]))
+        self.assertNotContains(page, reverse("core:announcement-prepare", args=[notice.pk]))
+
+    def test_prepare_and_withdraw_from_the_page(self):
+        notice = self.notice()
+        page = self.client.post(reverse("core:announcement-prepare", args=[notice.pk]),
+                                follow=True)
+        self.assertContains(page, "Messages ready on the To send page: 2.")
+        page = self.client.post(reverse("core:announcement-withdraw", args=[notice.pk]),
+                                {"reason": ""}, follow=True)
+        self.assertContains(page, "Give a reason for withdrawing this notice.")
+        self.client.post(reverse("core:announcement-withdraw", args=[notice.pk]),
+                         {"reason": "Wrong date"})
+        notice.refresh_from_db()
+        self.assertTrue(notice.is_withdrawn)
+        page = self.client.post(reverse("core:announcement-prepare", args=[notice.pk]),
+                                follow=True)
+        self.assertContains(page, "This notice has been withdrawn.")
+
+    def test_list_page(self):
+        notice = self.notice(title="Sports Day")
+        page = self.client.get(reverse("core:announcement-list"))
+        self.assertContains(page, "Sports Day")
+        self.assertContains(page, reverse("core:announcement-detail", args=[notice.pk]))
+
+    def test_office_nav_has_announcements(self):
+        from core.navigation import office_nav
+
+        labels = [link["label"] for group in office_nav(self.admin, "")
+                  for link in group["links"]]
+        self.assertIn("Announcements", labels)
+        teacher_labels = [link["label"] for group in office_nav(self.rao, "")
+                          for link in group["links"]]
+        self.assertNotIn("Announcements", teacher_labels)
+
+    def test_teachers_and_guardians_are_forbidden(self):
+        notice = self.notice()
+        teacher = self.client_class()
+        teacher.login(username="rao", password="pass-12345")
+        guardian = self.guardian_client()
+        for client in (teacher, guardian):
+            for url, method in ((reverse("core:announcement-list"), "get"),
+                                (reverse("core:announcement-create"), "post"),
+                                (reverse("core:announcement-prepare", args=[notice.pk]), "post"),
+                                (reverse("core:announcement-withdraw", args=[notice.pk]),
+                                 "post")):
+                with self.subTest(url=url):
+                    self.assertEqual(getattr(client, method)(url).status_code, 403)
+
+    def test_to_send_labels_announcement_rows(self):
+        announcements.prepare_messages(self.notice())
+        page = self.client.get(reverse("core:notifications-to-send"))
+        self.assertContains(page, "School notice")

@@ -1,6 +1,6 @@
 from django.urls import path
 
-from core import import_views, notification_views, views
+from core import announcement_views, import_views, notification_views, views
 
 app_name = "core"
 
@@ -342,4 +342,14 @@ urlpatterns = [
         notification_views.notification_dismiss,
         name="notification-dismiss",
     ),
+    # Phase 7 Gate 3: announcements (ADR 0015)
+    path("announcements/", announcement_views.announcement_list, name="announcement-list"),
+    path("announcements/new/", announcement_views.announcement_create,
+         name="announcement-create"),
+    path("announcements/<int:pk>/", announcement_views.announcement_detail,
+         name="announcement-detail"),
+    path("announcements/<int:pk>/prepare/", announcement_views.announcement_prepare,
+         name="announcement-prepare"),
+    path("announcements/<int:pk>/withdraw/", announcement_views.announcement_withdraw,
+         name="announcement-withdraw"),
 ]

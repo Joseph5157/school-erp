@@ -11,6 +11,7 @@ from core.models import (
     AcademicSubjectOffering,
     AcademicTerm,
     AcademicYear,
+    Announcement,
     Applicant,
     ApplicantGuardian,
     Assessment,
@@ -961,3 +962,26 @@ class ContactConsentForm(forms.Form):
         max_length=200, required=False, label="Note (optional)",
         widget=forms.TextInput(attrs={"class": "form-control form-control-sm"}),
     )
+
+
+class AnnouncementForm(forms.Form):
+    title = forms.CharField(max_length=120)
+    body = forms.CharField(max_length=2000, widget=forms.Textarea(attrs={"rows": 6}),
+                           help_text="Plain text. Line breaks are kept.")
+    audience = forms.ChoiceField(choices=Announcement.Audience.choices,
+                                 widget=forms.RadioSelect, initial=Announcement.Audience.ALL)
+    class_grade = forms.ModelChoiceField(ClassGrade.objects.order_by("name"), required=False,
+                                         label="Class")
+    section = forms.ModelChoiceField(
+        Section.objects.select_related("class_grade").order_by("class_grade__name", "name"),
+        required=False,
+    )
+
+    def clean(self):
+        data = super().clean()
+        audience = data.get("audience")
+        if audience == Announcement.Audience.CLASS and not data.get("class_grade"):
+            self.add_error("class_grade", "Choose the class.")
+        if audience == Announcement.Audience.SECTION and not data.get("section"):
+            self.add_error("section", "Choose the section.")
+        return data

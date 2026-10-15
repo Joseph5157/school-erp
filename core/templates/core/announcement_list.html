@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Announcements{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Announcements</h1>
+    {% if perms.core.add_announcement %}<a class="btn btn-primary" href="{% url 'core:announcement-create' %}">New notice</a>{% endif %}
+</div>
+<p class="text-muted">Notices appear in the guardian portal as soon as they are published. Sending them on WhatsApp is a separate step on each notice.</p>
+<table class="table table-sm">
+    <thead><tr><th>Published</th><th>Title</th><th>Audience</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for notice in announcements %}
+        <tr>
+            <td>{{ notice.published_at|date:"Y-m-d H:i" }}</td>
+            <td><a href="{% url 'core:announcement-detail' notice.pk %}">{{ notice.title }}</a></td>
+            <td>{{ notice.audience_label }}</td>
+            <td>{% if notice.is_withdrawn %}Withdrawn{% else %}Live{% endif %}</td>
+        </tr>
+    {% empty %}
+        <tr><td colspan="4">No notices yet.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
