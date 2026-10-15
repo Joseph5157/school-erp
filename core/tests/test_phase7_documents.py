@@ -1,9 +1,14 @@
 """Phase 7 piece C: documents (spec 2026-10-15-phase7-documents-design.md)."""
 
+from datetime import date
+
+from django.db import DatabaseError, transaction
 from django.test import SimpleTestCase, TestCase
 
+from core.documents import serials
 from core.documents.engine import render_pdf
 from core.forms import SchoolForm
+from core.models import AcademicYear, IssuedDocument
 
 TELUGU = "క్ష స్త్ర శ్రీ విద్యార్థి"  # conjuncts: ksha, stra, shri, vidyarthi
 
@@ -32,3 +37,41 @@ class SchoolLetterheadTests(TestCase):
         self.assertTrue(form.is_valid(), form.errors)
         school = form.save()
         self.assertEqual(school.principal_name, "K. Lakshmi")
+
+
+def make_year():
+    return AcademicYear.objects.create(
+        name="2026-27", start_date=date(2026, 6, 1), end_date=date(2027, 3, 31))
+
+
+class SerialTests(TestCase):
+    def setUp(self):
+        self.year = make_year()
+
+    def test_serials_count_per_type_and_year(self):
+        with transaction.atomic():
+            self.assertEqual(serials.next_serial("BONAFIDE", self.year), "BON/2026-27/0001")
+            self.assertEqual(serials.next_serial("BONAFIDE", self.year), "BON/2026-27/0002")
+            self.assertEqual(serials.next_serial("REPORT_CARD", self.year), "RC/2026-27/0001")
+            self.assertEqual(serials.next_serial("ATTENDANCE_SUMMARY", self.year),
+                             "ATT/2026-27/0001")
+
+    def test_unknown_type_is_refused(self):
+        with transaction.atomic(), self.assertRaises(ValueError):
+            serials.next_serial("NOPE", self.year)
+
+
+class IssuedDocumentHistoryTests(TestCase):
+    def setUp(self):
+        self.doc = IssuedDocument.objects.create(
+            document_type="BONAFIDE", serial="BON/2026-27/0001", academic_year=make_year(),
+            payload={"student_name": "Asha"})
+
+    def test_update_is_refused(self):
+        self.doc.payload = {"student_name": "Other"}
+        with self.assertRaises(DatabaseError), transaction.atomic():
+            self.doc.save()
+
+    def test_delete_is_refused(self):
+        with self.assertRaises(DatabaseError), transaction.atomic():
+            IssuedDocument.objects.filter(pk=self.doc.pk).delete()
