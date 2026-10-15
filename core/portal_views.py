@@ -4,6 +4,7 @@ from django.http import Http404
 from django.shortcuts import render
 from django.views.decorators.http import require_safe
 
+from core.announcements import visible_announcements
 from core.authorization import guardian_required, guardian_visible_grant
 from core.portal import (
     attendance_years,
@@ -91,3 +92,20 @@ def report_card(request, public_id, publication_id):
         "portal/report_card.html",
         _context(request, grant=grant, student=student, pub=pub, entries=pub.entries.all()),
     )
+
+
+@require_safe
+@guardian_required
+def notices(request):
+    return render(request, "portal/notices.html",
+                  _context(request, notices=visible_announcements(request.user)))
+
+
+@require_safe
+@guardian_required
+def notice(request, notice_id):
+    item = next((a for a in visible_announcements(request.user) if a.public_id == notice_id),
+                None)
+    if item is None:
+        raise Http404("No such notice.")
+    return render(request, "portal/notice.html", _context(request, notice=item))

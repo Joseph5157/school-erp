@@ -1,15 +1,23 @@
 """Phase 7 Gate 3: announcements (ADR 0015)."""
 
 from datetime import date
+from unittest import mock
 
 from django.core.exceptions import ValidationError
 from django.db import DatabaseError, transaction
-from django.test import TestCase
+from django.test import TestCase, override_settings
+from django.urls import reverse
 
-from core import announcements
+from core import announcements, notifications
 from core import guardian_accounts as ga
-from core.models import Announcement, GuardianContactConsent, NotificationTemplate
-from core.tests.test_phase7_alerts import AlertFixture
+from core.models import (
+    Announcement,
+    GuardianContactConsent,
+    Notification,
+    NotificationTemplate,
+    School,
+)
+from core.tests.test_phase7_alerts import BASE, AlertFixture
 
 TEXT = "Dear parent, there is a new notice from the school. Read it here: {portal_url}"
 ALL = Announcement.Audience.ALL
@@ -178,3 +186,83 @@ class VisibilityTests(AnnouncementFixture, TestCase):
     def test_non_guardian_sees_nothing(self):
         self.notice()
         self.assertEqual(announcements.visible_announcements(self.admin), [])
+
+
+class PrepareMessagesTests(AnnouncementFixture, TestCase):
+    def sent(self):
+        return list(Notification.objects.filter(type=Notification.Type.ANNOUNCEMENT)
+                    .order_by("pk"))
+
+    def test_one_message_per_guardian_and_repeat_is_harmless(self):
+        ga.grant_student_access(student_guardian=self.ravi_link, actor=self.admin)
+        notice = self.notice()
+        self.assertEqual(announcements.prepare_messages(notice),
+                         {"prepared": 2, "skipped": 0, "failed": 0})
+        self.assertEqual(announcements.prepare_messages(notice),
+                         {"prepared": 2, "skipped": 0, "failed": 0})
+        messages = self.sent()
+        self.assertEqual(sorted(m.guardian.pk for m in messages),
+                         sorted([self.meena.pk, self.other.pk]))
+        self.assertTrue(all(m.student is None for m in messages))
+        self.assertEqual(messages[0].idempotency_key,
+                         f"ANNOUNCEMENT:{messages[0].guardian.pk}:-:announcement-{notice.pk}")
+
+    def test_text_is_the_approved_link_only_wording(self):
+        notice = self.notice(title="Fee dates", body="Secret body text")
+        announcements.prepare_messages(notice)
+        link = BASE + reverse("portal:notice", args=[notice.public_id])
+        self.assertEqual(self.sent()[0].parameters, {"portal_url": link})
+        text = notifications.render(self.sent()[0])
+        self.assertEqual(text, "Dear parent, there is a new notice from the school. "
+                               "Read it here: " + link)
+        self.assertNotIn("Fee dates", text)
+        self.assertNotIn("Secret", text)
+
+    def test_guardian_without_consent_is_skipped(self):
+        self.consent(self.other, GuardianContactConsent.Status.OPTED_OUT)
+        self.assertEqual(announcements.prepare_messages(self.notice()),
+                         {"prepared": 1, "skipped": 1, "failed": 0})
+
+    def test_refused_when_withdrawn_portal_only_or_no_address(self):
+        withdrawn = self.notice()
+        announcements.withdraw(withdrawn, actor=self.admin, reason="Wrong")
+        withdrawn.refresh_from_db()
+        with self.assertRaisesMessage(ValidationError, "This notice has been withdrawn."):
+            announcements.prepare_messages(withdrawn)
+        live = self.notice()
+        with override_settings(PORTAL_BASE_URL=""), self.assertRaisesMessage(
+                ValidationError,
+                "Set the portal address (PORTAL_BASE_URL) before sending WhatsApp messages."):
+            announcements.prepare_messages(live)
+        School.objects.filter(pk=self.school.pk).update(notification_channel="PORTAL_ONLY")
+        with self.assertRaisesMessage(ValidationError,
+                                      "WhatsApp sending is switched off for this school."):
+            announcements.prepare_messages(live)
+        self.assertEqual(self.sent(), [])
+
+    def test_missing_text_is_counted_as_failed_and_logged(self):
+        with mock.patch.object(announcements, "TEMPLATE_KEY", "no-such-text"), \
+                self.assertLogs("core.announcements", "WARNING"):
+            result = announcements.prepare_messages(self.notice())
+        self.assertEqual(result, {"prepared": 0, "skipped": 0, "failed": 2})
+
+    def test_withdraw_dismisses_waiting_messages_only(self):
+        notice = self.notice()
+        announcements.prepare_messages(notice)
+        first, second = self.sent()
+        notifications.mark_sent(first, user=self.admin)
+        announcements.withdraw(notice, actor=self.admin, reason="Wrong date")
+        first.refresh_from_db()
+        second.refresh_from_db()
+        self.assertEqual(first.status, Notification.Status.SENT)
+        self.assertEqual((second.status, second.dismiss_reason, second.dismissed_by),
+                         (Notification.Status.DISMISSED, "Announcement withdrawn", self.admin))
+
+    def test_withdraw_leaves_other_notices_messages_alone(self):
+        keep, drop = self.notice(title="Keep"), self.notice(title="Drop")
+        announcements.prepare_messages(keep)
+        announcements.prepare_messages(drop)
+        announcements.withdraw(drop, actor=self.admin, reason="Wrong")
+        statuses = {(m.idempotency_key.rsplit("-", 1)[1], m.status) for m in self.sent()}
+        self.assertEqual(statuses, {(str(keep.pk), Notification.Status.PREPARED),
+                                    (str(drop.pk), Notification.Status.DISMISSED)})

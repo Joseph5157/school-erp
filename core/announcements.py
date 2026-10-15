@@ -6,18 +6,24 @@ deleted. Guardians with portal access to a student in the audience read it in
 the portal; preparing WhatsApp messages is a separate administrator step.
 """
 
+import logging
+
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Q
+from django.urls import reverse
 from django.utils import timezone
 
 from core import models as core_models
 from core import notification_producers, notifications
-from core.models import AcademicEnrollment, Announcement, Student
+from core.models import AcademicEnrollment, Announcement, Notification, School, Student
 from core.portal import portal_children
 
 TEMPLATE_KEY = "announcement"
 WITHDRAWN_REASON = "Announcement withdrawn"
+
+logger = logging.getLogger(__name__)
 
 
 def publish(*, title, body, audience, class_grade=None, section=None, actor):
@@ -46,6 +52,15 @@ def withdraw(announcement, *, actor, reason):
         locked.withdrawn_by = actor
         locked.withdrawal_reason = reason[:200]
         locked.save(update_fields=["withdrawn_at", "withdrawn_by", "withdrawal_reason"])
+        waiting = Notification.objects.filter(
+            type=Notification.Type.ANNOUNCEMENT, status=Notification.Status.PREPARED,
+            idempotency_key__endswith=f":-:announcement-{locked.pk}",
+        )
+        for message in waiting:
+            try:
+                notifications.dismiss(message, user=actor, reason=WITHDRAWN_REASON)
+            except notifications.NotificationError:
+                pass  # sent or dismissed meanwhile; nothing to retract
     return locked
 
 
@@ -110,3 +125,44 @@ def visible_announcements(user):
         )
         .order_by("-published_at", "-pk")
     )
+
+
+def notice_url(announcement):
+    if not settings.PORTAL_BASE_URL:
+        raise ValidationError(
+            "Set the portal address (PORTAL_BASE_URL) before sending WhatsApp messages."
+        )
+    return settings.PORTAL_BASE_URL + reverse("portal:notice", args=[announcement.public_id])
+
+
+def prepare_messages(announcement):
+    """One link-only message per guardian; repeating prepares nothing new.
+
+    Counts describe the audience's messages: an existing message (from an
+    earlier click) counts as prepared, or skipped if it had no consent.
+    """
+    if announcement.is_withdrawn:
+        raise ValidationError("This notice has been withdrawn.")
+    if notifications.school_mode() != School.NotificationMode.ASSIST:
+        raise ValidationError("WhatsApp sending is switched off for this school.")
+    parameters = {"portal_url": notice_url(announcement)}
+    result = {"prepared": 0, "skipped": 0, "failed": 0}
+    for grant in recipient_grants(announcement):
+        guardian = grant.student_guardian.guardian
+        try:
+            with transaction.atomic():
+                message = notifications.enqueue(
+                    guardian=guardian, student=None, type=Notification.Type.ANNOUNCEMENT,
+                    template_key=TEMPLATE_KEY, parameters=parameters,
+                    subject=f"announcement-{announcement.pk}",
+                )
+        except notifications.NotificationError as problem:
+            logger.warning("ANNOUNCEMENT message not prepared (announcement %s, guardian %s): %s",
+                           announcement.pk, guardian.pk, problem)
+            result["failed"] += 1
+            continue
+        if message.status == Notification.Status.SKIPPED_NO_CONSENT:
+            result["skipped"] += 1
+        else:
+            result["prepared"] += 1
+    return result
