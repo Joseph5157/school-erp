@@ -32,10 +32,7 @@
     {% if capture_form.enrollments %}
     <form method="post" id="attendance-capture">
         {% csrf_token %}
-        {% include "core/_attendance_capture_table.html" %}
-        <button type="submit" name="action" value="save" class="btn btn-primary">Save draft</button>
-        <button type="submit" name="action" value="submit" class="btn btn-success">Save and submit</button>
-        <span class="form-text ms-2">Submitting requires Present or Absent for every Student.</span>
+        {% include "core/_attendance_capture_table.html" with can_submit=True %}
     </form>
     {% else %}
     <p>No Students are enrolled in this Section today.</p>

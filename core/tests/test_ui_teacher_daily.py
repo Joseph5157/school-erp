@@ -3,6 +3,8 @@
 from datetime import date
 from unittest import mock
 
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
 from django.test import TestCase
 from django.urls import reverse
 
@@ -58,3 +60,62 @@ class CaptureCountsTests(U2Fixture, TestCase):
                 f"status_{self.bina.pk}": ""}
         form = AttendanceCaptureForm(data, register=register)
         self.assertEqual(form.counts(), {"all": 3, "present": 0, "absent": 2, "unmarked": 1})
+
+
+class CapturePartialTests(U2Fixture, TestCase):
+    def test_post_names_and_values_unchanged(self):
+        self.draft()
+        page = self.teacher.get(self.url)
+        for enrollment in (self.asha, self.ravi, self.bina):
+            self.assertContains(page, f'name="status_{enrollment.pk}" value="PRESENT"')
+            self.assertContains(page, f'name="status_{enrollment.pk}" value="ABSENT"')
+            self.assertContains(page, f'name="note_{enrollment.pk}"')
+        self.assertContains(page, 'name="action" value="save"')
+        self.assertContains(page, 'name="action" value="submit"')
+
+    def test_rows_are_fieldsets_named_by_student(self):
+        self.draft()
+        page = self.teacher.get(self.url)
+        self.assertContains(page, '<legend class="erp-roster-name">Asha</legend>')
+        self.assertEqual(page.content.decode().count("<fieldset"), 3)
+
+    def test_static_counts(self):
+        self.draft(asha="PRESENT", ravi="ABSENT")
+        page = self.teacher.get(self.url)
+        self.assertContains(page, 'data-erp-count="unmarked">1<')
+        self.assertContains(page, 'data-erp-count="present">1<')
+        self.assertContains(page, 'data-erp-count="absent">1<')
+        self.assertContains(page, "All 3 · Unmarked 1 · Present 1 · Absent 1")
+        self.assertContains(page, "1 unmarked")
+
+    def test_saved_note_is_marked_filled(self):
+        self.draft(notes={"ravi": "Fever"}, asha="PRESENT", ravi="ABSENT")
+        page = self.teacher.get(self.url).content.decode()
+        self.assertIn('value="Fever"', page)
+        self.assertEqual(page.count('class="erp-note is-filled"'), 1)
+
+    def test_mark_present_button_and_no_inline_script(self):
+        self.draft()
+        page = self.teacher.get(self.url)
+        self.assertContains(page, "Mark unanswered as present")
+        self.assertNotContains(page, "<script>")
+
+    def test_office_page_uses_partial(self):
+        register = self.draft(asha="PRESENT")
+        self.client.login(username="admin", password="pass-12345")
+        page = self.client.get(reverse("core:attendance-register-detail", args=[register.pk]))
+        self.assertContains(page, "data-erp-roster")
+        self.assertContains(page, "Marked: 1")
+        self.assertContains(page, "Save and submit")
+
+    def test_office_page_hides_submit_without_permission(self):
+        register = self.draft()
+        clerk = get_user_model().objects.create_user(username="clerk", password="pass-12345")
+        clerk.user_permissions.add(
+            Permission.objects.get(codename="view_attendanceregister"),
+            Permission.objects.get(codename="add_attendanceentry"),
+        )
+        self.client.login(username="clerk", password="pass-12345")
+        page = self.client.get(reverse("core:attendance-register-detail", args=[register.pk]))
+        self.assertContains(page, "Save draft")
+        self.assertNotContains(page, "Save and submit")
