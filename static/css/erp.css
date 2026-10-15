@@ -205,6 +205,101 @@ body.has-tabbar .erp-messages {
   background: var(--erp-crit-wash); color: var(--erp-crit); border-color: transparent;
 }
 
+/* ---------- U2: attendance roster ---------- */
+
+.erp-count-line { color: var(--erp-ink-soft); margin-bottom: .75rem; }
+.erp-count-tabs { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: .75rem; align-items: center; }
+.erp-count-tabs [data-erp-filter] {
+  border: 1px solid var(--erp-rule); background: var(--erp-surface); color: var(--erp-ink);
+  border-radius: 999px; padding: .35rem .8rem; font-size: .9rem; min-height: 2.25rem;
+}
+.erp-count-tabs [data-erp-filter][aria-pressed="true"] {
+  background: var(--erp-accent); border-color: var(--erp-accent); color: #fff; font-weight: 600;
+}
+.erp-mark-present { margin-left: auto; }
+
+.erp-roster-row {
+  display: grid; grid-template-columns: 2.25rem 1fr; gap: .5rem .75rem; align-items: center;
+  background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
+  padding: .75rem; margin-bottom: .5rem;
+}
+.erp-roster-row[hidden] { display: none; }
+.erp-roster-name { grid-column: 2; grid-row: 1; font-weight: 600; }
+.erp-initials {
+  grid-column: 1; grid-row: 1; width: 2.25rem; height: 2.25rem; border-radius: 50%;
+  display: grid; place-items: center; background: var(--erp-accent-wash); color: var(--erp-accent);
+  font-weight: 700;
+}
+.erp-toggles { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.erp-toggles input[type="radio"] { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.erp-toggle {
+  display: grid; place-items: center; min-height: 2.75rem; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--erp-rule); background: var(--erp-paper); font-weight: 600; margin: 0;
+}
+.erp-toggles input:focus-visible + .erp-toggle { outline: 3px solid var(--erp-accent); outline-offset: 2px; }
+.erp-toggles input:checked + .erp-toggle.is-present {
+  background: var(--erp-accent); border-color: var(--erp-accent); color: #fff;
+}
+.erp-toggles input:checked + .erp-toggle.is-absent {
+  background: var(--erp-crit); border-color: var(--erp-crit); color: #fff;
+}
+.erp-note { grid-column: 1 / -1; }
+.erp-note label { display: block; }
+.erp-note input { width: 100%; padding: .4rem .6rem; border: 1px solid var(--erp-rule); border-radius: 6px; }
+/* Without :has() support the note simply stays visible. */
+@supports selector(:has(*)) {
+  .erp-note:not(.is-filled) { display: none; }
+  .erp-roster-row:has(input[value="ABSENT"]:checked) .erp-note,
+  .erp-note:has(input:not(:placeholder-shown)) { display: block; }
+}
+
+.erp-actionbar {
+  position: sticky; bottom: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: .5rem; align-items: center;
+  background: var(--erp-surface); border-top: 1px solid var(--erp-rule);
+  padding: .75rem; margin-inline: -.75rem; padding-bottom: calc(.75rem + env(safe-area-inset-bottom));
+}
+.erp-actionbar-status { flex: 1 1 100%; font-size: .9rem; color: var(--erp-ink-soft); }
+.erp-actionbar .btn { flex: 1; min-height: 2.75rem; }
+/* On phones, messages sit above the sticky action bar instead of covering Save/Submit. */
+@media (max-width: 991.98px) {
+  body:has(.erp-actionbar) .erp-messages { bottom: calc(7rem + env(safe-area-inset-bottom, 0px)); }
+}
+@media (min-width: 576px) {
+  .erp-actionbar-status { flex: 1 1 auto; }
+  .erp-actionbar .btn { flex: 0 0 auto; }
+}
+
+.erp-card {
+  background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
+  padding: .9rem 1rem; margin-bottom: .6rem;
+}
+.erp-card-row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; justify-content: space-between; }
+.erp-card-title { font-weight: 600; margin: 0; }
+.erp-card-meta { color: var(--erp-ink-soft); font-size: .9rem; margin: 0; }
+.erp-entry {
+  display: flex; flex-wrap: wrap; gap: .25rem .75rem; align-items: center;
+  background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
+  padding: .6rem .8rem; margin-bottom: .4rem;
+}
+.erp-entry-name { flex: 1; font-weight: 600; }
+.erp-entry-note { flex-basis: 100%; color: var(--erp-ink-soft); font-size: .9rem; }
+
+.erp-section-title { font-size: 1.05rem; font-weight: 700; margin: 1.5rem 0 .6rem; }
+.erp-progress { width: 100%; height: .4rem; accent-color: var(--erp-accent); margin-top: .4rem; }
+
+.erp-month-nav {
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: .5rem;
+  background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
+  padding: .5rem .75rem; margin-bottom: .75rem;
+}
+.erp-month-nav > :last-child { justify-self: end; }
+.erp-stat-line { font-weight: 600; }
+.erp-student-rows li {
+  display: flex; justify-content: space-between; gap: .75rem; padding: .45rem 0;
+  border-bottom: 1px solid var(--erp-rule);
+}
+.erp-student-rows li span:last-child { white-space: nowrap; color: var(--erp-ink-soft); }
+
 /* Wide tables scroll inside their own box on phones instead of widening the page. */
 @media (max-width: 575.98px) {
   .erp-content table:not(.erp-keep) { display: block; overflow-x: auto; }

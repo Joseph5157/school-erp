@@ -28,4 +28,71 @@
       }
     }, 6000);
   });
+
+  // Attendance roster: live counts, filter tabs, mark-unanswered-present, submit hint.
+  // Without JS the static count line stays and every row is shown.
+  document.querySelectorAll("[data-erp-roster]").forEach(function (roster) {
+    var rows = Array.prototype.slice.call(roster.querySelectorAll("[data-erp-row]"));
+    var tabs = roster.querySelector("[data-erp-tabs]");
+    var staticCounts = roster.querySelector("[data-erp-static-counts]");
+    var hint = roster.querySelector("[data-erp-hint]");
+    var filter = "all";
+
+    function statusOf(row) {
+      var checked = row.querySelector('input[type="radio"]:checked');
+      return checked ? checked.value.toLowerCase() : "unmarked";
+    }
+
+    function refresh() {
+      var counts = { all: rows.length, present: 0, absent: 0, unmarked: 0 };
+      rows.forEach(function (row) {
+        var status = statusOf(row);
+        counts[status] += 1;
+        row.hidden = filter !== "all" && filter !== status;
+      });
+      Object.keys(counts).forEach(function (key) {
+        var target = roster.querySelector('[data-erp-count="' + key + '"]');
+        if (target) target.textContent = counts[key];
+      });
+      if (hint) {
+        hint.textContent = counts.unmarked
+          ? "Mark all students to submit (" + counts.unmarked + " unmarked)"
+          : "All students marked";
+      }
+    }
+
+    if (tabs) {
+      tabs.hidden = false;
+      if (staticCounts) staticCounts.hidden = true;
+      tabs.querySelectorAll("[data-erp-filter]").forEach(function (button) {
+        button.addEventListener("click", function () {
+          filter = button.getAttribute("data-erp-filter");
+          tabs.querySelectorAll("[data-erp-filter]").forEach(function (other) {
+            other.setAttribute("aria-pressed", other === button ? "true" : "false");
+          });
+          refresh();
+        });
+      });
+    }
+
+    // Fills Present only for rows not yet answered and never overrides a choice.
+    // Nothing is saved until the form is submitted, so an unopened register is never present.
+    var markPresent = roster.querySelector("[data-erp-mark-present]");
+    if (markPresent) {
+      markPresent.addEventListener("click", function () {
+        rows.forEach(function (row) {
+          if (statusOf(row) === "unmarked") {
+            var present = row.querySelector('input[type="radio"][value="PRESENT"]');
+            if (present) present.checked = true;
+          }
+        });
+        refresh();
+      });
+    }
+
+    roster.addEventListener("change", function (event) {
+      if (event.target.type === "radio") refresh();
+    });
+    refresh();
+  });
 })();

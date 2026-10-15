@@ -969,6 +969,9 @@ def my_attendance_assignment(request, pk):
     except ValueError:
         pass
     month_start, month_end = reports.month_bounds(*chosen)
+    index = months.index(chosen)
+    previous_month = months[index - 1] if index > 0 else None
+    next_month = months[index + 1] if index + 1 < len(months) else None
     start, end = max(first, month_start), min(last, month_end)
     summary = reports.section_summary(row.section, start, end)
     registers = list(
@@ -994,6 +997,10 @@ def my_attendance_assignment(request, pk):
             "missing": missing,
             "months": [f"{y:04d}-{m:02d}" for y, m in months],
             "chosen": f"{chosen[0]:04d}-{chosen[1]:02d}",
+            "previous_month": f"{previous_month[0]:04d}-{previous_month[1]:02d}"
+            if previous_month else None,
+            "next_month": f"{next_month[0]:04d}-{next_month[1]:02d}" if next_month else None,
+            "chosen_label": month_start.strftime("%B %Y"),
             "start": start,
             "end": end,
         },

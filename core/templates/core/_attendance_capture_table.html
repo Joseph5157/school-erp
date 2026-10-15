@@ -1,32 +1,38 @@
-{# Roster rows for a DRAFT register; used inside a form with id attendance-capture. #}
-        <button type="button" class="btn btn-outline-secondary btn-sm mb-2" id="mark-all-present">Mark unanswered as present</button>
-        <table class="table align-middle">
-            <thead>
-                <tr><th>Student</th><th>Status</th><th>Absence note</th></tr>
-            </thead>
-            <tbody>
-                {% for enrollment, status_field, note_field in capture_form.rows %}
-                <tr>
-                    <td>{{ enrollment.student.full_name }}</td>
-                    <td>
-                        {% for radio in status_field %}
-                            <label class="me-3">{{ radio.tag }} {{ radio.choice_label }}</label>
-                        {% endfor %}
-                    </td>
-                    <td>{{ note_field }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    <script>
-        // UI convenience only: fills Present for rows not yet answered and never
-        // overrides a choice already made. Nothing is saved until the form is
-        // submitted, so an unopened register is never treated as present.
-        document.getElementById("mark-all-present").addEventListener("click", function () {
-            var form = document.getElementById("attendance-capture");
-            form.querySelectorAll('input[type="radio"][value="PRESENT"]').forEach(function (radio) {
-                var answered = form.querySelector('input[name="' + radio.name + '"]:checked');
-                if (!answered) { radio.checked = true; }
-            });
-        });
-    </script>
+{# Roster for a DRAFT register. Include inside <form id="attendance-capture"> with can_submit=<bool>. #}
+{% with counts=capture_form.counts %}
+<div class="erp-roster" data-erp-roster>
+    <p class="erp-count-line" data-erp-static-counts>All {{ counts.all }} · Unmarked {{ counts.unmarked }} · Present {{ counts.present }} · Absent {{ counts.absent }}</p>
+    <div class="erp-count-tabs" data-erp-tabs hidden>
+        <button type="button" data-erp-filter="all" aria-pressed="true">All <span data-erp-count="all">{{ counts.all }}</span></button>
+        <button type="button" data-erp-filter="unmarked" aria-pressed="false">Unmarked <span data-erp-count="unmarked">{{ counts.unmarked }}</span></button>
+        <button type="button" data-erp-filter="present" aria-pressed="false">Present <span data-erp-count="present">{{ counts.present }}</span></button>
+        <button type="button" data-erp-filter="absent" aria-pressed="false">Absent <span data-erp-count="absent">{{ counts.absent }}</span></button>
+        <button type="button" class="btn btn-outline-secondary btn-sm erp-mark-present" data-erp-mark-present>Mark unanswered as present</button>
+    </div>
+
+    {% for enrollment, status_field, note_field in capture_form.rows %}
+    <fieldset class="erp-roster-row" data-erp-row>
+        <legend class="visually-hidden">{{ enrollment.student.full_name }}</legend>
+        <span class="erp-roster-name" aria-hidden="true">{{ enrollment.student.full_name }}</span>
+        <span class="erp-initials" aria-hidden="true">{{ enrollment.student.full_name|slice:":1"|upper }}</span>
+        <div class="erp-toggles">
+            {% for radio in status_field %}
+                {{ radio.tag }}<label for="{{ radio.id_for_label }}" class="erp-toggle is-{{ radio.data.value|lower }}">{{ radio.choice_label }}</label>
+            {% endfor %}
+        </div>
+        <div class="erp-note{% if note_field.value or note_field.errors %} is-filled{% endif %}">
+            <label class="form-label small mb-1" for="{{ note_field.id_for_label }}">Absence note<span class="visually-hidden"> for {{ enrollment.student.full_name }}</span></label>
+            {{ note_field }}
+            {% for error in note_field.errors %}<div class="small text-danger">{{ error }}</div>{% endfor %}
+        </div>
+    </fieldset>
+    {% endfor %}
+
+    <div class="erp-actionbar">
+        <span class="erp-actionbar-status" data-erp-hint aria-live="polite">{{ counts.unmarked }} unmarked</span>
+        <button type="submit" name="action" value="save" class="btn btn-outline-primary">Save draft</button>
+        {% if can_submit %}<button type="submit" name="action" value="submit" class="btn btn-primary">Save and submit</button>{% endif %}
+    </div>
+    {% if can_submit %}<p class="form-text">Submitting requires Present or Absent for every Student.</p>{% endif %}
+</div>
+{% endwith %}

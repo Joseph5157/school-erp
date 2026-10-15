@@ -34,12 +34,7 @@
     {% if perms.core.add_attendanceentry %}
     <form method="post" action="{% url 'core:attendance-capture' register.pk %}" id="attendance-capture">
         {% csrf_token %}
-        {% include "core/_attendance_capture_table.html" %}
-        <button type="submit" name="action" value="save" class="btn btn-primary">Save draft</button>
-        {% if perms.core.change_attendanceregister %}
-        <button type="submit" name="action" value="submit" class="btn btn-success">Save and submit</button>
-        <span class="form-text ms-2">Submitting requires Present or Absent for every Student.</span>
-        {% endif %}
+        {% include "core/_attendance_capture_table.html" with can_submit=perms.core.change_attendanceregister %}
     </form>
     {% else %}
     <p class="text-muted">You do not have permission to capture attendance.</p>

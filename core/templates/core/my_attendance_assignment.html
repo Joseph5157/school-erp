@@ -1,49 +1,42 @@
 {% extends "base.html" %}
 {% block title %}Attendance {{ row.section }}{% endblock %}
 {% block content %}
+<p class="mb-2"><a href="{% url 'core:my-attendance-history' %}">‹ All my Sections</a></p>
 <h1 class="h3 mb-1">Attendance: {{ row.section }}</h1>
 <p class="text-muted">{{ row.academic_year.name }} &middot; showing {{ start }} to {{ end }}</p>
-<form method="get" class="mb-3">
-    <label for="month" class="me-2">Month</label>
-    <select name="month" id="month" onchange="this.form.submit()">
-        {% for month in months %}<option value="{{ month }}"{% if month == chosen %} selected{% endif %}>{{ month }}</option>{% endfor %}
-    </select>
-    <noscript><button type="submit" class="btn btn-sm btn-outline-secondary">Show</button></noscript>
-</form>
 
-<h2 class="h5">Summary</h2>
-<p>School days expected: {{ summary.totals.expected_days }} &middot; submitted: {{ summary.totals.submitted_days }} &middot; missing: {{ summary.totals.missing_days }}.
-   Present {{ summary.totals.present }}, absent {{ summary.totals.absent }}{% if summary.totals.percentage is not None %} ({{ summary.totals.percentage }}% present){% endif %}.</p>
-<table class="table table-sm">
-    <thead><tr><th>Student</th><th>Present</th><th>Absent</th><th>%</th></tr></thead>
-    <tbody>
+<nav class="erp-month-nav" aria-label="Month">
+    {% if previous_month %}<a href="?month={{ previous_month }}">‹ Previous</a>{% else %}<span></span>{% endif %}
+    <strong>{{ chosen_label }}</strong>
+    {% if next_month %}<a href="?month={{ next_month }}">Next ›</a>{% else %}<span></span>{% endif %}
+</nav>
+
+<p class="erp-stat-line">Expected {{ summary.totals.expected_days }} &middot; Submitted {{ summary.totals.submitted_days }} &middot; Missing {{ summary.totals.missing_days }}{% if summary.totals.percentage is not None %} &middot; {{ summary.totals.percentage }}% present{% endif %}</p>
+
+<h2 class="erp-section-title">Students</h2>
+<ul class="erp-student-rows list-unstyled">
     {% for student_row in summary.rows %}
-        <tr><td>{{ student_row.student.full_name }}</td><td>{{ student_row.present }}</td><td>{{ student_row.absent }}</td><td>{{ student_row.percentage|default_if_none:"&ndash;" }}</td></tr>
+    <li><span>{{ student_row.student.full_name }}</span><span>{{ student_row.present }} P &middot; {{ student_row.absent }} A &middot; {% if student_row.percentage is not None %}{{ student_row.percentage }}%{% else %}&ndash;{% endif %}</span></li>
     {% empty %}
-        <tr><td colspan="4">No Students in this period.</td></tr>
+    <li>No Students in this period.</li>
     {% endfor %}
-    </tbody>
-</table>
+</ul>
 
-<h2 class="h5 mt-4">Registers</h2>
-<table class="table table-sm">
-    <thead><tr><th>Date</th><th>Status</th><th>Present</th><th>Absent</th></tr></thead>
-    <tbody>
-    {% for register in registers %}
-        <tr>
-            <td><a href="{% url 'core:my-attendance-register' register.pk %}">{{ register.date }}</a></td>
-            <td>{{ register.get_status_display }}</td>
-            <td>{{ register.present }}</td>
-            <td>{{ register.absent }}</td>
-        </tr>
-    {% empty %}
-        <tr><td colspan="4">No registers in this period.</td></tr>
-    {% endfor %}
-    </tbody>
-</table>
+<h2 class="erp-section-title">Registers</h2>
+{% for register in registers %}
+<a class="erp-card d-block text-decoration-none text-reset" href="{% url 'core:my-attendance-register' register.pk %}">
+    <div class="erp-card-row">
+        <p class="erp-card-title">{{ register.date|date:"D j M" }}</p>
+        <span class="erp-pill{% if register.status == 'SUBMITTED' %} is-submitted{% else %} is-draft{% endif %}">{{ register.get_status_display }}</span>
+    </div>
+    <p class="erp-card-meta">Present {{ register.present }} &middot; Absent {{ register.absent }}</p>
+</a>
+{% empty %}
+<p>No registers in this period.</p>
+{% endfor %}
+
 {% if missing %}
-<h2 class="h5 mt-4">Not taken</h2>
-<ul>{% for item in missing %}<li>{{ item.date }} ({{ item.date|date:"l" }})</li>{% endfor %}</ul>
+<h2 class="erp-section-title">Not taken</h2>
+<p>{% for item in missing %}<span class="erp-pill is-pending me-1">{{ item.date|date:"D j M" }}</span>{% endfor %}</p>
 {% endif %}
-<p class="mt-4"><a href="{% url 'core:my-attendance-history' %}">All my Sections</a></p>
 {% endblock %}

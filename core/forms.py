@@ -711,6 +711,22 @@ class AttendanceCaptureForm(forms.Form):
                 note = (self.cleaned_data.get(self.note_name(enrollment)) or "").strip()
                 yield enrollment, status, note
 
+    def counts(self):
+        """Roster counts for display: all, present, absent and unmarked rows.
+
+        Uses each field's current value, so a re-rendered bound form counts
+        the posted choices. Unanswered rows are unmarked, never absent.
+        """
+        values = [self[self.field_name(e)].value() or "" for e in self.enrollments]
+        present = sum(1 for v in values if v == AttendanceStatus.PRESENT)
+        absent = sum(1 for v in values if v == AttendanceStatus.ABSENT)
+        return {
+            "all": len(values),
+            "present": present,
+            "absent": absent,
+            "unmarked": len(values) - present - absent,
+        }
+
 
 class AttendanceCorrectionForm(forms.Form):
     """Correct submitted attendance, recording a reason and optional absence note."""
