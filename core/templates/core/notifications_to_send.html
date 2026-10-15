@@ -7,6 +7,9 @@
 {% if portal_only %}
 <div class="alert alert-warning">WhatsApp messages are switched off. New messages are not prepared while the school uses portal only. <a href="{% url 'core:school-detail' %}">School settings</a></div>
 {% endif %}
+{% if portal_address_missing %}
+<div class="alert alert-warning">The portal address (PORTAL_BASE_URL) is not set, so new WhatsApp messages are not being prepared. Ask whoever runs the server to set it.</div>
+{% endif %}
 
 {% for row in rows %}
 {% with n=row.notification %}

@@ -1,5 +1,6 @@
 """Phase 7 Gate 1 views: guardian consent and the ASSIST To send page (ADR 0015)."""
 
+from django.conf import settings
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -41,10 +42,14 @@ def to_send(request):
         .select_related("guardian", "marked_sent_by")
         .order_by("-marked_sent_at")
     )
+    mode = notifications.school_mode()
     return render(request, "core/notifications_to_send.html", {
         "rows": rows,
         "sent_today": sent_today,
-        "portal_only": notifications.school_mode() == School.NotificationMode.PORTAL_ONLY,
+        "portal_only": mode == School.NotificationMode.PORTAL_ONLY,
+        "portal_address_missing": (
+            mode == School.NotificationMode.ASSIST and not settings.PORTAL_BASE_URL
+        ),
     })
 
 

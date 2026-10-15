@@ -147,6 +147,10 @@ if TRUSTED_PROXIES and HTTPS:
 # SECRET_KEY so raw addresses are never stored.
 SOURCE_HASH_KEY = os.environ.get("DJANGO_SOURCE_HASH_KEY", "source-hash:" + SECRET_KEY)
 
+# Phase 7: full web address of this site (e.g. https://erp.school.in), used in
+# links inside WhatsApp messages. Required before the school can choose ASSIST.
+PORTAL_BASE_URL = os.environ.get("PORTAL_BASE_URL", "").strip().rstrip("/")
+
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
