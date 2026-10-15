@@ -22,6 +22,11 @@ urlpatterns = [
         portal_views.report_card,
         name="report-card",
     ),
+    path(
+        "children/<uuid:public_id>/report-cards/<uuid:publication_id>/pdf/",
+        portal_views.report_card_pdf,
+        name="report-card-pdf",
+    ),
     path("notices/", portal_views.notices, name="notices"),
     path("notices/<uuid:notice_id>/", portal_views.notice, name="notice"),
 ]

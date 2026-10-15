@@ -6,6 +6,8 @@ from django.views.decorators.http import require_safe
 
 from core.announcements import visible_announcements
 from core.authorization import guardian_required, guardian_visible_grant
+from core.documents import report_card as report_card_documents
+from core.documents import service
 from core.portal import (
     attendance_years,
     portal_children,
@@ -93,6 +95,20 @@ def report_card(request, public_id, publication_id):
         "portal/report_card.html",
         _context(request, grant=grant, student=student, pub=pub, entries=pub.entries.all()),
     )
+
+
+@require_safe
+@guardian_required
+def report_card_pdf(request, public_id, publication_id):
+    """PDF of one released report card; issued once, then reprinted from its snapshot."""
+    grant = _visible_grant_or_404(request, public_id)
+    student = grant.student_guardian.student
+    pub = next((p for p in visible_publications(student) if p.public_id == publication_id),
+               None)
+    document = report_card_documents.document_for(pub, actor=request.user) if pub else None
+    if document is None:
+        raise Http404("No such report card.")
+    return service.pdf_response(document, actor=request.user)
 
 
 @require_safe

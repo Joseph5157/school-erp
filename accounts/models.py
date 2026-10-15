@@ -86,6 +86,8 @@ class SecurityEvent(models.Model):
         PUBLICATION_WITHDRAWN = "PUBLICATION_WITHDRAWN", "Publication withdrawn"
         SECURITY_EVENTS_PURGED = "SECURITY_EVENTS_PURGED", "Routine events purged"
         IMPORT_COMMITTED = "IMPORT_COMMITTED", "Bulk import committed"
+        DOCUMENT_ISSUED = "DOCUMENT_ISSUED", "Document issued"
+        DOCUMENT_DOWNLOADED = "DOCUMENT_DOWNLOADED", "Document downloaded"
 
     ROUTINE_TYPES = frozenset(
         {

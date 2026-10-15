@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator
 
 from accounts.usernames import USERNAME_HELP
+from core.documents import bonafide
 from core.models import (
     TEACHERS_GROUP_NAME,
     AcademicEnrollment,
@@ -39,8 +40,12 @@ class SchoolForm(forms.ModelForm):
 
     class Meta:
         model = School
-        fields = ["name", "notification_channel"]
-        widgets = {"notification_channel": forms.RadioSelect}
+        fields = ["name", "address", "affiliation_number", "principal_name",
+                  "notification_channel"]
+        widgets = {
+            "notification_channel": forms.RadioSelect,
+            "address": forms.Textarea(attrs={"rows": 3}),
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -961,6 +966,26 @@ class ContactConsentForm(forms.Form):
     note = forms.CharField(
         max_length=200, required=False, label="Note (optional)",
         widget=forms.TextInput(attrs={"class": "form-control form-control-sm"}),
+    )
+
+
+class AttendanceSummaryForm(forms.Form):
+    section = forms.ModelChoiceField(
+        Section.objects.select_related("class_grade").order_by("class_grade__name", "name")
+    )
+    start = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
+    end = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
+
+
+class DocumentStudentForm(forms.Form):
+    student = forms.ModelChoiceField(Student.objects.order_by("full_name"))
+
+
+class BonafideForm(forms.Form):
+    student = forms.ModelChoiceField(Student.objects.order_by("full_name"))
+    purpose = forms.ChoiceField(choices=bonafide.PURPOSES)
+    purpose_text = forms.CharField(
+        max_length=120, required=False, label="Purpose (if Other)",
     )
 
 

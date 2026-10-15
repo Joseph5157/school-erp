@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Documents{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Documents</h1>
+<div class="list-group mb-4">
+    <a class="list-group-item list-group-item-action" href="{% url 'core:bonafide-create' %}">Bonafide certificate</a>
+    <a class="list-group-item list-group-item-action" href="{% url 'core:document-report-cards' %}">Report card PDF</a>
+    <a class="list-group-item list-group-item-action" href="{% url 'core:attendance-summary' %}">Attendance summary</a>
+</div>
+<h2 class="h5">Recently issued</h2>
+<table class="table table-sm">
+    <thead><tr><th>Serial</th><th>Type</th><th>Student</th><th>Issued</th><th></th></tr></thead>
+    <tbody>
+    {% for doc in recent %}
+        <tr>
+            <td>{{ doc.serial }}</td>
+            <td>{{ doc.get_document_type_display }}</td>
+            <td>{{ doc.student.full_name|default:"—" }}</td>
+            <td>{{ doc.issued_at|date:"Y-m-d H:i" }}</td>
+            <td><a href="{% url 'core:document-pdf' doc.pk %}">PDF</a></td>
+        </tr>
+    {% empty %}
+        <tr><td colspan="5">Nothing issued yet.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

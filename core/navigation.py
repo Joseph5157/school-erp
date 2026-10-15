@@ -32,6 +32,7 @@ OFFICE_NAV = (
         NavLink("Attendance reports", "core:attendance-reports", "core.view_attendanceentry"),
         NavLink("Announcements", "core:announcement-list", "core.view_announcement"),
         NavLink("To send", "core:notifications-to-send", "core.send_notification"),
+        NavLink("Documents", "core:document-index", "core.issue_document"),
     )),
     ("Results", (
         NavLink("Stale publications", "core:publications-stale", "core.view_termpublication"),

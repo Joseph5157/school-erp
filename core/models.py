@@ -58,6 +58,9 @@ class School(models.Model):
         SMS = "SMS", "SMS"
 
     name = models.CharField(max_length=255)
+    address = models.TextField(blank=True)
+    affiliation_number = models.CharField(max_length=50, blank=True)
+    principal_name = models.CharField(max_length=120, blank=True)
     notification_channel = models.CharField(
         "Messages to guardians",
         max_length=12,
@@ -3399,3 +3402,59 @@ class Announcement(models.Model):
 
     def __str__(self):
         return self.title
+
+
+# --- Phase 7 piece C: issued documents ---------------------------------------
+
+
+class IssuedDocument(models.Model):
+    """A serial-numbered document issued by the school (Phase 7 piece C).
+
+    `payload` is the exact content printed, letterhead included; reprints
+    render from it, never from live data. Database triggers refuse every
+    UPDATE and DELETE.
+    """
+
+    class DocumentType(models.TextChoices):
+        BONAFIDE = "BONAFIDE", "Bonafide certificate"
+        REPORT_CARD = "REPORT_CARD", "Report card"
+        ATTENDANCE_SUMMARY = "ATTENDANCE_SUMMARY", "Attendance summary"
+
+    public_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    document_type = models.CharField(max_length=20, choices=DocumentType.choices)
+    serial = models.CharField(max_length=40, unique=True)
+    academic_year = models.ForeignKey(AcademicYear, on_delete=models.PROTECT, related_name="+")
+    student = models.ForeignKey(
+        Student, on_delete=models.PROTECT, null=True, blank=True, related_name="issued_documents"
+    )
+    publication = models.OneToOneField(
+        "TermPublication", on_delete=models.PROTECT, null=True, blank=True, related_name="+"
+    )
+    payload = models.JSONField()
+    issued_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True,
+        related_name="+",
+    )
+    issued_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-issued_at", "-pk"]
+        permissions = [("issue_document", "Can issue documents")]
+
+    def __str__(self):
+        return self.serial
+
+
+class DocumentSerialCounter(models.Model):
+    """Last number used per document type and academic year (locked on use)."""
+
+    document_type = models.CharField(max_length=20)
+    academic_year = models.ForeignKey(AcademicYear, on_delete=models.PROTECT, related_name="+")
+    last_number = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["document_type", "academic_year"], name="documentserialcounter_unique"
+            ),
+        ]

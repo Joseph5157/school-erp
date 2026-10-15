@@ -5,6 +5,12 @@
 <dl class="row">
     <dt class="col-sm-3">Name</dt>
     <dd class="col-sm-9">{{ school.name }}</dd>
+    <dt class="col-sm-3">Address</dt>
+    <dd class="col-sm-9">{{ school.address|linebreaksbr|default:"—" }}</dd>
+    <dt class="col-sm-3">Affiliation number</dt>
+    <dd class="col-sm-9">{{ school.affiliation_number|default:"—" }}</dd>
+    <dt class="col-sm-3">Principal</dt>
+    <dd class="col-sm-9">{{ school.principal_name|default:"—" }}</dd>
     <dt class="col-sm-3">Messages to guardians</dt>
     <dd class="col-sm-9">{{ school.get_notification_channel_display }}</dd>
 </dl>

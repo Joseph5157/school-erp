@@ -1,0 +1,26 @@
+{% extends "documents/base.html" %}
+{% block title %}Report card {{ serial }}{% endblock %}
+{% block body %}
+{% include "documents/_letterhead.html" %}
+<div class="meta"><span>Serial no. {{ serial }}</span><span>Date: {{ payload.issued_on }}</span></div>
+<h1>{{ payload.term_label }} report card</h1>
+<p><strong>{{ payload.student_name }}</strong>{% if payload.admission_number %} &middot; Admission no. {{ payload.admission_number }}{% endif %}<br>
+{{ payload.academic_year_label }} &middot; Class {{ payload.class_label }}, Section {{ payload.section_label }}</p>
+{% if payload.is_partial %}<p><em>Some results for this Term are not yet published.</em></p>{% endif %}
+<table>
+    <thead><tr><th>Subject</th><th>Assessment</th><th>Date</th><th>Marks</th><th>%</th><th>Grade</th><th>Pass/Fail</th></tr></thead>
+    <tbody>
+    {% for e in payload.entries %}
+        <tr><td>{{ e.subject }}</td><td>{{ e.assessment }}</td><td>{{ e.date }}</td>
+            <td>{% if e.status == "MARKED" %}{{ e.score }} / {{ e.maximum_marks }}{% else %}Absent{% endif %}</td>
+            <td>{% if e.percentage %}{{ e.percentage }}%{% endif %}</td>
+            <td>{{ e.grade }}</td><td>{{ e.pass_fail }}</td></tr>
+    {% empty %}
+        <tr><td colspan="7">No results in this report card.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% if payload.remark_text %}<h2>Class teacher's remark</h2><p>{{ payload.remark_text|linebreaksbr }}</p>{% endif %}
+<p style="font-size: 9pt;">Each assessment is shown separately; there are no totals, weighting or ranks.</p>
+<div class="signature">Principal{% if payload.letterhead.principal_name %}<br>{{ payload.letterhead.principal_name }}{% endif %}</div>
+{% endblock %}

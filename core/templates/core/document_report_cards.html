@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Report card PDFs{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Report card PDFs</h1>
+<form method="get" class="mb-4">
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">Show report cards</button>
+    <a class="btn btn-link" href="{% url 'core:document-index' %}">Back</a>
+</form>
+{% if student %}
+    <h2 class="h5">{{ student.full_name }}</h2>
+    <ul class="list-group">
+    {% for pub in publications %}
+        <li class="list-group-item d-flex justify-content-between">
+            <span>{{ pub.term_label }} &middot; {{ pub.academic_year_label }}</span>
+            <a href="{% url 'core:document-report-card-pdf' pub.pk %}">PDF</a>
+        </li>
+    {% empty %}
+        <li class="list-group-item">No published report cards for this student.</li>
+    {% endfor %}
+    </ul>
+{% endif %}
+{% endblock %}
