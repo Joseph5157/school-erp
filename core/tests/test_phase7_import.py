@@ -5,7 +5,7 @@ import io
 
 import openpyxl
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group
+from django.contrib.auth.models import Group, Permission
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import DatabaseError, transaction
 from django.test import TestCase
@@ -29,6 +29,7 @@ from core.models import (
     StudentGuardian,
     business_today,
 )
+from core.navigation import office_nav
 
 User = get_user_model()
 
@@ -403,6 +404,14 @@ class ImportAuthorizationTests(ImportFixture):
             self.assertEqual(self.client.get(url).status_code, 405)
         batch.refresh_from_db()
         self.assertEqual(batch.status, ImportBatch.Status.VALIDATED)
+
+    def test_import_link_in_office_navigation(self):
+        page = self.client.get(reverse("core:import-list"))
+        self.assertContains(page, f'href="{reverse("core:import-list")}"')
+        clerk = User.objects.create_user(username="clerk", password="pass-12345")
+        clerk.user_permissions.add(Permission.objects.get(codename="view_student"))
+        labels = [link["label"] for group in office_nav(clerk, "") for link in group["links"]]
+        self.assertEqual(labels, ["Students"])
 
     def test_upload_flow_and_downloads(self):
         response = self.client.get(reverse("core:import-template"))

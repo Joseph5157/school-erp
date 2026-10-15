@@ -1,0 +1,23 @@
+{# Account menu: who is signed in, switch area, change password, log out. Works without JS. #}
+<details class="erp-account">
+    <summary aria-label="Account menu for {{ user.get_username }}">
+        <span class="erp-avatar" aria-hidden="true">{{ user.get_username|slice:":1"|upper }}</span>
+        <span class="d-none d-sm-inline">{{ user.get_username }}</span>
+    </summary>
+    <div class="erp-account-panel">
+        {% if user_has_several_areas %}
+        <p class="erp-nav-heading">Switch to</p>
+        {% for key, label, url_name in user_areas %}
+        <a href="{% url url_name %}"{% if key == current_area %} aria-current="true"{% endif %}>
+            <span>{{ label }}</span>{% if key == current_area %}<span class="erp-check" aria-hidden="true">✓</span>{% endif %}
+        </a>
+        {% endfor %}
+        <hr class="my-2">
+        {% endif %}
+        <a href="{% url 'password_change' %}">Change password</a>
+        <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="erp-menu-item">Log out</button>
+        </form>
+    </div>
+</details>
