@@ -1158,6 +1158,9 @@ class AttendanceRegister(models.Model):
             self.submitted_by = actor
             self.submitted_at = timezone.now()
             self.save(update_fields=["status", "submitted_by", "submitted_at", "updated_at"])
+            from core import notification_producers
+
+            notification_producers.absence_alerts_for_register(self)
 
     def capture(self, *, enrollment, status, absence_note=""):
         """Capture an initial attendance status for an enrolled Student.
