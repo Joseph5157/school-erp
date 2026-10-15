@@ -244,6 +244,8 @@ body.has-tabbar .erp-messages {
   background: var(--erp-crit); border-color: var(--erp-crit); color: #fff;
 }
 .erp-note { grid-column: 1 / -1; }
+.erp-note label { display: block; }
+.erp-note input { width: 100%; padding: .4rem .6rem; border: 1px solid var(--erp-rule); border-radius: 6px; }
 /* Without :has() support the note simply stays visible. */
 @supports selector(:has(*)) {
   .erp-note:not(.is-filled) { display: none; }
