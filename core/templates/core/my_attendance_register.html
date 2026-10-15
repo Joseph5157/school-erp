@@ -2,16 +2,9 @@
 {% block title %}Attendance {{ register.date }}{% endblock %}
 {% block content %}
 <h1 class="h3 mb-1">Attendance: {{ register.section }} &mdash; {{ register.date }}</h1>
-<p class="text-muted">{{ register.date|date:"l" }} &middot; {{ register.get_status_display }}{% if register.is_submitted %}, submitted {{ register.submitted_at }} by {{ register.submitted_by.get_full_name|default:register.submitted_by.username }}{% else %} (not yet official){% endif %}.
+<p class="text-muted">{{ register.date|date:"l" }}
+    {% if register.is_submitted %}<span class="erp-pill is-submitted">Submitted</span>{% else %}<span class="erp-pill is-draft">Draft</span>{% endif %}
+    {% if register.is_submitted %}{{ register.submitted_at }} by {{ register.submitted_by.get_full_name|default:register.submitted_by.username }}{% else %}(not yet official){% endif %}.
    Read only; administrators correct submitted attendance.</p>
-<table class="table">
-    <thead><tr><th>Student</th><th>Status</th><th>Absence note</th></tr></thead>
-    <tbody>
-    {% for entry in entries %}
-        <tr><td>{{ entry.academic_enrollment.student.full_name }}</td><td>{{ entry.get_status_display }}</td><td>{{ entry.absence_note }}</td></tr>
-    {% empty %}
-        <tr><td colspan="3">No entries.</td></tr>
-    {% endfor %}
-    </tbody>
-</table>
+{% include "core/_attendance_entries.html" %}
 {% endblock %}

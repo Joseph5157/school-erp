@@ -182,3 +182,54 @@ class MyDayTests(U2Fixture, TestCase):
 
     def test_no_tables_on_my_day(self):
         self.assertNotContains(self.home(), "<table")
+
+
+class HistoryTests(U2Fixture, TestCase):
+    def month(self, month=None):
+        url = reverse("core:my-attendance-assignment", args=[self.duty.pk])
+        return self.teacher.get(f"{url}?month={month}" if month else url)
+
+    def test_month_links_in_the_middle(self):
+        page = self.month("2026-08")
+        self.assertEqual(page.context["previous_month"], "2026-07")
+        self.assertEqual(page.context["next_month"], "2026-09")
+        self.assertEqual(page.context["chosen_label"], "August 2026")
+        self.assertContains(page, "?month=2026-07")
+        self.assertContains(page, "?month=2026-09")
+
+    def test_month_links_at_edges(self):
+        first = self.month("2026-06")
+        self.assertIsNone(first.context["previous_month"])
+        self.assertEqual(first.context["next_month"], "2026-07")
+        last = self.month()
+        self.assertEqual(last.context["chosen"], "2026-10")
+        self.assertIsNone(last.context["next_month"])
+        self.assertNotContains(last, "Next ›")
+
+    def test_single_month_has_no_links(self):
+        row = SectionClassTeacher.assign(
+            teacher=self.iyer, academic_year=self.year, section=self.six_b,
+            start_date=date(2026, 10, 1),
+        )
+        iyer = self.client_class()
+        iyer.login(username="iyer", password="pass-12345")
+        page = iyer.get(reverse("core:my-attendance-assignment", args=[row.pk]))
+        self.assertIsNone(page.context["previous_month"])
+        self.assertIsNone(page.context["next_month"])
+
+    def test_student_rows_ordered_by_name(self):
+        page = self.month().content.decode()
+        self.assertLess(page.index("Asha"), page.index("Bina"))
+        self.assertLess(page.index("Bina"), page.index("Ravi"))
+
+    def test_history_list_is_cards(self):
+        page = self.teacher.get(reverse("core:my-attendance-history"))
+        self.assertContains(page, 'class="erp-card')
+        self.assertNotContains(page, "<table")
+
+    def test_read_only_register_uses_entry_cards(self):
+        self.draft(asha="PRESENT", ravi="PRESENT", bina="ABSENT")
+        register = self.register()
+        register.submit(actor=self.rao)
+        page = self.teacher.get(reverse("core:my-attendance-register", args=[register.pk]))
+        self.assertContains(page, '<span class="erp-pill is-absent">Absent</span>')
