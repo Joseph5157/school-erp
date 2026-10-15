@@ -1040,13 +1040,27 @@ def my_students(request):
     class_sections = set(
         class_teacher_assignments(request.user, today).values_list("section_id", flat=True)
     )
+    submitted_sections = set(
+        AttendanceRegister.objects.filter(
+            date=today, section_id__in=class_sections,
+            status=AttendanceRegister.Status.SUBMITTED,
+        ).values_list("section_id", flat=True)
+    )
+    today_status = dict(
+        AttendanceEntry.objects.filter(
+            register__date=today, register__section_id__in=submitted_sections,
+            register__status=AttendanceRegister.Status.SUBMITTED,
+        ).values_list("academic_enrollment_id", "status")
+    )
     groups = []
     for enrollment in enrollments:
+        enrollment.today_status = today_status.get(enrollment.pk)
         if not groups or groups[-1]["section"].pk != enrollment.section_id:
             groups.append(
                 {
                     "section": enrollment.section,
                     "is_class_teacher": enrollment.section_id in class_sections,
+                    "attendance_submitted": enrollment.section_id in submitted_sections,
                     "enrollments": [],
                 }
             )
@@ -1180,6 +1194,36 @@ def my_assessments(request):
         request,
         "core/my_assessments.html",
         {"duties": duties, "assessments": assessments, "remark_links": remark_links},
+    )
+
+
+@teacher_required
+def my_gradebook(request, pk):
+    """Read-only marks for one of the teacher's Subject + Section assignments."""
+    duty = get_object_or_404(teacher_assignments(request.user), pk=pk)
+    assessments = list(
+        _assessments()
+        .filter(offering=duty.offering, section=duty.section)
+        .order_by("assessment_date", "name", "pk")
+    )
+    students = {}
+    for assessment in assessments:
+        for enrollment in assessment.roster().select_related("student"):
+            students[enrollment.student_id] = enrollment.student
+    results = {
+        (result.academic_enrollment.student_id, result.assessment_id): result
+        for result in StudentResult.objects.filter(assessment__in=assessments).select_related(
+            "academic_enrollment", "assessment"
+        )
+    }
+    rows = [
+        {"student": student, "cells": [results.get((student.pk, a.pk)) for a in assessments]}
+        for student in sorted(students.values(), key=lambda s: (s.full_name.casefold(), s.pk))
+    ]
+    return render(
+        request,
+        "core/my_gradebook.html",
+        {"duty": duty, "assessments": assessments, "rows": rows},
     )
 
 

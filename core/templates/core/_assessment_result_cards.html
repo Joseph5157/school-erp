@@ -1,0 +1,14 @@
+{# Teacher read-only results. Context: assessment, rows [(enrollment, result-or-None)], marked_count. #}
+<p class="text-muted">Roster on {{ assessment.assessment_date }}: {{ rows|length }} Student(s); results entered: {{ marked_count }}. A Student without a result is <strong>not</strong> absent &mdash; entry is incomplete.</p>
+<ul class="erp-entries list-unstyled">
+    {% for enrollment, result in rows %}
+    <li class="erp-entry">
+        <span class="erp-entry-name">{{ enrollment.student.full_name }}</span>
+        {% if not result %}<span class="text-muted">Not entered</span>
+        {% elif result.status == "ABSENT" %}<span class="erp-pill is-absent">Absent</span>
+        {% else %}<span>{{ result.score|floatformat:"-2" }} / {{ assessment.maximum_marks|floatformat:"-2" }}{% if result.grade %} &middot; {{ result.grade }}{% endif %}</span>{% endif %}
+    </li>
+    {% empty %}
+    <li>No Students are enrolled in this Section on the assessment date.</li>
+    {% endfor %}
+</ul>

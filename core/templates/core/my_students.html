@@ -4,13 +4,18 @@
 <h1 class="h3 mb-1">My students</h1>
 <p class="text-muted">Students enrolled today ({{ today }}) in Sections you are class teacher of or teach a Subject in.</p>
 {% for group in groups %}
-<h2 class="h5 mt-4">{{ group.section }} {% if group.is_class_teacher %}<span class="badge bg-primary">Class teacher</span>{% endif %}</h2>
-<ul class="list-unstyled">
+<h2 class="erp-section-title">{{ group.section }} {% if group.is_class_teacher %}<span class="erp-pill is-accepted">Class teacher</span>{% endif %}</h2>
+{% if group.is_class_teacher and not group.attendance_submitted %}<p class="text-muted small mb-2">Today's attendance not submitted yet.</p>{% endif %}
+<ul class="erp-entries list-unstyled">
     {% for enrollment in group.enrollments %}
-    <li><a href="{% url 'core:my-student-detail' enrollment.student.pk %}">{{ enrollment.student.full_name }}</a></li>
+    <li class="erp-entry">
+        <span class="erp-initials" aria-hidden="true">{{ enrollment.student.full_name|slice:":1"|upper }}</span>
+        <a class="erp-entry-name" href="{% url 'core:my-student-detail' enrollment.student.pk %}">{{ enrollment.student.full_name }}</a>
+        {% if group.is_class_teacher and enrollment.today_status %}<span class="erp-pill is-{{ enrollment.today_status|lower }}">{% if enrollment.today_status == "PRESENT" %}Present{% else %}Absent{% endif %}</span>{% endif %}
+    </li>
     {% endfor %}
 </ul>
 {% empty %}
-<p>No Students in your Sections today.</p>
+{% include "partials/_empty.html" with text="No Students in your Sections today." %}
 {% endfor %}
 {% endblock %}

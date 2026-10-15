@@ -1,34 +1,57 @@
 {% extends "base.html" %}
 {% block title %}Marks: {{ assessment.name }}{% endblock %}
+{% block tabbar_class %}{% if not form.enrollments %}{{ block.super }}{% endif %}{% endblock %}
+{% block tabbar %}{% if not form.enrollments %}{{ block.super }}{% endif %}{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">{{ assessment.offering.subject.name }} {{ assessment.section }}: {{ assessment.name }}</h1>
-<p>{{ assessment.term.name }} &middot; {{ assessment.assessment_date }} &middot; out of {{ assessment.maximum_marks }}{% if assessment.pass_mark is not None %} &middot; pass mark {{ assessment.pass_mark }}{% endif %} &middot; <strong>{{ assessment.get_status_display }}</strong></p>
+<p class="mb-2"><a href="{% url 'core:my-assessments' %}">‹ My assessments</a></p>
+<h1 class="h3 mb-1">{{ assessment.offering.subject.name }} {{ assessment.section }}: {{ assessment.name }}</h1>
+<p class="text-muted mb-3">{{ assessment.term.name }} &middot; {{ assessment.assessment_date }} &middot; out of {{ assessment.maximum_marks|floatformat:"-2" }}{% if assessment.pass_mark is not None %} &middot; pass mark {{ assessment.pass_mark|floatformat:"-2" }}{% endif %}
+    <span class="erp-pill{% if assessment.is_finalized %} is-submitted{% else %} is-draft{% endif %}">{{ assessment.get_status_display }}</span></p>
 {% if form %}
 <p class="text-muted">Enter a score, or choose Absent. Leave a row blank if you have not marked that Student yet &mdash; blank is <strong>not</strong> absent. An administrator finalizes the results.</p>
+{% if form.enrollments %}
 <form method="post">
     {% csrf_token %}
-    <table class="table align-middle">
-        <thead><tr><th>Student</th><th>Result</th><th>Score</th></tr></thead>
-        <tbody>
-            {% for enrollment, status_field, score_field in form.rows %}
-            <tr>
-                <td>{{ enrollment.student.full_name }}</td>
-                <td>{{ status_field }} {{ status_field.errors }}</td>
-                <td>{{ score_field }} {{ score_field.errors }}</td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="3">No Students are enrolled in this Section on the assessment date.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% if form.enrollments %}<button type="submit" class="btn btn-primary">Save draft</button>{% endif %}
+    {% with counts=form.counts %}
+    <div class="erp-roster" data-erp-marks>
+        <p class="erp-count-line" data-erp-static-counts>All {{ counts.all }} · Not entered {{ counts.unmarked }} · Marked {{ counts.marked }} · Absent {{ counts.absent }}</p>
+        <div class="erp-count-tabs" data-erp-tabs hidden>
+            <button type="button" data-erp-filter="all" aria-pressed="true">All <span data-erp-count="all">{{ counts.all }}</span></button>
+            <button type="button" data-erp-filter="unmarked" aria-pressed="false">Not entered <span data-erp-count="unmarked">{{ counts.unmarked }}</span></button>
+            <button type="button" data-erp-filter="marked" aria-pressed="false">Marked <span data-erp-count="marked">{{ counts.marked }}</span></button>
+            <button type="button" data-erp-filter="absent" aria-pressed="false">Absent <span data-erp-count="absent">{{ counts.absent }}</span></button>
+        </div>
+        {% for enrollment, status_field, score_field in form.rows %}
+        <fieldset class="erp-roster-row{% if status_field.errors or score_field.errors %} is-invalid{% endif %}" data-erp-row>
+            <legend class="visually-hidden">{{ enrollment.student.full_name }}</legend>
+            <span class="erp-roster-name" aria-hidden="true">{{ enrollment.student.full_name }}</span>
+            <span class="erp-initials" aria-hidden="true">{{ enrollment.student.full_name|slice:":1"|upper }}</span>
+            <div class="erp-note is-filled">
+                <label class="form-label small mb-1" for="{{ score_field.id_for_label }}">Score out of {{ assessment.maximum_marks|floatformat:"-2" }}<span class="visually-hidden"> for {{ enrollment.student.full_name }}</span></label>
+                {{ score_field }}
+            </div>
+            <div class="erp-toggles erp-toggles-3">
+                {% for radio in status_field %}{{ radio.tag }}<label for="{{ radio.id_for_label }}" class="erp-toggle is-{{ radio.data.value|lower|default:'blank' }}">{{ radio.choice_label }}</label>{% endfor %}
+            </div>
+            {% for error in status_field.errors %}<div class="small text-danger erp-row-error">{{ error }}</div>{% endfor %}
+            {% for error in score_field.errors %}<div class="small text-danger erp-row-error">{{ error }}</div>{% endfor %}
+        </fieldset>
+        {% endfor %}
+        <div class="erp-actionbar">
+            <span class="erp-actionbar-status" data-erp-hint aria-live="polite">{{ counts.unmarked }} not entered</span>
+            <button type="submit" class="btn btn-primary">Save draft</button>
+        </div>
+    </div>
+    {% endwith %}
 </form>
+{% else %}
+{% include "partials/_empty.html" with text="No Students are enrolled in this Section on the assessment date." %}
+{% endif %}
 {% elif assessment.is_finalized %}
 <div class="alert alert-info">This assessment is finalized. Ask an administrator if a result needs correcting.</div>
-{% include "core/_assessment_results.html" %}
+{% include "core/_assessment_result_cards.html" %}
 {% else %}
 <div class="alert alert-secondary">Marks entry opens on {{ assessment.assessment_date }}.</div>
-{% include "core/_assessment_results.html" %}
+{% include "core/_assessment_result_cards.html" %}
 {% endif %}
-<p class="mt-3"><a href="{% url 'core:my-assessments' %}">My assessments</a></p>
 {% endblock %}
