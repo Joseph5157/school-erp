@@ -1040,13 +1040,27 @@ def my_students(request):
     class_sections = set(
         class_teacher_assignments(request.user, today).values_list("section_id", flat=True)
     )
+    submitted_sections = set(
+        AttendanceRegister.objects.filter(
+            date=today, section_id__in=class_sections,
+            status=AttendanceRegister.Status.SUBMITTED,
+        ).values_list("section_id", flat=True)
+    )
+    today_status = dict(
+        AttendanceEntry.objects.filter(
+            register__date=today, register__section_id__in=submitted_sections,
+            register__status=AttendanceRegister.Status.SUBMITTED,
+        ).values_list("academic_enrollment_id", "status")
+    )
     groups = []
     for enrollment in enrollments:
+        enrollment.today_status = today_status.get(enrollment.pk)
         if not groups or groups[-1]["section"].pk != enrollment.section_id:
             groups.append(
                 {
                     "section": enrollment.section,
                     "is_class_teacher": enrollment.section_id in class_sections,
+                    "attendance_submitted": enrollment.section_id in submitted_sections,
                     "enrollments": [],
                 }
             )

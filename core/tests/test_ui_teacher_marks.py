@@ -8,6 +8,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from core.forms import ResultEntryForm
+from core.models import AttendanceRegister, SectionClassTeacher
 from core.tests.phase4_fixtures import Phase4Fixture
 
 MONDAY = date(2026, 10, 12)
@@ -171,3 +172,50 @@ class GradebookTests(MarksFixture, TestCase):
         self.assertContains(page, "My assessments")
         self.assertContains(page, self.url())
         self.assertContains(page, "Unit Test 1")
+
+
+class MyStudentsTests(MarksFixture, TestCase):
+    def setUp(self):
+        super().setUp()
+        SectionClassTeacher.assign(teacher=self.rao, academic_year=self.year,
+                                   section=self.six_a, start_date=date(2026, 6, 1))
+        self.url = reverse("core:my-students")
+
+    def register(self, submit):
+        register = AttendanceRegister.objects.create(
+            academic_year=self.year, class_grade=self.grade6, section=self.six_a, date=MONDAY
+        )
+        register.save_draft_entry(enrollment=self.asha, status="PRESENT")
+        register.save_draft_entry(enrollment=self.bina, status="ABSENT")
+        register.save_draft_entry(enrollment=self.ravi, status="PRESENT")
+        if submit:
+            register.submit(actor=self.rao)
+        return register
+
+    def test_submitted_register_shows_chips(self):
+        self.register(submit=True)
+        page = self.teacher.get(self.url)
+        self.assertContains(page, '<span class="erp-pill is-present">Present</span>', count=2)
+        self.assertContains(page, '<span class="erp-pill is-absent">Absent</span>', count=1)
+        self.assertNotContains(page, "not submitted yet")
+
+    def test_draft_register_shows_no_chips(self):
+        self.register(submit=False)
+        page = self.teacher.get(self.url)
+        self.assertNotContains(page, "erp-pill is-present")
+        self.assertNotContains(page, "erp-pill is-absent")
+        self.assertContains(page, "Today's attendance not submitted yet")
+
+    def test_subject_only_section_has_no_chips_or_note(self):
+        self.make_student("Kiran", section=self.six_b)
+        self.assign(self.rao, self.sanskrit, self.six_b)
+        self.register(submit=True)
+        page = self.teacher.get(self.url).content.decode()
+        six_b_part = page[page.index(str(self.six_b)):]
+        self.assertNotIn("erp-pill is-present", six_b_part)
+        self.assertNotIn("not submitted yet", six_b_part)
+
+    def test_rows_have_initials_and_links(self):
+        page = self.teacher.get(self.url)
+        self.assertContains(page, 'class="erp-initials"')
+        self.assertContains(page, reverse("core:my-student-detail", args=[self.asha.student.pk]))
