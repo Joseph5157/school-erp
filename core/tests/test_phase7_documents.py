@@ -11,11 +11,20 @@ from django.urls import reverse
 
 from accounts.models import SecurityEvent
 from core import publication
-from core.documents import bonafide, serials, service
+from core.documents import attendance_summary, bonafide, serials, service
 from core.documents.engine import render_pdf
 from core.forms import SchoolForm
-from core.models import AcademicYear, Applicant, IssuedDocument, School, Student, TermPublication
+from core.models import (
+    AcademicYear,
+    Applicant,
+    AttendanceStatus,
+    IssuedDocument,
+    School,
+    Student,
+    TermPublication,
+)
 from core.tests.test_phase6_publication import PublicationFixture
+from core.tests.test_phase7_alerts import AlertFixture
 from core.tests.test_phase7_announcements import AnnouncementFixture
 
 TELUGU = "క్ష స్త్ర శ్రీ విద్యార్థి"  # conjuncts: ksha, stra, shri, vidyarthi
@@ -272,3 +281,63 @@ class ReportCardPdfTests(PublicationFixture, TestCase):
 
     def test_guardian_cannot_use_the_office_route(self):
         self.assertEqual(self.portal.get(self.office_url).status_code, 403)
+
+
+class AttendanceSummaryTests(AlertFixture, TestCase):
+    START, END = date(2026, 10, 1), date(2026, 10, 12)
+
+    def build(self):
+        return attendance_summary.build(self.six_a, self.START, self.END)
+
+    def row(self, data, student):
+        return next(r for r in data["rows"] if r["student_name"] == student.full_name)
+
+    def test_counts_only_submitted_eligible_entries(self):
+        self.register(date(2026, 10, 7))                                # Asha absent
+        self.register(date(2026, 10, 8), asha=AttendanceStatus.PRESENT)
+        data = self.build()
+        asha = self.row(data, self.asha)
+        self.assertEqual((asha["present"], asha["absent"], asha["total"]), (1, 1, 2))
+        self.assertEqual(asha["percentage"], "50.0")
+        self.assertEqual(data["totals"]["total"], 4)
+        self.assertEqual(data["section_label"], self.six_a.name)
+
+    def test_draft_register_is_not_counted(self):
+        self.register(date(2026, 10, 7), submit=False)
+        self.assertEqual(self.build()["totals"]["total"], 0)
+
+    def test_entries_outside_the_range_are_not_counted(self):
+        self.register(date(2026, 9, 30))
+        self.assertEqual(self.build()["totals"]["total"], 0)
+
+    def test_bad_ranges_are_refused(self):
+        for start, end in ((date(2026, 10, 12), date(2026, 10, 1)),
+                           (date(2026, 10, 1), date(2027, 6, 1)),
+                           (date(2020, 1, 1), date(2020, 2, 1))):
+            with self.subTest(start=start, end=end), self.assertRaises(ValidationError):
+                attendance_summary.build(self.six_a, start, end)
+
+    def test_issue_records_serial_and_serves_pdf(self):
+        self.register(date(2026, 10, 7))
+        doc = attendance_summary.issue_summary(self.six_a, self.START, self.END,
+                                               actor=self.admin)
+        self.assertTrue(doc.serial.startswith("ATT/"))
+        self.assertIsNone(doc.student)
+        response = self.client.get(reverse("core:document-pdf", args=[doc.pk]))
+        self.assertTrue(response.content.startswith(b"%PDF"))
+
+    def test_page_shows_the_table_and_post_issues(self):
+        self.register(date(2026, 10, 7))
+        url = reverse("core:attendance-summary")
+        params = {"section": self.six_a.pk, "start": "2026-10-01", "end": "2026-10-12"}
+        page = self.client.get(url, params)
+        self.assertContains(page, self.asha.full_name)
+        posted = self.client.post(url, params)
+        doc = IssuedDocument.objects.get()
+        self.assertRedirects(posted, reverse("core:document-pdf", args=[doc.pk]),
+                             fetch_redirect_response=False)
+
+    def test_page_shows_the_refusal_for_a_bad_range(self):
+        page = self.client.get(reverse("core:attendance-summary"), {
+            "section": self.six_a.pk, "start": "2026-10-12", "end": "2026-10-01"})
+        self.assertContains(page, "end date is before")

@@ -969,6 +969,14 @@ class ContactConsentForm(forms.Form):
     )
 
 
+class AttendanceSummaryForm(forms.Form):
+    section = forms.ModelChoiceField(
+        Section.objects.select_related("class_grade").order_by("class_grade__name", "name")
+    )
+    start = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
+    end = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
+
+
 class DocumentStudentForm(forms.Form):
     student = forms.ModelChoiceField(Student.objects.order_by("full_name"))
 

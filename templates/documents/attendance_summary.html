@@ -1,0 +1,22 @@
+{% extends "documents/base.html" %}
+{% block title %}Attendance summary {{ serial }}{% endblock %}
+{% block body %}
+{% include "documents/_letterhead.html" %}
+<div class="meta"><span>Serial no. {{ serial }}</span><span>Date: {{ payload.issued_on }}</span></div>
+<h1>Attendance summary</h1>
+<p>Class {{ payload.class_label }}, Section {{ payload.section_label }}<br>
+From {{ payload.start }} to {{ payload.end }}</p>
+<table>
+    <thead><tr><th>Student</th><th>Present</th><th>Absent</th><th>Days</th><th>%</th></tr></thead>
+    <tbody>
+    {% for row in payload.rows %}
+        <tr><td>{{ row.student_name }}</td><td>{{ row.present }}</td><td>{{ row.absent }}</td><td>{{ row.total }}</td><td>{{ row.percentage }}</td></tr>
+    {% empty %}
+        <tr><td colspan="5">No submitted attendance in this range.</td></tr>
+    {% endfor %}
+    </tbody>
+    <tfoot><tr><th>Section total</th><th>{{ payload.totals.present }}</th><th>{{ payload.totals.absent }}</th><th>{{ payload.totals.total }}</th><th>{{ payload.totals.percentage }}</th></tr></tfoot>
+</table>
+<p style="font-size: 9pt;">Counts submitted attendance only; days without a submitted register are not counted.</p>
+<div class="signature">Principal{% if payload.letterhead.principal_name %}<br>{{ payload.letterhead.principal_name }}{% endif %}</div>
+{% endblock %}

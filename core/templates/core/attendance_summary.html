@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Attendance summary{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Attendance summary</h1>
+<p class="text-muted">Counts submitted attendance only, for one section over a date range inside one academic year.</p>
+<form method="get" class="mb-4">
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">Show summary</button>
+    <a class="btn btn-link" href="{% url 'core:document-index' %}">Back</a>
+</form>
+{% if summary %}
+    <h2 class="h5">{{ summary.class_label }} {{ summary.section_label }} &middot; {{ summary.start }} to {{ summary.end }}</h2>
+    <table class="table table-sm">
+        <thead><tr><th>Student</th><th>Present</th><th>Absent</th><th>Days</th><th>%</th></tr></thead>
+        <tbody>
+        {% for row in summary.rows %}
+            <tr><td>{{ row.student_name }}</td><td>{{ row.present }}</td><td>{{ row.absent }}</td><td>{{ row.total }}</td><td>{{ row.percentage }}</td></tr>
+        {% empty %}
+            <tr><td colspan="5">No submitted attendance in this range.</td></tr>
+        {% endfor %}
+        </tbody>
+        <tfoot><tr><th>Section total</th><th>{{ summary.totals.present }}</th><th>{{ summary.totals.absent }}</th><th>{{ summary.totals.total }}</th><th>{{ summary.totals.percentage }}</th></tr></tfoot>
+    </table>
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="section" value="{{ form.cleaned_data.section.pk }}">
+        <input type="hidden" name="start" value="{{ summary.start }}">
+        <input type="hidden" name="end" value="{{ summary.end }}">
+        <button type="submit" class="btn btn-outline-primary">Issue PDF with serial number</button>
+    </form>
+{% endif %}
+{% endblock %}

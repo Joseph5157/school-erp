@@ -6,8 +6,8 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 
 from core.authorization import administrator_required
-from core.documents import bonafide, report_card, service
-from core.forms import BonafideForm, DocumentStudentForm
+from core.documents import attendance_summary, bonafide, report_card, service
+from core.forms import AttendanceSummaryForm, BonafideForm, DocumentStudentForm
 from core.models import IssuedDocument, TermPublication
 from core.portal import visible_publications
 
@@ -35,6 +35,25 @@ def bonafide_create(request):
             messages.success(request, f"Certificate {document.serial} issued.")
             return redirect("core:document-pdf", pk=document.pk)
     return render(request, "core/bonafide_form.html", {"form": form})
+
+
+@administrator_required("core.issue_document")
+def attendance_summary_page(request):
+    posting = request.method == "POST"
+    form = AttendanceSummaryForm(request.POST if posting else (request.GET or None))
+    summary = None
+    if form.is_valid():
+        data = form.cleaned_data
+        try:
+            if posting:
+                document = attendance_summary.issue_summary(
+                    data["section"], data["start"], data["end"], actor=request.user)
+                messages.success(request, f"Summary {document.serial} issued.")
+                return redirect("core:document-pdf", pk=document.pk)
+            summary = attendance_summary.build(data["section"], data["start"], data["end"])
+        except ValidationError as problem:
+            form.add_error(None, problem.messages[0])
+    return render(request, "core/attendance_summary.html", {"form": form, "summary": summary})
 
 
 @administrator_required("core.issue_document")
