@@ -79,5 +79,13 @@ def document_report_card_pdf(request, pk):
 
 @administrator_required("core.issue_document")
 def document_pdf(request, pk):
-    document = get_object_or_404(IssuedDocument, pk=pk)
+    document = get_object_or_404(IssuedDocument.objects.select_related("publication"), pk=pk)
+    if (document.document_type == IssuedDocument.DocumentType.REPORT_CARD
+            and not report_card.is_current(document)):
+        messages.error(
+            request,
+            f"Report card {document.serial} is no longer current: its results were "
+            "corrected or withdrawn. Print the current report card instead.",
+        )
+        return redirect("core:document-index")
     return service.pdf_response(document, actor=request.user)

@@ -353,3 +353,46 @@ class DocumentIndexTests(AnnouncementFixture, TestCase):
         self.assertContains(page, reverse("core:attendance-summary"))
         self.assertContains(page, reverse("core:document-report-cards"))
         self.assertContains(page, reverse("core:document-pdf", args=[doc.pk]))
+
+
+class FinalReviewFixTests(PublicationFixture, TestCase):
+    """Important findings from the final whole-branch review."""
+
+    def issued_card(self):
+        self.publish()
+        pub = TermPublication.objects.get(student=self.asha, term=self.term1)
+        self.portal.get(reverse(
+            "portal:report-card-pdf", args=[self.asha_grant.public_id, pub.public_id]))
+        return IssuedDocument.objects.get(publication=pub)
+
+    def test_office_reprint_refuses_a_card_that_is_no_longer_current(self):
+        doc = self.issued_card()
+        publication.mark_stale_for_result(self.result, actor=self.admin)
+        before = SecurityEvent.objects.filter(event_type="DOCUMENT_DOWNLOADED").count()
+        response = self.client.get(reverse("core:document-pdf", args=[doc.pk]), follow=True)
+        self.assertNotEqual(response["Content-Type"], "application/pdf")
+        self.assertContains(response, "no longer current")
+        self.assertEqual(
+            SecurityEvent.objects.filter(event_type="DOCUMENT_DOWNLOADED").count(), before)
+
+    def test_office_reprint_still_works_for_a_current_card(self):
+        doc = self.issued_card()
+        response = self.client.get(reverse("core:document-pdf", args=[doc.pk]))
+        self.assertEqual(response["Content-Type"], "application/pdf")
+
+    def test_inactive_student_gets_no_bonafide(self):
+        Student.objects.filter(pk=self.asha.pk).update(status=Student.Status.INACTIVE)
+        self.asha.refresh_from_db()
+        with self.assertRaises(ValidationError) as caught:
+            bonafide.issue_bonafide(student=self.asha, purpose_key="BANK",
+                                    purpose_text="", actor=self.admin)
+        self.assertIn("inactive", caught.exception.messages[0])
+
+    def test_serial_does_not_depend_on_the_year_name(self):
+        year = AcademicYear.objects.create(
+            name='Academic Year "2027-2028" (June to March, full session)',
+            start_date=date(2027, 6, 1), end_date=date(2028, 3, 31))
+        with transaction.atomic():
+            serial = serials.next_serial("BONAFIDE", year)
+        self.assertEqual(serial, "BON/2027-28/0001")
+        self.assertLessEqual(len(serial), 40)

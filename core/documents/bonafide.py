@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 
 from core import models as core_models
 from core.documents import service
-from core.models import AcademicEnrollment, IssuedDocument
+from core.models import AcademicEnrollment, IssuedDocument, Student
 
 PURPOSES = [
     ("BANK", "Opening a bank account"),
@@ -26,6 +26,8 @@ def current_enrollment(student):
 
 
 def issue_bonafide(*, student, purpose_key, purpose_text, actor):
+    if student.status != Student.Status.ACTIVE:
+        raise ValidationError("This student is inactive, so no certificate can be issued.")
     enrollment = current_enrollment(student)
     if enrollment is None:
         raise ValidationError("This student has no current enrolment.")

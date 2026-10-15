@@ -40,6 +40,16 @@ def _payload(pub):
     }
 
 
+def is_current(document):
+    """A report card document may be printed only while its publication is current."""
+    pub = document.publication
+    return (
+        pub is not None
+        and pub.status == TermPublication.Status.PUBLISHED
+        and publication_rules.guardian_visible(pub)
+    )
+
+
 def document_for(pub, *, actor):
     """The issued document for a publication, issuing it on first use.
 
