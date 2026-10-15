@@ -2,27 +2,21 @@
 {% block title %}My assessments{% endblock %}
 {% block content %}
 <h1 class="h3 mb-3">My assessments</h1>
-<p class="text-muted">
-    You enter marks for:
-    {% for duty in duties %}{{ duty.offering.subject.name }} {{ duty.section }} ({{ duty.offering.academic_year.name }}){% if not forloop.last %}; {% endif %}{% empty %}nothing yet &mdash; ask an administrator to assign you.{% endfor %}
-</p>
-<table class="table">
-    <thead><tr><th>Date</th><th>Subject</th><th>Section</th><th>Assessment</th><th>Max</th><th>Status</th></tr></thead>
-    <tbody>
-        {% for assessment in assessments %}
-        <tr>
-            <td>{{ assessment.assessment_date }}</td>
-            <td>{{ assessment.offering.subject.name }}</td>
-            <td>{{ assessment.section }}</td>
-            <td><a href="{% url 'core:assessment-marks-entry' assessment.pk %}">{{ assessment.name }}</a></td>
-            <td>{{ assessment.maximum_marks }}</td>
-            <td>{{ assessment.get_status_display }}</td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="6">No assessments for your Subjects and Sections yet.</td></tr>
-        {% endfor %}
-    </tbody>
-</table>
+{% for duty in duties %}
+<div class="erp-card">
+    <div class="erp-card-row">
+        <p class="erp-card-title">{{ duty.offering.subject.name }} &middot; {{ duty.section }} <span class="erp-card-meta">({{ duty.offering.academic_year.name }})</span></p>
+        <a class="btn btn-outline-primary btn-sm" href="{% url 'core:my-gradebook' duty.pk %}">Gradebook</a>
+    </div>
+    <ul class="list-unstyled mb-0 mt-2">
+        {% for assessment in assessments %}{% if assessment.offering_id == duty.offering_id and assessment.section_id == duty.section_id %}
+        <li class="d-flex justify-content-between gap-2 py-1"><a href="{% url 'core:assessment-marks-entry' assessment.pk %}">{{ assessment.name }}</a><span class="text-muted small">{{ assessment.assessment_date|date:"j M" }} &middot; <span class="erp-pill{% if assessment.is_finalized %} is-submitted{% else %} is-draft{% endif %}">{{ assessment.get_status_display }}</span></span></li>
+        {% endif %}{% endfor %}
+    </ul>
+</div>
+{% empty %}
+<p class="text-muted">You enter marks for nothing yet &mdash; ask an administrator to assign you.</p>
+{% endfor %}
 <h2 class="h5 mt-4">Term remarks</h2>
 <ul>
     {% for term, section in remark_links %}

@@ -107,3 +107,67 @@ class MarksEntryPageTests(MarksFixture, TestCase):
         self.assertContains(page, "Not entered")
         self.assertContains(page, '<span class="erp-pill is-absent">Absent</span>')
         self.assertNotContains(page, "<table")
+
+
+class GradebookTests(MarksFixture, TestCase):
+    def url(self, duty=None):
+        return reverse("core:my-gradebook", args=[(duty or self.duty).pk])
+
+    def test_cells_show_score_abs_or_empty(self):
+        self.result(self.test1, self.asha, "MARKED", "18")
+        self.result(self.test1, self.bina, "ABSENT")
+        page = self.teacher.get(self.url())
+        rows = {row["student"].full_name: row["cells"] for row in page.context["rows"]}
+        self.assertEqual(rows["Asha"][0].score, Decimal("18"))
+        self.assertEqual(rows["Bina"][0].status, "ABSENT")
+        self.assertIsNone(rows["Ravi"][0])
+        self.assertIsNone(rows["Asha"][1])
+        self.assertContains(page, ">Abs<")
+
+    def test_zero_score_shows_zero(self):
+        self.result(self.test1, self.asha, "MARKED", "0")
+        self.assertContains(self.teacher.get(self.url()), ">0<")
+
+    def test_no_totals_or_ranks(self):
+        self.result(self.test1, self.asha, "MARKED", "18")
+        page = self.teacher.get(self.url())
+        for word in ("Total", "Average", "Rank"):
+            self.assertNotContains(page, word)
+
+    def test_students_by_name_and_headers_link_to_entry(self):
+        page = self.teacher.get(self.url())
+        self.assertEqual([r["student"].full_name for r in page.context["rows"]],
+                         ["Asha", "Bina", "Ravi"])
+        self.assertContains(page, self.entry_url(self.test1))
+        self.assertContains(page, self.entry_url(self.test2))
+
+    def test_draft_and_finalized_columns_differ(self):
+        self.result(self.test1, self.asha, "MARKED", "18")
+        self.result(self.test2, self.asha, "MARKED", "15")
+        self.force_finalize(self.test2)
+        page = self.teacher.get(self.url()).content.decode()
+        self.assertEqual(page.count('class="is-draft"'), 1)
+        self.assertEqual(page.count("(draft)"), 1)
+
+    def test_rows_union_of_rosters(self):
+        later = self.make_assessment(name="Unit Test 3", on=date(2026, 9, 10))
+        _, kiran = self.make_student("Kiran", start=date(2026, 8, 1))
+        page = self.teacher.get(self.url())
+        cells = {r["student"].full_name: r["cells"] for r in page.context["rows"]}
+        self.assertEqual(len(cells["Kiran"]), 3)
+        self.assertIsNone(cells["Kiran"][0])
+        self.assertTrue(later.roster().filter(pk=kiran.pk).exists())
+
+    def test_other_teachers_assignment_is_404(self):
+        other = self.assign(self.iyer, self.sanskrit, self.six_b)
+        self.assertEqual(self.teacher.get(self.url(other)).status_code, 404)
+
+    def test_non_teacher_is_forbidden(self):
+        self.client.login(username="admin", password="pass-12345")
+        self.assertEqual(self.client.get(self.url()).status_code, 403)
+
+    def test_my_assessments_links_gradebook(self):
+        page = self.teacher.get(reverse("core:my-assessments"))
+        self.assertContains(page, "My assessments")
+        self.assertContains(page, self.url())
+        self.assertContains(page, "Unit Test 1")

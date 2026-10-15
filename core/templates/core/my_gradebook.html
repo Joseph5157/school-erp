@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Gradebook {{ duty.offering.subject.name }} {{ duty.section }}{% endblock %}
+{% block content %}
+<p class="mb-2"><a href="{% url 'core:my-assessments' %}">‹ My assessments</a></p>
+<h1 class="h3 mb-1">Gradebook</h1>
+<p class="text-muted">{{ duty.offering.subject.name }} &middot; {{ duty.section }} &middot; {{ duty.offering.academic_year.name }}. Empty means not entered yet, not absent.</p>
+{% if assessments %}
+<div class="erp-grid-scroll">
+<table class="erp-grid erp-keep">
+    <caption class="visually-hidden">Marks for {{ duty.offering.subject.name }}, {{ duty.section }}</caption>
+    <thead><tr>
+        <th scope="col">Student</th>
+        {% for assessment in assessments %}
+        <th scope="col"><a href="{% url 'core:assessment-marks-entry' assessment.pk %}">{{ assessment.name }}</a>
+            <span class="erp-grid-meta">{{ assessment.assessment_date|date:"j M" }} &middot; / {{ assessment.maximum_marks|floatformat:"-2" }}</span>
+            <span class="erp-pill{% if assessment.is_finalized %} is-submitted{% else %} is-draft{% endif %}">{{ assessment.get_status_display }}</span></th>
+        {% endfor %}
+    </tr></thead>
+    <tbody>
+        {% for row in rows %}
+        <tr>
+            <th scope="row">{{ row.student.full_name }}</th>
+            {% for result in row.cells %}
+            <td{% if result and not result.assessment.is_finalized %} class="is-draft"{% endif %}>{% if result %}{% if result.status == "ABSENT" %}Abs{% else %}{{ result.score|floatformat:"-2" }}{% endif %}{% if not result.assessment.is_finalized %}<span class="visually-hidden"> (draft)</span>{% endif %}{% endif %}</td>
+            {% endfor %}
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+{% else %}
+{% include "partials/_empty.html" with text="No assessments for this Subject and Section yet." %}
+{% endif %}
+{% endblock %}

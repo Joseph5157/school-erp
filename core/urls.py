@@ -139,6 +139,7 @@ urlpatterns = [
         name="my-attendance-register",
     ),
     path("my/assessments/", views.my_assessments, name="my-assessments"),
+    path("my/gradebook/<int:pk>/", views.my_gradebook, name="my-gradebook"),
     path(
         "my/assessments/<int:pk>/marks/",
         views.assessment_marks_entry,

@@ -312,6 +312,18 @@ body.has-tabbar .erp-messages {
 .erp-toggle.is-blank, .erp-toggle.is-marked { font-size: .9rem; }
 .erp-row-error { grid-column: 1 / -1; }
 
+/* ---------- U3: gradebook ---------- */
+.erp-grid-scroll { overflow-x: auto; border: 1px solid var(--erp-rule); border-radius: var(--erp-radius); background: var(--erp-surface); }
+.erp-grid { border-collapse: separate; border-spacing: 0; font-size: .9rem; }
+.erp-grid th, .erp-grid td { padding: .45rem .6rem; border-bottom: 1px solid var(--erp-rule); text-align: center; white-space: nowrap; }
+.erp-grid thead th { vertical-align: bottom; font-weight: 600; }
+.erp-grid tbody th, .erp-grid thead th:first-child {
+  position: sticky; left: 0; z-index: 1; background: var(--erp-surface); text-align: left;
+  border-right: 1px solid var(--erp-rule);
+}
+.erp-grid-meta { display: block; font-weight: 400; color: var(--erp-ink-soft); font-size: .8rem; }
+.erp-grid td.is-draft { font-style: italic; color: var(--erp-ink-soft); }
+
 /* Wide tables scroll inside their own box on phones instead of widening the page. */
 @media (max-width: 575.98px) {
   .erp-content table:not(.erp-keep) { display: block; overflow-x: auto; }

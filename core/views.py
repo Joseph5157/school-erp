@@ -1184,6 +1184,36 @@ def my_assessments(request):
 
 
 @teacher_required
+def my_gradebook(request, pk):
+    """Read-only marks for one of the teacher's Subject + Section assignments."""
+    duty = get_object_or_404(teacher_assignments(request.user), pk=pk)
+    assessments = list(
+        _assessments()
+        .filter(offering=duty.offering, section=duty.section)
+        .order_by("assessment_date", "name", "pk")
+    )
+    students = {}
+    for assessment in assessments:
+        for enrollment in assessment.roster().select_related("student"):
+            students[enrollment.student_id] = enrollment.student
+    results = {
+        (result.academic_enrollment.student_id, result.assessment_id): result
+        for result in StudentResult.objects.filter(assessment__in=assessments).select_related(
+            "academic_enrollment", "assessment"
+        )
+    }
+    rows = [
+        {"student": student, "cells": [results.get((student.pk, a.pk)) for a in assessments]}
+        for student in sorted(students.values(), key=lambda s: (s.full_name.casefold(), s.pk))
+    ]
+    return render(
+        request,
+        "core/my_gradebook.html",
+        {"duty": duty, "assessments": assessments, "rows": rows},
+    )
+
+
+@teacher_required
 def assessment_marks_entry(request, pk):
     assessment = get_object_or_404(_assessments(), pk=pk)
     if not can_enter_results(request.user, assessment.offering, assessment.section):
