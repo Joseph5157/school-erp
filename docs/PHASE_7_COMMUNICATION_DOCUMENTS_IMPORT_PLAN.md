@@ -2,11 +2,11 @@
 
 ## Status
 
-PROPOSED (Gate 0 draft for discussion). No code until the decisions in section 3
-are approved and recorded in ADRs 0015-0017.
+APPROVED (Gate 0 accepted 2026-10-15, PR #45). Decisions in section 3 are
+recorded in ADRs 0015-0017. Implementation order: import (Gates 8-9) first.
 
 Scope chosen by the owner:
-- WhatsApp Business API notifications: absence alerts, announcements,
+- WhatsApp notifications (ASSIST mode first, API optional later): absence alerts, announcements,
   "result published" notices, fee reminders (see D8: fee reminders ship with Phase 3).
 - Printable documents: Term report card PDF, Transfer Certificate, Bonafide /
   study certificate, attendance summary.

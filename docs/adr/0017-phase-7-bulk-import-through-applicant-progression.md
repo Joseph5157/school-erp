@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed (Phase 7 Gate 0) — awaiting owner approval. Becomes FROZEN once accepted.
+Accepted (2026-10-15, Phase 7 planning PR #45) — FROZEN.
 Planning: `docs/PHASE_7_COMMUNICATION_DOCUMENTS_IMPORT_PLAN.md` (decisions D9, D10).
 
 ## Context

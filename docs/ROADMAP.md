@@ -130,7 +130,7 @@ Clarifications:
 - bulk Excel import of classes, sections, guardians, students and enrollment
 - operational reporting, management dashboards and reports (later)
 
-Status: PROPOSED, Gate 0 planning in `docs/PHASE_7_COMMUNICATION_DOCUMENTS_IMPORT_PLAN.md`;
+Status: APPROVED (Gate 0 accepted 2026-10-15); in progress. Plan: `docs/PHASE_7_COMMUNICATION_DOCUMENTS_IMPORT_PLAN.md`;
 decisions in ADR 0015, ADR 0016 and ADR 0017. Fee reminders wait for Phase 3.
 Government and regulatory fit (APAAR/UDISE+, state formats) is planned separately.
 

@@ -493,7 +493,7 @@ journeys in `core/tests/test_phase6_acceptance.py`.
 
 ## Phase 7 scope
 
-PROPOSED (Gate 0, awaiting owner approval). Decisions are recorded in ADR 0015,
+APPROVED (Gate 0 accepted 2026-10-15). Decisions are recorded in ADR 0015,
 ADR 0016 and ADR 0017; the plan is `docs/PHASE_7_COMMUNICATION_DOCUMENTS_IMPORT_PLAN.md`.
 It contains only:
 
