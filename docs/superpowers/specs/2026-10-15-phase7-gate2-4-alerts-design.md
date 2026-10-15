@@ -11,7 +11,7 @@ Create the first real messages in the Gate 1 outbox: an absence alert when a reg
 
 | Topic | Decision |
 |---|---|
-| Recipients | Only guardians with **portal access** to that student: an active `GuardianStudentAccess` grant (not revoked) whose access review is not pending. Consent rules from Gate 1 apply on top (no current WhatsApp opt-in → `SKIPPED_NO_CONSENT`). A guardian on record without portal access gets nothing — no row at all. |
+| Recipients | Only guardians with **portal access** to that student: an active `GuardianStudentAccess` grant (not revoked) whose access review is not pending, held by a guardian with an active portal login (account not revoked, user active) — exactly who can open the link. Consent rules from Gate 1 apply on top (no current WhatsApp opt-in → `SKIPPED_NO_CONSENT`). A guardian on record without portal access gets nothing — no row at all. |
 | Correction Absent → Present | A waiting (PREPARED) absence alert for that student and date is dismissed automatically, reason "Attendance corrected to Present", `dismissed_by` = the correcting user. SENT alerts are never retracted (ADR 0015). |
 
 ## Decisions made in this spec (review these)
@@ -24,7 +24,7 @@ Create the first real messages in the Gate 1 outbox: an absence alert when a reg
 6. **Message texts, version 1, English**, seeded by a data migration that runs `full_clean()` on each and marks them approved:
    - `absence-alert`: `Dear parent, {first_name} was marked absent at school on {date}. Attendance details: {portal_url}`
    - `report-card-published`: `Dear parent, {first_name}'s report card is now available on the school portal: {portal_url}`
-7. **Parameters.** `first_name` = first word of `Student.full_name` (stripped). `date` = register date formatted like `15 Oct 2026` (absence only; the report-card text has no date, so the parameter is omitted). `portal_url` = `PORTAL_BASE_URL` + the child's portal page: attendance page for absence, report cards page for the notice (`portal:attendance` / `portal:report-cards`, by `public_id`).
+7. **Parameters.** `first_name` = first word of `Student.full_name` (stripped). `date` = register date formatted like `15 Oct 2026` (absence only; the report-card text has no date, so the parameter is omitted). `portal_url` = `PORTAL_BASE_URL` + the child's portal page: attendance page for absence, report cards page for the notice (`portal:attendance` / `portal:report-cards`, by the recipient's own `GuardianStudentAccess.public_id`, as the portal's URLs already work).
 8. **Portal address.** New setting `PORTAL_BASE_URL` from the environment variable of the same name (trailing slash stripped; empty by default).
    - The school settings form refuses ASSIST when it is empty: "Set the portal address (PORTAL_BASE_URL) before sending WhatsApp messages."
    - If it is empty while the school is in ASSIST, producers prepare nothing (logged, per 5) and the To send page shows a warning line.
@@ -32,7 +32,7 @@ Create the first real messages in the Gate 1 outbox: an absence alert when a reg
 
 ## Components
 
-- `core/notification_producers.py` (new): `absence_alerts_for_register(register)`, `absence_corrected(entry, *, actor, previous_status)`, `report_card_notices(publications)`, plus `portal_recipients(student)` (guardians with active, non-pending access) and `portal_url(name, student)`. All rules for Gates 2 and 4 live here; `core/notifications.py` keeps the outbox mechanics.
+- `core/notification_producers.py` (new): `absence_alerts_for_register(register)`, `absence_corrected(entry, *, actor)`, `report_card_notices(publications)`, plus `portal_grants(student)` (active, non-pending grants whose guardian has an active login) and `portal_url(url_name, grant)`. All rules for Gates 2 and 4 live here; `core/notifications.py` keeps the outbox mechanics.
 - `core/notifications.py`: the automatic dismissal reuses `dismiss()` (only from PREPARED).
 - `core/models.py`: two call sites (local import to avoid a cycle). `core/publication.py`: one call site.
 - `config/settings.py`: `PORTAL_BASE_URL`. `core/forms.py`: school form check. `core/templates/core/notifications_to_send.html`: warning line.
