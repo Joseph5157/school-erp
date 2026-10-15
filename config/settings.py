@@ -203,6 +203,11 @@ TESTING = len(sys.argv) > 1 and sys.argv[1] == "test"
 if DEBUG or TESTING:
     STORAGES["staticfiles"]["BACKEND"] = "django.contrib.staticfiles.storage.StaticFilesStorage"
 
+# Tests create many users; the default PBKDF2 hasher is deliberately slow. A fast,
+# insecure hasher is used only under `manage.py test`. Real passwords are unaffected.
+if TESTING:
+    PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
