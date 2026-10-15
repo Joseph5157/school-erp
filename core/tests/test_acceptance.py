@@ -29,6 +29,10 @@ from core.models import (
 User = get_user_model()
 
 
+# School form field required since Phase 7 Gate 1 (notification channel).
+CHANNEL = {"notification_channel": "PORTAL_ONLY"}
+
+
 class Phase1AcceptanceJourneyTests(TestCase):
     """The REQUIREMENTS.md "Phase 1 acceptance journey", exercised end to end.
 
@@ -46,7 +50,9 @@ class Phase1AcceptanceJourneyTests(TestCase):
 
     def test_full_acceptance_journey(self):
         # Configure school.
-        response = self.client.post(reverse("core:school-create"), {"name": "Greenwood High"})
+        response = self.client.post(
+            reverse("core:school-create"), {"name": "Greenwood High", **CHANNEL}
+        )
         self.assertRedirects(response, reverse("core:school-detail"))
         self.assertEqual(School.objects.get().name, "Greenwood High")
 
@@ -148,7 +154,7 @@ class Phase1AcceptanceJourneyTests(TestCase):
     @mock.patch("core.models.business_today", new=lambda: date(2027, 12, 31))
     def test_placement_and_status_changes_preserve_history(self):
         # Build the prerequisites for an enrolled Student through the views.
-        self.client.post(reverse("core:school-create"), {"name": "Greenwood High"})
+        self.client.post(reverse("core:school-create"), {"name": "Greenwood High", **CHANNEL})
         self.client.post(
             reverse("core:academic-year-create"),
             {"name": "2026-2027", "start_date": "2026-06-01", "end_date": "2027-04-30"},

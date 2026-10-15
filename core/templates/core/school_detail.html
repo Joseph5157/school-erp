@@ -5,6 +5,8 @@
 <dl class="row">
     <dt class="col-sm-3">Name</dt>
     <dd class="col-sm-9">{{ school.name }}</dd>
+    <dt class="col-sm-3">Messages to guardians</dt>
+    <dd class="col-sm-9">{{ school.get_notification_channel_display }}</dd>
 </dl>
 {% if perms.core.change_school %}
     <a class="btn btn-primary" href="{% url 'core:school-update' %}">Edit</a>

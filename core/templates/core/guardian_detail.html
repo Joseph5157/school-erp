@@ -97,4 +97,5 @@
 </ul>
 {% endif %}
 <a class="btn btn-link" href="{% url 'core:guardian-list' %}">Back to Guardians</a>
+{% if consents is not None %}{% include "core/_guardian_consent.html" %}{% endif %}
 {% endblock %}

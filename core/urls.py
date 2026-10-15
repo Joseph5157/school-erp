@@ -1,6 +1,6 @@
 from django.urls import path
 
-from core import import_views, views
+from core import import_views, notification_views, views
 
 app_name = "core"
 
@@ -226,6 +226,11 @@ urlpatterns = [
     path("guardians/", views.guardian_list, name="guardian-list"),
     path("guardians/create/", views.guardian_create, name="guardian-create"),
     path("guardians/<int:pk>/", views.guardian_detail, name="guardian-detail"),
+    path(
+        "guardians/<int:pk>/consent/",
+        notification_views.guardian_consent_record,
+        name="guardian-consent-record",
+    ),
     path(
         "guardians/<int:pk>/account/create/",
         views.guardian_account_create,

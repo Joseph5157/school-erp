@@ -28,6 +28,10 @@ from core.models import (
 User = get_user_model()
 
 
+# School form field required since Phase 7 Gate 1 (notification channel).
+CHANNEL = {"notification_channel": "PORTAL_ONLY"}
+
+
 class SchoolAdministratorsGroupMigrationTests(TestCase):
     def test_group_seeded_with_expected_permissions(self):
         group = Group.objects.get(name="School Administrators")
@@ -134,6 +138,10 @@ class SchoolAdministratorsGroupMigrationTests(TestCase):
                 "clear_login_lockout",
                 "run_import",
                 "view_importbatch",
+                "send_notification",
+                "view_notification",
+                "add_guardiancontactconsent",
+                "view_guardiancontactconsent",
             },
         )
 
@@ -182,13 +190,13 @@ class SchoolCreateAuthorizationTests(AuthorizationClientsMixin, TestCase):
         self.assertFalse(School.objects.exists())
 
     def test_administrator_can_create(self):
-        response = self.administrator.post(self.url, {"name": "Greenwood High"})
+        response = self.administrator.post(self.url, {"name": "Greenwood High", **CHANNEL})
 
         self.assertRedirects(response, reverse("core:school-detail"))
         self.assertEqual(School.objects.count(), 1)
 
     def test_superuser_can_create(self):
-        response = self.superuser_client.post(self.url, {"name": "Greenwood High"})
+        response = self.superuser_client.post(self.url, {"name": "Greenwood High", **CHANNEL})
 
         self.assertRedirects(response, reverse("core:school-detail"))
         self.assertEqual(School.objects.count(), 1)
@@ -196,7 +204,7 @@ class SchoolCreateAuthorizationTests(AuthorizationClientsMixin, TestCase):
     def test_administrator_cannot_create_a_second_school(self):
         School.objects.create(name="Greenwood High")
 
-        response = self.administrator.post(self.url, {"name": "Riverside Academy"})
+        response = self.administrator.post(self.url, {"name": "Riverside Academy", **CHANNEL})
 
         self.assertRedirects(response, reverse("core:school-detail"))
         self.assertEqual(School.objects.count(), 1)
@@ -207,7 +215,7 @@ class SchoolCreateAuthorizationTests(AuthorizationClientsMixin, TestCase):
         # request's exists() guard and its actual save().
         with mock.patch("core.views.School.objects.exists", return_value=False):
             School.objects.create(name="Greenwood High")
-            response = self.administrator.post(self.url, {"name": "Riverside Academy"})
+            response = self.administrator.post(self.url, {"name": "Riverside Academy", **CHANNEL})
 
         self.assertRedirects(response, reverse("core:school-detail"))
         self.assertEqual(School.objects.count(), 1)
@@ -237,14 +245,16 @@ class SchoolUpdateAuthorizationTests(AuthorizationClientsMixin, TestCase):
         self.assertEqual(self.school.name, "Greenwood High")
 
     def test_administrator_can_update(self):
-        response = self.administrator.post(self.url, {"name": "Greenwood International"})
+        response = self.administrator.post(self.url, {"name": "Greenwood International", **CHANNEL})
 
         self.assertRedirects(response, reverse("core:school-detail"))
         self.school.refresh_from_db()
         self.assertEqual(self.school.name, "Greenwood International")
 
     def test_superuser_can_update(self):
-        response = self.superuser_client.post(self.url, {"name": "Greenwood International"})
+        response = self.superuser_client.post(
+            self.url, {"name": "Greenwood International", **CHANNEL}
+        )
 
         self.assertRedirects(response, reverse("core:school-detail"))
         self.school.refresh_from_db()

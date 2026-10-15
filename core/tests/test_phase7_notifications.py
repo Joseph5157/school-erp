@@ -3,6 +3,7 @@
 from django.core.exceptions import ValidationError
 from django.db import DatabaseError, transaction
 from django.test import TestCase
+from django.urls import reverse
 
 from core import notifications
 from core.models import (
@@ -251,3 +252,51 @@ class ServiceTests(NotificationFixture, TestCase):
         self.assertEqual(dismissed.dismissed_by, self.admin)
         with self.assertRaises(notifications.NotificationError):
             notifications.dismiss(notification, user=self.admin, reason="again")
+
+
+class ConsentPageTests(NotificationFixture, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.client.login(username="admin", password="pass-12345")
+        self.page = reverse("core:guardian-detail", args=[self.guardian.pk])
+        self.record = reverse("core:guardian-consent-record", args=[self.guardian.pk])
+
+    def test_admin_group_has_new_permissions(self):
+        for perm in ("core.send_notification", "core.view_notification",
+                     "core.add_guardiancontactconsent", "core.view_guardiancontactconsent"):
+            self.assertTrue(self.admin.has_perm(perm), perm)
+        self.assertFalse(self.rao.has_perm("core.send_notification"))
+
+    def test_card_shows_no_consent_then_current_state(self):
+        self.assertContains(self.client.get(self.page), "No consent recorded")
+        response = self.client.post(
+            self.record, {"status": "OPTED_IN", "source": "PAPER_FORM", "note": "Admission form"},
+            follow=True,
+        )
+        self.assertContains(response, "Opted in")
+        self.assertContains(response, "Paper form")
+        self.assertTrue(notifications.is_opted_in(self.guardian))
+
+    def test_invalid_consent_post_records_nothing(self):
+        self.client.post(self.record, {"status": "MAYBE", "source": "PAPER_FORM"})
+        self.assertFalse(GuardianContactConsent.objects.exists())
+
+    def test_teacher_cannot_record_consent(self):
+        teacher = self.client_class()
+        teacher.login(username="rao", password="pass-12345")
+        response = teacher.post(self.record, {"status": "OPTED_IN", "source": "PAPER_FORM"})
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(GuardianContactConsent.objects.exists())
+
+    def test_school_form_offers_two_modes(self):
+        response = self.client.get(reverse("core:school-update"))
+        self.assertContains(response, 'value="PORTAL_ONLY"')
+        self.assertContains(response, 'value="ASSIST"')
+        self.assertNotContains(response, 'value="API"')
+        self.assertNotContains(response, 'value="SMS"')
+
+    def test_school_form_rejects_api_mode(self):
+        self.client.post(reverse("core:school-update"),
+                         {"name": "Greenwood High", "notification_channel": "API"})
+        self.school.refresh_from_db()
+        self.assertEqual(self.school.notification_channel, School.NotificationMode.ASSIST)
