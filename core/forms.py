@@ -368,10 +368,11 @@ class ResultEntryForm(forms.Form):
         for enrollment in self.enrollments:
             result = saved.get(enrollment.pk)
             self.fields[self.status_name(enrollment)] = forms.ChoiceField(
-                choices=[("", "—"), *ResultStatus.choices],
+                choices=[("", "Not entered"), *ResultStatus.choices],
                 required=False,
                 label=str(enrollment.student),
                 initial=result.status if result else "",
+                widget=forms.RadioSelect,
             )
             self.fields[self.score_name(enrollment)] = forms.DecimalField(
                 required=False,
@@ -381,7 +382,10 @@ class ResultEntryForm(forms.Form):
                 max_digits=6,
                 label="Score",
                 initial=result.score if result else None,
-                widget=forms.NumberInput(attrs={"step": "0.01", "style": "width: 7em"}),
+                widget=forms.NumberInput(attrs={
+                    "step": "0.01", "inputmode": "decimal", "enterkeyhint": "next",
+                    "class": "form-control erp-score",
+                }),
             )
 
     @staticmethod
@@ -412,6 +416,20 @@ class ResultEntryForm(forms.Form):
                 self[self.status_name(enrollment)],
                 self[self.score_name(enrollment)],
             )
+
+    def counts(self):
+        """Display counts: a score with no status is marked; blank is never absent."""
+        marked = absent = 0
+        for enrollment in self.enrollments:
+            status = self[self.status_name(enrollment)].value() or ""
+            score = self[self.score_name(enrollment)].value()
+            if status == ResultStatus.ABSENT:
+                absent += 1
+            elif status == ResultStatus.MARKED or score not in (None, ""):
+                marked += 1
+        total = len(self.enrollments)
+        return {"all": total, "marked": marked, "absent": absent,
+                "unmarked": total - marked - absent}
 
     def answers(self):
         for enrollment in self.enrollments:
