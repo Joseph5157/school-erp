@@ -300,6 +300,18 @@ body.has-tabbar .erp-messages {
 }
 .erp-student-rows li span:last-child { white-space: nowrap; color: var(--erp-ink-soft); }
 
+/* ---------- U3: marks entry ---------- */
+.erp-score { font-size: 1.25rem; min-height: 2.75rem; max-width: 10rem; }
+.erp-toggles-3 { grid-template-columns: repeat(3, 1fr); }
+.erp-toggles input:checked + .erp-toggle.is-marked {
+  background: var(--erp-accent); border-color: var(--erp-accent); color: #fff;
+}
+.erp-toggles input:checked + .erp-toggle.is-blank {
+  background: var(--erp-ink-soft); border-color: var(--erp-ink-soft); color: #fff;
+}
+.erp-toggle.is-blank, .erp-toggle.is-marked { font-size: .9rem; }
+.erp-row-error { grid-column: 1 / -1; }
+
 /* Wide tables scroll inside their own box on phones instead of widening the page. */
 @media (max-width: 575.98px) {
   .erp-content table:not(.erp-keep) { display: block; overflow-x: auto; }

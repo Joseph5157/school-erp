@@ -95,4 +95,76 @@
     });
     refresh();
   });
+
+  // Marks entry: live counts and filter tabs; typing a score selects Marked;
+  // Absent clears and disables the score box. Without JS the server rules apply.
+  document.querySelectorAll("[data-erp-marks]").forEach(function (sheet) {
+    var rows = Array.prototype.slice.call(sheet.querySelectorAll("[data-erp-row]"));
+    var tabs = sheet.querySelector("[data-erp-tabs]");
+    var staticCounts = sheet.querySelector("[data-erp-static-counts]");
+    var hint = sheet.querySelector("[data-erp-hint]");
+    var filter = "all";
+
+    function parts(row) {
+      return {
+        score: row.querySelector("input.erp-score"),
+        checked: row.querySelector('input[type="radio"]:checked'),
+        marked: row.querySelector('input[type="radio"][value="MARKED"]'),
+      };
+    }
+
+    function statusOf(row) {
+      var p = parts(row);
+      var value = p.checked ? p.checked.value : "";
+      if (value === "ABSENT") return "absent";
+      if (value === "MARKED" || (p.score && p.score.value.trim() !== "")) return "marked";
+      return "unmarked";
+    }
+
+    function refresh() {
+      var counts = { all: rows.length, marked: 0, absent: 0, unmarked: 0 };
+      rows.forEach(function (row) {
+        var status = statusOf(row);
+        counts[status] += 1;
+        row.hidden = filter !== "all" && filter !== status;
+        var p = parts(row);
+        if (p.score) p.score.disabled = status === "absent";
+      });
+      Object.keys(counts).forEach(function (key) {
+        var target = sheet.querySelector('[data-erp-count="' + key + '"]');
+        if (target) target.textContent = counts[key];
+      });
+      if (hint) hint.textContent = counts.unmarked + " not entered";
+    }
+
+    if (tabs) {
+      tabs.hidden = false;
+      if (staticCounts) staticCounts.hidden = true;
+      tabs.querySelectorAll("[data-erp-filter]").forEach(function (button) {
+        button.addEventListener("click", function () {
+          filter = button.getAttribute("data-erp-filter");
+          tabs.querySelectorAll("[data-erp-filter]").forEach(function (other) {
+            other.setAttribute("aria-pressed", other === button ? "true" : "false");
+          });
+          refresh();
+        });
+      });
+    }
+
+    sheet.addEventListener("input", function (event) {
+      if (!event.target.classList.contains("erp-score")) return;
+      var p = parts(event.target.closest("[data-erp-row]"));
+      if (event.target.value.trim() !== "" && (!p.checked || p.checked.value === "")) {
+        p.marked.checked = true;
+      }
+      refresh();
+    });
+    sheet.addEventListener("change", function (event) {
+      if (event.target.type !== "radio") return;
+      var p = parts(event.target.closest("[data-erp-row]"));
+      if (event.target.value === "ABSENT" && p.score) p.score.value = "";
+      refresh();
+    });
+    refresh();
+  });
 })();

@@ -65,3 +65,45 @@ class ResultFormTests(MarksFixture, TestCase):
         self.assertContains(page, f'type="radio" name="status_{self.asha.pk}" value="ABSENT"')
         self.assertContains(page, 'inputmode="decimal"')
         self.assertContains(page, 'enterkeyhint="next"')
+
+
+class MarksEntryPageTests(MarksFixture, TestCase):
+    def test_rows_are_fieldsets_with_static_counts(self):
+        self.result(self.test1, self.asha, "MARKED", "18")
+        page = self.teacher.get(self.entry_url(self.test1))
+        self.assertContains(page, '<legend class="visually-hidden">Asha</legend>')
+        self.assertEqual(page.content.decode().count("<fieldset"), 3)
+        self.assertContains(page, "All 3 · Not entered 2 · Marked 1 · Absent 0")
+        self.assertContains(page, "2 not entered")
+        self.assertContains(page, "data-erp-marks")
+        self.assertContains(page, "blank is <strong>not</strong> absent")
+
+    def test_invalid_post_keeps_typed_values(self):
+        data = {f"status_{self.asha.pk}": "ABSENT", f"score_{self.asha.pk}": "5",
+                f"status_{self.bina.pk}": "", f"score_{self.bina.pk}": "11"}
+        page = self.teacher.post(self.entry_url(self.test1), data)
+        self.assertContains(page, "An absent Student has no score.")
+        self.assertContains(page, 'value="11"')
+        self.assertContains(page, "All 3 · Not entered 1 · Marked 1 · Absent 1")
+
+    def test_saving_still_works(self):
+        data = {f"status_{self.asha.pk}": "", f"score_{self.asha.pk}": "0",
+                f"status_{self.bina.pk}": "ABSENT", f"score_{self.bina.pk}": ""}
+        response = self.teacher.post(self.entry_url(self.test1), data, follow=True)
+        self.assertContains(response, "Marks saved as draft.")
+        results = {r.academic_enrollment_id: (r.status, r.score)
+                   for r in self.test1.results.all()}
+        self.assertEqual(results[self.asha.pk], ("MARKED", Decimal("0")))
+        self.assertEqual(results[self.bina.pk][0], "ABSENT")
+        self.assertNotIn(self.ravi.pk, results)
+
+    def test_finalized_shows_cards_with_not_entered(self):
+        self.result(self.test1, self.asha, "MARKED", "18")
+        self.result(self.test1, self.bina, "ABSENT")
+        self.force_finalize(self.test1)
+        page = self.teacher.get(self.entry_url(self.test1))
+        self.assertContains(page, "This assessment is finalized")
+        self.assertContains(page, "18 / 20")
+        self.assertContains(page, "Not entered")
+        self.assertContains(page, '<span class="erp-pill is-absent">Absent</span>')
+        self.assertNotContains(page, "<table")
