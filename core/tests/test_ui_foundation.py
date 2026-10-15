@@ -98,3 +98,46 @@ class NavigationDataTests(Phase4Fixture, TestCase):
         self.assertEqual(page.context["current_area"], "admin")
         self.assertTrue(page.context["office_nav"])
         self.assertEqual(len(page.context["teacher_tabs"]), 4)
+
+
+class StaffShellTests(Phase4Fixture, TestCase):
+    def setUp(self):
+        self.build_phase4()
+        School.objects.create(name="Greenwood High")  # school-detail redirects without one
+
+    def test_admin_office_page_has_sidebar_and_no_tabbar(self):
+        self.client.login(username="admin", password="pass-12345")
+        page = self.client.get(reverse("core:student-list"))
+        self.assertContains(page, 'id="erp-sidebar"')
+        self.assertContains(page, reverse("core:academic-year-list"))
+        self.assertContains(page, 'aria-current="page"')
+        self.assertNotContains(page, 'class="erp-tabbar')
+
+    def test_teacher_page_has_tabbar_and_no_sidebar(self):
+        self.client.login(username="rao", password="pass-12345")
+        page = self.client.get(reverse("core:my-home"))
+        self.assertContains(page, 'class="erp-tabbar')
+        self.assertContains(page, "My assessments")
+        self.assertContains(page, reverse("core:my-students"))
+        self.assertNotContains(page, 'id="erp-sidebar"')
+
+    def test_admin_teacher_sees_sidebar_only_in_office_area(self):
+        self.admin.groups.add(self.teachers)
+        self.client.login(username="admin", password="pass-12345")
+        office = self.client.get(reverse("core:school-detail"))
+        teaching = self.client.get(reverse("core:my-home"))
+        self.assertContains(office, 'id="erp-sidebar"')
+        self.assertNotContains(office, 'class="erp-tabbar')
+        self.assertNotContains(teaching, 'id="erp-sidebar"')
+        self.assertContains(teaching, 'class="erp-tabbar')
+
+    def test_anonymous_login_page_has_no_navigation(self):
+        page = self.client.get(reverse("login"))
+        self.assertNotContains(page, 'id="erp-sidebar"')
+        self.assertNotContains(page, 'class="erp-tabbar')
+
+    def test_skip_link_targets_main(self):
+        self.client.login(username="admin", password="pass-12345")
+        page = self.client.get(reverse("core:school-detail"))
+        self.assertContains(page, 'href="#main"')
+        self.assertContains(page, 'id="main"')
