@@ -204,3 +204,45 @@ class GuardianShellTests(BoundaryFixture, TestCase):
         page = self.portal.get(reverse("portal:home"))
         self.assertContains(page, VIEWPORT)
         self.assertContains(page, "/static/css/erp.css")
+
+
+class AuthPageTests(Phase4Fixture, TestCase):
+    def setUp(self):
+        self.build_phase4()
+
+    def test_login_page_fields(self):
+        page = self.client.get(reverse("login"))
+        self.assertContains(page, ">Username</label>")
+        self.assertContains(page, 'autocomplete="username"')
+        self.assertContains(page, 'autocomplete="current-password"')
+        self.assertContains(page, "data-erp-toggle-password")
+        self.assertContains(page, "Ask the school office")
+
+    def test_login_keeps_next(self):
+        target = reverse("core:student-list")
+        page = self.client.get(reverse("login") + f"?next={target}")
+        self.assertContains(page, f'name="next" value="{target}"')
+        response = self.client.post(
+            reverse("login"),
+            {"username": "admin", "password": "pass-12345", "next": target},
+        )
+        self.assertRedirects(response, target, fetch_redirect_response=False)
+
+    def test_login_error_is_shown_once(self):
+        page = self.client.post(reverse("login"), {"username": "admin", "password": "wrong"})
+        self.assertContains(page, "The username or password is incorrect", count=1)
+        self.assertContains(page, 'role="alert"')
+
+    def test_password_change_page(self):
+        self.client.login(username="admin", password="pass-12345")
+        page = self.client.get(reverse("password_change"))
+        self.assertContains(page, 'autocomplete="current-password"', count=1)
+        self.assertContains(page, 'autocomplete="new-password"', count=2)
+        self.assertContains(page, "data-erp-toggle-password", count=3)
+
+    def test_forced_change_notice(self):
+        self.admin.must_change_password = True
+        self.admin.save(update_fields=["must_change_password"])
+        self.client.login(username="admin", password="pass-12345")
+        page = self.client.get(reverse("password_change"))
+        self.assertContains(page, "You must choose a new password before you continue.")
