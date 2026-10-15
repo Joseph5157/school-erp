@@ -27,6 +27,7 @@ from core.models import (
     Section,
     Student,
     Subject,
+    business_today,
 )
 
 
@@ -850,3 +851,40 @@ class RollNumberForm(forms.Form):
         min_value=1, max_value=32767, required=False,
         help_text="Leave empty to clear. Unique within this Section and Academic Year.",
     )
+
+
+# --- Phase 7: bulk import (ADR 0017) -----------------------------------------
+
+
+class ImportUploadForm(forms.Form):
+    """Choose the Academic Year, the enrollment start date and the workbook."""
+
+    academic_year = forms.ModelChoiceField(queryset=AcademicYear.objects.all())
+    enrollment_start_date = forms.DateField(
+        widget=forms.DateInput(attrs={"type": "date"}),
+        help_text="Every imported student is placed from this date. It must fall within "
+        "the Academic Year and cannot be in the future.",
+    )
+    file = forms.FileField(help_text="An .xlsx workbook based on the import template, up to 2 MB.")
+
+    def clean_file(self):
+        from core.imports import MAX_FILE_BYTES
+
+        upload = self.cleaned_data["file"]
+        if not upload.name.lower().endswith(".xlsx"):
+            raise forms.ValidationError("Upload an Excel .xlsx workbook.")
+        if upload.size > MAX_FILE_BYTES:
+            raise forms.ValidationError("The file is larger than 2 MB.")
+        return upload
+
+    def clean(self):
+        cleaned = super().clean()
+        year = cleaned.get("academic_year")
+        start = cleaned.get("enrollment_start_date")
+        if year and start:
+            if not year.contains(start):
+                self.add_error("enrollment_start_date",
+                               "The start date must fall within the Academic Year.")
+            elif start > business_today():
+                self.add_error("enrollment_start_date", "The start date cannot be in the future.")
+        return cleaned

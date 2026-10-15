@@ -1,6 +1,6 @@
 from django.urls import path
 
-from core import views
+from core import import_views, views
 
 app_name = "core"
 
@@ -311,5 +311,17 @@ urlpatterns = [
         "students/<int:pk>/attendance/",
         views.student_attendance,
         name="student-attendance",
+    ),
+    # Phase 7: bulk import (ADR 0017)
+    path("imports/", import_views.import_list, name="import-list"),
+    path("imports/new/", import_views.import_upload, name="import-upload"),
+    path("imports/template.xlsx", import_views.import_template, name="import-template"),
+    path("imports/<int:pk>/", import_views.import_detail, name="import-detail"),
+    path("imports/<int:pk>/commit/", import_views.import_commit, name="import-commit"),
+    path("imports/<int:pk>/discard/", import_views.import_discard, name="import-discard"),
+    path(
+        "imports/<int:pk>/problems.csv",
+        import_views.import_issues_csv,
+        name="import-issues-csv",
     ),
 ]

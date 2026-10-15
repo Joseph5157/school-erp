@@ -85,6 +85,7 @@ class SecurityEvent(models.Model):
         PUBLICATION_STALE = "PUBLICATION_STALE", "Publication became stale"
         PUBLICATION_WITHDRAWN = "PUBLICATION_WITHDRAWN", "Publication withdrawn"
         SECURITY_EVENTS_PURGED = "SECURITY_EVENTS_PURGED", "Routine events purged"
+        IMPORT_COMMITTED = "IMPORT_COMMITTED", "Bulk import committed"
 
     ROUTINE_TYPES = frozenset(
         {
