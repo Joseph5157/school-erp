@@ -4,65 +4,50 @@
 <h1 class="h3 mb-1">My day</h1>
 <p class="text-muted mb-4">{{ today|date:"l, j F Y" }}</p>
 
-<h2 class="h5">Attendance</h2>
-{% if attendance %}
-<table class="table">
-    <thead><tr><th>Section</th><th>Today</th><th></th></tr></thead>
-    <tbody>
-    {% for row in attendance %}
-        <tr>
-            <td>{{ row.duty.section }}</td>
-            <td>
-                {% if row.state == "NOT_INSTRUCTIONAL" %}<span class="text-muted">Not a school day</span>
-                {% elif row.state == "NOT_TAKEN" %}<strong>Not taken</strong>
-                {% elif row.state == "DRAFT" %}Draft &mdash; not yet submitted
-                {% else %}Submitted{% endif %}
-            </td>
-            <td class="text-end">
-                {% if row.state == "NOT_TAKEN" %}<a class="btn btn-primary btn-sm" href="{% url 'core:my-attendance' row.duty.section.pk %}">Take attendance</a>
-                {% elif row.state == "DRAFT" %}<a class="btn btn-outline-primary btn-sm" href="{% url 'core:my-attendance' row.duty.section.pk %}">Continue</a>
-                {% elif row.state == "SUBMITTED" %}<a href="{% url 'core:my-attendance' row.duty.section.pk %}">View</a>{% endif %}
-            </td>
-        </tr>
-    {% endfor %}
-    </tbody>
-</table>
-{% else %}
+<h2 class="erp-section-title">Attendance</h2>
+{% for row in attendance %}
+<div class="erp-card">
+    <div class="erp-card-row">
+        <div>
+            <p class="erp-card-title">{{ row.duty.section }}</p>
+            {% if row.state == "NOT_INSTRUCTIONAL" %}<span class="erp-pill">Not a school day</span>
+            {% elif row.state == "NOT_TAKEN" %}<span class="erp-pill is-pending">Not taken</span>
+            {% elif row.state == "DRAFT" %}<span class="erp-pill is-draft">Draft &mdash; not yet submitted</span>
+            {% else %}<span class="erp-pill is-submitted">Submitted</span>{% endif %}
+        </div>
+        {% if row.state == "NOT_TAKEN" %}<a class="btn btn-primary" href="{% url 'core:my-attendance' row.duty.section.pk %}">Take attendance</a>
+        {% elif row.state == "DRAFT" %}<a class="btn btn-outline-primary" href="{% url 'core:my-attendance' row.duty.section.pk %}">Continue</a>
+        {% elif row.state == "SUBMITTED" %}<a href="{% url 'core:my-attendance' row.duty.section.pk %}">View</a>{% endif %}
+    </div>
+</div>
+{% empty %}
 {% include "partials/_empty.html" with text="You are not a class teacher today." %}
-{% endif %}
+{% endfor %}
 <p><a href="{% url 'core:my-attendance-history' %}">Attendance history for my Sections</a></p>
 
-<h2 class="h5 mt-4">Marks to enter</h2>
-<table class="table">
-    <thead><tr><th>Date</th><th>Subject</th><th>Section</th><th>Assessment</th><th>Unmarked</th></tr></thead>
-    <tbody>
-    {% for assessment in assessments %}
-        <tr>
-            <td>{{ assessment.assessment_date }}</td>
-            <td>{{ assessment.offering.subject.name }}</td>
-            <td>{{ assessment.section }}</td>
-            <td><a href="{% url 'core:assessment-marks-entry' assessment.pk %}">{{ assessment.name }}</a></td>
-            <td>{{ assessment.unmarked_count }}</td>
-        </tr>
-    {% empty %}
-        <tr><td colspan="5">Nothing waiting. <a href="{% url 'core:my-assessments' %}">All my assessments</a></td></tr>
-    {% endfor %}
-    </tbody>
-</table>
+<h2 class="erp-section-title">Marks to enter</h2>
+{% for assessment in assessments %}
+<div class="erp-card">
+    <div class="erp-card-row">
+        <div>
+            <p class="erp-card-title"><a href="{% url 'core:assessment-marks-entry' assessment.pk %}">{{ assessment.name }}</a></p>
+            <p class="erp-card-meta">{{ assessment.offering.subject.name }} &middot; {{ assessment.section }} &middot; {{ assessment.assessment_date|date:"j M" }}</p>
+        </div>
+        <span class="erp-pill is-pending">{{ assessment.unmarked_count }} unmarked</span>
+    </div>
+</div>
+{% empty %}
+<p>Nothing waiting. <a href="{% url 'core:my-assessments' %}">All my assessments</a></p>
+{% endfor %}
 
 {% if remarks %}
-<h2 class="h5 mt-4">Term remarks</h2>
-<table class="table">
-    <thead><tr><th>Term</th><th>Section</th><th>Written</th></tr></thead>
-    <tbody>
-    {% for row in remarks %}
-        <tr>
-            <td>{{ row.term.academic_year.name }} {{ row.term.name }}</td>
-            <td>{{ row.section }}</td>
-            <td><a href="{% url 'core:term-remarks' row.term.pk %}?section={{ row.section.pk }}">{{ row.written }} of {{ row.expected }}</a></td>
-        </tr>
-    {% endfor %}
-    </tbody>
-</table>
+<h2 class="erp-section-title">Term remarks</h2>
+{% for row in remarks %}
+<a class="erp-card d-block text-decoration-none text-reset" href="{% url 'core:term-remarks' row.term.pk %}?section={{ row.section.pk }}">
+    <p class="erp-card-title">{{ row.term.academic_year.name }} {{ row.term.name }} &middot; {{ row.section }}</p>
+    <p class="erp-card-meta">{{ row.written }} of {{ row.expected }} written</p>
+    <progress class="erp-progress" max="{{ row.expected|default:1 }}" value="{{ row.written }}">{{ row.written }} of {{ row.expected }}</progress>
+</a>
+{% endfor %}
 {% endif %}
 {% endblock %}

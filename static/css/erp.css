@@ -279,6 +279,9 @@ body.has-tabbar .erp-messages {
 .erp-entry-name { flex: 1; font-weight: 600; }
 .erp-entry-note { flex-basis: 100%; color: var(--erp-ink-soft); font-size: .9rem; }
 
+.erp-section-title { font-size: 1.05rem; font-weight: 700; margin: 1.5rem 0 .6rem; }
+.erp-progress { width: 100%; height: .4rem; accent-color: var(--erp-accent); margin-top: .4rem; }
+
 /* Wide tables scroll inside their own box on phones instead of widening the page. */
 @media (max-width: 575.98px) {
   .erp-content table:not(.erp-keep) { display: block; overflow-x: auto; }

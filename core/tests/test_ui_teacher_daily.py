@@ -148,3 +148,37 @@ class TakeAttendancePageTests(U2Fixture, TestCase):
         self.assertContains(page, '<span class="erp-pill is-submitted">Submitted</span>')
         self.assertContains(page, '<span class="erp-pill is-absent">Absent</span>')
         self.assertContains(page, "only be changed by an administrator")
+
+
+class MyDayTests(U2Fixture, TestCase):
+    def home(self):
+        return self.teacher.get(reverse("core:my-home"))
+
+    def test_not_taken_card(self):
+        page = self.home()
+        self.assertContains(page, '<span class="erp-pill is-pending">Not taken</span>')
+        self.assertContains(page, "Take attendance")
+
+    def test_draft_card(self):
+        self.draft(asha="PRESENT")
+        page = self.home()
+        self.assertContains(
+            page, '<span class="erp-pill is-draft">Draft &mdash; not yet submitted</span>'
+        )
+        self.assertContains(page, ">Continue<")
+
+    def test_submitted_card(self):
+        self.draft(asha="PRESENT", ravi="PRESENT", bina="PRESENT")
+        self.register().submit(actor=self.rao)
+        page = self.home()
+        self.assertContains(page, '<span class="erp-pill is-submitted">Submitted</span>')
+        self.assertContains(page, ">View<")
+
+    def test_not_a_school_day_card_has_no_action(self):
+        with mock.patch("core.models.AcademicYear.is_instructional_day", return_value=False):
+            page = self.home()
+        self.assertContains(page, '<span class="erp-pill">Not a school day</span>')
+        self.assertNotContains(page, "Take attendance")
+
+    def test_no_tables_on_my_day(self):
+        self.assertNotContains(self.home(), "<table")
