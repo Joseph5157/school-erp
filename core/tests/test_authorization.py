@@ -142,6 +142,9 @@ class SchoolAdministratorsGroupMigrationTests(TestCase):
                 "view_notification",
                 "add_guardiancontactconsent",
                 "view_guardiancontactconsent",
+                "add_announcement",
+                "view_announcement",
+                "withdraw_announcement",
             },
         )
 
