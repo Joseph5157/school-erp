@@ -123,3 +123,15 @@ def absence_corrected(entry, *, actor):
                 pass  # sent or dismissed meanwhile; nothing to retract
     elif _assist() and on_date == core_models.business_today():
         _absence_alert(student, on_date)
+
+
+def report_card_notices(publications):
+    """Called inside confirm_publication(): one notice per student, once per Term."""
+    if not _assist():
+        return
+    for publication in publications:
+        student = publication.student
+        for grant in portal_grants(student):
+            _prepare(kind=Notification.Type.RESULT_PUBLISHED,
+                     template_key=REPORT_CARD_TEMPLATE, grant=grant, student=student,
+                     subject=f"term-{publication.term_id}", url_name="portal:report-cards")

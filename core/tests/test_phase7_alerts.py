@@ -7,7 +7,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from core import guardian_accounts as ga
-from core import notification_producers, notifications
+from core import notification_producers, notifications, publication
 from core.forms import SchoolForm
 from core.models import (
     Applicant,
@@ -299,3 +299,54 @@ class CorrectionTests(AlertFixture, TestCase):
         statuses = {m.student: m.status for m in self.messages()}
         self.assertEqual(statuses[self.asha], PREPARED)
         self.assertEqual(statuses[self.bina], Notification.Status.DISMISSED)
+
+
+class ReportCardNoticeTests(AlertFixture, TestCase):
+    def report_cards_link(self, grant):
+        return BASE + reverse("portal:report-cards", args=[grant.public_id])
+
+    def test_publish_prepares_one_notice_per_portal_guardian(self):
+        self.publish()
+        notices = {m.student: m for m in self.messages(NOTICE)}
+        self.assertEqual(set(notices), {self.asha, self.bina})
+        asha = notices[self.asha]
+        self.assertEqual((asha.guardian, asha.status), (self.meena, PREPARED))
+        self.assertEqual(asha.parameters, {
+            "first_name": "Asha", "portal_url": self.report_cards_link(self.asha_grant)})
+        self.assertEqual(asha.idempotency_key,
+                         f"RESULT_PUBLISHED:{self.meena.pk}:{self.asha.pk}:term-{self.term1.pk}")
+
+    def test_text_has_no_results_or_remarks(self):
+        self.publish()
+        asha = next(m for m in self.messages(NOTICE) if m.student == self.asha)
+        text = notifications.render(asha)
+        self.assertEqual(text, "Dear parent, Asha's report card is now available on the school "
+                               "portal: " + self.report_cards_link(self.asha_grant))
+        prose = text.replace(self.report_cards_link(self.asha_grant), "")  # link UUID is random
+        for hidden in ("15", "UT1", "Steady"):
+            self.assertNotIn(hidden, prose)
+
+    def test_republish_after_withdraw_sends_nothing_new(self):
+        created = self.publish()
+        asha_publication = next(p for p in created if p.student == self.asha)
+        publication.withdraw(asha_publication, actor=self.admin, reason="Wrong remark")
+        self.publish()
+        self.assertEqual(len(self.messages(NOTICE)), 2)
+
+    def test_student_without_portal_guardian_publishes_quietly(self):
+        ga.revoke_student_access(grant=self.bina_grant, actor=self.admin, reason="Left school")
+        created = self.publish()
+        self.assertEqual({p.student for p in created}, {self.asha, self.bina})
+        self.assertEqual([m.student for m in self.messages(NOTICE)], [self.asha])
+
+    def test_portal_only_publishes_without_notices(self):
+        School.objects.filter(pk=self.school.pk).update(notification_channel="PORTAL_ONLY")
+        self.assertEqual(len(self.publish()), 2)
+        self.assertEqual(self.messages(NOTICE), [])
+
+    def test_missing_template_does_not_block_publication(self):
+        with mock.patch.object(notification_producers, "REPORT_CARD_TEMPLATE", "no-such-text"), \
+                self.assertLogs("core.notification_producers", "WARNING"):
+            created = self.publish()
+        self.assertEqual(len(created), 2)
+        self.assertEqual(self.messages(NOTICE), [])
