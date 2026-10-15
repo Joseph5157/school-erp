@@ -138,8 +138,9 @@ def notice_url(announcement):
 def prepare_messages(announcement):
     """One link-only message per guardian; repeating prepares nothing new.
 
-    Counts describe the audience's messages: an existing message (from an
-    earlier click) counts as prepared, or skipped if it had no consent.
+    Counts describe the audience's messages: `prepared` are waiting on the To
+    send page, `done` were already sent, delivered or dismissed, `skipped` had no
+    WhatsApp consent, and `failed` could not be prepared (or are queued/failed).
     """
     with transaction.atomic():
         # Serialise with withdraw(): re-read the notice under a row lock.
@@ -149,7 +150,7 @@ def prepare_messages(announcement):
         if notifications.school_mode() != School.NotificationMode.ASSIST:
             raise ValidationError("WhatsApp sending is switched off for this school.")
         parameters = {"portal_url": notice_url(announcement)}
-        result = {"prepared": 0, "skipped": 0, "failed": 0}
+        result = {"prepared": 0, "done": 0, "skipped": 0, "failed": 0}
         for grant in recipient_grants(announcement):
             guardian = grant.student_guardian.guardian
             try:
@@ -166,8 +167,14 @@ def prepare_messages(announcement):
                 )
                 result["failed"] += 1
                 continue
-            if message.status == Notification.Status.SKIPPED_NO_CONSENT:
+            status = message.status
+            if status == Notification.Status.PREPARED:
+                result["prepared"] += 1
+            elif status in (Notification.Status.SENT, Notification.Status.DELIVERED,
+                            Notification.Status.DISMISSED):
+                result["done"] += 1
+            elif status == Notification.Status.SKIPPED_NO_CONSENT:
                 result["skipped"] += 1
             else:
-                result["prepared"] += 1
+                result["failed"] += 1
         return result

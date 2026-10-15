@@ -8,10 +8,11 @@ from django.db import DatabaseError, transaction
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from core import announcements, notifications
+from core import announcements, guardian_access, notifications
 from core import guardian_accounts as ga
 from core.models import (
     Announcement,
+    GuardianAccessReview,
     GuardianContactConsent,
     Notification,
     NotificationTemplate,
@@ -183,6 +184,16 @@ class VisibilityTests(AnnouncementFixture, TestCase):
         self.today = date(2027, 4, 5)  # after the year: Asha's access is under review
         self.assertEqual(announcements.visible_announcements(self.user), [])
 
+    def test_visible_child_without_current_enrollment_sees_nothing(self):
+        notice = self.notice()
+        self.today = date(2027, 4, 5)  # after the year ends
+        guardian_access.decide_date_review(
+            grant=self.asha_grant,
+            decision=GuardianAccessReview.Decision.RETAINED, actor=self.admin)
+        self.assertFalse(guardian_access.is_review_pending(self.asha_grant))
+        self.assertEqual(announcements.visible_announcements(self.user), [])
+        self.assertNotIn(self.asha_grant, announcements.recipient_grants(notice))
+
     def test_non_guardian_sees_nothing(self):
         self.notice()
         self.assertEqual(announcements.visible_announcements(self.admin), [])
@@ -197,15 +208,22 @@ class PrepareMessagesTests(AnnouncementFixture, TestCase):
         ga.grant_student_access(student_guardian=self.ravi_link, actor=self.admin)
         notice = self.notice()
         self.assertEqual(announcements.prepare_messages(notice),
-                         {"prepared": 2, "skipped": 0, "failed": 0})
+                         {"prepared": 2, "done": 0, "skipped": 0, "failed": 0})
         self.assertEqual(announcements.prepare_messages(notice),
-                         {"prepared": 2, "skipped": 0, "failed": 0})
+                         {"prepared": 2, "done": 0, "skipped": 0, "failed": 0})
         messages = self.sent()
         self.assertEqual(sorted(m.guardian.pk for m in messages),
                          sorted([self.meena.pk, self.other.pk]))
         self.assertTrue(all(m.student is None for m in messages))
         self.assertEqual(messages[0].idempotency_key,
                          f"ANNOUNCEMENT:{messages[0].guardian.pk}:-:announcement-{notice.pk}")
+
+    def test_repeat_after_sending_reports_done_not_ready(self):
+        notice = self.notice()
+        announcements.prepare_messages(notice)
+        notifications.mark_sent(self.sent()[0], user=self.admin)
+        self.assertEqual(announcements.prepare_messages(notice),
+                         {"prepared": 1, "done": 1, "skipped": 0, "failed": 0})
 
     def test_text_is_the_approved_link_only_wording(self):
         notice = self.notice(title="Fee dates", body="Secret body text")
@@ -221,7 +239,7 @@ class PrepareMessagesTests(AnnouncementFixture, TestCase):
     def test_guardian_without_consent_is_skipped(self):
         self.consent(self.other, GuardianContactConsent.Status.OPTED_OUT)
         self.assertEqual(announcements.prepare_messages(self.notice()),
-                         {"prepared": 1, "skipped": 1, "failed": 0})
+                         {"prepared": 1, "done": 0, "skipped": 1, "failed": 0})
 
     def test_refused_when_withdrawn_portal_only_or_no_address(self):
         withdrawn = self.notice()
@@ -250,7 +268,7 @@ class PrepareMessagesTests(AnnouncementFixture, TestCase):
         with mock.patch.object(announcements, "TEMPLATE_KEY", "no-such-text"), \
                 self.assertLogs("core.announcements", "WARNING"):
             result = announcements.prepare_messages(self.notice())
-        self.assertEqual(result, {"prepared": 0, "skipped": 0, "failed": 2})
+        self.assertEqual(result, {"prepared": 0, "done": 0, "skipped": 0, "failed": 2})
 
     def test_withdraw_dismisses_waiting_messages_only(self):
         notice = self.notice()

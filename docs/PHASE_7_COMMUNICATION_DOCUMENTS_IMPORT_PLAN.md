@@ -69,6 +69,8 @@ Scope chosen by the owner:
 - WhatsApp is a separate step on the notice page (WhatsApp sending mode only), after an audience count: guardians with portal access and how many opted in. One link-only message per guardian ("there is a new notice from the school"), never the title or body. Repeating prepares nothing new.
 - Withdrawing a notice dismisses its messages not yet sent ("Announcement withdrawn"); sent ones are not retracted.
 - Permissions: publish, view and withdraw announcements (School Administrators); preparing messages uses the Gate 1 send permission.
+- The message text (`announcement`, version 1, English) is seeded by migration 0062.
+- A guardian recorded as "no consent" when messages were prepared is not reached later for that notice, even after opting in (the outbox never repeats a message).
 
 ---
 

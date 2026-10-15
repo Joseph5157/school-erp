@@ -53,6 +53,8 @@ def announcement_prepare(request, pk):
     else:
         text = (f"Messages ready on the To send page: {result['prepared']}. "
                 f"Not sent (no WhatsApp consent): {result['skipped']}.")
+        if result["done"]:
+            text += f" Already sent or dismissed: {result['done']}."
         if result["failed"]:
             text += f" Could not prepare: {result['failed']}."
         messages.success(request, text)
