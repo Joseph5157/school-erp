@@ -1,5 +1,14 @@
 {% extends "portal/base.html" %}
 {% block content %}
+{% if notices %}
+<h2 class="h5">Latest notices</h2>
+<div class="list-group mb-2" style="max-width: 32rem">
+    {% for notice in notices %}
+    <a class="list-group-item list-group-item-action" href="{% url 'portal:notice' notice.public_id %}">{{ notice.title }} <span class="text-muted small">&middot; {{ notice.published_at|date:"j M" }}</span></a>
+    {% endfor %}
+</div>
+<p class="mb-4"><a href="{% url 'portal:notices' %}">All notices</a></p>
+{% endif %}
 <h1 class="h3 mb-3">Your students</h1>
 {% if children %}
 <div class="list-group" style="max-width: 32rem">

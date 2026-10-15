@@ -355,3 +355,47 @@ class OfficePageTests(AnnouncementFixture, TestCase):
         announcements.prepare_messages(self.notice())
         page = self.client.get(reverse("core:notifications-to-send"))
         self.assertContains(page, "School notice")
+
+
+class PortalNoticeTests(AnnouncementFixture, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.portal = self.guardian_client()
+
+    def test_notices_list_and_detail(self):
+        notice = self.notice(title="Sports Day")
+        page = self.portal.get(reverse("portal:notices"))
+        self.assertEqual(page.context["notices"], [notice])
+        self.assertContains(page, reverse("portal:notice", args=[notice.public_id]))
+        detail = self.portal.get(reverse("portal:notice", args=[notice.public_id]))
+        self.assertContains(detail, "Sports Day is on 20 October.")
+
+    def test_body_is_escaped_with_line_breaks(self):
+        notice = self.notice(body="Bring water\n<script>alert(1)</script>")
+        page = self.portal.get(reverse("portal:notice", args=[notice.public_id]))
+        self.assertContains(page, "Bring water<br>&lt;script&gt;alert(1)&lt;/script&gt;",
+                            html=False)
+        self.assertNotContains(page, "<script>alert(1)", html=False)
+
+    def test_notice_outside_audience_or_withdrawn_is_404(self):
+        other_section = self.notice(SECTION, section=self.six_b)
+        withdrawn = self.notice()
+        announcements.withdraw(withdrawn, actor=self.admin, reason="Wrong")
+        for notice in (other_section, withdrawn):
+            with self.subTest(notice=notice.title):
+                url = reverse("portal:notice", args=[notice.public_id])
+                self.assertEqual(self.portal.get(url).status_code, 404)
+
+    def test_home_shows_latest_three(self):
+        titles = [self.notice(title=f"Notice {n}").title for n in range(4)]
+        page = self.portal.get(reverse("portal:home"))
+        self.assertEqual([n.title for n in page.context["notices"]], titles[:0:-1])
+        self.assertContains(page, reverse("portal:notices"))
+
+    def test_notices_tab_is_always_in_the_portal_menu(self):
+        page = self.portal.get(reverse("portal:home"))
+        self.assertContains(page, f'href="{reverse("portal:notices")}"')
+
+    def test_empty_state(self):
+        page = self.portal.get(reverse("portal:notices"))
+        self.assertContains(page, "No notices")

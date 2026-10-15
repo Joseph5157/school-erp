@@ -31,6 +31,7 @@
     <nav class="erp-tabbar d-lg-none" aria-label="Guardian Portal">
         <ul>
             <li><a href="{% url 'portal:home' %}"{% if here == 'home' %} class="active" aria-current="page"{% endif %}>Home</a></li>
+            <li><a href="{% url 'portal:notices' %}"{% if here == 'notices' or here == 'notice' %} class="active" aria-current="page"{% endif %}>Notices</a></li>
             {% if grant %}
             <li><a href="{% url 'portal:child' grant.public_id %}"{% if here == 'child' %} class="active" aria-current="page"{% endif %}>Overview</a></li>
             <li><a href="{% url 'portal:attendance' grant.public_id %}"{% if here == 'attendance' %} class="active" aria-current="page"{% endif %}>Attendance</a></li>

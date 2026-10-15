@@ -29,7 +29,8 @@ def _context(request, **extra):
 @require_safe
 @guardian_required
 def home(request):
-    return render(request, "portal/home.html", _context(request))
+    return render(request, "portal/home.html",
+                  _context(request, notices=visible_announcements(request.user)[:3]))
 
 
 @require_safe
