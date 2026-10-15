@@ -99,3 +99,27 @@ def absence_alerts_for_register(register):
     )
     for entry in entries:
         _absence_alert(entry.academic_enrollment.student, on_date)
+
+
+def absence_corrected(entry, *, actor):
+    """Called inside AttendanceEntry.record_status_change() after the new status is saved.
+
+    To Present: waiting absence alerts for that student and date are dismissed
+    (sent ones are never retracted). To Absent: an alert, same day only.
+    """
+    register = entry.register
+    student = entry.academic_enrollment.student
+    on_date = core_models._as_date(register.date)
+    if entry.status == AttendanceStatus.PRESENT:
+        waiting = Notification.objects.filter(
+            type=Notification.Type.ABSENCE, student=student,
+            status=Notification.Status.PREPARED,
+            idempotency_key__endswith=f":{student.pk}:{on_date.isoformat()}",
+        )
+        for notification in waiting:
+            try:
+                notifications.dismiss(notification, user=actor, reason=CORRECTED_REASON)
+            except notifications.NotificationError:
+                pass  # sent or dismissed meanwhile; nothing to retract
+    elif _assist() and on_date == core_models.business_today():
+        _absence_alert(student, on_date)

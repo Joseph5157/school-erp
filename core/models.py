@@ -1349,6 +1349,9 @@ class AttendanceEntry(models.Model):
             self.status = new_status
             self.absence_note = absence_note
             self.save(update_fields=["status", "absence_note", "updated_at"])
+            from core import notification_producers
+
+            notification_producers.absence_corrected(self, actor=actor)
 
     @property
     def student(self):

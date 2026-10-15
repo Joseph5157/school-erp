@@ -244,3 +244,58 @@ class AbsenceAlertTests(AlertFixture, TestCase):
             with self.subTest(full_name=full_name):
                 self.assertEqual(
                     notification_producers.first_name(Student(full_name=full_name)), expected)
+
+
+class CorrectionTests(AlertFixture, TestCase):
+    def entry(self, register):
+        return register.entries.get(academic_enrollment=self.asha_e)
+
+    def correct(self, register, status):
+        self.entry(register).record_status_change(status, actor=self.admin,
+                                                  reason="Register was wrong")
+
+    def test_correction_to_present_dismisses_waiting_alert(self):
+        register = self.register()
+        self.correct(register, AttendanceStatus.PRESENT)
+        [alert] = self.messages()
+        self.assertEqual(alert.status, Notification.Status.DISMISSED)
+        self.assertEqual(alert.dismissed_by, self.admin)
+        self.assertEqual(alert.dismiss_reason, "Attendance corrected to Present")
+
+    def test_sent_alert_is_not_retracted(self):
+        register = self.register()
+        notifications.mark_sent(self.messages()[0], user=self.admin)
+        self.correct(register, AttendanceStatus.PRESENT)
+        self.assertEqual([m.status for m in self.messages()], [Notification.Status.SENT])
+
+    def test_dismissal_works_in_portal_only_mode(self):
+        register = self.register()
+        School.objects.filter(pk=self.school.pk).update(notification_channel="PORTAL_ONLY")
+        self.correct(register, AttendanceStatus.PRESENT)
+        self.assertEqual([m.status for m in self.messages()], [Notification.Status.DISMISSED])
+
+    def test_correction_to_absent_same_day_prepares_alert(self):
+        register = self.register(asha=AttendanceStatus.PRESENT)
+        self.correct(register, AttendanceStatus.ABSENT)
+        self.assertEqual([(m.student, m.status) for m in self.messages()],
+                         [(self.asha, PREPARED)])
+
+    def test_correction_to_absent_on_a_later_day_prepares_nothing(self):
+        register = self.register(asha=AttendanceStatus.PRESENT)
+        self.today = date(2026, 10, 13)
+        self.correct(register, AttendanceStatus.ABSENT)
+        self.assertEqual(self.messages(), [])
+
+    def test_back_and_forth_does_not_reprepare_a_dismissed_alert(self):
+        register = self.register()
+        self.correct(register, AttendanceStatus.PRESENT)
+        self.correct(register, AttendanceStatus.ABSENT)
+        self.assertEqual([m.status for m in self.messages()], [Notification.Status.DISMISSED])
+
+    def test_correcting_another_student_leaves_this_alert_alone(self):
+        register = self.register(bina=AttendanceStatus.ABSENT)
+        register.entries.get(academic_enrollment=self.bina_e).record_status_change(
+            AttendanceStatus.PRESENT, actor=self.admin, reason="Register was wrong")
+        statuses = {m.student: m.status for m in self.messages()}
+        self.assertEqual(statuses[self.asha], PREPARED)
+        self.assertEqual(statuses[self.bina], Notification.Status.DISMISSED)
