@@ -122,11 +122,17 @@ Clarifications:
 ### Phase 6B Student accounts (future)
 - not planned; requires separate decisions before any work
 
-### Phase 7 Communication & Reporting
-- announcements (moved from Phase 6)
-- communication channels
-- operational reporting
-- management dashboards and reports
+### Phase 7 Communication, Documents and Bulk Import
+- consent-based guardian notifications (ASSIST mode first): absence alerts,
+  result-published notices, announcements
+- issued documents: Term report card PDF, bonafide, attendance summary,
+  Transfer Certificate
+- bulk Excel import of classes, sections, guardians, students and enrollment
+- operational reporting, management dashboards and reports (later)
+
+Status: PROPOSED, Gate 0 planning in `docs/PHASE_7_COMMUNICATION_DOCUMENTS_IMPORT_PLAN.md`;
+decisions in ADR 0015, ADR 0016 and ADR 0017. Fee reminders wait for Phase 3.
+Government and regulatory fit (APAAR/UDISE+, state formats) is planned separately.
 
 ### Production Hardening
 - security hardening
