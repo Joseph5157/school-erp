@@ -58,6 +58,9 @@ class School(models.Model):
         SMS = "SMS", "SMS"
 
     name = models.CharField(max_length=255)
+    address = models.TextField(blank=True)
+    affiliation_number = models.CharField(max_length=50, blank=True)
+    principal_name = models.CharField(max_length=120, blank=True)
     notification_channel = models.CharField(
         "Messages to guardians",
         max_length=12,

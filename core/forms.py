@@ -39,8 +39,12 @@ class SchoolForm(forms.ModelForm):
 
     class Meta:
         model = School
-        fields = ["name", "notification_channel"]
-        widgets = {"notification_channel": forms.RadioSelect}
+        fields = ["name", "address", "affiliation_number", "principal_name",
+                  "notification_channel"]
+        widgets = {
+            "notification_channel": forms.RadioSelect,
+            "address": forms.Textarea(attrs={"rows": 3}),
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
