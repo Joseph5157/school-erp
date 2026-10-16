@@ -696,3 +696,47 @@ commit).
 - **Re-check on live staging is pending deployment** of this branch; the smoke above is a
   local render, not the deployed app.
 
+## Pre-staging review follow-up (Draft PR #64)
+
+Addressed the review findings without rewriting existing commits.
+
+**H1 — denial-neutral 403.** `templates/403.html` is rendered for administrator,
+teacher and guardian `PermissionDenied` responses, so the old guardian-specific copy
+("You don't have guardian access" / "not linked to a student") was wrong for a guardian
+or teacher refused an administrator page. The heading is now "You don't have access to
+this page" with neutral body copy. Status stays 403, branding and both recovery links
+stay, and no role/student/permission detail is revealed. Tests: admin→`/guardian/`,
+guardian→`core:admin-overview`, neutral heading, no student name, no misleading wording,
+anonymous redirect, anonymous actions render.
+
+**M1 — dashboard publication lookup is genuinely constant-query.** Root cause:
+`child_summaries` called `publication.guardian_visible(card)` per published card, and
+`guardian_visible` recomputed `live_fingerprint` (one query per card). The pre-existing
+`test_query_count_constant` never gave children published cards, so it could not catch
+this. New `publication.guardian_visible_many(publications)` fetches entries, live results
+and remarks in bulk (constant queries) and applies the identical fingerprint comparison;
+`child_summaries` and `visible_publications` both use it. Safety rules unchanged:
+PUBLISHED-only, released entries only, no grade recomputation, stale/missing/unpublished
+still hidden. Measured home-page query count with published cards: **before** 30 (one
+child) → 32 (three children); **after** 31 → 31 (constant). Regression test
+`DashboardPublicationQueryTests.test_query_count_constant_with_published_cards` fails on
+the old code.
+
+**M3 — behaviour-level tests strengthened.** Zero-child portal renders no child-scoped
+URLs; multi-child nav defaults to the first visible child; exactly the correct link
+carries `aria-current="page"`; pending-review grants are excluded from dashboard and nav;
+the attendance card shows the measured numerator, denominator and percentage; the latest
+report-card link and label are asserted; empty dashboard states stay honest; login errors
+expose `aria-invalid`/`aria-describedby` with existing targets and the live region carries
+the error text; the 403 contains no student name; the Grade cell shows "Not graded" when
+blank and "A2" when real.
+
+**M2 — temporary decision (not changed here):**
+
+> On global Home and Notices pages, child-scoped navigation currently defaults
+> deterministically to the first visible child. The selected child is not yet preserved
+> across global pages. A dedicated multi-child context-selector improvement is deferred.
+
+**Deferred findings (unchanged, listed in `docs/GUARDIAN_UI_UX_RETEST.md` §10):**
+G-06, G-08, G-09, G-11, G-12, G-13, G-17.
+
