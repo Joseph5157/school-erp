@@ -1,6 +1,6 @@
 # UI References (Mobbin)
 
-Status: 34 team picks recorded 2026-10-14. U1 Foundation merged (PR #44). The admin audit's Phase 0 safety fixes are in PR #54; Phase 1 responsive shell and shared component foundation is implemented on branch `ui/audit-phase1-responsive-foundation`. U2 Teacher daily screens implemented on branch `ui/u2-teacher-daily`; U3 Teacher marks and students implemented on branch `ui/u3-teacher-marks`; U4–U7 pending (see roadmap).
+Status: 34 team picks recorded 2026-10-14. U1 Foundation merged (PR #44). The admin audit's Phase 0 safety fixes are in PR #54; Phase 1 responsive shell and shared component foundation is implemented on branch `ui/audit-phase1-responsive-foundation`. U2 Teacher daily screens implemented on branch `ui/u2-teacher-daily`; U3 Teacher marks and students implemented on branch `ui/u3-teacher-marks`; Phase 2 admin Overview landing page and breadcrumbs (with a section-aware sidebar) are implemented on branch `ui/audit-phase2-overview-navigation`; U4–U7 pending (see roadmap).
 Implementation plans: `docs/superpowers/plans/2026-10-14-ui-redesign-roadmap.md`.
 
 Full illustrated report (private artifact, share from its Share menu):

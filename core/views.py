@@ -13,6 +13,7 @@ from accounts.models import SecurityEvent
 from core import (
     assessment_reports,
     assignments,
+    dashboard,
     guardian_access,
     guardian_accounts,
     publication,
@@ -731,6 +732,18 @@ def choose_area(request):
     if len(areas) <= 1:
         return redirect("home")
     return render(request, "core/choose_area.html", {"areas": areas})
+
+
+@administrator_required("core.view_school")
+def admin_overview(request):
+    return render(
+        request,
+        "core/admin_overview.html",
+        {
+            "cards": dashboard.overview_cards(request.user),
+            "needs_setup": dashboard.needs_setup(),
+        },
+    )
 
 
 def _open_assessments_needing_marks(user, today):

@@ -15,6 +15,9 @@ class NavLink:
 
 
 OFFICE_NAV = (
+    ("Home", (
+        NavLink("Overview", "core:admin-overview", "core.view_school"),
+    )),
     ("School setup", (
         NavLink("School", "core:school-detail", "core.view_school"),
         NavLink("Academic Years", "core:academic-year-list", "core.view_academicyear"),
@@ -59,22 +62,23 @@ def _short(url_name):
     return url_name.split(":", 1)[-1]
 
 
-def _link(link, url_name):
+def _link(link, url_name, section=None):
+    short = _short(link.url_name)
     return {
         "label": link.label,
         "url": reverse(link.url_name),
-        "active": url_name == _short(link.url_name),
+        "active": url_name == short or section == short,
     }
 
 
-def office_nav(user, url_name):
+def office_nav(user, url_name, section=None):
     """Office sidebar groups the user may see; empty groups are dropped."""
     if not (user and user.is_authenticated):
         return []
     groups = []
     for title, links in OFFICE_NAV:
         visible = [
-            _link(link, url_name)
+            _link(link, url_name, section)
             for link in links
             if link.perm is None or user.has_perm(link.perm)
         ]

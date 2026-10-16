@@ -59,7 +59,7 @@ class NavigationDataTests(Phase4Fixture, TestCase):
         groups = office_nav(self.admin, "school-detail")
         self.assertEqual(
             self.titles(groups),
-            ["School setup", "Admissions", "Daily", "Results", "Access and security"],
+            ["Home", "School setup", "Admissions", "Daily", "Results", "Access and security"],
         )
         self.assertIn("Academic Years", self.labels(groups))
         self.assertIn("Sign-in lockouts", self.labels(groups))
@@ -156,7 +156,7 @@ class AccountMenuTests(Phase4Fixture, TestCase):
         self.client.login(username="admin", password="pass-12345")
         page = self.client.get(reverse("core:my-home"))
         self.assertContains(page, 'class="erp-account"')
-        self.assertContains(page, reverse("core:school-detail"))
+        self.assertContains(page, reverse("core:admin-overview"))
         self.assertContains(page, 'aria-current="true"', count=1)
         self.assertContains(page, reverse("password_change"))
 

@@ -299,7 +299,7 @@ def user_areas(user):
         return []
     areas = []
     if user.has_perm("core.view_school"):
-        areas.append(("admin", "School administration", "core:school-detail"))
+        areas.append(("admin", "School administration", "core:admin-overview"))
     if is_teacher(user):
         areas.append(("teacher", "My day (teaching)", "core:my-home"))
     if is_guardian(user):

@@ -50,9 +50,9 @@ class LandingTests(TeacherHomeFixture, TestCase):
                                follow=True)
         self.assertEqual(response.redirect_chain[-1][0], self.url)
 
-    def test_administrator_lands_on_school(self):
+    def test_administrator_lands_on_overview(self):
         self.client.login(username="admin", password="pass-12345")
-        self.assertRedirects(self.client.get(reverse("home")), reverse("core:school-detail"),
+        self.assertRedirects(self.client.get(reverse("home")), reverse("core:admin-overview"),
                              fetch_redirect_response=False)
 
     def test_teacher_with_admin_rights_chooses_an_area(self):
