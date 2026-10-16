@@ -108,6 +108,7 @@ from core.models import (
     TermRemark,
     business_today,
 )
+from core.tables import Column, build_table, parse_choice
 
 
 @administrator_required("core.view_school")
@@ -1675,10 +1676,29 @@ def section_create(request, pk):
     )
 
 
+APPLICANT_COLUMNS = (
+    Column("Name", "name", ("full_name",)),
+    Column("Admission status", "status", ("admission_status",)),
+)
+
+
 @administrator_required("core.view_applicant")
 def applicant_list(request):
+    status = parse_choice(request, "status", Applicant.AdmissionStatus.choices)
     applicants = Applicant.objects.all()
-    return render(request, "core/applicant_list.html", {"applicants": applicants})
+    if status:
+        applicants = applicants.filter(admission_status=status)
+    table = build_table(request, applicants, APPLICANT_COLUMNS, "name")
+    return render(
+        request,
+        "core/applicant_list.html",
+        {
+            "applicants": table.page,
+            "table": table,
+            "status": status,
+            "status_choices": Applicant.AdmissionStatus.choices,
+        },
+    )
 
 
 @administrator_required("core.add_applicant")
@@ -2257,9 +2277,18 @@ def guardian_access_revoke(request, pk):
     )
 
 
+STUDENT_COLUMNS = (
+    Column("Name", "name", ("full_name",)),
+    Column("Status", "status", ("status",)),
+    Column("Email"),
+    Column("Phone"),
+)
+
+
 @administrator_required("core.view_student")
 def student_list(request):
     query = request.GET.get("q", "").strip()
+    status = parse_choice(request, "status", Student.Status.choices)
     students = Student.objects.all()
     if query:
         students = students.filter(
@@ -2267,10 +2296,19 @@ def student_list(request):
             | Q(email__icontains=query)
             | Q(phone__icontains=query)
         )
+    if status:
+        students = students.filter(status=status)
+    table = build_table(request, students, STUDENT_COLUMNS, "name")
     return render(
         request,
         "core/student_list.html",
-        {"students": students, "query": query},
+        {
+            "students": table.page,
+            "table": table,
+            "query": query,
+            "status": status,
+            "status_choices": Student.Status.choices,
+        },
     )
 
 
@@ -2387,11 +2425,22 @@ def student_deactivate_confirm(request, pk):
     )
 
 
+REGISTER_COLUMNS = (
+    Column("Date", "date", ("date", "section__class_grade", "section"),
+           ("-date", "section__class_grade", "section")),
+    Column("Academic year"),
+    Column("Class/Grade"),
+    Column("Section", "section", ("section__class_grade", "section")),
+    Column("Status", "status", ("status",)),
+    Column("Entries", "entries", ("entry_count",)),
+)
+
+
 @administrator_required("core.view_attendanceregister")
 def attendance_register_list(request):
     registers = AttendanceRegister.objects.select_related(
         "academic_year", "class_grade", "section__class_grade"
-    ).annotate(entry_count=Count("entries")).order_by("-date", "section__class_grade", "section")
+    ).annotate(entry_count=Count("entries"))
     form = AttendanceRegisterFilterForm(request.GET or None)
     if form.is_valid():
         section = form.cleaned_data.get("section")
@@ -2417,11 +2466,13 @@ def attendance_register_list(request):
             {"label": label, "count": counts.get(value, 0)}
             for value, label in AttendanceStatus.choices
         ]
+    table = build_table(request, registers, REGISTER_COLUMNS, "-date")
     return render(
         request,
         "core/attendance_register_list.html",
         {
-            "registers": registers,
+            "registers": table.page,
+            "table": table,
             "form": form,
             "section_summary": section_summary,
             "section_total": sum(counts.values()) if section_summary is not None else None,

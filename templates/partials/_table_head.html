@@ -1,0 +1,10 @@
+<caption class="visually-hidden">{{ caption }}. Sorted by {{ table.sorted_by }}.</caption>
+<thead>
+    <tr>
+        {% for header in table.headers %}
+        <th scope="col"{% if header.aria_sort %} aria-sort="{{ header.aria_sort }}"{% endif %}>
+            {% if header.sortable %}<a class="erp-sort-link" href="{{ header.url }}">{{ header.label }}</a>{% elif header.action %}<span class="visually-hidden">{{ header.label|default:"Actions" }}</span>{% else %}{{ header.label }}{% endif %}
+        </th>
+        {% endfor %}
+    </tr>
+</thead>

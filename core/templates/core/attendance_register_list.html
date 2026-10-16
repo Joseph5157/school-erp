@@ -37,18 +37,9 @@
 {% endif %}
 <div class="erp-table-scroll" role="region" aria-label="Attendance registers" tabindex="0">
 <table class="table">
-    <thead>
-        <tr>
-            <th>Date</th>
-            <th>Academic year</th>
-            <th>Class/Grade</th>
-            <th>Section</th>
-            <th>Status</th>
-            <th>Entries</th>
-        </tr>
-    </thead>
+    {% include "partials/_table_head.html" with table=table caption="Attendance registers" only %}
     <tbody>
-        {% for register in registers %}
+        {% for register in table.page %}
         <tr>
             <td><a href="{% url 'core:attendance-register-detail' register.pk %}">{{ register.date }}</a></td>
             <td>{{ register.academic_year }}</td>
@@ -65,4 +56,5 @@
     </tbody>
 </table>
 </div>
+{% include "partials/_table_footer.html" with table=table only %}
 {% endblock %}
