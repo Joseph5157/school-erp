@@ -532,3 +532,8 @@ body.has-tabbar .erp-messages {
 .erp-queue-title { font-size: 1rem; margin: 0; }
 .erp-queue-count { font-size: 2rem; font-weight: 700; margin: 0; line-height: 1.1; }
 .erp-queue-summary { margin: 0; color: var(--erp-ink-soft); }
+
+.erp-breadcrumb ol { display: flex; flex-wrap: wrap; gap: var(--erp-space-2); list-style: none; padding: 0; margin: 0 0 var(--erp-space-3); font-size: var(--erp-text-sm); color: var(--erp-ink-soft); }
+.erp-breadcrumb li + li::before { content: "/"; margin-right: var(--erp-space-2); }
+.erp-breadcrumb a { color: var(--erp-accent); }
+.erp-breadcrumb li[aria-current] { color: var(--erp-ink); }

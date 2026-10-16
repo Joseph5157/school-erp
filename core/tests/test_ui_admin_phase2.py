@@ -1,9 +1,23 @@
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
 from django.test import TestCase
-from django.urls import reverse
+from django.urls import reverse, resolve
 
+from core import models as core_models
 from core.authorization import user_areas
+from core.breadcrumbs import breadcrumb_context
+from core.dashboard import overview_cards
+from core.models import (
+    Applicant,
+    AttendanceRegister,
+    AttendanceStatus,
+    SchoolCalendarDay,
+)
+from core.navigation import office_nav
 from core.tests.phase4_fixtures import Phase4Fixture
-from core.tests.test_authorization import AuthorizationClientsMixin
+from core.tests.test_authorization import AttendanceFixtureMixin, AuthorizationClientsMixin
+
+User = get_user_model()
 
 
 class OverviewLandingTests(AuthorizationClientsMixin, TestCase):
@@ -46,20 +60,6 @@ class OverviewMultiRoleTests(Phase4Fixture, TestCase):
         )
 
 
-from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Permission
-
-from core.dashboard import overview_cards
-from core import models as core_models
-from core.models import (
-    Applicant,
-    AttendanceRegister,
-    AttendanceStatus,
-    SchoolCalendarDay,
-)
-from core.tests.test_authorization import AttendanceFixtureMixin
-
-User = get_user_model()
 
 
 def card(cards, key):
@@ -159,3 +159,72 @@ class OverviewSetupStateTests(AuthorizationClientsMixin, TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Set up your school")
         self.assertContains(response, reverse("core:academic-year-list"))
+
+
+class BreadcrumbMapTests(TestCase):
+    def match(self, name, **kwargs):
+        return resolve(reverse(name, kwargs=kwargs))
+
+    def test_student_detail_has_students_section_and_trail(self):
+        ctx = breadcrumb_context(self.match("core:student-detail", pk=7))
+        self.assertEqual(ctx["nav_section"], "student-list")
+        self.assertEqual(
+            [c["label"] for c in ctx["breadcrumbs"]], ["Overview", "Students", "Student"]
+        )
+        self.assertIsNone(ctx["breadcrumbs"][-1]["url"])
+
+    def test_deactivate_confirm_parent_reuses_pk(self):
+        ctx = breadcrumb_context(self.match("core:student-deactivate-confirm", pk=7))
+        self.assertEqual(ctx["breadcrumbs"][-2]["url"], reverse("core:student-detail", args=[7]))
+
+    def test_decision_confirm_parent_reuses_pk(self):
+        ctx = breadcrumb_context(
+            self.match("core:applicant-decision-confirm", pk=3, decision="accepted")
+        )
+        self.assertEqual(ctx["breadcrumbs"][-2]["url"], reverse("core:applicant-detail", args=[3]))
+
+    def test_unmapped_page_has_no_breadcrumbs(self):
+        ctx = breadcrumb_context(self.match("core:subject-list"))
+        self.assertEqual(ctx, {"breadcrumbs": [], "nav_section": None})
+
+    def test_none_match_is_safe(self):
+        self.assertEqual(breadcrumb_context(None), {"breadcrumbs": [], "nav_section": None})
+
+
+class SectionAwareNavTests(AuthorizationClientsMixin, TestCase):
+    def active_labels(self, groups):
+        return [link["label"] for g in groups for link in g["links"] if link["active"]]
+
+    def test_section_marks_parent_link_active(self):
+        groups = office_nav(self.admin_user, "student-detail", section="student-list")
+        self.assertEqual(self.active_labels(groups), ["Students"])
+
+    def test_exact_match_still_works_without_section(self):
+        groups = office_nav(self.admin_user, "student-list")
+        self.assertEqual(self.active_labels(groups), ["Students"])
+
+
+class BreadcrumbRenderingTests(AuthorizationClientsMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        applicant = Applicant.objects.create(full_name="Asha Rao")
+        applicant.record_admission_decision(Applicant.AdmissionStatus.ACCEPTED)
+        self.student = applicant.progress_to_student()
+
+    def test_student_detail_renders_breadcrumb_nav(self):
+        response = self.administrator.get(reverse("core:student-detail", args=[self.student.pk]))
+        self.assertContains(response, 'aria-label="Breadcrumb"')
+        self.assertContains(response, '<li aria-current="page">Student</li>', html=False)
+        self.assertContains(response, reverse("core:student-list"))
+
+    def test_deactivate_confirm_links_back_to_student(self):
+        response = self.administrator.get(
+            reverse("core:student-deactivate-confirm", args=[self.student.pk])
+        )
+        self.assertContains(
+            response, f'href="{reverse("core:student-detail", args=[self.student.pk])}"'
+        )
+
+    def test_overview_page_itself_has_no_breadcrumb(self):
+        response = self.administrator.get(reverse("core:admin-overview"))
+        self.assertNotContains(response, 'aria-label="Breadcrumb"')

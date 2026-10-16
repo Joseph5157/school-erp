@@ -29,6 +29,7 @@
     {% if office_nav %}{% include "partials/_sidebar.html" %}{% endif %}
     <main id="main" class="erp-main">
         <div class="erp-content">
+            {% include "partials/_breadcrumbs.html" %}
             {% block content %}{% endblock %}
         </div>
     </main>
