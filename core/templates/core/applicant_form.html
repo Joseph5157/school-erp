@@ -1,10 +1,15 @@
 {% extends "base.html" %}
 {% block title %}Register Applicant{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">Register Applicant</h1>
-<form method="post">
+{% include "partials/_page_header.html" with eyebrow="Admissions" title="Register applicant" purpose="Create an application record. Admission decisions are recorded separately after review." only %}
+<form method="post" class="erp-form">
     {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit" class="btn btn-primary">Save</button>
+    {% include "partials/_form_required_legend.html" %}
+    {% if form.non_field_errors %}<div class="erp-form-errors" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+    {% for field in form %}{% include "partials/_form_field.html" with field=field only %}{% endfor %}
+    <div class="erp-form-actions">
+        <button type="submit" class="btn btn-primary">Register applicant</button>
+        <a class="btn btn-link" href="{% url 'core:applicant-list' %}">Cancel</a>
+    </div>
 </form>
 {% endblock %}

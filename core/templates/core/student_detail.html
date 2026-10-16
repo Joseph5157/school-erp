@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 {% block title %}{{ student.full_name }}{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">{{ student.full_name }}</h1>
+{% include "partials/_page_header.html" with eyebrow="Student record" title=student.full_name purpose="Identity, placement, relationships, and lifecycle history." status_label=student.get_status_display status_tone=student.status|lower only %}
 <dl class="row">
     <dt class="col-sm-3">Admission number</dt>
     <dd class="col-sm-9">{{ student.admission_number|default:"-" }}
         {% if perms.core.change_student %}<a class="ms-2 small" href="{% url 'core:student-admission-number' student.pk %}">Edit</a>{% endif %}</dd>
     <dt class="col-sm-3">Status</dt>
-    <dd class="col-sm-9">{{ student.get_status_display }}</dd>
+    <dd class="col-sm-9">{% include "partials/_status_badge.html" with label=student.get_status_display tone=student.status|lower only %}</dd>
     {% if student.status_changed_at %}
     <dt class="col-sm-3">Status changed</dt>
     <dd class="col-sm-9">{{ student.status_changed_at }}</dd>

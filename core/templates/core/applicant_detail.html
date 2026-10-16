@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% block title %}{{ applicant.full_name }}{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">{{ applicant.full_name }}</h1>
+{% include "partials/_page_header.html" with eyebrow="Applicant record" title=applicant.full_name purpose="Application details, decision status, guardians, and student progression." status_label=applicant.get_admission_status_display status_tone=applicant.admission_status|lower only %}
 <dl class="row">
     <dt class="col-sm-3">Admission status</dt>
-    <dd class="col-sm-9">{{ applicant.get_admission_status_display }}</dd>
+    <dd class="col-sm-9">{% include "partials/_status_badge.html" with label=applicant.get_admission_status_display tone=applicant.admission_status|lower only %}</dd>
     {% if applicant.admission_decided_at %}
     <dt class="col-sm-3">Decision recorded</dt>
     <dd class="col-sm-9">{{ applicant.admission_decided_at }}</dd>
