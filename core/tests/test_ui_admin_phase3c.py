@@ -2,6 +2,7 @@
 
 from io import StringIO
 
+from django.core.exceptions import ValidationError
 from django.core.management import call_command
 from django.test import TestCase
 
@@ -139,3 +140,34 @@ class ReconcileCommandTests(TestCase):
         applicant.refresh_from_db()
         self.assertEqual(applicant.admission_status, Status.ACCEPTED)
         self.assertIn("was rejected: Full", applicant.admission_decision_reason)
+
+
+class StudentInsertGuardTests(TestCase):
+    def test_pending_and_rejected_applicants_blocked(self):
+        for status in (Status.PENDING, Status.REJECTED):
+            applicant = Applicant.objects.create(full_name=f"A {status}")
+            if status == Status.REJECTED:
+                applicant.record_admission_decision(status, "No")
+            with self.assertRaisesMessage(
+                ValidationError, "A Student can only be created for an accepted Applicant."
+            ):
+                Student.objects.create(applicant=applicant, full_name="X")
+        self.assertFalse(Student.objects.exists())
+
+    def test_accepted_applicant_allowed(self):
+        applicant = accepted_applicant()
+        Student.objects.create(applicant=applicant, full_name="Fine Child")
+        self.assertEqual(Student.objects.count(), 1)
+
+    def test_progress_to_student_still_works(self):
+        student = accepted_applicant().progress_to_student()
+        self.assertTrue(student.pk)
+
+    def test_existing_mismatched_student_can_still_be_saved(self):
+        _, student = make_mismatch()
+        student.record_status_change(Student.Status.INACTIVE, reason="Left school")
+        student.full_name = "Renamed"
+        student.save()
+        student.refresh_from_db()
+        self.assertEqual(student.full_name, "Renamed")
+        self.assertEqual(student.status, Student.Status.INACTIVE)

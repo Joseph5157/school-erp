@@ -609,6 +609,16 @@ class Student(models.Model):
             ),
         ]
 
+    def save(self, *args, **kwargs):
+        # Insert-only guard (audit F08): existing rows must always stay savable.
+        if (
+            self._state.adding
+            and self.applicant_id is not None
+            and self.applicant.admission_status != Applicant.AdmissionStatus.ACCEPTED
+        ):
+            raise ValidationError("A Student can only be created for an accepted Applicant.")
+        super().save(*args, **kwargs)
+
     def set_admission_number(self, value):
         """Record (or clear) the admission number entered by an administrator."""
         value = normalize_admission_number(value)

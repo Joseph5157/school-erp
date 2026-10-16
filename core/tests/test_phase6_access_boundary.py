@@ -197,7 +197,7 @@ class PlacementEndedReviewTests(BoundaryFixture, TestCase):
 
     def test_first_placement_needs_no_review(self):
         student = Student.objects.create(applicant=self.asha.applicant.__class__.objects.create(
-            full_name="New"), full_name="New")
+            admission_status="ACCEPTED", full_name="New"), full_name="New")
         grant = ga.grant_student_access(student_guardian=self.relate(student, self.meena),
                                         actor=self.admin)
         student.enroll(academic_year=self.year, class_grade=self.grade6, section=self.six_a,
@@ -267,7 +267,7 @@ class DateReviewTests(BoundaryFixture, TestCase):
 
     def test_student_never_enrolled_is_pending(self):
         student = Student.objects.create(applicant=self.asha.applicant.__class__.objects.create(
-            full_name="Unplaced"), full_name="Unplaced")
+            admission_status="ACCEPTED", full_name="Unplaced"), full_name="Unplaced")
         grant = ga.grant_student_access(student_guardian=self.relate(student, self.meena),
                                         actor=self.admin)
         self.assertTrue(guardian_access.is_review_pending(grant))

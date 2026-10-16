@@ -427,7 +427,9 @@ class ApplicantGuardianModelTests(TestCase):
 
 class StudentModelTests(TestCase):
     def setUp(self):
-        self.applicant = Applicant.objects.create(full_name="Ravi Rao")
+        self.applicant = Applicant.objects.create(
+            admission_status="ACCEPTED", full_name="Ravi Rao"
+        )
 
     def test_valid_student_can_be_created(self):
         student = Student(applicant=self.applicant, full_name="Ravi Rao")
@@ -587,7 +589,7 @@ class ApplicantProgressionTests(TestCase):
 
 class StudentGuardianModelTests(TestCase):
     def setUp(self):
-        applicant = Applicant.objects.create(full_name="Ravi Rao")
+        applicant = Applicant.objects.create(admission_status="ACCEPTED", full_name="Ravi Rao")
         self.student = Student.objects.create(applicant=applicant, full_name="Ravi Rao")
         self.guardian = Guardian.objects.create(full_name="Asha Rao")
 
@@ -666,7 +668,9 @@ class StudentGuardianModelTests(TestCase):
 class AcademicEnrollmentModelTests(TestCase):
     def setUp(self):
         self.student = Student.objects.create(
-            applicant=Applicant.objects.create(full_name="Ravi Rao"), full_name="Ravi Rao"
+            applicant=Applicant.objects.create(
+                admission_status="ACCEPTED", full_name="Ravi Rao"
+            ), full_name="Ravi Rao"
         )
         self.year = AcademicYear.objects.create(
             name="2026-2027", start_date="2026-06-01", end_date="2027-04-30"
@@ -742,7 +746,9 @@ class BusinessDateTimezoneTests(TestCase):
 
     def setUp(self):
         self.student = Student.objects.create(
-            applicant=Applicant.objects.create(full_name="Ravi Rao"), full_name="Ravi Rao"
+            applicant=Applicant.objects.create(
+                admission_status="ACCEPTED", full_name="Ravi Rao"
+            ), full_name="Ravi Rao"
         )
         self.year = AcademicYear.objects.create(
             name="2026-2027", start_date=date(2026, 6, 1), end_date=date(2027, 4, 30)
@@ -798,7 +804,9 @@ PINNED_TODAY = date(2027, 12, 31)
 class StudentEnrollmentTests(TestCase):
     def setUp(self):
         self.student = Student.objects.create(
-            applicant=Applicant.objects.create(full_name="Ravi Rao"), full_name="Ravi Rao"
+            applicant=Applicant.objects.create(
+                admission_status="ACCEPTED", full_name="Ravi Rao"
+            ), full_name="Ravi Rao"
         )
         self.year = AcademicYear.objects.create(
             name="2026-2027", start_date="2026-06-01", end_date="2027-04-30"
@@ -904,7 +912,9 @@ class AcademicEnrollmentEffectiveDatingTests(TestCase):
 
     def setUp(self):
         self.student = Student.objects.create(
-            applicant=Applicant.objects.create(full_name="Ravi Rao"), full_name="Ravi Rao"
+            applicant=Applicant.objects.create(
+                admission_status="ACCEPTED", full_name="Ravi Rao"
+            ), full_name="Ravi Rao"
         )
         self.year = AcademicYear.objects.create(
             name="2026-2027", start_date=date(2026, 6, 1), end_date=date(2027, 4, 30)
@@ -1025,7 +1035,9 @@ class AcademicEnrollmentEffectiveDatingTests(TestCase):
     def test_other_students_periods_do_not_conflict(self):
         self._enrollment().save()
         other = Student.objects.create(
-            applicant=Applicant.objects.create(full_name="Meera Rao"), full_name="Meera Rao"
+            applicant=Applicant.objects.create(
+                admission_status="ACCEPTED", full_name="Meera Rao"
+            ), full_name="Meera Rao"
         )
         enrollment = self._enrollment(student=other)
         enrollment.full_clean()
@@ -1518,7 +1530,9 @@ class AttendanceFixtureMixin:
         self.class_grade = ClassGrade.objects.create(name="Grade 1")
         self.section = Section.objects.create(class_grade=self.class_grade, name="A")
         self.student = Student.objects.create(
-            applicant=Applicant.objects.create(full_name="Ravi Rao"), full_name="Ravi Rao"
+            applicant=Applicant.objects.create(
+                admission_status="ACCEPTED", full_name="Ravi Rao"
+            ), full_name="Ravi Rao"
         )
         self.enrollment = self.student.enroll(
             academic_year=self.year, class_grade=self.class_grade, section=self.section,
@@ -1629,7 +1643,9 @@ class AttendanceRegisterModelTests(AttendanceFixtureMixin, TestCase):
     def test_eligible_enrollments_excludes_other_section(self):
         other_section = Section.objects.create(class_grade=self.class_grade, name="B")
         other_student = Student.objects.create(
-            applicant=Applicant.objects.create(full_name="Meera Rao"), full_name="Meera Rao"
+            applicant=Applicant.objects.create(
+                admission_status="ACCEPTED", full_name="Meera Rao"
+            ), full_name="Meera Rao"
         )
         other_student.enroll(
             academic_year=self.year, class_grade=self.class_grade, section=other_section,
@@ -1656,7 +1672,9 @@ class AttendanceRegisterModelTests(AttendanceFixtureMixin, TestCase):
     def test_capture_rejects_enrollment_from_other_section(self):
         other_section = Section.objects.create(class_grade=self.class_grade, name="B")
         other_student = Student.objects.create(
-            applicant=Applicant.objects.create(full_name="Meera Rao"), full_name="Meera Rao"
+            applicant=Applicant.objects.create(
+                admission_status="ACCEPTED", full_name="Meera Rao"
+            ), full_name="Meera Rao"
         )
         other_enrollment = other_student.enroll(
             academic_year=self.year, class_grade=self.class_grade, section=other_section,
@@ -1735,7 +1753,9 @@ class AttendanceEntryModelTests(AttendanceFixtureMixin, TestCase):
     def test_clean_rejects_enrollment_from_other_section(self):
         other_section = Section.objects.create(class_grade=self.class_grade, name="B")
         other_student = Student.objects.create(
-            applicant=Applicant.objects.create(full_name="Meera Rao"), full_name="Meera Rao"
+            applicant=Applicant.objects.create(
+                admission_status="ACCEPTED", full_name="Meera Rao"
+            ), full_name="Meera Rao"
         )
         other_enrollment = other_student.enroll(
             academic_year=self.year, class_grade=self.class_grade, section=other_section,
@@ -2124,7 +2144,9 @@ class AttendanceGate3ContextTests(AttendanceFixtureMixin, TestCase):
             name="Overlapping session", start_date=date(2026, 6, 1), end_date=date(2027, 4, 30)
         )
         other_student = Student.objects.create(
-            applicant=Applicant.objects.create(full_name="Meera Rao"), full_name="Meera Rao"
+            applicant=Applicant.objects.create(
+                admission_status="ACCEPTED", full_name="Meera Rao"
+            ), full_name="Meera Rao"
         )
         other_enrollment = other_student.enroll(
             academic_year=other_year,
@@ -2139,7 +2161,9 @@ class AttendanceGate3ContextTests(AttendanceFixtureMixin, TestCase):
 
     def test_enrollment_starting_after_register_date_rejected(self):
         late_joiner = Student.objects.create(
-            applicant=Applicant.objects.create(full_name="Meera Rao"), full_name="Meera Rao"
+            applicant=Applicant.objects.create(
+                admission_status="ACCEPTED", full_name="Meera Rao"
+            ), full_name="Meera Rao"
         )
         enrollment = late_joiner.enroll(
             academic_year=self.year,
@@ -2356,7 +2380,9 @@ class AttendanceGate4Tests(TestCase):
 
     def _student(self, name):
         return Student.objects.create(
-            applicant=Applicant.objects.create(full_name=name), full_name=name
+            applicant=Applicant.objects.create(
+                admission_status="ACCEPTED", full_name=name
+            ), full_name=name
         )
 
     def _enroll(self, student, section, start):
@@ -2747,7 +2773,9 @@ class AttendanceReportingTests(TestCase):
 
     def _student(self, name):
         return Student.objects.create(
-            applicant=Applicant.objects.create(full_name=name), full_name=name
+            applicant=Applicant.objects.create(
+                admission_status="ACCEPTED", full_name=name
+            ), full_name=name
         )
 
     def _enroll(self, student, section, start):
@@ -2943,7 +2971,9 @@ class AttendanceQueryCountTests(TestCase):
         for _ in range(n_students):
             name = f"Student {len(self.students):03d}"
             student = Student.objects.create(
-                applicant=Applicant.objects.create(full_name=name), full_name=name
+                applicant=Applicant.objects.create(
+                    admission_status="ACCEPTED", full_name=name
+                ), full_name=name
             )
             student.enroll(
                 academic_year=self.year,

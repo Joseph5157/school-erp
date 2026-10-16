@@ -48,7 +48,9 @@ class GuardianFixture:
 
     @staticmethod
     def student(name):
-        return Student.objects.create(applicant=Applicant.objects.create(full_name=name),
+        return Student.objects.create(applicant=Applicant.objects.create(
+            admission_status="ACCEPTED", full_name=name
+        ),
                                       full_name=name)
 
     def create_account(self, username="meena.rao"):
