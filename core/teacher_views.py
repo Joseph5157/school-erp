@@ -20,7 +20,7 @@ TEACHER_COLUMNS = (
     Column("Username", "username", ("username",)),
     Column("Email"),
     Column("Status", "status", ("is_active", "username"), ("-is_active", "username")),
-    Column("Assignments", "assignments", ("assignment_count", "username")),
+    Column("Assignments (all years)", "assignments", ("assignment_count", "username")),
     Column("Last sign-in", "last_login", ("last_login", "username")),
 )
 

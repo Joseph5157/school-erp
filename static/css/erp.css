@@ -64,6 +64,41 @@
   --bs-btn-hover-border-color: var(--erp-accent);
   --bs-btn-active-bg: var(--erp-accent-strong);
 }
+/* Enabled secondary actions read as active; disabled buttons look distinct. */
+.btn-outline-secondary {
+  --bs-btn-color: var(--erp-ink);
+  --bs-btn-bg: var(--erp-surface);
+  --bs-btn-border-color: var(--erp-ink-soft);
+  --bs-btn-hover-color: var(--erp-ink);
+  --bs-btn-hover-bg: var(--erp-paper);
+  --bs-btn-hover-border-color: var(--erp-ink);
+  --bs-btn-active-color: var(--erp-ink);
+  --bs-btn-active-bg: var(--erp-paper);
+  --bs-btn-active-border-color: var(--erp-ink);
+  --bs-btn-focus-shadow-rgb: 31, 107, 82;
+  color: var(--erp-ink);
+  border: 1px solid var(--erp-ink-soft);
+  background-color: var(--erp-surface);
+}
+.btn-outline-secondary:hover,
+.btn-outline-secondary:focus-visible {
+  background-color: var(--erp-paper);
+  border-color: var(--erp-ink);
+}
+.btn:disabled,
+.btn.disabled,
+.btn[aria-disabled="true"],
+fieldset:disabled .btn {
+  --bs-btn-disabled-color: var(--erp-ink-soft);
+  --bs-btn-disabled-bg: var(--erp-paper);
+  --bs-btn-disabled-border-color: var(--erp-rule);
+  --bs-btn-disabled-opacity: 1;
+  color: var(--erp-ink-soft);
+  background-color: var(--erp-paper);
+  border: 1px dashed var(--erp-rule);
+  box-shadow: none;
+  cursor: not-allowed;
+}
 :where(a, button, input, select, textarea, summary):focus-visible {
   outline: 3px solid var(--erp-focus-color);
   outline-offset: 2px;

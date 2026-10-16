@@ -20,7 +20,7 @@
         </tr>
         {% empty %}
         <tr>
-            <td colspan="2">No Classes/Grades yet.</td>
+            <td colspan="2">No Classes/Grades yet.{% if perms.core.add_classgrade %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:class-grade-create' %}">Add class/grade</a>{% endif %}</td>
         </tr>
         {% endfor %}
     </tbody>
