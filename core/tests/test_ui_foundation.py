@@ -181,10 +181,12 @@ class GuardianShellTests(BoundaryFixture, TestCase):
     def portal_url(self, name):
         return reverse(name, args=[self.asha_grant.public_id])
 
-    def test_portal_home_has_only_home_tab(self):
+    def test_portal_home_has_full_stable_tab_bar(self):
         page = self.portal.get(reverse("portal:home"))
         self.assertContains(page, 'class="erp-tabbar')
-        self.assertNotContains(page, self.portal_url("portal:attendance"))
+        # Child tabs are stable on every guardian page (G-02/G-03/G-04).
+        self.assertContains(page, self.portal_url("portal:attendance"))
+        self.assertContains(page, self.portal_url("portal:report-cards"))
 
     def test_child_page_tabs_link_to_that_child(self):
         page = self.portal.get(self.portal_url("portal:child"))
