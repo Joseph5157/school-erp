@@ -35,6 +35,7 @@ from core.authorization import (
     term_remark_sections,
     user_areas,
 )
+from core.tables import Column, build_table
 from core.forms import (
     AcademicEnrollmentForm,
     AcademicTermForm,
@@ -2387,11 +2388,22 @@ def student_deactivate_confirm(request, pk):
     )
 
 
+REGISTER_COLUMNS = (
+    Column("Date", "date", ("date", "section__class_grade", "section"),
+           ("-date", "section__class_grade", "section")),
+    Column("Academic year"),
+    Column("Class/Grade"),
+    Column("Section", "section", ("section__class_grade", "section")),
+    Column("Status", "status", ("status",)),
+    Column("Entries", "entries", ("entry_count",)),
+)
+
+
 @administrator_required("core.view_attendanceregister")
 def attendance_register_list(request):
     registers = AttendanceRegister.objects.select_related(
         "academic_year", "class_grade", "section__class_grade"
-    ).annotate(entry_count=Count("entries")).order_by("-date", "section__class_grade", "section")
+    ).annotate(entry_count=Count("entries"))
     form = AttendanceRegisterFilterForm(request.GET or None)
     if form.is_valid():
         section = form.cleaned_data.get("section")
@@ -2417,11 +2429,13 @@ def attendance_register_list(request):
             {"label": label, "count": counts.get(value, 0)}
             for value, label in AttendanceStatus.choices
         ]
+    table = build_table(request, registers, REGISTER_COLUMNS, "-date")
     return render(
         request,
         "core/attendance_register_list.html",
         {
-            "registers": registers,
+            "registers": table.page,
+            "table": table,
             "form": form,
             "section_summary": section_summary,
             "section_total": sum(counts.values()) if section_summary is not None else None,

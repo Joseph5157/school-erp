@@ -1,0 +1,64 @@
+from datetime import date, timedelta
+
+from django.test import TestCase
+from django.urls import reverse
+
+from core.models import AttendanceRegister
+from core.tests.test_authorization import AttendanceFixtureMixin, AuthorizationClientsMixin
+
+
+class AttendanceTableTests(AuthorizationClientsMixin, AttendanceFixtureMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.build_attendance_fixture()
+        start = date(2026, 8, 1)
+        for index in range(30):
+            AttendanceRegister.objects.create(
+                academic_year=self.year, class_grade=self.class_grade,
+                section=self.section, date=start + timedelta(days=index),
+            )
+        self.url = reverse("core:attendance-register-list")
+
+    def dates(self, response):
+        return [register.date for register in response.context["registers"]]
+
+    def test_first_page_has_25_rows_newest_first_and_second_page_the_rest(self):
+        page1 = self.administrator.get(self.url)
+        page2 = self.administrator.get(self.url, {"page": 2})
+        self.assertEqual(len(self.dates(page1)), 25)
+        self.assertEqual(self.dates(page1), sorted(self.dates(page1), reverse=True))
+        self.assertGreater(min(self.dates(page1)), max(self.dates(page2)))
+
+    def test_sort_by_date_ascending(self):
+        response = self.administrator.get(self.url, {"sort": "date"})
+        dates = self.dates(response)
+        self.assertEqual(dates, sorted(dates))
+
+    def test_bad_sort_and_page_values_do_not_error(self):
+        for params in ({"sort": "bogus"}, {"page": "abc"}, {"page": "999"}, {"sort": "-"}):
+            with self.subTest(params=params):
+                self.assertEqual(self.administrator.get(self.url, params).status_code, 200)
+
+    def test_semantics_caption_scope_aria_sort_and_pagination(self):
+        response = self.administrator.get(self.url)
+        self.assertContains(response, "<caption")
+        self.assertContains(response, 'scope="col"')
+        self.assertContains(response, 'aria-sort="descending"')
+        self.assertContains(response, 'aria-label="Pagination"')
+        self.assertContains(response, "Showing 1–25 of")
+
+    def test_filters_are_carried_into_pagination_links(self):
+        response = self.administrator.get(self.url, {"section": self.section.pk})
+        self.assertContains(response, f"section={self.section.pk}")
+        self.assertContains(response, "page=2")
+
+    def test_section_summary_covers_whole_filtered_set_not_one_page(self):
+        params = {"section": self.section.pk}
+        first = self.administrator.get(self.url, params)
+        second = self.administrator.get(self.url, {**params, "page": 2})
+        self.assertIsNotNone(first.context["section_summary"])
+        self.assertEqual(first.context["section_summary"], second.context["section_summary"])
+        self.assertEqual(first.context["section_total"], second.context["section_total"])
+
+    def test_non_admin_still_forbidden(self):
+        self.assertEqual(self.non_admin.get(self.url).status_code, 403)
