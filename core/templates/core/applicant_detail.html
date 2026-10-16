@@ -21,7 +21,7 @@
     <dd class="col-sm-9">{{ applicant.phone|default:"-" }}</dd>
 </dl>
 
-{% if perms.core.change_applicant and applicant.admission_status == "PENDING" %}
+{% if perms.core.change_applicant and applicant.admission_status == "PENDING" and not student %}
 <h2 class="h5">Admission decision</h2>
 <div class="mb-3">
     <a class="btn btn-success" href="{% url 'core:applicant-decision-confirm' applicant.pk 'ACCEPTED' %}">Accept applicant&hellip;</a>
@@ -31,7 +31,10 @@
 
 {% if student %}
 <h2 class="h5">Student</h2>
-<p><a href="{% url 'core:student-detail' student.pk %}">View Student record</a></p>
+<p>Student record exists: {{ student.full_name }}, {{ student.get_status_display }}. <a href="{% url 'core:student-detail' student.pk %}">View Student record</a></p>
+{% if applicant.admission_status != "ACCEPTED" %}
+<div class="alert alert-warning" role="status">Needs reconciliation: this Applicant is still {{ applicant.get_admission_status_display }} but a Student record exists. An administrator can run <code>manage.py reconcile_applicants</code>.</div>
+{% endif %}
 {% elif perms.core.add_student and applicant.admission_status == "ACCEPTED" %}
 <h2 class="h5">Student progression</h2>
 <form method="post" action="{% url 'core:applicant-progress' applicant.pk %}" class="mb-3">

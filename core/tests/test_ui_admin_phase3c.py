@@ -5,10 +5,13 @@ from io import StringIO
 from django.core.exceptions import ValidationError
 from django.core.management import call_command
 from django.test import TestCase
+from django.urls import reverse
 
 from core.models import Applicant, Student, reconcile_applicant
+from core.tests.test_authorization import AuthorizationClientsMixin
 
 Status = Applicant.AdmissionStatus
+WARNING = "Needs reconciliation"
 
 
 def make_mismatch(name="Mismatch Child", status=Status.PENDING, reason=""):
@@ -171,3 +174,69 @@ class StudentInsertGuardTests(TestCase):
         student.refresh_from_db()
         self.assertEqual(student.full_name, "Renamed")
         self.assertEqual(student.status, Student.Status.INACTIVE)
+
+
+class ReconciliationVisibilityTests(AuthorizationClientsMixin, TestCase):
+    def student_page(self, student, client=None):
+        return (client or self.administrator).get(
+            reverse("core:student-detail", args=[student.pk])
+        )
+
+    def applicant_page(self, applicant, client=None):
+        return (client or self.administrator).get(
+            reverse("core:applicant-detail", args=[applicant.pk])
+        )
+
+    def test_student_page_warns_when_source_pending(self):
+        applicant, student = make_mismatch()
+        response = self.student_page(student)
+        self.assertContains(response, WARNING)
+        self.assertContains(response, "still Pending")
+        self.assertContains(response, "manage.py reconcile_applicants")
+
+    def test_student_page_warns_when_source_rejected(self):
+        _, student = make_mismatch(status=Status.REJECTED, reason="Full")
+        self.assertContains(self.student_page(student), "still Rejected")
+
+    def test_student_page_consistent_shows_outcome_without_warning(self):
+        applicant = accepted_applicant()
+        student = applicant.progress_to_student()
+        response = self.student_page(student)
+        self.assertNotContains(response, WARNING)
+        self.assertContains(response, "Accepted on")
+
+    def test_student_page_accepted_without_date(self):
+        applicant = accepted_applicant()
+        student = applicant.progress_to_student()
+        Applicant.objects.filter(pk=applicant.pk).update(admission_decided_at=None)
+        response = self.student_page(student)
+        self.assertNotContains(response, WARNING)
+        self.assertNotContains(response, "Accepted on")
+        self.assertContains(response, "Admission outcome")
+
+    def test_applicant_page_warns_when_mismatched(self):
+        applicant, student = make_mismatch()
+        response = self.applicant_page(applicant)
+        self.assertContains(response, WARNING)
+        self.assertContains(response, f"Student record exists: {student.full_name}, Active")
+        self.assertNotContains(response, "Accept applicant")
+        self.assertNotContains(response, "Reject applicant")
+
+    def test_applicant_page_consistent_no_warning(self):
+        applicant = accepted_applicant()
+        student = applicant.progress_to_student()
+        response = self.applicant_page(applicant)
+        self.assertNotContains(response, WARNING)
+        self.assertContains(response, f"Student record exists: {student.full_name}, Active")
+
+    def test_applicant_without_student_has_no_warning(self):
+        applicant = Applicant.objects.create(full_name="Solo")
+        response = self.applicant_page(applicant)
+        self.assertNotContains(response, WARNING)
+        self.assertContains(response, "Accept applicant")
+
+    def test_non_admin_still_forbidden(self):
+        applicant, student = make_mismatch()
+        self.assertEqual(self.student_page(student, self.non_admin).status_code, 403)
+        self.assertEqual(self.applicant_page(applicant, self.non_admin).status_code, 403)
+

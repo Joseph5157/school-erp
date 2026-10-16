@@ -21,7 +21,12 @@
     <dd class="col-sm-9">{{ student.phone|default:"-" }}</dd>
     <dt class="col-sm-3">Source Applicant</dt>
     <dd class="col-sm-9"><a href="{% url 'core:applicant-detail' student.applicant.pk %}">{{ student.applicant.full_name }}</a></dd>
+    <dt class="col-sm-3">Admission outcome</dt>
+    <dd class="col-sm-9">{% if student.applicant.admission_status == "ACCEPTED" %}{% if student.applicant.admission_decided_at %}Accepted on {{ student.applicant.admission_decided_at|date:"j M Y" }}{% else %}Accepted{% endif %}{% else %}{{ student.applicant.get_admission_status_display }}{% endif %}</dd>
 </dl>
+{% if student.applicant.admission_status != "ACCEPTED" %}
+<div class="alert alert-warning" role="status">Needs reconciliation: this Student's source Applicant is still {{ student.applicant.get_admission_status_display }}. An administrator can run <code>manage.py reconcile_applicants</code>.</div>
+{% endif %}
 
 {% if "status-change" in profile_section_ids %}
 <section id="status-change" aria-labelledby="status-change-heading">
