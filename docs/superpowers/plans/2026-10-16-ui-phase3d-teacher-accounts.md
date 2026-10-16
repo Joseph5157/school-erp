@@ -1120,3 +1120,13 @@ git commit -m "docs: record Phase 3D verification"
 ```
 
 Do not push or open a PR until the user asks.
+
+## Completion notes
+
+**Tests.** `core.tests.test_ui_admin_phase3d` + `core.tests.test_teacher_accounts`: 43 pass. Full suite (`--parallel 4`): 1372 run, 1 failure, the known date-dependent `test_missing_report_skips_sections_without_students_and_future_dates`. `makemigrations --check` reports no changes; `ruff check accounts core` is clean (the 7 findings that remained were all in files this phase touched: `core/urls.py` import order and length, `core/forms.py` line length, and B023 loop-variable binding in `test_teacher_accounts.py`; fixed trivially). `git diff --check` clean.
+
+**End-to-end tests added** (`test_ui_admin_phase3d.py`): a teacher created through the page must change the password (`password_change`, fields `old_password`/`new_password1`/`new_password2`) before reaching `core:my-home`; a deactivated teacher loses access on the next request and cannot sign in again; a service-created teacher sees a class-teacher Section on the teacher home only after `SectionClassTeacher.assign` (absent before).
+
+**Browser smoke test** (Playwright, isolated server on port 8791, throwaway SQLite with `seed_demo`, separate browser contexts for admin and teacher; DB and server removed afterwards). At 1440 and 320 px: sidebar Teachers link works; list renders as a table; search, status filter and sort URLs respond; Add teacher shows the slip (username, temporary password, Print slip button) with `Cache-Control: no-store, no-cache, must-revalidate, private`; new teacher is forced to the password-change page, then reaches `/my/`; detail page links to reset, rename, deactivate and workload, and each confirm page renders; deactivating signs the teacher out on the next request and a re-login is refused. No horizontal overflow on any page checked at 320 or 1440. No defects found.
+
+**Deviations / rulings.** (1) Controller ruling: administrators (superusers, `is_staff`, members of School Administrators) are never valid targets on the Teachers pages; an administrator who also teaches is a 404 there, so end-to-end teachers are plain Teachers-group logins. (2) Direct-permission note: a Teachers-group login that holds admin powers only through direct user permissions or another group is still manageable from these pages; tightening that is a possible follow-up. (3) The third end-to-end test patches `business_today` using the helpers from `test_phase5_teacher_home.py`.
