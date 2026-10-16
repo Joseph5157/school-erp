@@ -733,6 +733,15 @@ def choose_area(request):
     return render(request, "core/choose_area.html", {"areas": areas})
 
 
+@administrator_required("core.view_school")
+def admin_overview(request):
+    return render(
+        request,
+        "core/admin_overview.html",
+        {"cards": [], "needs_setup": False},
+    )
+
+
 def _open_assessments_needing_marks(user, today):
     """DRAFT assessments in the teacher's Subject/Sections, open for entry,
     with at least one roster Student still unmarked (constant queries)."""

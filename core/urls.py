@@ -5,6 +5,7 @@ from core import announcement_views, document_views, import_views, notification_
 app_name = "core"
 
 urlpatterns = [
+    path("overview/", views.admin_overview, name="admin-overview"),
     path("school/", views.school_detail, name="school-detail"),
     path("school/create/", views.school_create, name="school-create"),
     path("school/edit/", views.school_update, name="school-update"),

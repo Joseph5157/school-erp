@@ -15,6 +15,9 @@ class NavLink:
 
 
 OFFICE_NAV = (
+    ("Home", (
+        NavLink("Overview", "core:admin-overview", "core.view_school"),
+    )),
     ("School setup", (
         NavLink("School", "core:school-detail", "core.view_school"),
         NavLink("Academic Years", "core:academic-year-list", "core.view_academicyear"),
