@@ -4,7 +4,7 @@
     <p class="erp-queue-count">{{ card.count }}</p>
     <p class="erp-queue-summary">{{ card.summary }}{% if card.detail %} {{ card.detail }}{% endif %}</p>
     {% else %}
-    <p class="erp-queue-summary">Nothing waiting.</p>
+    <p class="erp-queue-summary">Nothing waiting.{% if card.detail %} {{ card.detail }}{% endif %}</p>
     {% endif %}
     <a class="btn btn-outline-primary btn-sm" href="{{ card.url }}">Open<span class="visually-hidden"> {{ card.title }}</span></a>
 </article>

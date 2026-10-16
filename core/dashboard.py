@@ -8,13 +8,12 @@ lacks the permission the destination page requires.
 from django.db.models import Min
 from django.urls import reverse
 
-from core import guardian_access, publication
+from core import guardian_access, publication, reports
 from core import models as core_models
 from core.models import (
     AcademicEnrollment,
     AcademicYear,
     Applicant,
-    AttendanceRegister,
     Section,
 )
 
@@ -32,17 +31,21 @@ def _card(key, title, count, summary, url, detail=""):
 
 
 def _attendance(today):
-    expected = (
-        AcademicEnrollment.objects.effective_on(today)
-        .values_list("section_id", flat=True)
-        .distinct()
-    )
-    taken = AttendanceRegister.objects.filter(date=today).values_list("section_id", flat=True)
-    missing = Section.objects.filter(pk__in=expected).exclude(pk__in=taken).count()
+    """Same authority as the Missing attendance report, for today only.
+
+    Skips non-instructional dates and treats a DRAFT register as still missing.
+    """
+    missing = reports.missing_attendance(today, today)
+    sections = {row["section"].pk for row in missing}
+    detail = ""
+    if not missing and not reports.expected_registers(today, today) and (
+        AcademicEnrollment.objects.effective_on(today).exists()
+    ):
+        detail = "No school day today."
     return _card(
-        "attendance", "Attendance today", missing,
-        "Sections with no register opened today.",
-        reverse("core:attendance-register-list"),
+        "attendance", "Attendance today", len(sections),
+        "Sections whose register is not yet submitted today.",
+        reverse("core:attendance-register-list"), detail,
     )
 
 

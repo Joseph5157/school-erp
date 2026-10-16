@@ -51,7 +51,12 @@ from django.contrib.auth.models import Permission
 
 from core.dashboard import overview_cards
 from core import models as core_models
-from core.models import Applicant, AttendanceRegister
+from core.models import (
+    Applicant,
+    AttendanceRegister,
+    AttendanceStatus,
+    SchoolCalendarDay,
+)
 from core.tests.test_authorization import AttendanceFixtureMixin
 
 User = get_user_model()
@@ -81,15 +86,56 @@ class OverviewCardTests(AuthorizationClientsMixin, AttendanceFixtureMixin, TestC
         self.assertEqual(data["count"], 0)
         self.assertEqual(data["tone"], "clear")
 
-    def test_attendance_card_counts_sections_without_register_today(self):
-        before = card(overview_cards(self.admin_user), "attendance")["count"]
-        AttendanceRegister.objects.create(
+    def _open_today(self):
+        """Make today an instructional day whatever the weekday."""
+        today = core_models.business_today()
+        if not self.year.default_is_instructional(today):
+            SchoolCalendarDay.objects.create(
+                academic_year=self.year, date=today, is_instructional=True
+            )
+
+    def _register_today(self, *, submit=False):
+        register = AttendanceRegister.objects.create(
             academic_year=self.year, class_grade=self.class_grade,
             section=self.section, date=core_models.business_today(),
         )
-        after = card(overview_cards(self.admin_user), "attendance")
-        self.assertEqual(after["count"], before - 1)
-        self.assertEqual(after["url"], reverse("core:attendance-register-list"))
+        if submit:
+            register.capture(
+                enrollment=self.enrollment, status=AttendanceStatus.PRESENT
+            )
+            submitter, _ = User.objects.get_or_create(username="today-submitter")
+            register.submit(actor=submitter)
+        return register
+
+    def _attendance(self):
+        return card(overview_cards(self.admin_user), "attendance")
+
+    def test_attendance_card_counts_section_with_no_register_today(self):
+        self._open_today()
+        data = self._attendance()
+        self.assertEqual(data["count"], 1)
+        self.assertEqual(data["url"], reverse("core:attendance-register-list"))
+
+    def test_attendance_card_zero_on_non_instructional_day(self):
+        today = core_models.business_today()
+        SchoolCalendarDay.objects.filter(academic_year=self.year, date=today).delete()
+        if self.year.default_is_instructional(today):
+            SchoolCalendarDay.objects.create(
+                academic_year=self.year, date=today, is_instructional=False
+            )
+        data = self._attendance()
+        self.assertEqual(data["count"], 0)
+        self.assertEqual(data["detail"], "No school day today.")
+
+    def test_attendance_card_counts_draft_register_as_missing(self):
+        self._open_today()
+        self._register_today(submit=False)
+        self.assertEqual(self._attendance()["count"], 1)
+
+    def test_attendance_card_does_not_count_submitted_register(self):
+        self._open_today()
+        self._register_today(submit=True)
+        self.assertEqual(self._attendance()["count"], 0)
 
     def test_page_shows_cards_and_empty_copy(self):
         response = self.administrator.get(reverse("core:admin-overview"))
