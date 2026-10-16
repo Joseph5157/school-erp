@@ -92,7 +92,11 @@ def clear_source_failures(username, source):
 
 
 def locked_usernames(now=None):
-    """Usernames currently refused by Rule A (any source) or Rule B."""
+    """Usernames currently refused by Rule A (any source) or Rule B.
+
+    One grouped query over the 15-minute window; rows are distinct (username, source)
+    pairs, so a spray of many sources against one username grows the result set.
+    """
     from django.db.models import Count
 
     now = now or timezone.now()

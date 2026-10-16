@@ -82,6 +82,7 @@ class NotificationBadgeTests(QueueFixture, TestCase):
         self.assertEqual(data["url"], reverse(NOTIFICATIONS))
         self.assertEqual(data["title"], "Messages to send")
         self.assertEqual(data["summary"], "Prepared messages waiting to be sent.")
+        self.assertIn("skipped for missing consent", data["detail"])
 
     def test_counting_does_not_change_rows(self):
         self.prepare(3)  # no consent: to_send() would mark these SKIPPED
@@ -125,7 +126,7 @@ class LockoutBadgeTests(QueueFixture, TestCase):
         self.assertEqual(queue_counts(self.admin_user)[LOCKOUTS], 1)
         data = card(overview_cards(self.admin_user), "lockouts")
         self.assertEqual(data["count"], 1)
-        self.assertEqual(data["title"], "Locked sign-ins")
+        self.assertEqual(data["title"], "Sign-in lockouts")
         self.assertEqual(data["summary"], "Usernames locked after failed sign-ins.")
         self.assertEqual(data["url"], reverse(LOCKOUTS))
 

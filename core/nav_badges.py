@@ -10,7 +10,8 @@ page; it stays an Overview-card-only figure.
 
 The "To send" count is a plain COUNT of PREPARED rows. It must never call
 `notifications.to_send()`, which marks rows without consent SKIPPED. So the
-badge can be higher than the list once the page has skipped unconsented rows.
+count may include messages the To send page will skip for missing consent; the
+Overview card says so.
 
 The sidebar and the Overview cards both use the helpers here, so the two
 cannot disagree.

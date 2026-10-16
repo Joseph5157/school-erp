@@ -84,12 +84,13 @@ def _notifications(today):
         "notifications", "Messages to send", nav_badges.prepared_notification_count(),
         "Prepared messages waiting to be sent.",
         reverse("core:notifications-to-send"),
+        "May include messages that will be skipped for missing consent.",
     )
 
 
 def _lockouts(today):
     return _card(
-        "lockouts", "Locked sign-ins", nav_badges.locked_username_count(),
+        "lockouts", "Sign-in lockouts", nav_badges.locked_username_count(),
         "Usernames locked after failed sign-ins.",
         reverse("core:login-lockouts"),
     )

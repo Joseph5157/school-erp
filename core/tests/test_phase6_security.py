@@ -137,6 +137,49 @@ class LockoutAdministrationTests(ThrottlingFixture, TestCase):
         self.assertEqual(teacher.get(reverse("core:login-lockouts")).status_code, 403)
 
 
+class LockedUsernamesBoundaryTests(TestCase):
+    """Rule A (5 from one source), Rule B (20 from any sources) and the 15-minute window."""
+
+    def setUp(self):
+        self.now = timezone.now()
+
+    def failures(self, username, count, source="src", ago=timedelta(minutes=1)):
+        LoginFailure.objects.bulk_create([
+            LoginFailure(username_key=username, source_key=source if source else f"s{i}",
+                         occurred_at=self.now - ago)
+            for i in range(count)
+        ])
+
+    def locked(self):
+        return security.locked_usernames(now=self.now)
+
+    def test_rule_a_boundary_is_five_from_one_source(self):
+        self.failures("amit", 4)
+        self.assertEqual(self.locked(), [])
+        self.failures("amit", 1)
+        self.assertEqual(self.locked(), ["amit"])
+
+    def test_rule_b_sums_distinct_sources_and_boundary_is_twenty(self):
+        LoginFailure.objects.bulk_create([
+            LoginFailure(username_key="bina", source_key=f"s{i // 4}",
+                         occurred_at=self.now - timedelta(minutes=1))
+            for i in range(19)  # 5 sources with at most 4 each
+        ])
+        self.assertEqual(self.locked(), [])
+        LoginFailure.objects.create(username_key="bina", source_key="s4",
+                                    occurred_at=self.now - timedelta(minutes=1))
+        self.assertEqual(self.locked(), ["bina"])
+
+    def test_failures_outside_the_window_do_not_count(self):
+        self.failures("old", 5, ago=timedelta(minutes=16))
+        self.assertEqual(self.locked(), [])
+
+    def test_several_locked_usernames_come_back_sorted(self):
+        self.failures("zed", 5)
+        self.failures("amit", 5, source="other")
+        self.assertEqual(self.locked(), ["amit", "zed"])
+
+
 class SessionLimitTests(BoundaryFixture, TestCase):
     def setUp(self):
         super().setUp()
