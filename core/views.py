@@ -35,7 +35,6 @@ from core.authorization import (
     term_remark_sections,
     user_areas,
 )
-from core.tables import Column, build_table, parse_choice
 from core.forms import (
     AcademicEnrollmentForm,
     AcademicTermForm,
@@ -109,6 +108,7 @@ from core.models import (
     TermRemark,
     business_today,
 )
+from core.tables import Column, build_table, parse_choice
 
 
 @administrator_required("core.view_school")
