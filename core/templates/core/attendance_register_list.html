@@ -5,6 +5,7 @@
 {% if perms.core.view_attendanceentry %}{% url 'core:attendance-reports' as attendance_reports_url %}{% endif %}
 {% include "partials/_page_header.html" with eyebrow="Daily operations" title="Attendance" purpose="Open registers, review completion, and find recent attendance by section or date." primary_url=attendance_create_url primary_label="Open register" secondary_url=attendance_reports_url secondary_label="View reports" only %}
 <form method="get" class="row g-2 align-items-end mb-3">
+    {% if table.sort_param %}<input type="hidden" name="sort" value="{{ table.sort_param }}">{% endif %}
     <div class="col-auto">
         {{ form.section.label_tag }}
         {{ form.section }}

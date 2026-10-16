@@ -1,6 +1,11 @@
 from django.conf import settings
 from django.template.loader import render_to_string
-from django.test import SimpleTestCase
+from django.test import RequestFactory, SimpleTestCase, TestCase
+from django.urls import reverse
+
+from core.models import Applicant
+from core.tables import Column, build_table
+from core.tests.test_authorization import AuthorizationClientsMixin
 
 YEAR = {"pk": 1, "name": "2026-27"}
 STUDENT = {"pk": 1, "full_name": "Asha Rao"}
@@ -80,3 +85,57 @@ class SecondaryButtonStyleTests(SimpleTestCase):
         self.assertIn("opacity", rule)
         self.assertIn("var(--erp-rule)", rule)
         self.assertIn('[aria-disabled="true"]', rule)
+
+
+class SortParamTests(TestCase):
+    columns = (Column("Name", "name", ("full_name",)), Column("Notes"))
+
+    def sort_param(self, query):
+        request = RequestFactory().get("/applicants/" + query)
+        return build_table(
+            request, Applicant.objects.all(), self.columns, "name"
+        ).sort_param
+
+    def test_empty_without_sort(self):
+        self.assertEqual(self.sort_param(""), "")
+
+    def test_set_with_valid_sort(self):
+        self.assertEqual(self.sort_param("?sort=-name"), "-name")
+        self.assertEqual(self.sort_param("?sort=name"), "name")
+
+    def test_empty_with_bogus_or_unsortable_sort(self):
+        self.assertEqual(self.sort_param("?sort=bogus"), "")
+        self.assertEqual(self.sort_param("?sort=-notes"), "")
+
+
+class SortSurvivesFilteringTests(AuthorizationClientsMixin, TestCase):
+    pages = (
+        ("core:student-list", "-name", "Clear search"),
+        ("core:applicant-list", "-name", "Clear filters"),
+        ("core:teacher-list", "-name", "Clear filters"),
+        ("core:attendance-register-list", "-date", None),
+    )
+    hidden = '<input type="hidden" name="sort"'
+
+    def test_hidden_sort_input_only_with_a_valid_sort(self):
+        for name, token, _clear in self.pages:
+            url = reverse(name)
+            with self.subTest(page=name):
+                kept = self.administrator.get(url, {"sort": token})
+                self.assertContains(kept, f'{self.hidden} value="{token}">')
+                for query in ({}, {"sort": "bogus"}):
+                    dropped = self.administrator.get(url, query)
+                    self.assertNotContains(dropped, self.hidden)
+
+    def test_clear_links_do_not_carry_the_sort(self):
+        cases = (
+            ("core:student-list", {"q": "x", "sort": "-name"}, "Clear search"),
+            ("core:applicant-list", {"status": "applied", "sort": "-name"}, "Clear filters"),
+            ("core:teacher-list", {"q": "x", "sort": "-name"}, "Clear filters"),
+        )
+        for name, query, label in cases:
+            with self.subTest(page=name):
+                response = self.administrator.get(reverse(name), query)
+                self.assertContains(
+                    response, f'href="{reverse(name)}">{label}</a>', html=False
+                )

@@ -56,6 +56,7 @@ class Table:
     prev_url: str
     next_url: str
     page_links: list
+    sort_param: str = ""  # the active sort token, only if explicitly requested
 
 
 def parse_choice(request, name, choices):
@@ -126,4 +127,5 @@ def build_table(request, queryset, columns, default_sort, per_page=PER_PAGE):
         if page.has_next()
         else "",
         page_links=page_links,
+        sort_param=raw if raw and (raw[1:] if raw.startswith("-") else raw) in sortable else "",
     )

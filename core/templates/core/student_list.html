@@ -3,6 +3,7 @@
 {% block content %}
 {% include "partials/_page_header.html" with eyebrow="People" title="Students" purpose="Find a student by name, email address, or phone number." only %}
 <form method="get" class="mb-3" role="search" aria-label="Search students">
+    {% if table.sort_param %}<input type="hidden" name="sort" value="{{ table.sort_param }}">{% endif %}
     <label for="student-search" class="form-label">Search students</label>
     <div class="input-group">
         <input type="search" id="student-search" name="q" value="{{ query }}" class="form-control" placeholder="Name, email, or phone">

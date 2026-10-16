@@ -4,6 +4,7 @@
 {% url 'core:teacher-create' as create_url %}
 {% include "partials/_page_header.html" with eyebrow="School setup" title="Teachers" purpose="Create and manage teacher logins. Classes and subjects are assigned from Academic Years." primary_url=create_url primary_label="Add teacher" only %}
 <form method="get" class="mb-3" role="search" aria-label="Search teachers">
+    {% if table.sort_param %}<input type="hidden" name="sort" value="{{ table.sort_param }}">{% endif %}
     <label for="teacher-search" class="form-label">Search teachers</label>
     <div class="input-group">
         <input type="search" id="teacher-search" name="q" value="{{ query }}" class="form-control" placeholder="Name, username, or email">
