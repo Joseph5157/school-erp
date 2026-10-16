@@ -63,23 +63,27 @@ def _short(url_name):
     return url_name.split(":", 1)[-1]
 
 
-def _link(link, url_name, section=None):
+def _link(link, url_name, section=None, counts=None):
     short = _short(link.url_name)
     return {
         "label": link.label,
         "url": reverse(link.url_name),
         "active": url_name == short or section == short,
+        "badge": (counts or {}).get(link.url_name, 0),
     }
 
 
-def office_nav(user, url_name, section=None):
-    """Office sidebar groups the user may see; empty groups are dropped."""
+def office_nav(user, url_name, section=None, counts=None):
+    """Office sidebar groups the user may see; empty groups are dropped.
+
+    `counts` maps a link's namespaced URL name to a waiting-items number.
+    """
     if not (user and user.is_authenticated):
         return []
     groups = []
     for title, links in OFFICE_NAV:
         visible = [
-            _link(link, url_name, section)
+            _link(link, url_name, section, counts)
             for link in links
             if link.perm is None or user.has_perm(link.perm)
         ]

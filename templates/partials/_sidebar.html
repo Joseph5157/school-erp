@@ -9,7 +9,7 @@
         <p class="erp-nav-heading">{{ group.title }}</p>
         <ul class="nav flex-column">
             {% for link in group.links %}
-            <li class="nav-item"><a class="nav-link{% if link.active %} active{% endif %}" href="{{ link.url }}"{% if link.active %} aria-current="page"{% endif %}>{{ link.label }}</a></li>
+            <li class="nav-item"><a class="nav-link{% if link.active %} active{% endif %}" href="{{ link.url }}"{% if link.active %} aria-current="page"{% endif %}>{{ link.label }}{% if link.badge %}<span class="erp-nav-badge">{{ link.badge }}<span class="visually-hidden"> waiting</span></span>{% endif %}</a></li>
             {% endfor %}
         </ul>
         {% endfor %}

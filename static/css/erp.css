@@ -146,6 +146,12 @@ body.erp { min-height: 100vh; }
 .erp-sidebar .nav-link { color: var(--erp-ink); border-radius: 6px; padding: .4rem .75rem; }
 .erp-sidebar .nav-link:hover { background: var(--erp-paper); }
 .erp-sidebar .nav-link.active { background: var(--erp-accent-wash); color: var(--erp-accent); font-weight: 600; }
+.erp-sidebar .nav-link { display: flex; align-items: center; gap: var(--erp-space-2); }
+.erp-nav-badge {
+  margin-left: auto; padding: 0 var(--erp-space-2); border-radius: var(--erp-radius-sm);
+  background: var(--erp-warn-wash); color: var(--erp-warn);
+  font-size: var(--erp-text-xs); font-weight: 600; line-height: 1.5; white-space: nowrap;
+}
 
 @media (min-width: 992px) {
   body.has-sidebar .erp-sidebar {

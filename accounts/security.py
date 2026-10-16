@@ -96,16 +96,18 @@ def locked_usernames(now=None):
     from django.db.models import Count
 
     now = now or timezone.now()
-    recent = LoginFailure.objects.filter(occurred_at__gte=now - WINDOW)
-    locked = set(
-        recent.values("username_key", "source_key")
-        .annotate(n=Count("pk")).filter(n__gte=RULE_A_LIMIT)
-        .values_list("username_key", flat=True)
+    per_source = (
+        LoginFailure.objects.filter(occurred_at__gte=now - WINDOW)
+        .values("username_key", "source_key").annotate(n=Count("pk"))
     )
-    locked |= set(
-        recent.values("username_key").annotate(n=Count("pk")).filter(n__gte=RULE_B_LIMIT)
-        .values_list("username_key", flat=True)
-    )
+    locked = set()
+    per_username = {}
+    for row in per_source:  # one query: rows are distinct (username, source) pairs
+        key = row["username_key"]
+        per_username[key] = per_username.get(key, 0) + row["n"]
+        if row["n"] >= RULE_A_LIMIT:
+            locked.add(key)
+    locked |= {key for key, total in per_username.items() if total >= RULE_B_LIMIT}
     return sorted(locked)
 
 
