@@ -2,10 +2,12 @@
 {% block title %}Students{% endblock %}
 {% block content %}
 <h1 class="h3 mb-3">Students</h1>
-<form method="get" class="mb-3">
+<form method="get" class="mb-3" role="search" aria-label="Search students">
+    <label for="student-search" class="form-label">Search students</label>
     <div class="input-group">
-        <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="Search by name, email, or phone">
+        <input type="search" id="student-search" name="q" value="{{ query }}" class="form-control" placeholder="Name, email, or phone">
         <button type="submit" class="btn btn-outline-secondary">Search</button>
+        {% if query %}<a class="btn btn-link" href="{% url 'core:student-list' %}">Clear search</a>{% endif %}
     </div>
 </form>
 <table class="table">

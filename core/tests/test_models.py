@@ -267,7 +267,9 @@ class ApplicantModelTests(TestCase):
     def test_pending_applicant_can_be_rejected(self):
         applicant = Applicant.objects.create(full_name="Ravi Rao")
 
-        applicant.record_admission_decision(Applicant.AdmissionStatus.REJECTED)
+        applicant.record_admission_decision(
+            Applicant.AdmissionStatus.REJECTED, reason="Test reason"
+        )
 
         applicant.refresh_from_db()
         self.assertEqual(applicant.admission_status, Applicant.AdmissionStatus.REJECTED)
@@ -298,7 +300,9 @@ class ApplicantModelTests(TestCase):
         decided_at = applicant.admission_decided_at
 
         with self.assertRaises(ValidationError):
-            applicant.record_admission_decision(Applicant.AdmissionStatus.REJECTED)
+            applicant.record_admission_decision(
+                Applicant.AdmissionStatus.REJECTED, reason="Test reason"
+            )
 
         applicant.refresh_from_db()
         self.assertEqual(applicant.admission_status, Applicant.AdmissionStatus.ACCEPTED)
@@ -306,7 +310,9 @@ class ApplicantModelTests(TestCase):
 
     def test_rejected_decision_cannot_be_reversed_to_accepted(self):
         applicant = Applicant.objects.create(full_name="Ravi Rao")
-        applicant.record_admission_decision(Applicant.AdmissionStatus.REJECTED)
+        applicant.record_admission_decision(
+            Applicant.AdmissionStatus.REJECTED, reason="Test reason"
+        )
 
         with self.assertRaises(ValidationError):
             applicant.record_admission_decision(Applicant.AdmissionStatus.ACCEPTED)
@@ -502,7 +508,9 @@ class ApplicantProgressionTests(TestCase):
         self.assertFalse(Student.objects.exists())
 
     def test_rejected_applicant_cannot_progress(self):
-        self.applicant.record_admission_decision(Applicant.AdmissionStatus.REJECTED)
+        self.applicant.record_admission_decision(
+            Applicant.AdmissionStatus.REJECTED, reason="Test reason"
+        )
 
         with self.assertRaises(ValidationError):
             self.applicant.progress_to_student()
@@ -1212,14 +1220,14 @@ class StudentStatusTests(TestCase):
         self.assertIsNone(self.student.status_changed_at)
 
     def test_deactivate_records_inactive_and_timestamp(self):
-        self.student.record_status_change(Student.Status.INACTIVE)
+        self.student.record_status_change(Student.Status.INACTIVE, reason="Test reason")
 
         self.student.refresh_from_db()
         self.assertEqual(self.student.status, Student.Status.INACTIVE)
         self.assertIsNotNone(self.student.status_changed_at)
 
     def test_reactivate_returns_student_to_active(self):
-        self.student.record_status_change(Student.Status.INACTIVE)
+        self.student.record_status_change(Student.Status.INACTIVE, reason="Test reason")
 
         self.student.record_status_change(Student.Status.ACTIVE)
 
@@ -1252,14 +1260,14 @@ class StudentStatusTests(TestCase):
             start_date=date(2026, 6, 1),
         )
 
-        self.student.record_status_change(Student.Status.INACTIVE)
+        self.student.record_status_change(Student.Status.INACTIVE, reason="Test reason")
 
         enrollment.refresh_from_db()
         self.assertEqual(enrollment.status, AcademicEnrollment.Status.ACTIVE)
         self.assertEqual(self.student.current_enrollment, enrollment)
 
     def test_status_change_preserves_source_applicant(self):
-        self.student.record_status_change(Student.Status.INACTIVE)
+        self.student.record_status_change(Student.Status.INACTIVE, reason="Test reason")
 
         self.applicant.refresh_from_db()
         self.assertEqual(self.applicant.admission_status, Applicant.AdmissionStatus.ACCEPTED)

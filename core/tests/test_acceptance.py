@@ -212,7 +212,7 @@ class Phase1AcceptanceJourneyTests(TestCase):
         # Deactivate, then reactivate: enrollment history is untouched.
         self.client.post(
             reverse("core:student-status-change", args=[student.pk]),
-            {"status": Student.Status.INACTIVE},
+            {"status": Student.Status.INACTIVE, "reason": "Test reason"},
         )
         student.refresh_from_db()
         self.assertEqual(student.status, Student.Status.INACTIVE)

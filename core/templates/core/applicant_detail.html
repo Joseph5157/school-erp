@@ -9,6 +9,10 @@
     <dt class="col-sm-3">Decision recorded</dt>
     <dd class="col-sm-9">{{ applicant.admission_decided_at }}</dd>
     {% endif %}
+    {% if applicant.admission_decision_reason %}
+    <dt class="col-sm-3">Decision reason</dt>
+    <dd class="col-sm-9">{{ applicant.admission_decision_reason }}</dd>
+    {% endif %}
     <dt class="col-sm-3">Date of birth</dt>
     <dd class="col-sm-9">{{ applicant.date_of_birth|default:"-" }}</dd>
     <dt class="col-sm-3">Email</dt>
@@ -20,16 +24,8 @@
 {% if perms.core.change_applicant and applicant.admission_status == "PENDING" %}
 <h2 class="h5">Admission decision</h2>
 <div class="mb-3">
-    <form method="post" action="{% url 'core:applicant-admission-decision' applicant.pk %}" class="d-inline">
-        {% csrf_token %}
-        <input type="hidden" name="decision" value="ACCEPTED">
-        <button type="submit" class="btn btn-success">Accept</button>
-    </form>
-    <form method="post" action="{% url 'core:applicant-admission-decision' applicant.pk %}" class="d-inline">
-        {% csrf_token %}
-        <input type="hidden" name="decision" value="REJECTED">
-        <button type="submit" class="btn btn-danger">Reject</button>
-    </form>
+    <a class="btn btn-success" href="{% url 'core:applicant-decision-confirm' applicant.pk 'ACCEPTED' %}">Accept applicant&hellip;</a>
+    <a class="btn btn-danger" href="{% url 'core:applicant-decision-confirm' applicant.pk 'REJECTED' %}">Reject applicant&hellip;</a>
 </div>
 {% endif %}
 

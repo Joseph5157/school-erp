@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Deactivate student{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Deactivate student</h1>
+<p>You are about to deactivate <strong>{{ student.full_name }}</strong>.</p>
+<div class="alert alert-warning" role="alert">
+    <p class="fw-semibold mb-2">This change has the following consequences:</p>
+    <ul class="mb-0">
+        <li>The student leaves active student lists.</li>
+        <li>The current placement, {{ placement|default:"none" }}, remains in the enrollment history.</li>
+        {% if grants %}<li>{{ grants|length }} guardian{{ grants|length|pluralize }} with portal access will require a retain or revoke decision on the next step.</li>{% endif %}
+        <li>The change and its reason are recorded in the student's status history.</li>
+    </ul>
+</div>
+<form method="post" action="{% url 'core:student-status-change' student.pk %}">
+    {% csrf_token %}
+    <input type="hidden" name="status" value="INACTIVE">
+    <div class="mb-3">
+        <label for="reason" class="form-label">Reason (required)</label>
+        <textarea name="reason" id="reason" rows="3" class="form-control" required></textarea>
+    </div>
+    <button type="submit" class="btn btn-warning">Deactivate student</button>
+    <a class="btn btn-link" href="{% url 'core:student-detail' student.pk %}">Cancel</a>
+</form>
+{% endblock %}

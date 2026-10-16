@@ -12,7 +12,7 @@
             <td>{% if result %}{{ result.get_status_display }}{% else %}<span class="text-muted">Not entered</span>{% endif %}</td>
             <td>{% if result and result.status == "MARKED" %}{{ result.score }} / {{ assessment.maximum_marks }}{% endif %}</td>
             <td>{% if result.percentage is not None %}{{ result.percentage }}%{% endif %}</td>
-            <td>{{ result.grade|default:"" }}</td>
+            <td>{{ result.grade|default:"Not graded" }}</td>
             {% if assessment.pass_mark is not None %}<td>{% if result %}{{ result.pass_fail|title }}{% endif %}</td>{% endif %}
             <td>{% if result %}{{ result.entered_by }}{% if result.corrections.all %} <span class="badge bg-warning text-dark">corrected</span>{% endif %}{% endif %}</td>
             {% if assessment.is_finalized and perms.core.correct_studentresult and not read_only %}<td>{% if result %}<a href="{% url 'core:result-correct' result.pk %}">Correct</a>{% endif %}</td>{% endif %}

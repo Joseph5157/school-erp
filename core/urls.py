@@ -192,6 +192,11 @@ urlpatterns = [
         name="applicant-admission-decision",
     ),
     path(
+        "applicants/<int:pk>/decide/<str:decision>/",
+        views.applicant_decision_confirm,
+        name="applicant-decision-confirm",
+    ),
+    path(
         "applicants/<int:pk>/guardians/add/",
         views.applicant_guardian_create,
         name="applicant-guardian-create",
@@ -223,6 +228,11 @@ urlpatterns = [
         "students/<int:pk>/status/",
         views.student_status_change,
         name="student-status-change",
+    ),
+    path(
+        "students/<int:pk>/deactivate/",
+        views.student_deactivate_confirm,
+        name="student-deactivate-confirm",
     ),
     path("guardians/", views.guardian_list, name="guardian-list"),
     path("guardians/create/", views.guardian_create, name="guardian-create"),

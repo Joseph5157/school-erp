@@ -26,11 +26,7 @@
 <h2 class="h5">Change status</h2>
 <div class="mb-3">
     {% if student.status == "ACTIVE" %}
-    <form method="post" action="{% url 'core:student-status-change' student.pk %}" class="d-inline">
-        {% csrf_token %}
-        <input type="hidden" name="status" value="INACTIVE">
-        <button type="submit" class="btn btn-warning">Deactivate</button>
-    </form>
+    <a class="btn btn-warning" href="{% url 'core:student-deactivate-confirm' student.pk %}">Deactivate student&hellip;</a>
     {% else %}
     <form method="post" action="{% url 'core:student-status-change' student.pk %}" class="d-inline">
         {% csrf_token %}
@@ -40,6 +36,26 @@
     {% endif %}
 </div>
 {% endif %}
+
+<h2 class="h5">Status history</h2>
+<table class="table">
+    <thead>
+        <tr><th>When</th><th>From</th><th>To</th><th>Reason</th><th>By</th></tr>
+    </thead>
+    <tbody>
+        {% for change in student.status_changes.all %}
+        <tr>
+            <td>{{ change.created_at }}</td>
+            <td>{{ change.get_previous_status_display }}</td>
+            <td>{{ change.get_new_status_display }}</td>
+            <td>{{ change.reason|default:"-" }}</td>
+            <td>{{ change.changed_by|default:"-" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5">No status changes recorded.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
 
 <h2 class="h5">Current placement</h2>
 {% if current_enrollment %}

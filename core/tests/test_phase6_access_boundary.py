@@ -116,7 +116,7 @@ class HelperTests(BoundaryFixture, TestCase):
 
 class InactiveReviewTests(BoundaryFixture, TestCase):
     def test_no_grants_needs_no_review(self):
-        self.ravi.record_status_change(Student.Status.INACTIVE)
+        self.ravi.record_status_change(Student.Status.INACTIVE, reason="Test reason")
         self.ravi.refresh_from_db()
         self.assertEqual(self.ravi.status, Student.Status.INACTIVE)
 
@@ -127,7 +127,8 @@ class InactiveReviewTests(BoundaryFixture, TestCase):
                           {self.asha_grant.pk: RETAIN, second.pk: "MAYBE"}):
             with self.subTest(decisions=decisions), self.assertRaises(ValidationError):
                 self.asha.record_status_change(Student.Status.INACTIVE, actor=self.admin,
-                                               access_decisions=decisions)
+                                               access_decisions=decisions,
+                                               reason="Test reason")
         self.asha.refresh_from_db()
         self.assertEqual(self.asha.status, Student.Status.ACTIVE)
         self.assertFalse(GuardianAccessReview.objects.exists())
@@ -138,7 +139,7 @@ class InactiveReviewTests(BoundaryFixture, TestCase):
         self.asha.record_status_change(
             Student.Status.INACTIVE, actor=self.admin,
             access_decisions={self.asha_grant.pk: RETAIN, second.pk: REVOKE},
-            access_note="Left school")
+            access_note="Left school", reason="Test reason")
         self.asha_grant.refresh_from_db()
         second.refresh_from_db()
         self.assertTrue(self.asha_grant.is_active)
@@ -153,12 +154,15 @@ class InactiveReviewTests(BoundaryFixture, TestCase):
 
     def test_view_shows_review_step_then_saves(self):
         url = reverse("core:student-status-change", args=[self.asha.pk])
-        page = self.client.post(url, {"status": "INACTIVE"})
+        page = self.client.post(
+            url, {"status": "INACTIVE", "reason": "Test reason"}
+        )
         self.assertEqual(page.status_code, 200)
         self.assertContains(page, "Meena Rao")
         self.asha.refresh_from_db()
         self.assertEqual(self.asha.status, Student.Status.ACTIVE)
-        self.client.post(url, {"status": "INACTIVE", "access_review": "1",
+        self.client.post(url, {"status": "INACTIVE", "reason": "Test reason",
+                               "access_review": "1",
                                f"decision_{self.asha_grant.pk}": REVOKE})
         self.asha.refresh_from_db()
         self.asha_grant.refresh_from_db()
@@ -167,7 +171,11 @@ class InactiveReviewTests(BoundaryFixture, TestCase):
 
     def test_view_refuses_incomplete_review(self):
         url = reverse("core:student-status-change", args=[self.asha.pk])
-        self.client.post(url, {"status": "INACTIVE", "access_review": "1"}, follow=True)
+        self.client.post(
+            url,
+            {"status": "INACTIVE", "reason": "Test reason", "access_review": "1"},
+            follow=True,
+        )
         self.asha.refresh_from_db()
         self.assertEqual(self.asha.status, Student.Status.ACTIVE)
 

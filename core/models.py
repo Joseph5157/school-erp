@@ -376,6 +376,7 @@ class Applicant(models.Model):
         default=AdmissionStatus.PENDING,
     )
     admission_decided_at = models.DateTimeField(null=True, blank=True)
+    admission_decision_reason = models.TextField(blank=True, default="")
     import_batch = models.ForeignKey(
         "ImportBatch",
         on_delete=models.PROTECT,
@@ -391,7 +392,7 @@ class Applicant(models.Model):
     class Meta:
         ordering = ["full_name"]
 
-    def record_admission_decision(self, decision):
+    def record_admission_decision(self, decision, reason=""):
         """Record a final admission decision for a pending Applicant.
 
         Per docs/adr/0003-phase-1-status-and-transition-rules.md the only
@@ -404,13 +405,28 @@ class Applicant(models.Model):
         allowed = {self.AdmissionStatus.ACCEPTED, self.AdmissionStatus.REJECTED}
         if decision not in allowed:
             raise ValidationError("Invalid admission decision.")
-        if self.admission_status != self.AdmissionStatus.PENDING:
-            raise ValidationError(
-                "An admission decision has already been recorded for this Applicant."
+        with transaction.atomic():
+            applicant = Applicant.objects.select_for_update().get(pk=self.pk)
+            if applicant.admission_status != self.AdmissionStatus.PENDING:
+                raise ValidationError(
+                    "An admission decision has already been recorded for this Applicant."
+                )
+            if decision == self.AdmissionStatus.REJECTED and not reason.strip():
+                raise ValidationError("A reason is required to reject an applicant.")
+            applicant.admission_status = decision
+            applicant.admission_decided_at = timezone.now()
+            applicant.admission_decision_reason = reason.strip()
+            applicant.save(
+                update_fields=[
+                    "admission_status",
+                    "admission_decided_at",
+                    "admission_decision_reason",
+                    "updated_at",
+                ]
             )
-        self.admission_status = decision
-        self.admission_decided_at = timezone.now()
-        self.save(update_fields=["admission_status", "admission_decided_at", "updated_at"])
+        self.admission_status = applicant.admission_status
+        self.admission_decided_at = applicant.admission_decided_at
+        self.admission_decision_reason = applicant.admission_decision_reason
 
     def progress_to_student(self):
         """Explicitly create the one Student for an accepted Applicant.
@@ -570,7 +586,7 @@ class Student(models.Model):
             ) from error
 
     def record_status_change(self, new_status, *, actor=None, access_decisions=None,
-                             access_note=""):
+                             access_note="", reason=""):
         """Change the Student's lifecycle status between ACTIVE and INACTIVE.
 
         Per docs/adr/0003-phase-1-status-and-transition-rules.md the frozen
@@ -586,6 +602,9 @@ class Student(models.Model):
             raise ValidationError("Invalid Student status.")
         if new_status == self.status:
             raise ValidationError("Student already has this status.")
+        if new_status == self.Status.INACTIVE and not reason.strip():
+            raise ValidationError("A reason is required to deactivate a Student.")
+        previous_status = self.status
         with transaction.atomic():
             list(Student.objects.select_for_update().filter(pk=self.pk).values_list("pk"))
             if new_status == self.Status.INACTIVE:
@@ -606,6 +625,13 @@ class Student(models.Model):
             self.status = new_status
             self.status_changed_at = timezone.now()
             self.save(update_fields=["status", "status_changed_at", "updated_at"])
+            StudentStatusChange.objects.create(
+                student=self,
+                previous_status=previous_status,
+                new_status=new_status,
+                reason=reason.strip(),
+                changed_by=actor,
+            )
 
     def enroll(self, *, academic_year, class_grade, section, start_date, actor=None,
                access_decisions=None, access_note=""):
@@ -890,6 +916,26 @@ class AcademicEnrollment(models.Model):
 
     def __str__(self):
         return f"{self.student} - {self.academic_year} ({self.get_status_display()})"
+
+
+class StudentStatusChange(models.Model):
+    student = models.ForeignKey(
+        Student, on_delete=models.PROTECT, related_name="status_changes"
+    )
+    previous_status = models.CharField(max_length=10, choices=Student.Status.choices)
+    new_status = models.CharField(max_length=10, choices=Student.Status.choices)
+    reason = models.TextField(blank=True)
+    changed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="+",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
 
 
 class StudentGuardian(models.Model):

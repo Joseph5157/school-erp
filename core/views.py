@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Exists, OuterRef, Q, Subquery
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.cache import add_never_cache_headers
@@ -1704,13 +1705,47 @@ def applicant_admission_decision(request, pk):
         return redirect("core:applicant-detail", pk=applicant.pk)
 
     try:
-        applicant.record_admission_decision(form.cleaned_data["decision"])
+        applicant.record_admission_decision(
+            form.cleaned_data["decision"], reason=form.cleaned_data["reason"]
+        )
     except ValidationError as error:
         messages.error(request, error.messages[0])
+        if (
+            form.cleaned_data["decision"] == Applicant.AdmissionStatus.REJECTED
+            and applicant.admission_status == Applicant.AdmissionStatus.PENDING
+        ):
+            return redirect(
+                "core:applicant-decision-confirm",
+                pk=applicant.pk,
+                decision=Applicant.AdmissionStatus.REJECTED,
+            )
         return redirect("core:applicant-detail", pk=applicant.pk)
 
     messages.success(request, f"Admission decision recorded: {applicant.admission_status}.")
     return redirect("core:applicant-detail", pk=applicant.pk)
+
+
+@administrator_required("core.change_applicant")
+def applicant_decision_confirm(request, pk, decision):
+    applicant = get_object_or_404(Applicant, pk=pk)
+    if decision not in {
+        Applicant.AdmissionStatus.ACCEPTED,
+        Applicant.AdmissionStatus.REJECTED,
+    }:
+        raise Http404
+    if applicant.admission_status != Applicant.AdmissionStatus.PENDING:
+        return redirect("core:applicant-detail", pk=applicant.pk)
+    return render(
+        request,
+        "core/applicant_decision_confirm.html",
+        {
+            "applicant": applicant,
+            "decision": decision,
+            "decision_label": (
+                "Accept" if decision == Applicant.AdmissionStatus.ACCEPTED else "Reject"
+            ),
+        },
+    )
 
 
 @administrator_required("core.add_student")
@@ -2295,6 +2330,9 @@ def student_status_change(request, pk):
         return redirect("core:student-detail", pk=student.pk)
 
     if form.cleaned_data["status"] == Student.Status.INACTIVE:
+        if not form.cleaned_data["reason"].strip():
+            messages.error(request, "A reason is required to deactivate a Student.")
+            return redirect("core:student-deactivate-confirm", pk=student.pk)
         grants = _grants_needing_review(request, student)
         if grants is not None:
             return _access_review_page(
@@ -2308,6 +2346,7 @@ def student_status_change(request, pk):
             actor=request.user,
             access_decisions=_posted_decisions(request),
             access_note=request.POST.get("access_note", ""),
+            reason=form.cleaned_data["reason"],
         )
     except ValidationError as error:
         messages.error(request, error.messages[0])
@@ -2317,11 +2356,29 @@ def student_status_change(request, pk):
     return redirect("core:student-detail", pk=student.pk)
 
 
+@administrator_required("core.change_student")
+def student_deactivate_confirm(request, pk):
+    student = get_object_or_404(Student, pk=pk)
+    if student.status != Student.Status.ACTIVE:
+        return redirect("core:student-detail", pk=student.pk)
+    return render(
+        request,
+        "core/student_deactivate_confirm.html",
+        {
+            "student": student,
+            "grants": list(guardian_access.active_grants_for(student)),
+            "placement": student.enrollments.filter(
+                status=AcademicEnrollment.Status.ACTIVE
+            ).first(),
+        },
+    )
+
+
 @administrator_required("core.view_attendanceregister")
 def attendance_register_list(request):
     registers = AttendanceRegister.objects.select_related(
         "academic_year", "class_grade", "section__class_grade"
-    ).annotate(entry_count=Count("entries"))
+    ).annotate(entry_count=Count("entries")).order_by("-date", "section__class_grade", "section")
     form = AttendanceRegisterFilterForm(request.GET or None)
     if form.is_valid():
         section = form.cleaned_data.get("section")
