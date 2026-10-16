@@ -144,7 +144,8 @@ class GuardianProfileTests(BoundaryFixture, TestCase):
 
     def test_inactive_status_shown_when_access_retained(self):
         self.asha.record_status_change(Student.Status.INACTIVE, actor=self.admin,
-                                       access_decisions={self.asha_grant.pk: "RETAINED"})
+                                       access_decisions={self.asha_grant.pk: "RETAINED"},
+                                       reason="Test reason")
         self.assertContains(self.portal.get(self.url), "Inactive")
 
     def test_read_only(self):

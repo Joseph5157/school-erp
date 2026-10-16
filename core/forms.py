@@ -610,6 +610,7 @@ class AdmissionDecisionForm(forms.Form):
             (Applicant.AdmissionStatus.REJECTED, "Rejected"),
         ]
     )
+    reason = forms.CharField(required=False, widget=forms.Textarea(attrs={"rows": 3}))
 
 
 class StudentStatusForm(forms.Form):
@@ -621,6 +622,7 @@ class StudentStatusForm(forms.Form):
     """
 
     status = forms.ChoiceField(choices=Student.Status.choices)
+    reason = forms.CharField(required=False, widget=forms.Textarea(attrs={"rows": 3}))
 
 
 class GuardianForm(forms.ModelForm):

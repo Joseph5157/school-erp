@@ -265,7 +265,14 @@ class Command(BaseCommand):
                 full_name, self._family(full_name.split()[-1]), self.today.year - 6
             )
             if status != Applicant.AdmissionStatus.PENDING:
-                applicant.record_admission_decision(status)
+                applicant.record_admission_decision(
+                    status,
+                    reason=(
+                        "Demo application was not selected."
+                        if status == Applicant.AdmissionStatus.REJECTED
+                        else ""
+                    ),
+                )
 
     def _transfer_one_student(self, year, sections, students):
         """Move one Grade 1-A student to Grade 1-B partway through the attendance window.

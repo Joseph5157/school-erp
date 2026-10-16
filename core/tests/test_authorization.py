@@ -822,7 +822,10 @@ class ApplicantAdmissionDecisionAuthorizationTests(AuthorizationClientsMixin, Te
         self.url = reverse("core:applicant-admission-decision", args=[self.applicant.pk])
 
     def _decide(self, client, decision):
-        return client.post(self.url, {"decision": decision})
+        data = {"decision": decision}
+        if decision == Applicant.AdmissionStatus.REJECTED:
+            data["reason"] = "Test reason"
+        return client.post(self.url, data)
 
     def test_anonymous_is_redirected_to_login(self):
         response = self._decide(self.anonymous, Applicant.AdmissionStatus.ACCEPTED)
@@ -1252,7 +1255,9 @@ class StudentStatusChangeAuthorizationTests(AuthorizationClientsMixin, TestCase)
         self.assertEqual(self.student.status, Student.Status.ACTIVE)
 
     def test_administrator_can_deactivate(self):
-        response = self.administrator.post(self.url, {"status": Student.Status.INACTIVE})
+        response = self.administrator.post(
+            self.url, {"status": Student.Status.INACTIVE, "reason": "Test reason"}
+        )
 
         self.assertRedirects(response, reverse("core:student-detail", args=[self.student.pk]))
         self.student.refresh_from_db()
@@ -1260,7 +1265,7 @@ class StudentStatusChangeAuthorizationTests(AuthorizationClientsMixin, TestCase)
         self.assertIsNotNone(self.student.status_changed_at)
 
     def test_administrator_can_reactivate(self):
-        self.student.record_status_change(Student.Status.INACTIVE)
+        self.student.record_status_change(Student.Status.INACTIVE, reason="Test reason")
 
         response = self.administrator.post(self.url, {"status": Student.Status.ACTIVE})
 
@@ -1269,7 +1274,9 @@ class StudentStatusChangeAuthorizationTests(AuthorizationClientsMixin, TestCase)
         self.assertEqual(self.student.status, Student.Status.ACTIVE)
 
     def test_superuser_can_change_status(self):
-        response = self.superuser_client.post(self.url, {"status": Student.Status.INACTIVE})
+        response = self.superuser_client.post(
+            self.url, {"status": Student.Status.INACTIVE, "reason": "Test reason"}
+        )
 
         self.assertRedirects(response, reverse("core:student-detail", args=[self.student.pk]))
         self.student.refresh_from_db()
