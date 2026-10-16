@@ -93,3 +93,18 @@ class PortalNavTests(PortalFixture, TestCase):
     def test_child_tabs_point_at_the_current_child_on_child_page(self):
         page = self.portal.get(reverse("portal:child", args=[self.asha_grant.public_id]))
         self.assertContains(page, reverse("portal:attendance", args=[self.asha_grant.public_id]))
+
+
+class LoginErrorA11yTests(TestCase):
+    def test_empty_submit_associates_errors_with_fields(self):
+        response = self.client.post(reverse("login"), {"username": "", "password": ""})
+        self.assertContains(response, 'aria-invalid="true"')
+        self.assertContains(response, 'aria-describedby="id_username_error"')
+        self.assertContains(response, 'id="id_username_error"')
+        self.assertContains(response, 'id="id_password_error"')
+
+    def test_generic_failure_alert_is_announced(self):
+        response = self.client.post(
+            reverse("login"), {"username": "nobody", "password": "wrong"}
+        )
+        self.assertContains(response, 'role="alert"')
