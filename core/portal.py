@@ -96,13 +96,15 @@ def visible_publications(student):
     from core import publication
     from core.models import TermPublication
 
-    return [
-        pub
-        for pub in TermPublication.objects.filter(
+    publications = list(
+        TermPublication.objects.filter(
             student=student, status=TermPublication.Status.PUBLISHED
-        ).select_related("term").order_by("-term__start_date")
-        if publication.guardian_visible(pub)
-    ]
+        )
+        .select_related("term")
+        .order_by("-term__start_date")
+    )
+    visible = publication.guardian_visible_many(publications)
+    return [pub for pub in publications if visible[pub.pk]]
 
 
 def child_summaries(children):
@@ -177,14 +179,16 @@ def child_summaries(children):
             absent[student_id] = absent.get(student_id, 0) + row["n"]
 
     latest = {}
-    for card in (
+    cards = list(
         TermPublication.objects.filter(
             student__in=students, status=TermPublication.Status.PUBLISHED
         )
         .select_related("term")
         .order_by("student_id", "-term__start_date", "-pk")
-    ):
-        if card.student_id not in latest and publication.guardian_visible(card):
+    )
+    visible_cards = publication.guardian_visible_many(cards)
+    for card in cards:
+        if card.student_id not in latest and visible_cards[card.pk]:
             latest[card.student_id] = card
 
     summaries = []
