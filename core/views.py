@@ -35,7 +35,7 @@ from core.authorization import (
     term_remark_sections,
     user_areas,
 )
-from core.tables import Column, build_table
+from core.tables import Column, build_table, parse_choice
 from core.forms import (
     AcademicEnrollmentForm,
     AcademicTermForm,
@@ -2258,9 +2258,18 @@ def guardian_access_revoke(request, pk):
     )
 
 
+STUDENT_COLUMNS = (
+    Column("Name", "name", ("full_name",)),
+    Column("Status", "status", ("status",)),
+    Column("Email"),
+    Column("Phone"),
+)
+
+
 @administrator_required("core.view_student")
 def student_list(request):
     query = request.GET.get("q", "").strip()
+    status = parse_choice(request, "status", Student.Status.choices)
     students = Student.objects.all()
     if query:
         students = students.filter(
@@ -2268,10 +2277,19 @@ def student_list(request):
             | Q(email__icontains=query)
             | Q(phone__icontains=query)
         )
+    if status:
+        students = students.filter(status=status)
+    table = build_table(request, students, STUDENT_COLUMNS, "name")
     return render(
         request,
         "core/student_list.html",
-        {"students": students, "query": query},
+        {
+            "students": table.page,
+            "table": table,
+            "query": query,
+            "status": status,
+            "status_choices": Student.Status.choices,
+        },
     )
 
 

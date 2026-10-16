@@ -3,7 +3,7 @@ from datetime import date, timedelta
 from django.test import TestCase
 from django.urls import reverse
 
-from core.models import AttendanceRegister
+from core.models import Applicant, AttendanceRegister, Student
 from core.tests.test_authorization import AttendanceFixtureMixin, AuthorizationClientsMixin
 
 
@@ -59,6 +59,69 @@ class AttendanceTableTests(AuthorizationClientsMixin, AttendanceFixtureMixin, Te
         self.assertIsNotNone(first.context["section_summary"])
         self.assertEqual(first.context["section_summary"], second.context["section_summary"])
         self.assertEqual(first.context["section_total"], second.context["section_total"])
+
+    def test_non_admin_still_forbidden(self):
+        self.assertEqual(self.non_admin.get(self.url).status_code, 403)
+
+
+def make_students(count):
+    students = []
+    for index in range(count):
+        applicant = Applicant.objects.create(full_name=f"Student {index:02d}")
+        applicant.record_admission_decision(Applicant.AdmissionStatus.ACCEPTED)
+        students.append(applicant.progress_to_student())
+    return students
+
+
+class StudentTableTests(AuthorizationClientsMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.students = make_students(30)
+        self.url = reverse("core:student-list")
+
+    def names(self, response):
+        return [student.full_name for student in response.context["students"]]
+
+    def test_pagination_25_then_remainder_sorted_by_name(self):
+        page1 = self.administrator.get(self.url)
+        page2 = self.administrator.get(self.url, {"page": 2})
+        self.assertEqual(len(self.names(page1)), 25)
+        self.assertEqual(len(self.names(page2)), 5)
+        self.assertEqual(self.names(page1)[0], "Student 00")
+        self.assertContains(page1, "Showing 1–25 of 30")
+
+    def test_sort_descending_by_name(self):
+        response = self.administrator.get(self.url, {"sort": "-name"})
+        self.assertEqual(self.names(response)[0], "Student 29")
+        self.assertContains(response, 'aria-sort="descending"')
+
+    def test_status_filter(self):
+        Student.objects.filter(pk=self.students[0].pk).update(status=Student.Status.INACTIVE)
+        response = self.administrator.get(self.url, {"status": "INACTIVE"})
+        self.assertEqual(self.names(response), ["Student 00"])
+        self.assertContains(response, "Showing 1–1 of 1")
+
+    def test_invalid_status_is_ignored(self):
+        response = self.administrator.get(self.url, {"status": "BOGUS"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(self.names(response)), 25)
+
+    def test_search_and_status_survive_pagination_links(self):
+        response = self.administrator.get(self.url, {"q": "Student", "status": "ACTIVE"})
+        self.assertContains(response, "q=Student")
+        self.assertContains(response, "status=ACTIVE")
+        self.assertContains(response, "page=2")
+
+    def test_filter_with_no_matches_offers_clear_filters(self):
+        response = self.administrator.get(self.url, {"q": "zzz-no-match"})
+        self.assertContains(response, "No Students found.")
+        self.assertContains(response, "No results")
+        self.assertContains(response, "Clear filters")
+
+    def test_search_label_and_clear_search_from_phase0_remain(self):
+        response = self.administrator.get(self.url, {"q": "Student"})
+        self.assertContains(response, 'for="student-search"')
+        self.assertContains(response, "Clear search")
 
     def test_non_admin_still_forbidden(self):
         self.assertEqual(self.non_admin.get(self.url).status_code, 403)
