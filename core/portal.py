@@ -96,10 +96,123 @@ def visible_publications(student):
     from core import publication
     from core.models import TermPublication
 
-    return [
-        pub
-        for pub in TermPublication.objects.filter(
+    publications = list(
+        TermPublication.objects.filter(
             student=student, status=TermPublication.Status.PUBLISHED
-        ).select_related("term").order_by("-term__start_date")
-        if publication.guardian_visible(pub)
-    ]
+        )
+        .select_related("term")
+        .order_by("-term__start_date")
+    )
+    visible = publication.guardian_visible_many(publications)
+    return [pub for pub in publications if visible[pub.pk]]
+
+
+def child_summaries(children):
+    """One batched, read-only dashboard summary per visible child (G-07).
+
+    A constant number of queries regardless of how many children the guardian
+    has: placements and attendance counts are fetched in bulk, never per child.
+    Report cards come from the existing published snapshot
+    (visible_publications semantics), never recomputed.
+    """
+    from django.db.models import Count
+
+    from core import guardian_access, publication, reports
+    from core.models import (
+        AcademicEnrollment,
+        AttendanceEntry,
+        AttendanceStatus,
+        TermPublication,
+        business_today,
+    )
+
+    visible = [item for item in children if item["visible"]]
+    students = [item["student"] for item in visible]
+    if not students:
+        return []
+
+    today = business_today()
+    by_student = {}
+    newest_year = {}
+    for enrollment in (
+        AcademicEnrollment.objects.filter(student__in=students)
+        .select_related("academic_year", "class_grade", "section")
+        .order_by("student_id", "-start_date")
+    ):
+        by_student.setdefault(enrollment.student_id, []).append(enrollment)
+        newest_year.setdefault(enrollment.student_id, enrollment.academic_year_id)
+
+    placements = {}
+    for student_id, rows in by_student.items():
+        for enrollment in rows:
+            if guardian_access._effective_within_year(enrollment, today):
+                placements[student_id] = {
+                    "academic_year": enrollment.academic_year.name,
+                    "class_grade": enrollment.class_grade.name,
+                    "section": enrollment.section.name,
+                    "roll_number": enrollment.roll_number,
+                }
+                break
+
+    present = {}
+    absent = {}
+    for row in (
+        reports.reportable_entries(
+            AttendanceEntry.objects.filter(
+                academic_enrollment__student__in=students,
+                register__academic_year_id__in=set(newest_year.values()),
+            )
+        )
+        .values(
+            "academic_enrollment__student_id",
+            "register__academic_year_id",
+            "status",
+        )
+        .annotate(n=Count("id"))
+    ):
+        student_id = row["academic_enrollment__student_id"]
+        if row["register__academic_year_id"] != newest_year.get(student_id):
+            continue
+        if row["status"] == AttendanceStatus.PRESENT:
+            present[student_id] = present.get(student_id, 0) + row["n"]
+        else:
+            absent[student_id] = absent.get(student_id, 0) + row["n"]
+
+    latest = {}
+    cards = list(
+        TermPublication.objects.filter(
+            student__in=students, status=TermPublication.Status.PUBLISHED
+        )
+        .select_related("term")
+        .order_by("student_id", "-term__start_date", "-pk")
+    )
+    visible_cards = publication.guardian_visible_many(cards)
+    for card in cards:
+        if card.student_id not in latest and visible_cards[card.pk]:
+            latest[card.student_id] = card
+
+    summaries = []
+    for item in visible:
+        student = item["student"]
+        student_id = student.pk
+        present_n = present.get(student_id, 0)
+        absent_n = absent.get(student_id, 0)
+        total = present_n + absent_n
+        summaries.append(
+            {
+                "name": student.full_name,
+                "placement": placements.get(student_id),
+                "status": student.get_status_display(),
+                "attendance": {
+                    "present": present_n,
+                    "absent": absent_n,
+                    "total": total,
+                    "percentage": reports.percentage(present_n, absent_n),
+                }
+                if total
+                else None,
+                "latest_report_card": latest.get(student_id),
+                "grant": item["grant"],
+            }
+        )
+    return summaries

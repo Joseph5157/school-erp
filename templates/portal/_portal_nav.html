@@ -1,0 +1,12 @@
+{% comment %}One nav list reused by the desktop header nav and the mobile tab bar.{% endcomment %}
+<nav class="{{ nav_class }}" aria-label="Guardian Portal">
+    <ul>
+        <li><a href="{% url 'portal:home' %}"{% if here == 'home' %} class="active" aria-current="page"{% endif %}>Home</a></li>
+        <li><a href="{% url 'portal:notices' %}"{% if here == 'notices' or here == 'notice' %} class="active" aria-current="page"{% endif %}>Notices</a></li>
+        {% if nav_grant %}
+        <li><a href="{% url 'portal:child' nav_grant.public_id %}"{% if here == 'child' %} class="active" aria-current="page"{% endif %}>Overview</a></li>
+        <li><a href="{% url 'portal:attendance' nav_grant.public_id %}"{% if here == 'attendance' %} class="active" aria-current="page"{% endif %}>Attendance</a></li>
+        <li><a href="{% url 'portal:report-cards' nav_grant.public_id %}"{% if here == 'report-cards' or here == 'report-card' %} class="active" aria-current="page"{% endif %}>Report cards</a></li>
+        {% endif %}
+    </ul>
+</nav>

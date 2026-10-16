@@ -10,6 +10,7 @@ from core.documents import report_card as report_card_documents
 from core.documents import service
 from core.portal import (
     attendance_years,
+    child_summaries,
     portal_children,
     student_profile,
     submitted_attendance,
@@ -25,14 +26,27 @@ def _visible_grant_or_404(request, public_id):
 
 
 def _context(request, **extra):
-    return {"children": portal_children(request.user), **extra}
+    children = portal_children(request.user)
+    grant = extra.get("grant")
+    if grant is None:
+        grant = next((item["grant"] for item in children if item["visible"]), None)
+    return {"children": children, "nav_grant": grant, **extra}
 
 
 @require_safe
 @guardian_required
 def home(request):
-    return render(request, "portal/home.html",
-                  _context(request, notices=visible_announcements(request.user)[:3]))
+    children = portal_children(request.user)
+    return render(
+        request,
+        "portal/home.html",
+        _context(
+            request,
+            children=children,
+            notices=visible_announcements(request.user)[:3],
+            summaries=child_summaries(children),
+        ),
+    )
 
 
 @require_safe

@@ -119,6 +119,60 @@ def guardian_visible(publication):
     )
 
 
+def guardian_visible_many(publications):
+    """Batch form of `guardian_visible` for many publications at once.
+
+    Returns {publication.pk: bool}. Uses a constant number of queries however
+    many publications are passed: the released entries, their live results and
+    the referenced remarks are fetched in bulk, then the identical fingerprint
+    comparison as `guardian_visible` is applied to each candidate. Only
+    PUBLISHED versions with released values unchanged since release are True;
+    no grade is recomputed and no result outside the released set is read.
+    """
+    publications = list(publications)
+    visible = {item.pk: False for item in publications}
+    candidates = [
+        item for item in publications if item.status == TermPublication.Status.PUBLISHED
+    ]
+    if not candidates:
+        return visible
+
+    entry_ids = {}
+    result_ids = set()
+    for row in TermPublicationEntry.objects.filter(publication__in=candidates).values(
+        "publication_id", "result_id"
+    ):
+        entry_ids.setdefault(row["publication_id"], []).append(row["result_id"])
+        result_ids.add(row["result_id"])
+
+    values_by_result = {}
+    if result_ids:
+        for result in _results_queryset().filter(pk__in=result_ids):
+            values_by_result[result.pk] = entry_values(result)
+
+    remark_ids = {
+        item.remark_id_ref for item in candidates if item.remark_id_ref is not None
+    }
+    remarks = {}
+    if remark_ids:
+        remarks = dict(
+            TermRemark.objects.filter(pk__in=remark_ids).values_list("pk", "remark")
+        )
+
+    for item in candidates:
+        entries = [
+            values_by_result[result_id]
+            for result_id in entry_ids.get(item.pk, [])
+            if result_id in values_by_result
+        ]
+        if item.remark_id_ref is None:
+            remark = None
+        else:
+            remark = {"id": item.remark_id_ref, "text": remarks.get(item.remark_id_ref)}
+        visible[item.pk] = fingerprint(entries, remark) == item.fingerprint
+    return visible
+
+
 def current_publication(student, term):
     return TermPublication.objects.filter(
         student=student, term=term, status__in=TermPublication.CURRENT_STATUSES
