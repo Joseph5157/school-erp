@@ -740,3 +740,25 @@ blank and "A2" when real.
 **Deferred findings (unchanged, listed in `docs/GUARDIAN_UI_UX_RETEST.md` §10):**
 G-06, G-08, G-09, G-11, G-12, G-13, G-17.
 
+### Deferred Low findings from the final review (recorded, not implemented)
+
+- **Brittle markup-specific assertions** — some Sprint 1 tests match exact HTML
+  fragments or `aria-current` counts (e.g. `test_home_marks_only_home_active`, the
+  attendance-line assertion), so a shell/markup change can fail them without a
+  behaviour regression. Prefer per-link and context-value assertions.
+- **Broader batch parity / isolation test coverage** — add a data-driven test
+  comparing `guardian_visible_many` with `guardian_visible` across non-PUBLISHED
+  mixes, duplicate publication objects and mixed terms, plus an explicit
+  cross-publication isolation case. Isolation is currently guaranteed
+  structurally and only covered indirectly.
+- **Repeated `portal_children` queries** — the home page calls `portal_children`
+  three times (view + `_context` + `visible_announcements`). Pre-existing and
+  constant with respect to child count; compute once and pass it through.
+- **Document the FINALIZED assessment assumption** — the constant-query claim of
+  `guardian_visible_many` assumes every released result's assessment stays
+  FINALIZED, so `entry_values`/`grade_for` never reaches `applicable_scale()`.
+  Add a code comment stating the assumption.
+- **Inaccessible / untracked audit evidence references** — the plan and PR cite
+  `docs/GUARDIAN_UI_UX_RETEST.md` and `docs/guardian-retest/`, which are not
+  tracked. Commit them, or drop the references.
+
