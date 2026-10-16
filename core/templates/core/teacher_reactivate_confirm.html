@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Reactivate teacher login{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Reactivate {{ teacher.username }}</h1>
+<p>They can sign in again with their existing password.</p>
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-primary">Reactivate login</button>
+    <a class="btn btn-link" href="{% url 'core:teacher-detail' teacher.pk %}">Cancel</a>
+</form>
+{% endblock %}

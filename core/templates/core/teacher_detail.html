@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}{{ teacher.get_full_name|default:teacher.username }}{% endblock %}
+{% block content %}
+{% include "partials/_page_header.html" with eyebrow="Teacher login" title=teacher.get_full_name|default:teacher.username purpose=teacher.username only %}
+<p>{% if teacher.is_active %}{% include "partials/_status_badge.html" with label="Active" tone="active" only %}{% else %}{% include "partials/_status_badge.html" with label="Inactive" tone="inactive" only %}{% endif %}</p>
+<dl class="row">
+    <dt class="col-sm-3">Username</dt><dd class="col-sm-9">{{ teacher.username }}</dd>
+    <dt class="col-sm-3">Email</dt><dd class="col-sm-9">{{ teacher.email|default:"-" }}</dd>
+    <dt class="col-sm-3">Last sign-in</dt><dd class="col-sm-9">{{ teacher.last_login|date:"j M Y, H:i"|default:"Never" }}</dd>
+    <dt class="col-sm-3">Must change password</dt><dd class="col-sm-9">{% if teacher.must_change_password %}Yes{% else %}No{% endif %}</dd>
+</dl>
+<div class="erp-form-actions mb-4">
+    <a class="btn btn-outline-secondary" href="{% url 'core:teacher-reset-password' teacher.pk %}">Reset password</a>
+    <a class="btn btn-outline-secondary" href="{% url 'core:teacher-username' teacher.pk %}">Change username</a>
+    {% if teacher.is_active %}
+    <a class="btn btn-danger" href="{% url 'core:teacher-deactivate' teacher.pk %}">Deactivate</a>
+    {% else %}
+    <a class="btn btn-primary" href="{% url 'core:teacher-reactivate' teacher.pk %}">Reactivate</a>
+    {% endif %}
+</div>
+<h2 class="h5">Assignments</h2>
+<p class="mb-1"><strong>Subjects</strong></p>
+<ul>
+    {% for row in subject_assignments %}<li>{{ row.offering.academic_year.name }}: {{ row.offering.subject.name }} &middot; {{ row.section }}</li>{% empty %}<li class="text-muted">None</li>{% endfor %}
+</ul>
+<p class="mb-1"><strong>Class teacher</strong></p>
+<ul>
+    {% for row in class_assignments %}<li>{{ row.academic_year.name }}: {{ row.section }}: {{ row.start_date }} &ndash; {{ row.end_date|default:"open" }}</li>{% empty %}<li class="text-muted">None</li>{% endfor %}
+</ul>
+<p><a href="{% url 'core:teacher-load' teacher.pk %}">View full workload</a></p>
+<h2 class="h5 mt-4">Recent security events</h2>
+<div class="erp-table-scroll" role="region" aria-label="Recent security events" tabindex="0">
+<table class="table">
+    <caption class="visually-hidden">Recent security events</caption>
+    <thead><tr><th scope="col">Event</th><th scope="col">When</th><th scope="col">By</th></tr></thead>
+    <tbody>
+        {% for event in events %}
+        <tr><td>{{ event.get_event_type_display }}</td><td>{{ event.occurred_at|date:"j M Y, H:i" }}</td><td>{{ event.actor.username|default:"-" }}</td></tr>
+        {% empty %}
+        <tr><td colspan="3">No events recorded.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+{% endblock %}

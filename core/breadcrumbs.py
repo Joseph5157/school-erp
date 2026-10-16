@@ -28,6 +28,7 @@ _APPLICANTS = Crumb("Applicants", "core:applicant-list")
 _ATTENDANCE = Crumb("Attendance", "core:attendance-register-list")
 _ANNOUNCEMENTS = Crumb("Announcements", "core:announcement-list")
 _TEACHERS = Crumb("Teachers", "core:teacher-list")
+_TEACHER = Crumb("Teacher", "core:teacher-detail", True)
 
 RULES = {
     "student-detail": Rule("student-list", (_STUDENTS,), "Student"),
@@ -44,6 +45,12 @@ RULES = {
     "attendance-entry-correct": Rule("attendance-register-list", (_ATTENDANCE,), "Correct entry"),
     "announcement-create": Rule("announcement-list", (_ANNOUNCEMENTS,), "New announcement"),
     "teacher-create": Rule("teacher-list", (_TEACHERS,), "New teacher"),
+    "teacher-detail": Rule("teacher-list", (_TEACHERS,), "Teacher"),
+    "teacher-reset-password": Rule("teacher-list", (_TEACHERS, _TEACHER), "Reset password"),
+    "teacher-username": Rule("teacher-list", (_TEACHERS, _TEACHER), "Change username"),
+    "teacher-deactivate": Rule("teacher-list", (_TEACHERS, _TEACHER), "Deactivate"),
+    "teacher-reactivate": Rule("teacher-list", (_TEACHERS, _TEACHER), "Reactivate"),
+    "teacher-load": Rule("teacher-list", (_TEACHERS, _TEACHER), "Workload"),
     "announcement-detail": Rule("announcement-list", (_ANNOUNCEMENTS,), "Announcement"),
 }
 

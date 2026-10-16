@@ -2,12 +2,14 @@
 
 from django.core.exceptions import ValidationError
 from django.db.models import Q
-from django.shortcuts import get_object_or_404, render
+from django.contrib import messages
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.cache import add_never_cache_headers
 
+from accounts.models import SecurityEvent
 from core import teacher_accounts
 from core.authorization import administrator_required
-from core.forms import TeacherCreateForm
+from core.forms import TeacherCreateForm, TeacherDeactivateForm, TeacherUsernameForm
 from core.tables import Column, build_table, parse_choice
 
 PERMISSION = "accounts.manage_teacher_accounts"
@@ -78,3 +80,82 @@ def teacher_create(request):
         else:
             return _teacher_slip(request, user, password, heading="Teacher account created")
     return render(request, "core/teacher_form.html", {"form": form})
+
+
+@administrator_required(PERMISSION)
+def teacher_detail(request, pk):
+    teacher = get_teacher_or_404(pk)
+    return render(request, "core/teacher_detail.html", {
+        "teacher": teacher,
+        "subject_assignments": teacher.assessment_assignments.select_related(
+            "offering__academic_year", "offering__class_grade", "offering__subject", "section"
+        ),
+        "class_assignments": teacher.class_teacher_assignments.select_related(
+            "academic_year", "section__class_grade"
+        ),
+        "events": SecurityEvent.objects.filter(subject_user=teacher)[:10],
+    })
+
+
+@administrator_required(PERMISSION)
+def teacher_reset_password(request, pk):
+    teacher = get_teacher_or_404(pk)
+    if request.method == "POST":
+        try:
+            password = teacher_accounts.reset_teacher_password(user=teacher, actor=request.user)
+        except ValidationError as error:
+            messages.error(request, " ".join(error.messages))
+            return redirect("core:teacher-detail", pk=teacher.pk)
+        return _teacher_slip(request, teacher, password, heading="Password reset")
+    return render(request, "core/teacher_reset_confirm.html", {"teacher": teacher})
+
+
+@administrator_required(PERMISSION)
+def teacher_username(request, pk):
+    teacher = get_teacher_or_404(pk)
+    form = TeacherUsernameForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            teacher_accounts.change_teacher_username(
+                user=teacher, new_username=form.cleaned_data["username"], actor=request.user
+            )
+        except ValidationError as error:
+            form.add_error("username", error)
+        else:
+            messages.success(request, "Username changed.")
+            return redirect("core:teacher-detail", pk=teacher.pk)
+    return render(request, "core/teacher_username_form.html", {"teacher": teacher, "form": form})
+
+
+@administrator_required(PERMISSION)
+def teacher_deactivate(request, pk):
+    teacher = get_teacher_or_404(pk)
+    form = TeacherDeactivateForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            teacher_accounts.deactivate_teacher(
+                user=teacher, reason=form.cleaned_data["reason"], actor=request.user
+            )
+        except ValidationError as error:
+            form.add_error(None, error)
+        else:
+            messages.success(request, "Teacher login deactivated. Open sessions have ended.")
+            return redirect("core:teacher-detail", pk=teacher.pk)
+    return render(request, "core/teacher_deactivate_confirm.html", {
+        "teacher": teacher, "form": form,
+        "assignment_count": teacher.assignment_count,
+    })
+
+
+@administrator_required(PERMISSION)
+def teacher_reactivate(request, pk):
+    teacher = get_teacher_or_404(pk)
+    if request.method == "POST":
+        try:
+            teacher_accounts.reactivate_teacher(user=teacher, actor=request.user)
+        except ValidationError as error:
+            messages.error(request, " ".join(error.messages))
+        else:
+            messages.success(request, "Teacher login reactivated. The password is unchanged.")
+        return redirect("core:teacher-detail", pk=teacher.pk)
+    return render(request, "core/teacher_reactivate_confirm.html", {"teacher": teacher})

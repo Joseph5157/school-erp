@@ -903,6 +903,14 @@ class GuardianUsernameForm(forms.Form):
     username = forms.CharField(max_length=30, label="New username", help_text=USERNAME_HELP)
 
 
+class TeacherUsernameForm(forms.Form):
+    username = forms.CharField(max_length=30, label="New username", help_text=USERNAME_HELP)
+
+
+class TeacherDeactivateForm(forms.Form):
+    reason = forms.CharField(max_length=200, help_text="Recorded permanently with the deactivation.")
+
+
 class RevocationForm(forms.Form):
     reason = forms.CharField(max_length=200, help_text="Recorded permanently with the revocation.")
 

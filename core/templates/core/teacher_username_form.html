@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Change username{% endblock %}
+{% block content %}
+{% include "partials/_page_header.html" with eyebrow="Teacher login" title="Change username" purpose=teacher.username only %}
+<form method="post" class="erp-form">
+    {% csrf_token %}
+    {% include "partials/_form_required_legend.html" %}
+    {% for field in form %}{% include "partials/_form_field.html" with field=field only %}{% endfor %}
+    <div class="erp-form-actions">
+        <button type="submit" class="btn btn-primary">Change username</button>
+        <a class="btn btn-link" href="{% url 'core:teacher-detail' teacher.pk %}">Cancel</a>
+    </div>
+</form>
+{% endblock %}

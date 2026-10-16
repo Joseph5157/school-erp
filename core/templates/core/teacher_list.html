@@ -22,7 +22,7 @@
     <tbody>
         {% for teacher in table.page %}
         <tr>
-            <td>{{ teacher.get_full_name|default:teacher.username }}</td>
+            <td><a href="{% url 'core:teacher-detail' teacher.pk %}">{{ teacher.get_full_name|default:teacher.username }}</a></td>
             <td>{{ teacher.username }}</td>
             <td>{{ teacher.email|default:"-" }}</td>
             <td>{% if teacher.is_active %}{% include "partials/_status_badge.html" with label="Active" tone="active" only %}{% else %}{% include "partials/_status_badge.html" with label="Inactive" tone="inactive" only %}{% endif %}</td>

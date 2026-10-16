@@ -1,12 +1,13 @@
 from datetime import date
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.test import TestCase
 from django.urls import reverse
 
 from accounts.models import SecurityEvent
 from core import teacher_accounts
-from core.models import TEACHERS_GROUP_NAME, SectionClassTeacher
+from core.models import TEACHERS_GROUP_NAME, AcademicYear, SectionClassTeacher
 from core.tests.phase4_fixtures import Phase4Fixture
 from core.tests.test_authorization import AuthorizationClientsMixin
 
@@ -162,3 +163,103 @@ class TeacherCreateTests(AuthorizationClientsMixin, TestCase):
         response = self.administrator.post(self.url, {**self.data, "first_name": ""})
         self.assertContains(response, "erp-field-errors")
         self.assertFalse(User.objects.filter(username="asha.rao").exists())
+
+
+class TeacherManageTests(AuthorizationClientsMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.teacher, self.password = add_teacher(self.admin_user, "asha.rao")
+
+    def url(self, name):
+        return reverse(f"core:{name}", args=[self.teacher.pk])
+
+    def test_detail_shows_profile_workload_link_events_and_actions(self):
+        response = self.administrator.get(self.url("teacher-detail"))
+        self.assertContains(response, "asha.rao")
+        self.assertContains(response, reverse("core:teacher-load", args=[self.teacher.pk]))
+        self.assertContains(response, "Teacher account created")
+        for name in ("teacher-reset-password", "teacher-username", "teacher-deactivate"):
+            self.assertContains(response, self.url(name))
+
+    def test_list_names_link_to_detail(self):
+        response = self.administrator.get(reverse("core:teacher-list"))
+        self.assertContains(response, f'href="{self.url("teacher-detail")}"')
+
+    def test_every_page_refuses_non_admin_and_anonymous(self):
+        for name in ("teacher-detail", "teacher-reset-password", "teacher-username",
+                     "teacher-deactivate", "teacher-reactivate"):
+            with self.subTest(name=name):
+                self.assertEqual(self.non_admin.get(self.url(name)).status_code, 403)
+                self.assertEqual(self.non_admin.post(self.url(name)).status_code, 403)
+                self.assertEqual(self.anonymous.get(self.url(name)).status_code, 302)
+
+    def test_non_teacher_and_superuser_targets_are_404_everywhere(self):
+        root = User.objects.create_superuser(username="root2", password="pass-12345")
+        root.groups.add(Group.objects.get(name=TEACHERS_GROUP_NAME))
+        for target in (self.admin_user, root):
+            for name in ("teacher-detail", "teacher-reset-password", "teacher-username",
+                         "teacher-deactivate", "teacher-reactivate"):
+                with self.subTest(target=target.username, name=name):
+                    url = reverse(f"core:{name}", args=[target.pk])
+                    self.assertEqual(self.administrator.get(url).status_code, 404)
+                    self.assertEqual(
+                        self.administrator.post(url, {"reason": "x", "username": "zz.zz"})
+                        .status_code, 404)
+        self.assertTrue(User.objects.get(pk=self.admin_user.pk).is_active)
+
+    def test_reset_get_confirms_and_post_shows_slip(self):
+        confirm = self.administrator.get(self.url("teacher-reset-password"))
+        self.assertContains(confirm, "Reset password")
+        self.assertEqual(User.objects.get(pk=self.teacher.pk).session_version, 0)
+        response = self.administrator.post(self.url("teacher-reset-password"))
+        self.assertContains(response, "Temporary password")
+        self.assertIn("no-store", response["Cache-Control"])
+        self.assertNotEqual(response.context["password"], self.password)
+        self.assertEqual(User.objects.get(pk=self.teacher.pk).session_version, 1)
+
+    def test_username_change(self):
+        self.assertContains(self.administrator.get(self.url("teacher-username")), "New username")
+        bad = self.administrator.post(self.url("teacher-username"), {"username": "x"})
+        self.assertContains(bad, "erp-field-errors")
+        done = self.administrator.post(self.url("teacher-username"), {"username": "asha.r"})
+        self.assertRedirects(done, self.url("teacher-detail"))
+        self.assertEqual(User.objects.get(pk=self.teacher.pk).username, "asha.r")
+
+    def test_deactivate_needs_reason_then_reactivate(self):
+        page = self.administrator.get(self.url("teacher-deactivate"))
+        self.assertContains(page, "assignment")  # states how many assignments remain on record
+        missing = self.administrator.post(self.url("teacher-deactivate"), {"reason": ""})
+        self.assertContains(missing, "erp-field-errors")
+        self.assertTrue(User.objects.get(pk=self.teacher.pk).is_active)
+        done = self.administrator.post(self.url("teacher-deactivate"), {"reason": "Left"})
+        self.assertRedirects(done, self.url("teacher-detail"))
+        self.assertFalse(User.objects.get(pk=self.teacher.pk).is_active)
+        self.assertContains(self.administrator.get(self.url("teacher-detail")), "Inactive")
+        back = self.administrator.post(self.url("teacher-reactivate"))
+        self.assertRedirects(back, self.url("teacher-detail"))
+        self.assertTrue(User.objects.get(pk=self.teacher.pk).is_active)
+
+    def test_administrator_who_is_also_a_teacher_cannot_deactivate_self(self):
+        self.admin_user.groups.add(Group.objects.get(name=TEACHERS_GROUP_NAME))
+        url = reverse("core:teacher-deactivate", args=[self.admin_user.pk])
+        response = self.administrator.post(url, {"reason": "Oops"})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "cannot deactivate your own login")
+        self.assertContains(response, "erp-form-errors")
+        self.assertTrue(User.objects.get(pk=self.admin_user.pk).is_active)
+
+    def test_breadcrumbs_link_back_to_the_teacher_and_the_list(self):
+        response = self.administrator.get(self.url("teacher-deactivate"))
+        self.assertContains(response, 'aria-label="Breadcrumb"')
+        self.assertContains(response, f'href="{reverse("core:teacher-list")}"')
+        self.assertContains(response, f'href="{self.url("teacher-detail")}"')
+
+    def test_assignments_page_links_to_teachers_page(self):
+        year = AcademicYear.objects.create(
+            name="2026-27", start_date=date(2026, 6, 1), end_date=date(2027, 3, 31)
+        )
+        response = self.administrator.get(
+            reverse("core:academic-year-teacher-assignments", args=[year.pk])
+        )
+        self.assertContains(response, reverse("core:teacher-list"))
+        self.assertNotContains(response, "site administration")
