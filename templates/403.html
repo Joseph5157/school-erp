@@ -2,18 +2,18 @@
 {% block title %}Access denied{% endblock %}
 {% block content %}
 <div class="erp-auth">
-    <h1 id="forbidden-title">You don't have guardian access</h1>
+    <h1 id="forbidden-title">You don't have access to this page</h1>
     <p class="text-secondary">
-        This page belongs to the Guardian Portal. The signed-in account is not linked
-        to a student, so no student information can be shown here.
+        Your signed-in account does not have permission for this area. No
+        information from this page can be shown here.
     </p>
     <p>
-        If you are a parent or guardian, sign in with the username the school gave you.
+        If you think you should be able to open it, contact the school office.
         Otherwise return to your own area.
     </p>
     <p class="mb-0">
-        <a class="btn btn-primary" href="{% url 'login' %}">Go to the sign-in page</a>
-        <a class="btn btn-outline-secondary" href="{% url 'home' %}">Go to my area</a>
+        <a class="btn btn-primary" href="{% url 'home' %}">Go to my area</a>
+        <a class="btn btn-outline-secondary" href="{% url 'login' %}">Go to the sign-in page</a>
     </p>
 </div>
 {% endblock %}
