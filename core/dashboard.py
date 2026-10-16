@@ -8,7 +8,7 @@ lacks the permission the destination page requires.
 from django.db.models import Min
 from django.urls import reverse
 
-from core import guardian_access, publication, reports
+from core import guardian_access, nav_badges, reports
 from core import models as core_models
 from core.models import (
     AcademicEnrollment,
@@ -64,7 +64,7 @@ def _applicants(today):
 
 def _publications(today):
     return _card(
-        "publications", "Results to publish", publication.stale_publications().count(),
+        "publications", "Results to publish", nav_badges.stale_publication_count(),
         "Published results that are out of date.",
         reverse("core:publications-stale"),
     )
@@ -79,12 +79,31 @@ def _access_reviews(today):
     )
 
 
+def _notifications(today):
+    return _card(
+        "notifications", "Messages to send", nav_badges.prepared_notification_count(),
+        "Prepared messages waiting to be sent.",
+        reverse("core:notifications-to-send"),
+        "May include messages that will be skipped for missing consent.",
+    )
+
+
+def _lockouts(today):
+    return _card(
+        "lockouts", "Sign-in lockouts", nav_badges.locked_username_count(),
+        "Usernames locked after failed sign-ins.",
+        reverse("core:login-lockouts"),
+    )
+
+
 # (builder, permission required by the destination page)
 _CARDS = (
     (_attendance, "core.view_attendanceregister"),
     (_applicants, "core.view_applicant"),
     (_publications, "core.view_termpublication"),
     (_access_reviews, "core.view_guardianaccessreview"),
+    (_notifications, "core.send_notification"),
+    (_lockouts, "accounts.clear_login_lockout"),
 )
 
 
