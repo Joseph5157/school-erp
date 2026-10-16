@@ -49,7 +49,7 @@
         </tr>
         {% empty %}
         <tr>
-            <td colspan="5">No Academic Years yet.</td>
+            <td colspan="5">No Academic Years yet.{% if perms.core.add_academicyear %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:academic-year-create' %}">Create academic year</a>{% endif %}</td>
         </tr>
         {% endfor %}
     </tbody>

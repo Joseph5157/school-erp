@@ -51,7 +51,7 @@
         </tr>
         {% empty %}
         <tr>
-            <td colspan="6">No attendance registers yet.</td>
+            <td colspan="6">No attendance registers yet.{% if perms.core.add_attendanceregister %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:attendance-register-create' %}">Open register</a>{% endif %}</td>
         </tr>
         {% endfor %}
     </tbody>

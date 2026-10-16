@@ -32,7 +32,7 @@
         </tr>
         {% empty %}
         <tr>
-            <td colspan="6">No teachers yet.</td>
+            <td colspan="6">No teachers yet.{% if perms.accounts.manage_teacher_accounts %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:teacher-create' %}">Add teacher</a>{% endif %}</td>
         </tr>
         {% endfor %}
     </tbody>

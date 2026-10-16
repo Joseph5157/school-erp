@@ -17,7 +17,7 @@
             <td>{% if notice.is_withdrawn %}Withdrawn{% else %}Live{% endif %}</td>
         </tr>
     {% empty %}
-        <tr><td colspan="4">No notices yet.</td></tr>
+        <tr><td colspan="4">No notices yet.{% if perms.core.add_announcement %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:announcement-create' %}">Publish a notice</a>{% endif %}</td></tr>
     {% endfor %}
     </tbody>
 </table>

@@ -29,7 +29,7 @@
         </tr>
         {% empty %}
         <tr>
-            <td colspan="4">No Students found.</td>
+            <td colspan="4">No Students found.{% if perms.core.view_applicant %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:applicant-list' %}">Review applicants</a>{% endif %}</td>
         </tr>
         {% endfor %}
     </tbody>

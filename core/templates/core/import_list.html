@@ -25,7 +25,7 @@
             <td>{{ batch.get_status_display }}</td>
         </tr>
     {% empty %}
-        <tr><td colspan="7">No imports yet.</td></tr>
+        <tr><td colspan="7">No imports yet.{% if perms.core.run_import %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:import-upload' %}">Start an import</a>{% endif %}</td></tr>
     {% endfor %}
     </tbody>
 </table>

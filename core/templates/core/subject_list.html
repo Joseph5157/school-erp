@@ -16,7 +16,7 @@
             <td>{% if perms.core.change_subject %}<a href="{% url 'core:subject-update' subject.pk %}">Edit</a>{% endif %}</td>
         </tr>
         {% empty %}
-        <tr><td colspan="4">No Subjects yet.</td></tr>
+        <tr><td colspan="4">No Subjects yet.{% if perms.core.add_subject %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:subject-create' %}">Add subject</a>{% endif %}</td></tr>
         {% endfor %}
     </tbody>
 </table>

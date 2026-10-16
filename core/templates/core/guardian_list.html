@@ -23,7 +23,7 @@
         </tr>
         {% empty %}
         <tr>
-            <td colspan="3">No Guardians yet.</td>
+            <td colspan="3">No Guardians yet.{% if perms.core.add_guardian %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:guardian-create' %}">Add guardian</a>{% endif %}</td>
         </tr>
         {% endfor %}
     </tbody>

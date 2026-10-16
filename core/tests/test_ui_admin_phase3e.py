@@ -1,4 +1,6 @@
 from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
 from django.template.loader import render_to_string
 from django.test import RequestFactory, SimpleTestCase, TestCase
 from django.urls import reverse
@@ -139,3 +141,71 @@ class SortSurvivesFilteringTests(AuthorizationClientsMixin, TestCase):
                 self.assertContains(
                     response, f'href="{reverse(name)}">{label}</a>', html=False
                 )
+
+
+User = get_user_model()
+
+# (list url name, existing empty text, create url name, label, view codename or None)
+EMPTY_ACTIONS = (
+    ("core:announcement-list", "No notices yet.", "core:announcement-create",
+     "Publish a notice", "view_announcement"),
+    ("core:guardian-list", "No Guardians yet.", "core:guardian-create",
+     "Add guardian", "view_guardian"),
+    ("core:import-list", "No imports yet.", "core:import-upload",
+     "Start an import", "view_importbatch"),
+    ("core:academic-year-list", "No Academic Years yet.", "core:academic-year-create",
+     "Create academic year", "view_academicyear"),
+    ("core:subject-list", "No Subjects yet.", "core:subject-create",
+     "Add subject", "view_subject"),
+    ("core:class-grade-list", "No Classes/Grades yet.", "core:class-grade-create",
+     "Add class/grade", "view_classgrade"),
+    ("core:teacher-list", "No teachers yet.", "core:teacher-create",
+     "Add teacher", None),
+    ("core:applicant-list", "No Applicants yet.", "core:applicant-create",
+     "Register applicant", "view_applicant"),
+    ("core:student-list", "No Students found.", "core:applicant-list",
+     "Review applicants", "view_student"),
+    ("core:attendance-register-list", "No attendance registers yet.",
+     "core:attendance-register-create", "Open register", "view_attendanceregister"),
+)
+
+
+def action_html(url_name, label):
+    return (
+        '<br><a class="btn btn-outline-primary btn-sm mt-2" '
+        f'href="{reverse(url_name)}">{label}</a>'
+    )
+
+
+class EmptyStateActionTests(AuthorizationClientsMixin, TestCase):
+    def test_admin_sees_the_next_action_beside_the_existing_text(self):
+        for list_name, text, create_name, label, _view in EMPTY_ACTIONS:
+            with self.subTest(page=list_name):
+                response = self.administrator.get(reverse(list_name))
+                self.assertContains(response, text)
+                self.assertContains(response, action_html(create_name, label))
+
+    def test_view_only_user_gets_the_page_without_the_action(self):
+        for list_name, text, create_name, label, view in EMPTY_ACTIONS:
+            if view is None:
+                continue  # teacher list needs the same permission as its action
+            with self.subTest(page=list_name):
+                user = User.objects.create_user(username=f"v-{view}", password="pass-12345")
+                user.user_permissions.add(Permission.objects.get(codename=view))
+                client = self.client_class()
+                client.login(username=f"v-{view}", password="pass-12345")
+                response = client.get(reverse(list_name))
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, text)
+                self.assertNotContains(response, action_html(create_name, label))
+
+    def test_informational_lists_stay_plain(self):
+        for name, text in (
+            ("core:guardian-access-reviews", "No pending access reviews."),
+            ("core:login-lockouts", "No usernames are locked."),
+            ("core:publications-stale", "None."),
+        ):
+            with self.subTest(page=name):
+                response = self.administrator.get(reverse(name))
+                self.assertContains(response, text)
+                self.assertNotContains(response, "btn-outline-primary btn-sm mt-2")
