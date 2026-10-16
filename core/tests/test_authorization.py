@@ -147,6 +147,7 @@ class SchoolAdministratorsGroupMigrationTests(TestCase):
                 "withdraw_announcement",
                 "issue_document",
                 "view_issueddocument",
+                "manage_teacher_accounts",
             },
         )
 

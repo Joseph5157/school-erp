@@ -878,6 +878,13 @@ class GuardianVerificationForm(forms.Form):
     )
 
 
+class TeacherCreateForm(forms.Form):
+    first_name = forms.CharField(max_length=150)
+    last_name = forms.CharField(max_length=150)
+    username = forms.CharField(max_length=30, help_text=USERNAME_HELP)
+    email = forms.EmailField(required=False)
+
+
 class GuardianAccountCreateForm(GuardianVerificationForm):
     username = forms.CharField(max_length=30, help_text=USERNAME_HELP)
     field_order = ["username", "identity_verification_method", "identity_verification_note"]
@@ -894,6 +901,16 @@ class GuardianAccountLinkForm(GuardianVerificationForm):
 
 class GuardianUsernameForm(forms.Form):
     username = forms.CharField(max_length=30, label="New username", help_text=USERNAME_HELP)
+
+
+class TeacherUsernameForm(forms.Form):
+    username = forms.CharField(max_length=30, label="New username", help_text=USERNAME_HELP)
+
+
+class TeacherDeactivateForm(forms.Form):
+    reason = forms.CharField(
+        max_length=200, help_text="Recorded permanently with the deactivation."
+    )
 
 
 class RevocationForm(forms.Form):

@@ -1,6 +1,13 @@
 from django.urls import path
 
-from core import announcement_views, document_views, import_views, notification_views, views
+from core import (
+    announcement_views,
+    document_views,
+    import_views,
+    notification_views,
+    teacher_views,
+    views,
+)
 
 app_name = "core"
 
@@ -60,6 +67,16 @@ urlpatterns = [
         views.assignment_copy,
         name="assignment-copy",
     ),
+    path("teachers/", teacher_views.teacher_list, name="teacher-list"),
+    path("teachers/new/", teacher_views.teacher_create, name="teacher-create"),
+    path("teachers/<int:pk>/", teacher_views.teacher_detail, name="teacher-detail"),
+    path("teachers/<int:pk>/reset-password/", teacher_views.teacher_reset_password,
+         name="teacher-reset-password"),
+    path("teachers/<int:pk>/username/", teacher_views.teacher_username, name="teacher-username"),
+    path("teachers/<int:pk>/deactivate/", teacher_views.teacher_deactivate,
+         name="teacher-deactivate"),
+    path("teachers/<int:pk>/reactivate/", teacher_views.teacher_reactivate,
+         name="teacher-reactivate"),
     path("teachers/<int:pk>/load/", views.teacher_load, name="teacher-load"),
     path(
         "academic-years/<int:pk>/class-teachers/",

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Deactivate teacher login{% endblock %}
+{% block content %}
+{% include "partials/_page_header.html" with eyebrow="Teacher login" title="Deactivate teacher login" purpose=teacher.username only %}
+<div class="alert alert-warning" role="alert">
+    <p class="fw-semibold mb-2">This change has the following consequences:</p>
+    <ul class="mb-0">
+        <li>{{ teacher.get_full_name|default:teacher.username }} can no longer sign in.</li>
+        <li>Open sessions end immediately.</li>
+        <li>{{ assignment_count }} assignment{{ assignment_count|pluralize }} stay on record &mdash; reassign them first if classes still need teaching.</li>
+    </ul>
+</div>
+<form method="post" class="erp-form">
+    {% csrf_token %}
+    {% include "partials/_form_required_legend.html" %}
+    {% if form.non_field_errors %}<div class="erp-form-errors" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+    {% for field in form %}{% include "partials/_form_field.html" with field=field only %}{% endfor %}
+    <div class="erp-form-actions">
+        <button type="submit" class="btn btn-danger">Deactivate login</button>
+        <a class="btn btn-link" href="{% url 'core:teacher-detail' teacher.pk %}">Cancel</a>
+    </div>
+</form>
+{% endblock %}

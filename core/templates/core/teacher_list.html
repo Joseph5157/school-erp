@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Teachers{% endblock %}
+{% block content %}
+{% url 'core:teacher-create' as create_url %}
+{% include "partials/_page_header.html" with eyebrow="School setup" title="Teachers" purpose="Create and manage teacher logins. Classes and subjects are assigned from Academic Years." primary_url=create_url primary_label="Add teacher" only %}
+<form method="get" class="mb-3" role="search" aria-label="Search teachers">
+    <label for="teacher-search" class="form-label">Search teachers</label>
+    <div class="input-group">
+        <input type="search" id="teacher-search" name="q" value="{{ query }}" class="form-control" placeholder="Name, username, or email">
+        <label for="teacher-status" class="visually-hidden">Status</label>
+        <select id="teacher-status" name="status" class="form-select">
+            <option value="">All statuses</option>
+            {% for value, label in status_choices %}<option value="{{ value }}"{% if value == status %} selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+        <button type="submit" class="btn btn-outline-secondary">Search</button>
+        {% if query or status %}<a class="btn btn-link" href="{% url 'core:teacher-list' %}">Clear filters</a>{% endif %}
+    </div>
+</form>
+<div class="erp-table-scroll" role="region" aria-label="Teachers" tabindex="0">
+<table class="table">
+    {% include "partials/_table_head.html" with table=table caption="Teachers" only %}
+    <tbody>
+        {% for teacher in table.page %}
+        <tr>
+            <td><a href="{% url 'core:teacher-detail' teacher.pk %}">{{ teacher.get_full_name|default:teacher.username }}</a></td>
+            <td>{{ teacher.username }}</td>
+            <td>{{ teacher.email|default:"-" }}</td>
+            <td>{% if teacher.is_active %}{% include "partials/_status_badge.html" with label="Active" tone="active" only %}{% else %}{% include "partials/_status_badge.html" with label="Inactive" tone="inactive" only %}{% endif %}</td>
+            <td>{{ teacher.assignment_count }}</td>
+            <td>{{ teacher.last_login|date:"j M Y, H:i"|default:"Never" }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="6">No teachers yet.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+{% include "partials/_table_footer.html" with table=table only %}
+{% endblock %}

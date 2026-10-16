@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Reset password{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Reset password for {{ teacher.username }}</h1>
+<p>A new temporary password will be shown once. Every existing session of this login ends immediately, and the teacher must choose a new password at next sign-in.</p>
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger">Reset password</button>
+    <a class="btn btn-link" href="{% url 'core:teacher-detail' teacher.pk %}">Cancel</a>
+</form>
+{% endblock %}

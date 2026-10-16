@@ -5,7 +5,7 @@
 <p class="text-muted">
     Each Subject offering and Section has one teacher who enters its marks.
     A teacher is a login in the <strong>Teachers</strong> group ({{ teacher_count }} active);
-    add logins to that group in the site administration.
+    {% if perms.accounts.manage_teacher_accounts %}add teachers on the <a href="{% url 'core:teacher-list' %}">Teachers page</a>.{% else %}ask a school administrator to add teachers.{% endif %}
 </p>
 {% if perms.core.add_assessmentteacherassignment %}
     <a class="btn btn-primary mb-3" href="{% url 'core:teacher-assignment-create' academic_year.pk %}">Assign a teacher</a>
