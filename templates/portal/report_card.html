@@ -12,7 +12,7 @@
         <tr><td>{{ e.subject_label }}</td><td>{{ e.assessment_label }}</td><td>{{ e.assessment_date|date:"j M Y" }}</td>
             <td>{% if e.status == "MARKED" %}{{ e.score }} / {{ e.maximum_marks }}{% else %}Absent{% endif %}</td>
             <td>{% if e.percentage is not None %}{{ e.percentage }}%{% endif %}</td>
-            <td>{{ e.grade_label|default:"" }}</td><td>{{ e.pass_fail_label|default:"" }}</td></tr>
+            <td>{{ e.grade_label|default:"Not graded" }}</td><td>{{ e.pass_fail_label|default:"" }}</td></tr>
     {% empty %}
         <tr><td colspan="7">No results in this report card.</td></tr>
     {% endfor %}
