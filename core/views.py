@@ -1676,10 +1676,29 @@ def section_create(request, pk):
     )
 
 
+APPLICANT_COLUMNS = (
+    Column("Name", "name", ("full_name",)),
+    Column("Admission status", "status", ("admission_status",)),
+)
+
+
 @administrator_required("core.view_applicant")
 def applicant_list(request):
+    status = parse_choice(request, "status", Applicant.AdmissionStatus.choices)
     applicants = Applicant.objects.all()
-    return render(request, "core/applicant_list.html", {"applicants": applicants})
+    if status:
+        applicants = applicants.filter(admission_status=status)
+    table = build_table(request, applicants, APPLICANT_COLUMNS, "name")
+    return render(
+        request,
+        "core/applicant_list.html",
+        {
+            "applicants": table.page,
+            "table": table,
+            "status": status,
+            "status_choices": Applicant.AdmissionStatus.choices,
+        },
+    )
 
 
 @administrator_required("core.add_applicant")

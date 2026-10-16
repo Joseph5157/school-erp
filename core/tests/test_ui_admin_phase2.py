@@ -79,7 +79,7 @@ class OverviewCardTests(AuthorizationClientsMixin, AttendanceFixtureMixin, TestC
         data = card(overview_cards(self.admin_user), "applicants")
 
         self.assertEqual(data["count"], 1)
-        self.assertEqual(data["url"], reverse("core:applicant-list"))
+        self.assertEqual(data["url"], reverse("core:applicant-list") + "?status=PENDING")
 
     def test_applicants_card_clear_when_none_pending(self):
         data = card(overview_cards(self.admin_user), "applicants")

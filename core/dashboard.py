@@ -58,7 +58,7 @@ def _applicants(today):
     return _card(
         "applicants", "Applicants awaiting decision", pending.count(),
         "Accept or reject pending applications.",
-        reverse("core:applicant-list"), detail,
+        reverse("core:applicant-list") + "?status=PENDING", detail,
     )
 
 

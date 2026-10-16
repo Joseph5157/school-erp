@@ -3,6 +3,7 @@ from datetime import date, timedelta
 from django.test import TestCase
 from django.urls import reverse
 
+from core.dashboard import overview_cards
 from core.models import Applicant, AttendanceRegister, Student
 from core.tests.test_authorization import AttendanceFixtureMixin, AuthorizationClientsMixin
 
@@ -125,3 +126,53 @@ class StudentTableTests(AuthorizationClientsMixin, TestCase):
 
     def test_non_admin_still_forbidden(self):
         self.assertEqual(self.non_admin.get(self.url).status_code, 403)
+
+
+class ApplicantTableTests(AuthorizationClientsMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        for index in range(30):
+            Applicant.objects.create(full_name=f"Applicant {index:02d}")
+        accepted = Applicant.objects.get(full_name="Applicant 00")
+        accepted.record_admission_decision(Applicant.AdmissionStatus.ACCEPTED)
+        self.url = reverse("core:applicant-list")
+
+    def names(self, response):
+        return [applicant.full_name for applicant in response.context["applicants"]]
+
+    def test_pagination_and_default_name_sort(self):
+        page1 = self.administrator.get(self.url)
+        self.assertEqual(len(self.names(page1)), 25)
+        self.assertEqual(self.names(page1)[0], "Applicant 00")
+        self.assertContains(page1, "Showing 1–25 of 30")
+        self.assertContains(page1, "<caption")
+        self.assertContains(page1, 'scope="col"')
+
+    def test_sort_by_admission_status_descending_puts_pending_first(self):
+        response = self.administrator.get(self.url, {"sort": "-status"})
+        first = response.context["applicants"][0]
+        self.assertEqual(first.admission_status, Applicant.AdmissionStatus.PENDING)
+        self.assertNotIn("Applicant 00", self.names(response))  # the one ACCEPTED row is last
+        self.assertContains(response, 'aria-sort="descending"')
+
+    def test_status_filter_pending_excludes_decided(self):
+        response = self.administrator.get(self.url, {"status": "PENDING"})
+        self.assertNotIn("Applicant 00", self.names(response))
+        self.assertContains(response, "Showing 1–25 of 29")
+
+    def test_invalid_status_and_page_ignored(self):
+        response = self.administrator.get(self.url, {"status": "BOGUS", "page": "999"})
+        self.assertEqual(response.status_code, 200)
+
+    def test_empty_filter_result_keeps_empty_row_and_clear_link(self):
+        response = self.administrator.get(self.url, {"status": "REJECTED"})
+        self.assertContains(response, "No Applicants yet.")
+        self.assertContains(response, "Clear filters")
+
+    def test_non_admin_still_forbidden(self):
+        self.assertEqual(self.non_admin.get(self.url).status_code, 403)
+
+    def test_overview_card_links_to_pending_filter(self):
+        card = next(c for c in overview_cards(self.admin_user) if c["key"] == "applicants")
+        self.assertEqual(card["url"], reverse("core:applicant-list") + "?status=PENDING")
+        self.assertEqual(card["count"], 29)
