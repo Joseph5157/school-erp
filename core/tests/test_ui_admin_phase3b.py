@@ -5,7 +5,15 @@ from django.urls import reverse
 
 from core import announcements
 from core import guardian_accounts as ga
-from core.models import Announcement, Applicant, ClassGrade, Guardian, Section, Student
+from core.models import (
+    Announcement,
+    Applicant,
+    ClassGrade,
+    Guardian,
+    Notification,
+    Section,
+    Student,
+)
 from core.tests.test_authorization import AuthorizationClientsMixin
 from core.tests.test_phase6_access_boundary import METHOD
 from core.tests.test_phase7_announcements import AnnouncementFixture
@@ -48,6 +56,7 @@ class PreviewStepTests(PreviewFixture, TestCase):
         page = self.post()
         self.assertEqual(page.status_code, 200)
         self.assertFalse(Announcement.objects.exists())
+        self.assertEqual(Notification.objects.count(), 0)
         self.assertTemplateUsed(page, "core/announcement_preview.html")
         self.assertContains(page, "Sports Day")
         self.assertContains(page, "Line one<br>Line two &lt;b&gt;x&lt;/b&gt;")
@@ -122,6 +131,15 @@ class PreviewStepTests(PreviewFixture, TestCase):
         self.assertRedirects(page, reverse("core:announcement-detail", args=[notice.pk]))
         self.assertEqual((notice.title, notice.published_by.username),
                          ("Sports Day", "administrator"))
+
+    def test_stale_class_is_dropped_for_whole_school_through_preview_and_confirm(self):
+        preview = self.post(class_grade=self.grade7.pk, section=self.six_a.pk)
+        self.assertEqual(preview.context["counts"], {"guardians": 3, "opted_in": 2})
+        self.assertIsNone(preview.context["notice"].class_grade)
+        self.assertFalse(Announcement.objects.exists())
+        self.post(confirm="1", class_grade=self.grade7.pk, section=self.six_a.pk)
+        notice = Announcement.objects.get()
+        self.assertEqual((notice.audience, notice.class_grade, notice.section), (ALL, None, None))
 
     def test_confirm_shows_success_message(self):
         page = self.administrator.post(self.url, self.data(confirm="1"), follow=True)

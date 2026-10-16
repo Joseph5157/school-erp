@@ -6,11 +6,11 @@
 <form method="post" style="max-width: 40rem" data-erp-audience-form>
     {% csrf_token %}
     {{ form.non_field_errors }}
-    {{ form.title.as_field_group }}
-    {{ form.body.as_field_group }}
-    {{ form.audience.as_field_group }}
-    <div data-erp-audience-field="CLASS">{{ form.class_grade.as_field_group }}</div>
-    <div data-erp-audience-field="SECTION">{{ form.section.as_field_group }}</div>
+    {% include "partials/_form_field.html" with field=form.title only %}
+    {% include "partials/_form_field.html" with field=form.body only %}
+    <div class="mb-3">{{ form.audience.as_field_group }}</div>
+    <div data-erp-audience-field="CLASS">{% include "partials/_form_field.html" with field=form.class_grade only %}</div>
+    <div data-erp-audience-field="SECTION">{% include "partials/_form_field.html" with field=form.section only %}</div>
     <button type="submit" class="btn btn-primary">Preview notice</button>
     <a class="btn btn-link" href="{% url 'core:announcement-list' %}">Cancel</a>
 </form>
