@@ -17,22 +17,35 @@ from django.db.models import Count
 from accounts.models import SecurityEvent
 from accounts.usernames import clean_new_username
 from core.guardian_accounts import generate_temporary_password
-from core.models import ADMINISTRATORS_GROUP_NAME, TEACHERS_GROUP_NAME
+from core.models import TEACHERS_GROUP_NAME, GuardianAccount
 
 Event = SecurityEvent.EventType
 NOT_A_TEACHER = "That login is not a teacher account."
 
 
 def _manageable_teachers(queryset):
-    """Teachers-group logins that are not superusers, staff or administrators.
+    """Plain teacher logins only: the single predicate for the list, detail and lock.
 
-    Administrators who also teach are managed in the Django admin: letting one
-    administrator reset another's password would be privilege escalation.
-    One predicate, shared by the list/detail queryset and the row lock.
+    A target is in the Teachers group and is not a superuser or staff, holds no
+    direct permission, belongs to no other group (so never School Administrators
+    or any other role) and has no active Guardian Portal link. Anyone with
+    another role is managed in the Django admin: letting one manager reset
+    their password would be privilege escalation or a portal takeover.
+    Subqueries keep the Count annotations in teacher_queryset unaffected.
     """
-    return queryset.filter(
-        groups__name=TEACHERS_GROUP_NAME, is_superuser=False, is_staff=False
-    ).exclude(groups__name=ADMINISTRATORS_GROUP_NAME)
+    user_model = get_user_model()
+    return (
+        queryset.filter(groups__name=TEACHERS_GROUP_NAME, is_superuser=False, is_staff=False)
+        .exclude(pk__in=user_model.user_permissions.through.objects.values("user_id"))
+        .exclude(
+            pk__in=user_model.groups.through.objects.exclude(
+                group__name=TEACHERS_GROUP_NAME
+            ).values("user_id")
+        )
+        .exclude(
+            pk__in=GuardianAccount.objects.filter(revoked_at__isnull=True).values("user_id")
+        )
+    )
 
 
 def teacher_queryset():
@@ -87,6 +100,8 @@ def reset_teacher_password(*, user, actor):
     password = generate_temporary_password()
     with transaction.atomic():
         locked = _lock_teacher(user)
+        if getattr(actor, "pk", None) == locked.pk:
+            raise ValidationError("You cannot reset your own password here.")
         locked.set_password(password)
         locked.must_change_password = True
         locked.save(update_fields=["password", "must_change_password"])
@@ -99,6 +114,8 @@ def change_teacher_username(*, user, new_username, actor):
     """Mirror core.guardian_accounts.change_guardian_username for a teacher."""
     with transaction.atomic():
         locked = _lock_teacher(user)
+        if getattr(actor, "pk", None) == locked.pk:
+            raise ValidationError("You cannot change your own username here.")
         username = clean_new_username(new_username, exclude_user=locked)
         locked.username = username
         try:

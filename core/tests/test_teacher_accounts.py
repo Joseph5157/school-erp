@@ -1,11 +1,12 @@
 from django.contrib.auth import authenticate, get_user_model
-from django.contrib.auth.models import Group
+from django.contrib.auth.models import Group, Permission
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 
 from accounts.models import SecurityEvent
+from core import guardian_accounts as ga
 from core import teacher_accounts
-from core.models import TEACHERS_GROUP_NAME
+from core.models import TEACHERS_GROUP_NAME, Guardian, GuardianAccount
 
 User = get_user_model()
 
@@ -217,3 +218,69 @@ class TeacherServiceExcludesAdministratorsTests(TestCase):
             self.assertEqual(before, User.objects.values().get(pk=target.pk))
         self.assertFalse(SecurityEvent.objects.filter(subject_user__in=[
             self.admin_teacher, self.staff_teacher]).exists())
+
+
+class TeacherServiceExcludesDualRoleTests(TestCase):
+    def setUp(self):
+        self.actor = make_actor()
+        self.actor.groups.add(Group.objects.get(name="School Administrators"))
+
+    def teacher(self, username):
+        user, _ = teacher_accounts.create_teacher(
+            username=username, first_name="A", last_name="B", email="", actor=self.actor
+        )
+        return user
+
+    def link_guardian(self, user):
+        guardian = Guardian.objects.create(full_name="Meena Rao", phone="98450-12345")
+        return ga.link_existing_login(
+            guardian=guardian, username=user.username,
+            method=GuardianAccount.VerificationMethod.IN_PERSON_DOCUMENTS,
+            note="seen", actor=self.actor,
+        )
+
+    def assert_refused_and_unchanged(self, target):
+        calls = (
+            lambda: teacher_accounts.reset_teacher_password(user=target, actor=self.actor),
+            lambda: teacher_accounts.change_teacher_username(
+                user=target, new_username="new.name", actor=self.actor),
+            lambda: teacher_accounts.deactivate_teacher(
+                user=target, reason="x", actor=self.actor),
+            lambda: teacher_accounts.reactivate_teacher(user=target, actor=self.actor),
+        )
+        self.assertNotIn(target.pk, [t.pk for t in teacher_accounts.teacher_queryset()])
+        before = User.objects.values().get(pk=target.pk)
+        events = SecurityEvent.objects.count()
+        for index, call in enumerate(calls):
+            with self.subTest(call=index), self.assertRaises(ValidationError):
+                call()
+        self.assertEqual(before, User.objects.values().get(pk=target.pk))
+        self.assertEqual(events, SecurityEvent.objects.count())
+
+    def test_active_guardian_login_is_excluded_and_revoked_one_is_manageable(self):
+        user = self.teacher("both.roles")
+        account = self.link_guardian(user)
+        self.assert_refused_and_unchanged(user)
+        ga.revoke_account_link(account=account, actor=self.actor, reason="left")
+        queryset = teacher_accounts.teacher_queryset()
+        self.assertIn(user.pk, [t.pk for t in queryset])
+        teacher_accounts.reset_teacher_password(user=user, actor=self.actor)
+
+    def test_direct_permission_login_is_excluded(self):
+        user = self.teacher("perm.teacher")
+        user.user_permissions.add(Permission.objects.get(codename="view_student"))
+        self.assert_refused_and_unchanged(user)
+
+    def test_login_in_an_extra_group_is_excluded(self):
+        user = self.teacher("office.teacher")
+        user.groups.add(Group.objects.create(name="Front Office"))
+        self.assert_refused_and_unchanged(user)
+
+    def test_plain_teacher_cannot_reset_or_rename_themselves(self):
+        user = self.teacher("self.teacher")
+        with self.assertRaisesMessage(ValidationError, "cannot reset your own password"):
+            teacher_accounts.reset_teacher_password(user=user, actor=user)
+        with self.assertRaisesMessage(ValidationError, "cannot change your own username"):
+            teacher_accounts.change_teacher_username(user=user, new_username="x.y.z", actor=user)
+        with self.assertRaises(ValidationError):
+            teacher_accounts.deactivate_teacher(user=user, reason="x", actor=user)

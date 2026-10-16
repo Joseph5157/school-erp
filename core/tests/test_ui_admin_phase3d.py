@@ -6,8 +6,15 @@ from django.test import TestCase
 from django.urls import reverse
 
 from accounts.models import SecurityEvent
+from core import guardian_accounts as ga
 from core import teacher_accounts
-from core.models import TEACHERS_GROUP_NAME, AcademicYear, SectionClassTeacher
+from core.models import (
+    TEACHERS_GROUP_NAME,
+    AcademicYear,
+    Guardian,
+    GuardianAccount,
+    SectionClassTeacher,
+)
 from core.tests.phase4_fixtures import Phase4Fixture
 from core.tests.test_authorization import AuthorizationClientsMixin
 from core.tests.test_phase5_teacher_home import MONDAY, on
@@ -365,3 +372,34 @@ class TeacherSectionAssignmentEndToEndTests(Phase4Fixture, TestCase):
             start_date=date(2026, 6, 1),
         )
         self.assertContains(self.teacher.get(home), str(self.six_a))
+
+
+class TeacherDualRoleTargetTests(AuthorizationClientsMixin, TestCase):
+    def test_guardian_linked_and_permissioned_teachers_are_404_and_unlisted(self):
+        guardian_teacher, _ = add_teacher(self.admin_user, "guardian.teacher")
+        guardian = Guardian.objects.create(full_name="Meena Rao", phone="98450-12345")
+        ga.link_existing_login(
+            guardian=guardian, username="guardian.teacher",
+            method=GuardianAccount.VerificationMethod.IN_PERSON_DOCUMENTS,
+            note="seen", actor=self.admin_user,
+        )
+        perm_teacher, _ = add_teacher(self.admin_user, "perm.teacher")
+        perm_teacher.user_permissions.add(Permission.objects.get(codename="view_student"))
+        before = list(User.objects.order_by("pk").values_list(
+            "pk", "username", "password", "is_active", "session_version"))
+        events = SecurityEvent.objects.count()
+        for target in (guardian_teacher, perm_teacher):
+            for name in ("teacher-detail", "teacher-reset-password", "teacher-username",
+                         "teacher-deactivate", "teacher-reactivate"):
+                with self.subTest(target=target.username, name=name):
+                    url = reverse(f"core:{name}", args=[target.pk])
+                    self.assertEqual(self.administrator.get(url).status_code, 404)
+                    self.assertEqual(
+                        self.administrator.post(url, {"reason": "x", "username": "zz.zz"})
+                        .status_code, 404)
+        listing = self.administrator.get(reverse("core:teacher-list"))
+        self.assertNotContains(listing, "guardian.teacher")
+        self.assertNotContains(listing, "perm.teacher")
+        self.assertEqual(before, list(User.objects.order_by("pk").values_list(
+            "pk", "username", "password", "is_active", "session_version")))
+        self.assertEqual(events, SecurityEvent.objects.count())
