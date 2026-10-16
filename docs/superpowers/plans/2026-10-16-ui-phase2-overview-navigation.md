@@ -725,3 +725,9 @@ Verified 2026-10-16 on branch `ui/audit-phase2-overview-navigation`.
 - Real CSS tokens (`--erp-rule`, `--erp-ink-soft`, `--erp-radius`, `--erp-text-sm`) replaced the token names
   used in the plan.
 - Minor: the breadcrumb labels the student crumb generically ("Student") rather than with the student's name.
+
+**Deviations from the plan**
+- Breadcrumbs render in `templates/base.html`, not `_page_header.html`, so no per-page edits were needed.
+- Overview cards do not use `_status_badge.html`; they use the `erp-queue-card` tone classes.
+- The attendance card links to the Missing attendance report (`core:report-missing-attendance`, today's range), the same
+  `reports.missing_attendance` source it counts, rather than the register list.

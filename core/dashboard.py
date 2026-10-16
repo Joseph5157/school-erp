@@ -45,7 +45,9 @@ def _attendance(today):
     return _card(
         "attendance", "Attendance today", len(sections),
         "Sections whose register is not yet submitted today.",
-        reverse("core:attendance-register-list"), detail,
+        reverse("core:report-missing-attendance")
+        + f"?start={today:%Y-%m-%d}&end={today:%Y-%m-%d}",
+        detail,
     )
 
 

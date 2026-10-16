@@ -114,7 +114,19 @@ class OverviewCardTests(AuthorizationClientsMixin, AttendanceFixtureMixin, TestC
         self._open_today()
         data = self._attendance()
         self.assertEqual(data["count"], 1)
-        self.assertEqual(data["url"], reverse("core:attendance-register-list"))
+        today = core_models.business_today()
+        self.assertEqual(
+            data["url"],
+            reverse("core:report-missing-attendance")
+            + f"?start={today:%Y-%m-%d}&end={today:%Y-%m-%d}",
+        )
+
+    def test_attendance_card_link_lists_the_counted_section(self):
+        self._open_today()
+        url = self._attendance()["url"]
+        response = self.administrator.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, str(self.section))
 
     def test_attendance_card_zero_on_non_instructional_day(self):
         today = core_models.business_today()
