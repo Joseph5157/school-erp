@@ -5,6 +5,9 @@ from types import SimpleNamespace
 
 from django.template.loader import render_to_string
 from django.test import TestCase
+from django.urls import reverse
+
+from core.tests.test_phase6_access_boundary import BoundaryFixture
 
 GRANT_ID = uuid.UUID("11111111-1111-1111-1111-111111111111")
 PUB_ID = uuid.UUID("22222222-2222-2222-2222-222222222222")
@@ -55,3 +58,19 @@ class ReportCardGradeFallbackTests(TestCase):
         html = self.render("B1")
         self.assertIn(">B1<", html)
         self.assertNotIn("Not graded", html)
+
+
+class ForbiddenPageTests(BoundaryFixture, TestCase):
+    # BoundaryFixture.setUp already logs self.client in as the administrator.
+
+    def test_non_guardian_gets_403_with_branded_body(self):
+        response = self.client.get(reverse("portal:home"))
+        self.assertEqual(response.status_code, 403)
+        self.assertContains(response, 'id="forbidden-title"', status_code=403)
+        self.assertContains(response, reverse("login"), status_code=403)
+
+    def test_anonymous_still_redirects_not_403(self):
+        anonymous = self.client_class()
+        response = anonymous.get(reverse("portal:home"))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse("login"), response["Location"])
