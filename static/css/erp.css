@@ -525,3 +525,10 @@ body.has-tabbar .erp-messages {
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+
+.erp-queue-grid { display: grid; gap: var(--erp-space-4); grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }
+.erp-queue-card { background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius); padding: var(--erp-space-4); display: flex; flex-direction: column; gap: var(--erp-space-2); }
+.erp-queue-card--attention { border-left: 4px solid var(--erp-accent); }
+.erp-queue-title { font-size: 1rem; margin: 0; }
+.erp-queue-count { font-size: 2rem; font-weight: 700; margin: 0; line-height: 1.1; }
+.erp-queue-summary { margin: 0; color: var(--erp-ink-soft); }

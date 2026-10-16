@@ -2,4 +2,19 @@
 {% block title %}Overview{% endblock %}
 {% block content %}
 {% include "partials/_page_header.html" with eyebrow="School administration" title="Overview" purpose="What needs attention today." only %}
+{% if needs_setup %}
+<section class="erp-queue-card erp-queue-card--clear" aria-labelledby="setup-title">
+    <h2 class="erp-queue-title" id="setup-title">Set up your school</h2>
+    <p class="erp-queue-summary">Add an academic year and its classes and sections before daily work can appear here.</p>
+    <a class="btn btn-primary btn-sm" href="{% url 'core:academic-year-list' %}">Academic years</a>
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'core:class-grade-list' %}">Classes/Grades</a>
+</section>
+{% endif %}
+{% if cards %}
+<div class="erp-queue-grid">
+    {% for card in cards %}{% include "partials/_queue_card.html" with card=card only %}{% endfor %}
+</div>
+{% elif not needs_setup %}
+<p class="text-muted">Nothing to show for your role.</p>
+{% endif %}
 {% endblock %}

@@ -13,6 +13,7 @@ from accounts.models import SecurityEvent
 from core import (
     assessment_reports,
     assignments,
+    dashboard,
     guardian_access,
     guardian_accounts,
     publication,
@@ -738,7 +739,10 @@ def admin_overview(request):
     return render(
         request,
         "core/admin_overview.html",
-        {"cards": [], "needs_setup": False},
+        {
+            "cards": dashboard.overview_cards(request.user),
+            "needs_setup": dashboard.needs_setup(),
+        },
     )
 
 
