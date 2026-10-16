@@ -1,0 +1,14 @@
+<div class="erp-table-footer">
+    <p class="erp-table-count" role="status">{{ table.count_text }}{% if table.filtered and not table.paginator.count %} <a href="{{ table.clear_url }}">Clear filters</a>{% endif %}</p>
+    {% if table.paginator.num_pages > 1 %}
+    <nav class="erp-pagination" aria-label="Pagination">
+        <ul>
+            {% if table.prev_url %}<li><a href="{{ table.prev_url }}" rel="prev">Previous</a></li>{% endif %}
+            {% for link in table.page_links %}
+            <li>{% if link.current %}<span aria-current="page">{{ link.number }}</span>{% else %}<a href="{{ link.url }}" aria-label="Page {{ link.number }}">{{ link.number }}</a>{% endif %}</li>
+            {% endfor %}
+            {% if table.next_url %}<li><a href="{{ table.next_url }}" rel="next">Next</a></li>{% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>

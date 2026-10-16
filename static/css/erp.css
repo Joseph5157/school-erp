@@ -537,3 +537,14 @@ body.has-tabbar .erp-messages {
 .erp-breadcrumb li + li::before { content: "/"; margin-right: var(--erp-space-2); }
 .erp-breadcrumb a { color: var(--erp-accent); }
 .erp-breadcrumb li[aria-current] { color: var(--erp-ink); }
+
+.erp-sort-link { color: inherit; text-decoration: none; display: inline-flex; align-items: center; min-height: 2.75rem; }
+.erp-sort-link:hover { text-decoration: underline; }
+th[aria-sort="ascending"] .erp-sort-link::after { content: " \25B2"; font-size: var(--erp-text-xs); }
+th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size: var(--erp-text-xs); }
+.erp-table-footer { display: flex; flex-wrap: wrap; gap: var(--erp-space-3); align-items: center; justify-content: space-between; margin-top: var(--erp-space-3); }
+.erp-table-count { margin: 0; color: var(--erp-ink-soft); font-size: var(--erp-text-sm); }
+.erp-pagination ul { display: flex; flex-wrap: wrap; gap: var(--erp-space-1); list-style: none; margin: 0; padding: 0; }
+.erp-pagination a, .erp-pagination span { display: inline-flex; align-items: center; justify-content: center; min-width: 2.75rem; min-height: 2.75rem; padding: 0 var(--erp-space-3); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius-sm); background: var(--erp-surface); color: var(--erp-ink); text-decoration: none; }
+.erp-pagination a:hover { background: var(--erp-accent-wash); }
+.erp-pagination span[aria-current] { background: var(--erp-accent); border-color: var(--erp-accent); color: #fff; font-weight: 600; }
