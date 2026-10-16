@@ -75,7 +75,8 @@ def build_table(request, queryset, columns, default_sort, per_page=PER_PAGE):
     raw = request.GET.get("sort", "")
     desc = raw.startswith("-")
     key = raw[1:] if desc else raw
-    if key not in sortable:
+    explicit = key in sortable
+    if not explicit:
         desc = default_sort.startswith("-")
         key = default_sort[1:] if desc else default_sort
     active = sortable[key]
@@ -127,5 +128,5 @@ def build_table(request, queryset, columns, default_sort, per_page=PER_PAGE):
         if page.has_next()
         else "",
         page_links=page_links,
-        sort_param=raw if raw and (raw[1:] if raw.startswith("-") else raw) in sortable else "",
+        sort_param=token if explicit else "",
     )

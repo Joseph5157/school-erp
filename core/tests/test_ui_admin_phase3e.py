@@ -1,3 +1,5 @@
+import re
+
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
@@ -81,12 +83,46 @@ class SecondaryButtonStyleTests(SimpleTestCase):
         self.assertIn("var(--erp-ink)", rule)
         self.assertIn("var(--erp-ink-soft)", rule)
 
-    def test_disabled_buttons_have_a_distinct_not_allowed_look(self):
+    def tokens(self):
+        css = self.css()
+        root = css[css.index(":root {") :]
+        root = root[: root.index("}")]
+        return dict(re.findall(r"(--erp-[\w-]+):\s*(#[0-9a-fA-F]{6})", root))
+
+    def resolve(self, rule, prop):
+        match = re.search(rf"(?<![\w-]){prop}:\s*var\((--erp-[\w-]+)\)", rule)
+        self.assertIsNotNone(match, f"{prop} must use an --erp token")
+        return self.tokens()[match.group(1)]
+
+    @staticmethod
+    def luminance(hex_colour):
+        channels = []
+        for index in (1, 3, 5):
+            value = int(hex_colour[index : index + 2], 16) / 255
+            channels.append(
+                value / 12.92 if value <= 0.03928 else ((value + 0.055) / 1.055) ** 2.4
+            )
+        return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]
+
+    def contrast(self, first, second):
+        high, low = sorted((self.luminance(first), self.luminance(second)), reverse=True)
+        return (high + 0.05) / (low + 0.05)
+
+    def test_disabled_buttons_are_readable_and_distinct_without_opacity(self):
         rule = self.rule(".btn:disabled,")
         self.assertIn("not-allowed", rule)
-        self.assertIn("opacity", rule)
-        self.assertIn("var(--erp-rule)", rule)
         self.assertIn('[aria-disabled="true"]', rule)
+        self.assertIn("fieldset:disabled .btn", rule)
+        self.assertNotIn("opacity: .55", rule)
+        self.assertNotRegex(rule, r"opacity:\s*0?\.")
+        self.assertIn("dashed", rule)
+        text = self.resolve(rule, "color")
+        background = self.resolve(rule, "background-color")
+        self.assertGreaterEqual(self.contrast(text, background), 4.5)
+        tokens = self.tokens()
+        # Cannot be mistaken for the enabled primary (accent fill) or secondary (surface).
+        self.assertNotEqual(background, tokens["--erp-accent"])
+        self.assertNotEqual(background, tokens["--erp-surface"])
 
 
 class SortParamTests(TestCase):
@@ -104,6 +140,11 @@ class SortParamTests(TestCase):
     def test_set_with_valid_sort(self):
         self.assertEqual(self.sort_param("?sort=-name"), "-name")
         self.assertEqual(self.sort_param("?sort=name"), "name")
+
+    def test_sort_param_is_the_validated_token(self):
+        # build_table accepts exactly the whitelisted keys, so padded input is ignored.
+        self.assertEqual(self.sort_param("?sort=%20name"), "")
+        self.assertEqual(self.sort_param("?sort=--name"), "")
 
     def test_empty_with_bogus_or_unsortable_sort(self):
         self.assertEqual(self.sort_param("?sort=bogus"), "")

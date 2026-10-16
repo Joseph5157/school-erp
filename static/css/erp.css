@@ -89,15 +89,15 @@
 .btn.disabled,
 .btn[aria-disabled="true"],
 fieldset:disabled .btn {
-  opacity: .55;
-  border-color: var(--erp-rule);
+  --bs-btn-disabled-color: var(--erp-ink-soft);
+  --bs-btn-disabled-bg: var(--erp-paper);
+  --bs-btn-disabled-border-color: var(--erp-rule);
+  --bs-btn-disabled-opacity: 1;
+  color: var(--erp-ink-soft);
+  background-color: var(--erp-paper);
+  border: 1px dashed var(--erp-rule);
+  box-shadow: none;
   cursor: not-allowed;
-}
-.btn-outline-secondary:disabled,
-.btn-outline-secondary.disabled,
-.btn-outline-secondary[aria-disabled="true"] {
-  background-color: transparent;
-  border-color: var(--erp-rule);
 }
 :where(a, button, input, select, textarea, summary):focus-visible {
   outline: 3px solid var(--erp-focus-color);
