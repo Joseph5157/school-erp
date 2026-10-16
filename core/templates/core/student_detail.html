@@ -2,6 +2,7 @@
 {% block title %}{{ student.full_name }}{% endblock %}
 {% block content %}
 {% include "partials/_page_header.html" with eyebrow="Student record" title=student.full_name purpose="Identity, placement, relationships, and lifecycle history." status_label=student.get_status_display status_tone=student.status|lower only %}
+{% include "partials/_section_nav.html" with sections=profile_sections only %}
 <dl class="row">
     <dt class="col-sm-3">Admission number</dt>
     <dd class="col-sm-9">{{ student.admission_number|default:"-" }}
@@ -22,8 +23,9 @@
     <dd class="col-sm-9"><a href="{% url 'core:applicant-detail' student.applicant.pk %}">{{ student.applicant.full_name }}</a></dd>
 </dl>
 
-{% if perms.core.change_student %}
-<h2 class="h5">Change status</h2>
+{% if "status-change" in profile_section_ids %}
+<section id="status-change" aria-labelledby="status-change-heading">
+<h2 class="h5" id="status-change-heading">Change status</h2>
 <div class="mb-3">
     {% if student.status == "ACTIVE" %}
     <a class="btn btn-warning" href="{% url 'core:student-deactivate-confirm' student.pk %}">Deactivate student&hellip;</a>
@@ -35,9 +37,11 @@
     </form>
     {% endif %}
 </div>
+</section>
 {% endif %}
 
-<h2 class="h5">Status history</h2>
+<section id="status-history" aria-labelledby="status-history-heading">
+<h2 class="h5" id="status-history-heading">Status history</h2>
 <table class="table">
     <thead>
         <tr><th>When</th><th>From</th><th>To</th><th>Reason</th><th>By</th></tr>
@@ -56,8 +60,10 @@
         {% endfor %}
     </tbody>
 </table>
+</section>
 
-<h2 class="h5">Current placement</h2>
+<section id="placement" aria-labelledby="placement-heading">
+<h2 class="h5" id="placement-heading">Current placement</h2>
 {% if current_enrollment %}
 <dl class="row">
     <dt class="col-sm-3">Academic year</dt>
@@ -81,8 +87,10 @@
 {% if perms.core.view_studentresult %}
     <a class="btn btn-outline-secondary mb-3" href="{% url 'core:report-student-results' student.pk %}">Results and report cards</a>
 {% endif %}
+</section>
 
-<h2 class="h5">Enrollment history</h2>
+<section id="enrollment-history" aria-labelledby="enrollment-history-heading">
+<h2 class="h5" id="enrollment-history-heading">Enrollment history</h2>
 <table class="table">
     <thead>
         <tr>
@@ -114,8 +122,10 @@
         {% endfor %}
     </tbody>
 </table>
+</section>
 
-<h2 class="h5">Guardians</h2>
+<section id="guardians" aria-labelledby="guardians-heading">
+<h2 class="h5" id="guardians-heading">Guardians</h2>
 <table class="table">
     <thead>
         <tr>
@@ -136,4 +146,5 @@
         {% endfor %}
     </tbody>
 </table>
+</section>
 {% endblock %}

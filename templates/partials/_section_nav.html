@@ -1,0 +1,8 @@
+{% comment %}"On this page" jump menu. Input: sections = [{"id", "label"}, ...]. Renders nothing for fewer than two sections.{% endcomment %}{% if sections|length > 1 %}
+<nav class="erp-section-nav" aria-label="On this page">
+    <ul>
+        {% for section in sections %}<li><a href="#{{ section.id }}">{{ section.label }}</a></li>
+        {% endfor %}
+    </ul>
+</nav>
+{% endif %}

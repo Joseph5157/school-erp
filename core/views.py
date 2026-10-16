@@ -1871,6 +1871,14 @@ def guardian_detail(request, pk):
         context["consents"] = list(guardian.contact_consents.select_related("recorded_by"))
         if request.user.has_perm("core.add_guardiancontactconsent"):
             context["consent_form"] = ContactConsentForm()
+    context.update(
+        profile_sections(
+            ("applicants", "Associated applicants", True),
+            ("portal-account", "Portal account", "accounts" in context),
+            ("student-access", "Student access", "relationships" in context),
+            ("history", "Account history", "events" in context),
+        )
+    )
     return render(request, "core/guardian_detail.html", context)
 
 
@@ -2312,6 +2320,19 @@ def student_list(request):
     )
 
 
+def profile_sections(*candidates):
+    """Context for a profile page's "On this page" menu (audit F20).
+
+    Each candidate is (id, label, rendered). The same ``profile_section_ids`` list
+    gates the section in the template, so the menu and the page cannot drift.
+    """
+    sections = [{"id": sid, "label": label} for sid, label, rendered in candidates if rendered]
+    return {
+        "profile_sections": sections,
+        "profile_section_ids": [section["id"] for section in sections],
+    }
+
+
 @administrator_required("core.view_student")
 def student_detail(request, pk):
     student = get_object_or_404(Student, pk=pk)
@@ -2328,6 +2349,13 @@ def student_detail(request, pk):
             "guardian_links": guardian_links,
             "current_enrollment": current_enrollment,
             "enrollments": enrollments,
+            **profile_sections(
+                ("status-change", "Change status", request.user.has_perm("core.change_student")),
+                ("status-history", "Status history", True),
+                ("placement", "Current placement", True),
+                ("enrollment-history", "Enrollment history", True),
+                ("guardians", "Guardians", True),
+            ),
         },
     )
 

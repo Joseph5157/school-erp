@@ -589,3 +589,42 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 .erp-pagination a, .erp-pagination span { display: inline-flex; align-items: center; justify-content: center; min-width: 2.75rem; min-height: 2.75rem; padding: 0 var(--erp-space-3); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius-sm); background: var(--erp-surface); color: var(--erp-ink); text-decoration: none; }
 .erp-pagination a:hover { background: var(--erp-accent-wash); }
 .erp-pagination span[aria-current] { background: var(--erp-accent); border-color: var(--erp-accent); color: #fff; font-weight: 600; }
+
+/* Profile page "On this page" menu (audit F20). Single scrolling row on phones, wrapping on wide screens. */
+.erp-section-nav {
+  contain: inline-size paint;
+  max-width: 100%;
+  margin-bottom: var(--erp-space-3);
+  padding: var(--erp-space-2); /* room so the focus outline is not clipped by the scroll container */
+  overflow-x: auto;
+  scrollbar-gutter: stable;
+}
+.erp-section-nav ul {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: var(--erp-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.erp-section-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0 var(--erp-space-3);
+  border: 1px solid var(--erp-rule);
+  border-radius: var(--erp-radius-sm);
+  background: var(--erp-surface);
+  color: var(--erp-accent);
+  font-size: var(--erp-text-sm);
+  white-space: nowrap;
+  text-decoration: none;
+}
+.erp-section-nav a:hover { background: var(--erp-accent-wash); }
+@media (min-width: 768px) {
+  .erp-section-nav { overflow-x: visible; contain: none; }
+  .erp-section-nav ul { flex-wrap: wrap; }
+}
+
+/* Jumps from the section menu must clear the sticky top bar. */
+.erp-main section[id] { scroll-margin-top: calc(var(--erp-topbar-h) + var(--erp-space-4)); }
