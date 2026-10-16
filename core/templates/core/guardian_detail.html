@@ -2,6 +2,7 @@
 {% block title %}{{ guardian.full_name }}{% endblock %}
 {% block content %}
 <h1 class="h3 mb-3">{{ guardian.full_name }}</h1>
+{% include "partials/_section_nav.html" with sections=profile_sections only %}
 <dl class="row">
     <dt class="col-sm-3">Phone</dt>
     <dd class="col-sm-9">{{ guardian.phone|default:"-" }}</dd>
@@ -9,7 +10,8 @@
     <dd class="col-sm-9">{{ guardian.email|default:"-" }}</dd>
 </dl>
 
-<h2 class="h5">Associated Applicants</h2>
+<section id="applicants" aria-labelledby="applicants-heading">
+<h2 class="h5" id="applicants-heading">Associated Applicants</h2>
 <table class="table">
     <thead>
         <tr>
@@ -30,8 +32,10 @@
         {% endfor %}
     </tbody>
 </table>
-{% if accounts is not None %}
-<h2 class="h5 mt-4">Guardian Portal account</h2>
+</section>
+{% if "portal-account" in profile_section_ids %}
+<section id="portal-account" aria-labelledby="portal-account-heading">
+<h2 class="h5 mt-4" id="portal-account-heading">Guardian Portal account</h2>
 {% if active_account %}
 <p>
     Login <strong>{{ active_account.user.username }}</strong>
@@ -56,10 +60,12 @@
 {% for account in accounts %}{% if not account.is_active %}
 <p class="small text-muted mb-1">Earlier link: {{ account.user.username }}, {{ account.created_at|date:"Y-m-d" }} &ndash; revoked {{ account.revoked_at|date:"Y-m-d" }} by {{ account.revoked_by }} ({{ account.revocation_reason }})</p>
 {% endif %}{% endfor %}
+</section>
 {% endif %}
 
-{% if relationships is not None %}
-<h2 class="h5 mt-4">Student access</h2>
+{% if "student-access" in profile_section_ids %}
+<section id="student-access" aria-labelledby="student-access-heading">
+<h2 class="h5 mt-4" id="student-access-heading">Student access</h2>
 <p class="text-muted small">Access is granted explicitly for each relationship. The relationship type never grants access by itself.</p>
 <table class="table">
     <thead><tr><th>Student</th><th>Relationship</th><th>Portal access</th><th></th></tr></thead>
@@ -88,13 +94,16 @@
     {% endfor %}
     </tbody>
 </table>
+</section>
 {% endif %}
 
-{% if events is not None %}
-<h2 class="h5 mt-4">Account and access history</h2>
+{% if "history" in profile_section_ids %}
+<section id="history" aria-labelledby="history-heading">
+<h2 class="h5 mt-4" id="history-heading">Account and access history</h2>
 <ul class="small">
     {% for event in events %}<li>{{ event.occurred_at|date:"Y-m-d H:i" }} &middot; {{ event.get_event_type_display }}{% if event.actor %} by {{ event.actor }}{% endif %}</li>{% empty %}<li class="text-muted">None.</li>{% endfor %}
 </ul>
+</section>
 {% endif %}
 <a class="btn btn-link" href="{% url 'core:guardian-list' %}">Back to Guardians</a>
 {% if consents is not None %}{% include "core/_guardian_consent.html" %}{% endif %}
