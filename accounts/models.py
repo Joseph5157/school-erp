@@ -30,6 +30,9 @@ class User(AbstractUser):
 
     class Meta(AbstractUser.Meta):
         swappable = "AUTH_USER_MODEL"
+        permissions = [
+            ("manage_teacher_accounts", "Can create and manage teacher logins"),
+        ]
         constraints = [
             models.UniqueConstraint(Lower("username"), name="user_username_ci_unique"),
         ]
@@ -88,6 +91,11 @@ class SecurityEvent(models.Model):
         IMPORT_COMMITTED = "IMPORT_COMMITTED", "Bulk import committed"
         DOCUMENT_ISSUED = "DOCUMENT_ISSUED", "Document issued"
         DOCUMENT_DOWNLOADED = "DOCUMENT_DOWNLOADED", "Document downloaded"
+        TEACHER_ACCOUNT_CREATED = "TEACHER_ACCOUNT_CREATED", "Teacher account created"
+        TEACHER_PASSWORD_RESET = "TEACHER_PASSWORD_RESET", "Teacher password reset"
+        TEACHER_USERNAME_CHANGED = "TEACHER_USERNAME_CHANGED", "Teacher username changed"
+        TEACHER_DEACTIVATED = "TEACHER_DEACTIVATED", "Teacher login deactivated"
+        TEACHER_REACTIVATED = "TEACHER_REACTIVATED", "Teacher login reactivated"
 
     ROUTINE_TYPES = frozenset(
         {
