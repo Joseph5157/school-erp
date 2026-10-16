@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ decision_label }} applicant{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">{{ decision_label }} applicant</h1>
+{% include "partials/_page_header.html" with eyebrow="Admission decision" title=decision_label|add:" applicant" purpose=applicant.full_name only %}
 <p>You are about to {{ decision_label|lower }} <strong>{{ applicant.full_name }}</strong>.</p>
 <div class="alert {% if decision == 'REJECTED' %}alert-danger{% else %}alert-warning{% endif %}" role="alert">
     {% if decision == "ACCEPTED" %}
@@ -10,14 +10,17 @@
     This decision is final and cannot be reversed. No Student record will be created.
     {% endif %}
 </div>
-<form method="post" action="{% url 'core:applicant-admission-decision' applicant.pk %}">
+<form method="post" action="{% url 'core:applicant-admission-decision' applicant.pk %}" class="erp-form">
     {% csrf_token %}
     <input type="hidden" name="decision" value="{{ decision }}">
-    <div class="mb-3">
-        <label for="reason" class="form-label">{% if decision == "REJECTED" %}Reason (required){% else %}Note (optional){% endif %}</label>
-        <textarea name="reason" id="reason" rows="3" class="form-control"{% if decision == "REJECTED" %} required{% endif %}></textarea>
+    {% if decision == "REJECTED" %}{% include "partials/_form_required_legend.html" %}{% endif %}
+    <div class="erp-field">
+        <label for="reason">{% if decision == "REJECTED" %}Reason <span class="erp-required-mark" aria-hidden="true">*</span><span class="visually-hidden"> (required)</span>{% else %}Note (optional){% endif %}</label>
+        <textarea name="reason" id="reason" rows="3"{% if decision == "REJECTED" %} required{% endif %}></textarea>
     </div>
-    <button type="submit" class="btn {% if decision == 'REJECTED' %}btn-danger{% else %}btn-success{% endif %}">{{ decision_label }} applicant</button>
-    <a class="btn btn-link" href="{% url 'core:applicant-detail' applicant.pk %}">Cancel</a>
+    <div class="erp-form-actions">
+        <button type="submit" class="btn {% if decision == 'REJECTED' %}btn-danger{% else %}btn-success{% endif %}">{{ decision_label }} applicant</button>
+        <a class="btn btn-link" href="{% url 'core:applicant-detail' applicant.pk %}">Cancel</a>
+    </div>
 </form>
 {% endblock %}

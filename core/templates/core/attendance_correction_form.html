@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Correct Attendance{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">Correct Attendance</h1>
+{% include "partials/_page_header.html" with eyebrow="Attendance" title="Correct attendance" purpose="Record a reasoned correction without rewriting the original register history." only %}
 <dl class="row">
     <dt class="col-sm-3">Student</dt>
     <dd class="col-sm-9">{{ entry.academic_enrollment.student.full_name }}</dd>
@@ -19,14 +19,19 @@
 {% if entry.absence_note %}
 <p class="text-muted">Correcting this entry to Present clears its absence note.</p>
 {% endif %}
-<form method="post">
+<form method="post" class="erp-form">
     {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit" class="btn btn-primary">Save correction</button>
-    <a class="btn btn-link" href="{% url 'core:attendance-register-detail' entry.register_id %}">Cancel</a>
+    {% include "partials/_form_required_legend.html" %}
+    {% if form.non_field_errors %}<div class="erp-form-errors" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+    {% for field in form %}{% include "partials/_form_field.html" with field=field only %}{% endfor %}
+    <div class="erp-form-actions">
+        <button type="submit" class="btn btn-primary">Save correction</button>
+        <a class="btn btn-link" href="{% url 'core:attendance-register-detail' entry.register_id %}">Cancel</a>
+    </div>
 </form>
 
 <h2 class="h5 mt-4">Correction history</h2>
+<div class="erp-table-scroll" role="region" aria-label="Correction history" tabindex="0">
 <table class="table">
     <thead>
         <tr>
@@ -59,4 +64,5 @@
         {% endfor %}
     </tbody>
 </table>
+</div>
 {% endblock %}

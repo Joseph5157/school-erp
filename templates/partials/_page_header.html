@@ -1,0 +1,18 @@
+<header class="erp-page-header">
+    <div class="erp-page-header-copy">
+        {% if eyebrow %}<p class="erp-page-eyebrow">{{ eyebrow }}</p>{% endif %}
+        <h1 class="erp-page-title">{{ title }}</h1>
+        {% if purpose %}<p class="erp-page-purpose">{{ purpose }}</p>{% endif %}
+        {% if status_label %}
+        <div class="erp-page-header-meta mt-2">
+            {% include "partials/_status_badge.html" with label=status_label tone=status_tone only %}
+        </div>
+        {% endif %}
+    </div>
+    {% if primary_url or secondary_url %}
+    <div class="erp-page-header-actions">
+        {% if secondary_url %}<a class="btn btn-outline-secondary" href="{{ secondary_url }}">{{ secondary_label }}</a>{% endif %}
+        {% if primary_url %}<a class="btn btn-primary" href="{{ primary_url }}">{{ primary_label }}</a>{% endif %}
+    </div>
+    {% endif %}
+</header>

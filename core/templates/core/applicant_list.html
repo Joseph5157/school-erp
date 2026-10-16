@@ -1,10 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Applicants{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">Applicants</h1>
-{% if perms.core.add_applicant %}
-    <a class="btn btn-primary mb-3" href="{% url 'core:applicant-create' %}">Register Applicant</a>
-{% endif %}
+{% if perms.core.add_applicant %}{% url 'core:applicant-create' as applicant_create_url %}{% endif %}
+{% include "partials/_page_header.html" with eyebrow="People" title="Applicants" purpose="Review applications and progress accepted applicants into student records." primary_url=applicant_create_url primary_label="Register applicant" only %}
 <table class="table">
     <thead>
         <tr>
@@ -16,7 +14,7 @@
         {% for applicant in applicants %}
         <tr>
             <td><a href="{% url 'core:applicant-detail' applicant.pk %}">{{ applicant.full_name }}</a></td>
-            <td>{{ applicant.get_admission_status_display }}</td>
+            <td>{% include "partials/_status_badge.html" with label=applicant.get_admission_status_display tone=applicant.admission_status|lower only %}</td>
         </tr>
         {% empty %}
         <tr>

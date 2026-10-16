@@ -14,6 +14,24 @@
   --erp-crit: #a3322a;
   --erp-crit-wash: #f8e4e1;
   --erp-radius: 10px;
+  --erp-radius-sm: 6px;
+  --erp-space-1: .25rem;
+  --erp-space-2: .5rem;
+  --erp-space-3: .75rem;
+  --erp-space-4: 1rem;
+  --erp-space-5: 1.5rem;
+  --erp-space-6: 2rem;
+  --erp-space-7: 3rem;
+  --erp-text-xs: .78rem;
+  --erp-text-sm: .9rem;
+  --erp-text-base: 1rem;
+  --erp-text-lg: 1.25rem;
+  --erp-text-title: clamp(1.65rem, 1.35rem + 1vw, 2.2rem);
+  --erp-line-tight: 1.2;
+  --erp-line-body: 1.55;
+  --erp-focus-color: #0b6e4f;
+  --erp-focus-ring: 0 0 0 .2rem rgba(11, 110, 79, .3);
+  --erp-reading-width: 46rem;
   --erp-topbar-h: 3.5rem;
   --erp-sidebar-w: 15.5rem;
   --erp-tabbar-h: 3.75rem;
@@ -46,9 +64,13 @@
   --bs-btn-hover-border-color: var(--erp-accent);
   --bs-btn-active-bg: var(--erp-accent-strong);
 }
+:where(a, button, input, select, textarea, summary):focus-visible {
+  outline: 3px solid var(--erp-focus-color);
+  outline-offset: 2px;
+}
 .form-control:focus, .form-select:focus, .btn:focus-visible {
-  border-color: var(--erp-accent);
-  box-shadow: 0 0 0 .2rem rgba(31, 107, 82, .25);
+  border-color: var(--erp-focus-color);
+  box-shadow: var(--erp-focus-ring);
 }
 
 /* ---------- Layout ---------- */
@@ -72,8 +94,13 @@ body.erp { min-height: 100vh; }
 .erp-topbar-links a.active { background: var(--erp-accent-wash); color: var(--erp-accent); font-weight: 600; }
 .erp-spacer { flex: 1; }
 
-.erp-main { min-width: 0; }
-.erp-content { max-width: 75rem; padding-block: 1.5rem 2.5rem; padding-inline: 1rem; }
+.erp-main { min-width: 0; max-width: 100%; overflow-x: clip; }
+.erp-content {
+  max-width: min(75rem, 100%);
+  overflow-x: clip;
+  padding-block: 1.5rem 2.5rem;
+  padding-inline: 1rem;
+}
 
 .erp-sidebar { background: var(--erp-surface); }
 .erp-nav-heading {
@@ -205,6 +232,165 @@ body.has-tabbar .erp-messages {
   background: var(--erp-crit-wash); color: var(--erp-crit); border-color: transparent;
 }
 
+/* ---------- Audit Phase 1: shared page, form and status system ---------- */
+
+.erp-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--erp-space-4) var(--erp-space-6);
+  margin-bottom: var(--erp-space-5);
+  padding-bottom: var(--erp-space-4);
+  border-bottom: 1px solid var(--erp-rule);
+}
+.erp-page-header-copy { min-width: 0; max-width: 52rem; }
+.erp-page-eyebrow {
+  margin: 0 0 var(--erp-space-1);
+  color: var(--erp-accent);
+  font-size: var(--erp-text-xs);
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.erp-page-title {
+  margin: 0;
+  color: var(--erp-ink);
+  font-size: var(--erp-text-title);
+  font-weight: 700;
+  line-height: var(--erp-line-tight);
+  letter-spacing: -.025em;
+}
+.erp-page-purpose {
+  max-width: var(--erp-reading-width);
+  margin: var(--erp-space-2) 0 0;
+  color: var(--erp-ink-soft);
+  line-height: var(--erp-line-body);
+}
+.erp-page-header-meta,
+.erp-page-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--erp-space-2);
+}
+.erp-page-header-actions { flex: 0 0 auto; }
+
+.erp-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.75rem;
+  padding: .15rem .6rem;
+  border: 1px solid var(--erp-rule);
+  border-radius: 999px;
+  background: var(--erp-surface);
+  color: var(--erp-ink-soft);
+  font-size: var(--erp-text-xs);
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.erp-status--active,
+.erp-status--accepted,
+.erp-status--submitted,
+.erp-status--finalized,
+.erp-status--published {
+  border-color: transparent;
+  background: var(--erp-accent-wash);
+  color: var(--erp-accent-strong);
+}
+.erp-status--pending,
+.erp-status--draft,
+.erp-status--stale {
+  border-color: transparent;
+  background: var(--erp-warn-wash);
+  color: var(--erp-warn);
+}
+.erp-status--inactive,
+.erp-status--rejected,
+.erp-status--revoked,
+.erp-status--locked {
+  border-color: transparent;
+  background: var(--erp-crit-wash);
+  color: var(--erp-crit);
+}
+
+.erp-form { max-width: var(--erp-reading-width); }
+.erp-form-intro { margin-bottom: var(--erp-space-5); color: var(--erp-ink-soft); }
+.erp-required-legend {
+  margin-bottom: var(--erp-space-4);
+  color: var(--erp-ink-soft);
+  font-size: var(--erp-text-sm);
+}
+.erp-required-mark { color: var(--erp-crit); font-weight: 800; }
+.erp-field { margin-bottom: var(--erp-space-4); }
+.erp-field > label { display: inline-block; margin-bottom: var(--erp-space-2); font-weight: 650; }
+.erp-field :where(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 2.75rem;
+  padding: .55rem .7rem;
+  border: 1px solid #aeb6ae;
+  border-radius: var(--erp-radius-sm);
+  background: var(--erp-surface);
+  color: var(--erp-ink);
+}
+.erp-field textarea { min-height: 7rem; resize: vertical; }
+.erp-field-help { margin-top: var(--erp-space-1); color: var(--erp-ink-soft); font-size: var(--erp-text-sm); }
+.erp-field-errors {
+  margin: var(--erp-space-1) 0 0;
+  padding: 0;
+  color: var(--erp-crit);
+  font-size: var(--erp-text-sm);
+  font-weight: 600;
+  list-style: none;
+}
+.erp-field.is-invalid :where(input, select, textarea) { border-color: var(--erp-crit); }
+.erp-form-errors {
+  margin-bottom: var(--erp-space-4);
+  padding: var(--erp-space-3) var(--erp-space-4);
+  border-left: 4px solid var(--erp-crit);
+  background: var(--erp-crit-wash);
+  color: var(--erp-crit);
+}
+.erp-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--erp-space-2);
+  margin-top: var(--erp-space-5);
+  padding-top: var(--erp-space-4);
+  border-top: 1px solid var(--erp-rule);
+}
+.erp-form-actions .is-destructive { margin-left: auto; }
+
+.erp-table-scroll {
+  contain: inline-size paint;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  border-radius: var(--erp-radius-sm);
+  scrollbar-gutter: stable;
+}
+.erp-table-scroll > table { min-width: 100%; margin-bottom: 0; }
+
+@media (max-width: 767.98px) {
+  .erp-page-header { display: grid; gap: var(--erp-space-3); }
+  .erp-page-header-actions { justify-content: stretch; }
+  .erp-page-header-actions .btn { flex: 1 1 auto; }
+  .erp-form-actions { align-items: stretch; }
+  .erp-form-actions .btn { min-height: 2.75rem; }
+  .erp-form-actions .btn-primary,
+  .erp-form-actions .btn-success,
+  .erp-form-actions .btn-warning,
+  .erp-form-actions .btn-danger { flex: 1 1 100%; }
+  .erp-form-actions .is-destructive { margin-left: 0; }
+  .erp-field :where(input:not([type="checkbox"]):not([type="radio"]), select, textarea),
+  .btn { min-height: 2.75rem; }
+}
+
 /* ---------- U2: attendance roster ---------- */
 
 .erp-count-line { color: var(--erp-ink-soft); margin-bottom: .75rem; }
@@ -328,6 +514,12 @@ body.has-tabbar .erp-messages {
 /* Wide tables scroll inside their own box on phones instead of widening the page. */
 @media (max-width: 575.98px) {
   .erp-content table:not(.erp-keep) { display: block; overflow-x: auto; }
+  .erp-table-scroll > table:not(.erp-keep) {
+    display: table;
+    width: max-content;
+    min-width: 100%;
+    overflow: visible;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
