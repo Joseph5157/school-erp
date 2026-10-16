@@ -160,7 +160,9 @@ class IssueServiceTests(TestCase):
 class BonafideTests(AnnouncementFixture, TestCase):
     def stranger(self):
         return Student.objects.create(
-            applicant=Applicant.objects.create(full_name="No Enrolment"),
+            applicant=Applicant.objects.create(
+                admission_status="ACCEPTED", full_name="No Enrolment"
+            ),
             full_name="No Enrolment")
 
     def issue(self, student=None, key="BANK", text=""):

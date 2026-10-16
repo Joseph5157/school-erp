@@ -81,7 +81,9 @@ class Phase4Fixture:
 
     def make_student(self, name, section=None, start=date(2026, 6, 1)):
         student = Student.objects.create(
-            applicant=Applicant.objects.create(full_name=name), full_name=name
+            applicant=Applicant.objects.create(
+                admission_status="ACCEPTED", full_name=name
+            ), full_name=name
         )
         enrollment = student.enroll(
             academic_year=self.year,

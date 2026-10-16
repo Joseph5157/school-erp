@@ -61,7 +61,9 @@ class StudentPageTests(SectionAssertions, AuthorizationClientsMixin, TestCase):
     def setUp(self):
         super().setUp()
         self.student = Student.objects.create(
-            applicant=Applicant.objects.create(full_name="Asha Rao"), full_name="Asha Rao"
+            applicant=Applicant.objects.create(
+                admission_status="ACCEPTED", full_name="Asha Rao"
+            ), full_name="Asha Rao"
         )
         self.url = reverse("core:student-detail", args=[self.student.pk])
 
@@ -116,7 +118,9 @@ class GuardianPageTests(SectionAssertions, AuthorizationClientsMixin, TestCase):
         super().setUp()
         self.guardian = Guardian.objects.create(full_name="Meena Rao", phone="98450-12345")
         asha = Student.objects.create(
-            applicant=Applicant.objects.create(full_name="Asha Rao"), full_name="Asha Rao"
+            applicant=Applicant.objects.create(
+                admission_status="ACCEPTED", full_name="Asha Rao"
+            ), full_name="Asha Rao"
         )
         StudentGuardian.objects.create(
             student=asha, guardian=self.guardian, relationship_type="MOTHER"

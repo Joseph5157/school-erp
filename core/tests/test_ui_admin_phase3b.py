@@ -32,7 +32,9 @@ class PreviewFixture(AuthorizationClientsMixin, AnnouncementFixture):
         self.grade7 = ClassGrade.objects.create(name="Grade 7")
         self.seven_a = Section.objects.create(class_grade=self.grade7, name="A")
         student = Student.objects.create(
-            applicant=Applicant.objects.create(full_name="Third Child"),
+            applicant=Applicant.objects.create(
+                admission_status="ACCEPTED", full_name="Third Child"
+            ),
             full_name="Third Child")
         student.enroll(academic_year=self.year, class_grade=self.grade7,
                        section=self.seven_a, start_date=self.today.replace(month=6, day=1))

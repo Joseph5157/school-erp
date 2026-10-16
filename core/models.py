@@ -413,6 +413,13 @@ class Applicant(models.Model):
                 )
             if decision == self.AdmissionStatus.REJECTED and not reason.strip():
                 raise ValidationError("A reason is required to reject an applicant.")
+            if (
+                decision == self.AdmissionStatus.REJECTED
+                and Student.objects.filter(applicant=applicant).exists()
+            ):
+                raise ValidationError(
+                    "This Applicant already has a Student record, so it cannot be rejected."
+                )
             applicant.admission_status = decision
             applicant.admission_decided_at = timezone.now()
             applicant.admission_decision_reason = reason.strip()
@@ -470,6 +477,49 @@ class Applicant(models.Model):
 
     def __str__(self):
         return self.full_name
+
+
+def reconcile_applicant(applicant, *, include_rejected=False):
+    """Mark an Applicant ACCEPTED because a Student record already exists for it.
+
+    Repairs old data where a Student was created next to a PENDING (or
+    REJECTED) Applicant. This deliberately bypasses `record_admission_decision`,
+    which treats decisions as final. A REJECTED Applicant is only changed when
+    `include_rejected` is true, and its old reason is kept in the new text.
+    Returns True when the row was changed; an Applicant that is already
+    ACCEPTED, has no Student, or is an unflagged REJECTED one is left alone.
+    """
+    accepted = Applicant.AdmissionStatus.ACCEPTED
+    with transaction.atomic():
+        locked = Applicant.objects.select_for_update().get(pk=applicant.pk)
+        student = Student.objects.filter(applicant=locked).first()
+        if student is None or locked.admission_status == accepted:
+            return False
+        reason = "Reconciled: Student record already existed."
+        if locked.admission_status == Applicant.AdmissionStatus.REJECTED:
+            if not include_rejected:
+                return False
+            old = locked.admission_decision_reason.strip()
+            reason = (
+                f"Reconciled: Student record already existed (was rejected: {old[:2000]})."
+                if old
+                else "Reconciled: Student record already existed (was rejected)."
+            )
+        locked.admission_status = accepted
+        locked.admission_decided_at = student.created_at
+        locked.admission_decision_reason = reason
+        locked.save(
+            update_fields=[
+                "admission_status",
+                "admission_decided_at",
+                "admission_decision_reason",
+                "updated_at",
+            ]
+        )
+    applicant.admission_status = locked.admission_status
+    applicant.admission_decided_at = locked.admission_decided_at
+    applicant.admission_decision_reason = locked.admission_decision_reason
+    return True
 
 
 class ApplicantGuardian(models.Model):
@@ -565,6 +615,16 @@ class Student(models.Model):
                 name="student_admission_number_not_blank",
             ),
         ]
+
+    def save(self, *args, **kwargs):
+        # Insert-only guard (audit F08): existing rows must always stay savable.
+        if (
+            self._state.adding
+            and self.applicant_id is not None
+            and self.applicant.admission_status != Applicant.AdmissionStatus.ACCEPTED
+        ):
+            raise ValidationError("A Student can only be created for an accepted Applicant.")
+        super().save(*args, **kwargs)
 
     def set_admission_number(self, value):
         """Record (or clear) the admission number entered by an administrator."""

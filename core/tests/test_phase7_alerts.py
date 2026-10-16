@@ -190,7 +190,9 @@ class AbsenceAlertTests(AlertFixture, TestCase):
 
     def test_pending_access_review_is_not_a_recipient(self):
         unplaced = Student.objects.create(
-            applicant=Applicant.objects.create(full_name="Unplaced"), full_name="Unplaced")
+            applicant=Applicant.objects.create(
+                admission_status="ACCEPTED", full_name="Unplaced"
+            ), full_name="Unplaced")
         grant = ga.grant_student_access(student_guardian=self.relate(unplaced, self.meena),
                                         actor=self.admin)
         self.assertNotIn(grant, notification_producers.portal_grants(unplaced))
