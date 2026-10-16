@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.template.loader import render_to_string
 from django.test import SimpleTestCase
 
@@ -55,3 +56,27 @@ class VerbObjectSubmitLabelTests(SimpleTestCase):
                 path = f"core/templates/core/{name}.html"
                 with open(path, encoding="utf-8") as handle:
                     self.assertIn(f">{label}</button>", handle.read())
+
+
+class SecondaryButtonStyleTests(SimpleTestCase):
+    def css(self):
+        return (settings.BASE_DIR / "static" / "css" / "erp.css").read_text(
+            encoding="utf-8"
+        )
+
+    def rule(self, selector_start):
+        css = self.css()
+        start = css.index(selector_start)
+        return css[start : css.index("}", start)]
+
+    def test_enabled_secondary_button_uses_active_ink_colours(self):
+        rule = self.rule(".btn-outline-secondary {")
+        self.assertIn("var(--erp-ink)", rule)
+        self.assertIn("var(--erp-ink-soft)", rule)
+
+    def test_disabled_buttons_have_a_distinct_not_allowed_look(self):
+        rule = self.rule(".btn:disabled,")
+        self.assertIn("not-allowed", rule)
+        self.assertIn("opacity", rule)
+        self.assertIn("var(--erp-rule)", rule)
+        self.assertIn('[aria-disabled="true"]', rule)
