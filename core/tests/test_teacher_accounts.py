@@ -173,12 +173,14 @@ class TeacherServiceTests(TestCase):
         for target in (plain, root):
             with self.subTest(target=target.username):
                 for action in (
-                    lambda: teacher_accounts.reset_teacher_password(user=target, actor=self.actor),
-                    lambda: teacher_accounts.change_teacher_username(
-                        user=target, new_username="new.name", actor=self.actor),
-                    lambda: teacher_accounts.deactivate_teacher(
-                        user=target, reason="x", actor=self.actor),
-                    lambda: teacher_accounts.reactivate_teacher(user=target, actor=self.actor),
+                    lambda t=target: teacher_accounts.reset_teacher_password(
+                        user=t, actor=self.actor),
+                    lambda t=target: teacher_accounts.change_teacher_username(
+                        user=t, new_username="new.name", actor=self.actor),
+                    lambda t=target: teacher_accounts.deactivate_teacher(
+                        user=t, reason="x", actor=self.actor),
+                    lambda t=target: teacher_accounts.reactivate_teacher(
+                        user=t, actor=self.actor),
                 ):
                     with self.assertRaises(ValidationError):
                         action()

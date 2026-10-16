@@ -1,6 +1,13 @@
 from django.urls import path
 
-from core import announcement_views, document_views, import_views, notification_views, teacher_views, views
+from core import (
+    announcement_views,
+    document_views,
+    import_views,
+    notification_views,
+    teacher_views,
+    views,
+)
 
 app_name = "core"
 

@@ -908,7 +908,9 @@ class TeacherUsernameForm(forms.Form):
 
 
 class TeacherDeactivateForm(forms.Form):
-    reason = forms.CharField(max_length=200, help_text="Recorded permanently with the deactivation.")
+    reason = forms.CharField(
+        max_length=200, help_text="Recorded permanently with the deactivation."
+    )
 
 
 class RevocationForm(forms.Form):

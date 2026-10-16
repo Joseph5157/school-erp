@@ -10,6 +10,7 @@ from core import teacher_accounts
 from core.models import TEACHERS_GROUP_NAME, AcademicYear, SectionClassTeacher
 from core.tests.phase4_fixtures import Phase4Fixture
 from core.tests.test_authorization import AuthorizationClientsMixin
+from core.tests.test_phase5_teacher_home import MONDAY, on
 
 User = get_user_model()
 
@@ -301,3 +302,66 @@ class TeacherManageTests(AuthorizationClientsMixin, TestCase):
         )
         self.assertContains(response, reverse("core:teacher-list"))
         self.assertNotContains(response, "site administration")
+
+
+class TeacherEndToEndTests(AuthorizationClientsMixin, TestCase):
+    """A teacher created from the page can sign in, must change the password,
+    reaches the teacher area, and loses access the moment the login is deactivated."""
+
+    def create_via_page(self, username="asha.rao"):
+        created = self.administrator.post(reverse("core:teacher-create"), {
+            "first_name": "Asha", "last_name": "Rao", "username": username, "email": "",
+        })
+        return created.context["password"]
+
+    def test_new_teacher_must_change_password_then_reaches_the_teacher_area(self):
+        password = self.create_via_page()
+        teacher = self.client_class()
+        self.assertTrue(teacher.login(username="asha.rao", password=password))
+        forced = teacher.get(reverse("core:my-home"))
+        self.assertEqual(forced.status_code, 302)
+        self.assertIn(reverse("password_change"), forced["Location"])
+        changed = teacher.post(reverse("password_change"), {
+            "old_password": password,
+            "new_password1": "Brand-new-pass-91",
+            "new_password2": "Brand-new-pass-91",
+        })
+        self.assertEqual(changed.status_code, 302)
+        self.assertEqual(teacher.get(reverse("core:my-home")).status_code, 200)
+
+    def test_deactivated_teacher_loses_access_immediately(self):
+        user, password = add_teacher(self.admin_user, "gone.soon")
+        user.must_change_password = False
+        user.save(update_fields=["must_change_password"])
+        teacher = self.client_class()
+        teacher.login(username="gone.soon", password=password)
+        self.assertEqual(teacher.get(reverse("core:my-home")).status_code, 200)
+        self.administrator.post(
+            reverse("core:teacher-deactivate", args=[user.pk]), {"reason": "Left"}
+        )
+        self.assertNotEqual(teacher.get(reverse("core:my-home")).status_code, 200)
+        self.assertFalse(self.client_class().login(username="gone.soon", password=password))
+
+
+class TeacherSectionAssignmentEndToEndTests(Phase4Fixture, TestCase):
+    """A teacher made through the service sees a section only once it is assigned."""
+
+    def setUp(self):
+        self.build_phase4()
+        self.user, password = add_teacher(self.admin, "new.teacher")
+        self.user.must_change_password = False
+        self.user.save(update_fields=["must_change_password"])
+        self.teacher = self.client_class()
+        self.teacher.login(username="new.teacher", password=password)
+        for patch in on(MONDAY):
+            patch.start()
+            self.addCleanup(patch.stop)
+
+    def test_section_appears_only_after_class_teacher_assignment(self):
+        home = reverse("core:my-home")
+        self.assertNotContains(self.teacher.get(home), str(self.six_a))
+        SectionClassTeacher.assign(
+            teacher=self.user, academic_year=self.year, section=self.six_a,
+            start_date=date(2026, 6, 1),
+        )
+        self.assertContains(self.teacher.get(home), str(self.six_a))
