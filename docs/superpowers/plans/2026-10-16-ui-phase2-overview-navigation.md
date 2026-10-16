@@ -698,3 +698,30 @@ git commit -m "docs: record Phase 2 verification"
 ```
 
 Do not push or open a PR until the user asks. PR #55 (Phase 1) must merge first; then rebase this branch onto `main` before opening the Phase 2 PR.
+
+
+## Completion notes
+
+Verified 2026-10-16 on branch `ui/audit-phase2-overview-navigation`.
+
+**Automated**
+- `manage.py test --parallel 4`: 1266 tests, 1 failure, the known date-dependent
+  `test_missing_report_skips_sections_without_students_and_future_dates` (pinned to 2026-10-10; fails on `main` too).
+- `ruff check core`: initially 3 findings in Phase 2 code (import order in `core/context_processors.py` and
+  `core/tests/test_ui_admin_phase2.py`, one over-long line); fixed in a separate style commit, now clean.
+- `makemigrations --check --dry-run`: No changes detected. `git diff --check`: clean.
+
+**Browser smoke (Playwright, isolated server, throwaway SQLite DB, `seed_demo`, `demo_admin`)**
+- At 320, 768 and 1440 px: `/` redirects to `/overview/`; no horizontal document overflow
+  (`scrollWidth <= innerWidth` everywhere; at 320 the four cards stack in one column, 2x2 at 768, 4 across at 1440).
+- Student detail shows breadcrumb "Overview > Students > Student" and "Students" is highlighted
+  (`aria-current`) in the sidebar at 1440 (the sidebar is collapsed below that width).
+- Deactivate confirm shows "Overview > Students > Student > Deactivate"; its Cancel link returns to the student.
+- A Teachers-group-only login (created ad hoc; `seed_demo` provides none) lands on `/my/` (teacher home).
+- Server stopped and temp DB deleted afterwards.
+
+**Deviations from the plan**
+- The attendance queue card is based on `reports.missing_attendance`, not the originally planned source.
+- Real CSS tokens (`--erp-rule`, `--erp-ink-soft`, `--erp-radius`, `--erp-text-sm`) replaced the token names
+  used in the plan.
+- Minor: the breadcrumb labels the student crumb generically ("Student") rather than with the student's name.
