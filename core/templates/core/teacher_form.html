@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Add teacher{% endblock %}
+{% block content %}
+{% include "partials/_page_header.html" with eyebrow="School setup" title="Add teacher" purpose="A temporary password is shown once. The teacher must choose a new password at first sign-in." only %}
+<form method="post" class="erp-form">
+    {% csrf_token %}
+    {% include "partials/_form_required_legend.html" %}
+    {% if form.non_field_errors %}<div class="erp-form-errors" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+    {% for field in form %}{% include "partials/_form_field.html" with field=field only %}{% endfor %}
+    <div class="erp-form-actions">
+        <button type="submit" class="btn btn-primary">Create teacher login</button>
+        <a class="btn btn-link" href="{% url 'core:teacher-list' %}">Cancel</a>
+    </div>
+</form>
+{% endblock %}

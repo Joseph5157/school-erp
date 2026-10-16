@@ -878,6 +878,13 @@ class GuardianVerificationForm(forms.Form):
     )
 
 
+class TeacherCreateForm(forms.Form):
+    first_name = forms.CharField(max_length=150)
+    last_name = forms.CharField(max_length=150)
+    username = forms.CharField(max_length=30, help_text=USERNAME_HELP)
+    email = forms.EmailField(required=False)
+
+
 class GuardianAccountCreateForm(GuardianVerificationForm):
     username = forms.CharField(max_length=30, help_text=USERNAME_HELP)
     field_order = ["username", "identity_verification_method", "identity_verification_note"]

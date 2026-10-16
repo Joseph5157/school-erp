@@ -23,6 +23,7 @@ OFFICE_NAV = (
         NavLink("Academic Years", "core:academic-year-list", "core.view_academicyear"),
         NavLink("Classes/Grades", "core:class-grade-list", "core.view_classgrade"),
         NavLink("Subjects", "core:subject-list", "core.view_subject"),
+        NavLink("Teachers", "core:teacher-list", "accounts.manage_teacher_accounts"),
     )),
     ("Admissions", (
         NavLink("Applicants", "core:applicant-list", "core.view_applicant"),
