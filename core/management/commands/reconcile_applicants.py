@@ -6,8 +6,7 @@ by default; `--apply` marks PENDING ones ACCEPTED. REJECTED ones are only
 reported unless `--include-rejected` is also given.
 """
 
-from django.core.management.base import BaseCommand
-from django.db import transaction
+from django.core.management.base import BaseCommand, CommandError
 
 from core.models import Applicant, reconcile_applicant
 
@@ -28,13 +27,18 @@ class Command(BaseCommand):
             help="With --apply, also reconcile REJECTED applicants (keeps the old reason).",
         )
 
+    def _safe(self, text):
+        """Make text printable on a non-UTF-8 console (replace unencodable characters)."""
+        encoding = getattr(self.stdout._out, "encoding", None) or "utf-8"
+        return str(text).encode(encoding, "replace").decode(encoding)
+
     def _table(self, applicants):
         write = self.stdout.write
         write(f"{'Applicant':>9}  {'Name':<30}  {'Status':<9}  {'Student':>7}  Student status")
         for applicant in applicants:
             student = applicant.student
             write(
-                f"{applicant.pk:>9}  {applicant.full_name[:30]:<30}  "
+                f"{applicant.pk:>9}  {self._safe(applicant.full_name[:30]):<30}  "
                 f"{applicant.admission_status:<9}  {student.pk:>7}  {student.status}"
             )
 
@@ -58,7 +62,7 @@ class Command(BaseCommand):
             self._table(pending)
         if rejected:
             write("")
-            write("Rejected applicants with a student — not changed"
+            write("Rejected applicants with a student - not changed"
                   if not (apply and include_rejected)
                   else "Rejected applicants with a student")
             self._table(rejected)
@@ -66,12 +70,19 @@ class Command(BaseCommand):
             write("None found.")
 
         reconciled = 0
+        failed = 0
         if apply:
             targets = pending + (rejected if include_rejected else [])
-            with transaction.atomic():
-                for applicant in targets:
+            # One transaction per applicant (inside reconcile_applicant): a
+            # failure on one row never rolls back or blocks the others.
+            for applicant in targets:
+                try:
                     if reconcile_applicant(applicant, include_rejected=include_rejected):
                         reconciled += 1
+                except Exception as error:  # noqa: BLE001 - report and continue
+                    failed += 1
+                    message = getattr(error, "messages", [str(error)])[0]
+                    write(f"FAILED: {applicant.pk} {self._safe(applicant.full_name)}: {message}")
         reported_only = len(rejected) if not (apply and include_rejected) else 0
 
         write("")
@@ -79,4 +90,9 @@ class Command(BaseCommand):
             write("Dry run: nothing was changed. Use --apply to reconcile.")
         elif reconciled == 0:
             write("Nothing to reconcile; no changes were made.")
-        write(f"Found: {found}  Reconciled: {reconciled}  Reported only: {reported_only}")
+        write(
+            f"Found: {found}  Reconciled: {reconciled}  Reported only: {reported_only}"
+            f"  Failed: {failed}"
+        )
+        if failed:
+            raise CommandError(f"{failed} applicant(s) could not be reconciled.")

@@ -1,9 +1,10 @@
 """Phase 3C (audit F08): applicant/student state reconciliation, guard and visibility."""
 
-from io import StringIO
+from io import BytesIO, StringIO, TextIOWrapper
+from unittest import mock
 
 from django.core.exceptions import ValidationError
-from django.core.management import call_command
+from django.core.management import CommandError, call_command
 from django.test import TestCase
 from django.urls import reverse
 
@@ -95,7 +96,7 @@ class ReconcileCommandTests(TestCase):
         self.assertIn("Pending Pat", output)
         self.assertIn("Rejected Rae", output)
         self.assertIn("Dry run", output)
-        self.assertIn("Rejected applicants with a student — not changed", output)
+        self.assertIn("Rejected applicants with a student - not changed", output)
         self.assertIn(f"{pending.pk}", output)
         self.assertIn(f"{student.pk}", output)
 
@@ -240,3 +241,85 @@ class ReconciliationVisibilityTests(AuthorizationClientsMixin, TestCase):
         self.assertEqual(self.student_page(student, self.non_admin).status_code, 403)
         self.assertEqual(self.applicant_page(applicant, self.non_admin).status_code, 403)
 
+
+
+class ReviewFixTests(AuthorizationClientsMixin, TestCase):
+    def test_include_rejected_without_apply_changes_nothing(self):
+        make_mismatch()
+        make_mismatch("Rae", status=Status.REJECTED, reason="Full")
+        before = snapshot()
+        output = run("--include-rejected")
+        self.assertEqual(snapshot(), before)
+        self.assertIn("Dry run", output)
+
+    def test_insert_by_applicant_id(self):
+        pending = Applicant.objects.create(full_name="P")
+        with self.assertRaises(ValidationError):
+            Student.objects.create(applicant_id=pending.pk, full_name="P")
+        accepted = accepted_applicant()
+        Student.objects.create(applicant_id=accepted.pk, full_name="Fine Child")
+        self.assertEqual(Student.objects.count(), 1)
+
+    def test_one_failing_row_does_not_stop_the_others(self):
+        first, _ = make_mismatch("First")
+        second, _ = make_mismatch("Second")
+        real = reconcile_applicant
+
+        def flaky(applicant, **kwargs):
+            if applicant.pk == first.pk:
+                raise ValidationError("boom")
+            return real(applicant, **kwargs)
+
+        out = StringIO()
+        with mock.patch("core.management.commands.reconcile_applicants.reconcile_applicant",
+                        flaky):
+            with self.assertRaises(CommandError):
+                call_command("reconcile_applicants", "--apply", stdout=out)
+        first.refresh_from_db()
+        second.refresh_from_db()
+        self.assertEqual(first.admission_status, Status.PENDING)
+        self.assertEqual(second.admission_status, Status.ACCEPTED)
+        text = out.getvalue()
+        self.assertIn(f"FAILED: {first.pk} First: boom", text)
+        self.assertIn("Reconciled: 1", text)
+        self.assertIn("Failed: 1", text)
+
+    def test_non_latin_names_safe_on_cp1252_stream(self):
+        make_mismatch("Zoë Łukasz")
+        make_mismatch("अनन्या शर्मा")
+        raw = BytesIO()
+        stream = TextIOWrapper(raw, encoding="cp1252", errors="strict")
+        call_command("reconcile_applicants", stdout=stream)
+        stream.flush()
+        self.assertIn("Zo", raw.getvalue().decode("cp1252"))
+        text = run()
+        self.assertIn("Zoë Łukasz", text)
+        self.assertIn("अनन्या शर्मा", text)
+
+    def test_reject_refused_for_applicant_with_student(self):
+        applicant, _ = make_mismatch()
+        with self.assertRaisesMessage(ValidationError, "already has a Student record"):
+            applicant.record_admission_decision(Status.REJECTED, "No")
+        applicant.refresh_from_db()
+        self.assertEqual(applicant.admission_status, Status.PENDING)
+
+    def test_accept_still_allowed_with_student(self):
+        applicant, _ = make_mismatch()
+        applicant.record_admission_decision(Status.ACCEPTED)
+        self.assertEqual(applicant.admission_status, Status.ACCEPTED)
+
+    def test_reject_views_refuse_cleanly(self):
+        applicant, _ = make_mismatch()
+        detail = reverse("core:applicant-detail", args=[applicant.pk])
+        confirm = reverse("core:applicant-decision-confirm", args=[applicant.pk, "REJECTED"])
+        response = self.administrator.get(confirm, follow=True)
+        self.assertRedirects(response, detail)
+        self.assertContains(response, "already has a Student record")
+        post = reverse("core:applicant-admission-decision", args=[applicant.pk])
+        response = self.administrator.post(
+            post, {"decision": "REJECTED", "reason": "No"}, follow=True
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "already has a Student record")
+        applicant.refresh_from_db()
+        self.assertEqual(applicant.admission_status, Status.PENDING)

@@ -413,6 +413,13 @@ class Applicant(models.Model):
                 )
             if decision == self.AdmissionStatus.REJECTED and not reason.strip():
                 raise ValidationError("A reason is required to reject an applicant.")
+            if (
+                decision == self.AdmissionStatus.REJECTED
+                and Student.objects.filter(applicant=applicant).exists()
+            ):
+                raise ValidationError(
+                    "This Applicant already has a Student record, so it cannot be rejected."
+                )
             applicant.admission_status = decision
             applicant.admission_decided_at = timezone.now()
             applicant.admission_decision_reason = reason.strip()

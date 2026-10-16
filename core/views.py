@@ -1768,6 +1768,14 @@ def applicant_decision_confirm(request, pk, decision):
         raise Http404
     if applicant.admission_status != Applicant.AdmissionStatus.PENDING:
         return redirect("core:applicant-detail", pk=applicant.pk)
+    if (
+        decision == Applicant.AdmissionStatus.REJECTED
+        and Student.objects.filter(applicant=applicant).exists()
+    ):
+        messages.error(
+            request, "This Applicant already has a Student record, so it cannot be rejected."
+        )
+        return redirect("core:applicant-detail", pk=applicant.pk)
     return render(
         request,
         "core/applicant_decision_confirm.html",
