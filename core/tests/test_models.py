@@ -2909,7 +2909,8 @@ class AttendanceReportingTests(TestCase):
         self.assertEqual(rows[0]["register"], draft)
 
     def test_missing_report_skips_sections_without_students_and_future_dates(self):
-        rows = reports.missing_attendance(date(2026, 10, 9), date(2026, 10, 20))
+        with mock.patch("core.reports.business_today", return_value=date(2026, 10, 10)):
+            rows = reports.missing_attendance(date(2026, 10, 9), date(2026, 10, 20))
 
         self.assertEqual({row["section"] for row in rows}, {self.section_a})
         self.assertTrue(all(row["date"] <= date(2026, 10, 10) for row in rows))
