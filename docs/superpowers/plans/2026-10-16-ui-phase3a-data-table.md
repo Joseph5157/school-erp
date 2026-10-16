@@ -881,3 +881,29 @@ git commit -m "docs: record Phase 3A verification"
 ```
 
 Do not push or open a PR until the user asks.
+
+## Completion notes
+
+Verified 2026-10-16 on branch `ui/audit-phase3a-data-table`.
+
+**Automated checks**
+- `manage.py test --parallel 4`: 1309 tests, 1 failure. The failure is the known date-dependent `test_missing_report_skips_sections_without_students_and_future_dates` (hardcoded `date(2026, 10, 10)`); nothing else fails.
+- `ruff check core`: found one I001 (import order of `core.tables` in `core/views.py`); fixed in a separate commit (`style: sort core.tables import in views`). Clean afterwards.
+- `makemigrations --check --dry-run`: "No changes detected". `git diff --check`: clean.
+
+**Browser smoke test** (Playwright, isolated runserver on port 8911, throwaway SQLite DB via a temp settings module, Postgres env vars unset, `seed_demo` data; the seed alone gave 58 registers, 36 students and 41 applicants, so no extra rows were needed). Server stopped and DB deleted afterwards.
+- At 320, 768 and 1440px on the attendance, student and applicant lists: no horizontal document overflow (scrollWidth never exceeds innerWidth); 25 rows per page.
+- Header sort links toggle `aria-sort` (ascending/descending) and the URL `sort` parameter; the arrow indicator renders next to the active column.
+- Next, Previous and page-number links work and keep `sort` and `status` (checked at 320 and 1440px); "Showing 26-50 of 58" style counts are correct.
+- Student status filter (ACTIVE returns all 36, INACTIVE returns the empty state) and applicant status filter (ACCEPTED 37, PENDING 3) work.
+- Sort links and pagination controls are 44px tall at every width.
+- Keyboard Tab reaches every sort link and every pagination link, each with a visible 3px outline.
+- The Overview "Applicants awaiting decision" card links to `/applicants/?status=PENDING`, which lands on the filtered list with the select preselected (3 rows).
+
+**Observations (not fixed, pre-existing or cosmetic)**
+- At 320px the search input and status select inside the Bootstrap input-group are cramped (placeholder and "All statuses" are truncated) but usable and nothing overflows; stacking the group on very narrow screens could be a follow-up.
+- On the attendance list the wide table scrolls inside its wrapper at 320px (the document itself does not overflow); the date-range filter form there is unstyled and was not part of this phase.
+- Non-sortable column headers sit slightly lower than sortable ones (the 44px link height); cosmetic.
+
+**Deviations**
+- Screenshots were saved under the untracked `.playwright-mcp/` folder (the only location the Playwright tool allowed) and are not committed.
