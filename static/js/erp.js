@@ -182,4 +182,39 @@
     if (firstInvalid && firstInvalid.scrollIntoView) firstInvalid.scrollIntoView({ block: "center" });
     refresh(true);
   });
+
+  // Announcement form: show the Class or Section selector only for its audience.
+  // Hidden fields are disabled so they are not submitted. Without JS both stay visible.
+  document.querySelectorAll("[data-erp-audience-form]").forEach(function (form) {
+    var radios = Array.prototype.slice.call(form.querySelectorAll('input[type="radio"][name="audience"]'));
+    var fields = Array.prototype.slice.call(form.querySelectorAll("[data-erp-audience-field]"));
+    if (!radios.length || !fields.length) return;
+
+    function refresh() {
+      var checked = radios.filter(function (radio) { return radio.checked; })[0];
+      var audience = checked ? checked.value : "";
+      fields.forEach(function (field) {
+        var show = field.getAttribute("data-erp-audience-field") === audience;
+        field.hidden = !show;
+        field.querySelectorAll("select, input").forEach(function (control) {
+          control.disabled = !show;
+        });
+      });
+    }
+
+    form.addEventListener("change", function (event) {
+      if (event.target.name === "audience") refresh();
+    });
+    refresh();
+  });
+
+  // One-shot submit buttons: disable after the first submit so a double click cannot
+  // publish twice. The form carries its own hidden confirm input, so nothing is lost.
+  document.querySelectorAll("[data-erp-once]").forEach(function (button) {
+    var form = button.form;
+    if (!form) return;
+    form.addEventListener("submit", function () {
+      window.setTimeout(function () { button.disabled = true; }, 0);
+    });
+  });
 })();

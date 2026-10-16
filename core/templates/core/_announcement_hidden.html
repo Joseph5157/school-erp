@@ -1,0 +1,5 @@
+<input type="hidden" name="title" value="{{ form.cleaned_data.title }}">
+<input type="hidden" name="body" value="{{ form.cleaned_data.body }}">
+<input type="hidden" name="audience" value="{{ form.cleaned_data.audience }}">
+<input type="hidden" name="class_grade" value="{{ form.cleaned_data.class_grade.pk|default:'' }}">
+<input type="hidden" name="section" value="{{ form.cleaned_data.section.pk|default:'' }}">
