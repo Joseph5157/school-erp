@@ -10,6 +10,7 @@ from core.documents import report_card as report_card_documents
 from core.documents import service
 from core.portal import (
     attendance_years,
+    child_summaries,
     portal_children,
     student_profile,
     submitted_attendance,
@@ -35,8 +36,17 @@ def _context(request, **extra):
 @require_safe
 @guardian_required
 def home(request):
-    return render(request, "portal/home.html",
-                  _context(request, notices=visible_announcements(request.user)[:3]))
+    children = portal_children(request.user)
+    return render(
+        request,
+        "portal/home.html",
+        _context(
+            request,
+            children=children,
+            notices=visible_announcements(request.user)[:3],
+            summaries=child_summaries(children),
+        ),
+    )
 
 
 @require_safe

@@ -643,3 +643,18 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
   font-weight: 600;
   box-shadow: inset 0 -2px 0 var(--erp-accent);
 }
+
+/* Guardian portal home: child-centred dashboard cards (G-07). */
+.erp-child-grid {
+  display: grid;
+  gap: var(--erp-space-4);
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  margin-bottom: var(--erp-space-4);
+}
+.erp-child-card {
+  background: var(--erp-surface);
+  border: 1px solid var(--erp-rule);
+  border-radius: var(--erp-radius);
+  padding: var(--erp-space-4);
+}
+.erp-child-name { font-size: 1.1rem; margin: 0 0 .25rem; }

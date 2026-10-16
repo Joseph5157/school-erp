@@ -1,16 +1,34 @@
 {% extends "portal/base.html" %}
+{% block title %}Home{% endblock %}
 {% block content %}
 <h1 class="h3 mb-3">Your students</h1>
 {% if children %}
-<div class="list-group" style="max-width: 32rem">
-    {% for item in children %}
-        {% if item.visible %}
-        <a class="list-group-item list-group-item-action" href="{% url 'portal:child' item.grant.public_id %}">{{ item.student.full_name }}</a>
+{% if summaries %}
+<div class="erp-child-grid">
+    {% for s in summaries %}
+    <article class="erp-child-card">
+        <h2 class="erp-child-name">{{ s.name }}</h2>
+        {% if s.placement %}
+        <p class="text-muted mb-1">{{ s.placement.academic_year }} &middot; {{ s.placement.class_grade }}-{{ s.placement.section }} &middot; {{ s.status }}</p>
         {% else %}
-        <div class="list-group-item">{{ item.student.full_name }} <span class="text-muted">&mdash; access under review by the school</span></div>
+        <p class="text-muted mb-1">No current placement &middot; {{ s.status }}</p>
         {% endif %}
+        {% if s.attendance %}
+        <p class="mb-1"><strong>{{ s.attendance.percentage }}%</strong> attendance ({{ s.attendance.present }} of {{ s.attendance.total }} recorded days)</p>
+        {% else %}
+        <p class="text-muted mb-1">No attendance recorded yet</p>
+        {% endif %}
+        <p class="mb-2">
+            {% if s.latest_report_card %}<a href="{% url 'portal:report-card' s.grant.public_id s.latest_report_card.public_id %}">Latest report card: {{ s.latest_report_card.term_label }}</a>{% else %}<span class="text-muted">No report cards published yet</span>{% endif %}
+        </p>
+        <a class="btn btn-outline-primary btn-sm" href="{% url 'portal:child' s.grant.public_id %}">Open {{ s.name }}<span class="visually-hidden"> overview</span></a>
+    </article>
     {% endfor %}
 </div>
+{% endif %}
+{% for item in children %}{% if not item.visible %}
+<p class="text-muted small">{{ item.student.full_name }} &mdash; access under review by the school.</p>
+{% endif %}{% endfor %}
 {% else %}
 {% include "partials/_empty.html" with title="No students yet" text="No students are linked to your account yet. Please contact the school office." %}
 {% endif %}

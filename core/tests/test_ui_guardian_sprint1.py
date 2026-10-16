@@ -108,3 +108,24 @@ class LoginErrorA11yTests(TestCase):
             reverse("login"), {"username": "nobody", "password": "wrong"}
         )
         self.assertContains(response, 'role="alert"')
+
+
+class HomeDashboardTests(PortalFixture, TestCase):
+    def summaries(self):
+        page = self.portal.get(reverse("portal:home"))
+        return page.context["summaries"]
+
+    def test_one_summary_per_visible_child_with_placement(self):
+        rows = self.summaries()
+        self.assertEqual([r["name"] for r in rows], ["Asha Rao"])
+        self.assertEqual(rows[0]["placement"]["class_grade"], self.asha_e.class_grade.name)
+
+    def test_attendance_is_none_when_nothing_recorded(self):
+        self.assertIsNone(self.summaries()[0]["attendance"])
+
+    def test_dashboard_card_renders(self):
+        page = self.portal.get(reverse("portal:home"))
+        self.assertContains(page, "erp-child-card")
+
+    def test_related_but_ungranted_child_is_not_summarised(self):
+        self.assertEqual([r["name"] for r in self.summaries()], ["Asha Rao"])
