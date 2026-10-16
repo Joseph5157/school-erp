@@ -296,7 +296,7 @@ class OfficePageTests(AnnouncementFixture, TestCase):
     def test_publish_from_the_form(self):
         page = self.client.post(reverse("core:announcement-create"), {
             "title": "Holiday", "body": "Closed on Friday.", "audience": "SECTION",
-            "section": self.six_a.pk,
+            "section": self.six_a.pk, "confirm": "1",
         })
         notice = Announcement.objects.get()
         self.assertRedirects(page, reverse("core:announcement-detail", args=[notice.pk]))

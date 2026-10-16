@@ -2,12 +2,16 @@
 {% block title %}New notice{% endblock %}
 {% block content %}
 <h1 class="h3 mb-3">New notice</h1>
-<p class="text-muted">Saving publishes the notice to guardians at once. It cannot be edited afterwards; withdraw it and publish a new one to correct it.</p>
-<form method="post" style="max-width: 40rem">
+<p class="text-muted">You'll see a preview before anything is sent. Published notices can't be edited; withdraw and republish to correct one.</p>
+<form method="post" style="max-width: 40rem" data-erp-audience-form>
     {% csrf_token %}
     {{ form.non_field_errors }}
-    {{ form.as_p }}
-    <button type="submit" class="btn btn-primary">Publish</button>
+    {{ form.title.as_field_group }}
+    {{ form.body.as_field_group }}
+    {{ form.audience.as_field_group }}
+    <div data-erp-audience-field="CLASS">{{ form.class_grade.as_field_group }}</div>
+    <div data-erp-audience-field="SECTION">{{ form.section.as_field_group }}</div>
+    <button type="submit" class="btn btn-primary">Preview notice</button>
     <a class="btn btn-link" href="{% url 'core:announcement-list' %}">Cancel</a>
 </form>
 {% endblock %}

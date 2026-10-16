@@ -24,12 +24,35 @@ def announcement_list(request):
 
 @administrator_required("core.add_announcement")
 def announcement_create(request):
-    form = AnnouncementForm(request.POST or None)
-    if request.method == "POST" and form.is_valid():
+    """Form -> preview -> publish. Nothing is stored until `confirm` is posted, and
+    confirm re-validates everything the preview carried in hidden fields."""
+    if request.method != "POST":
+        return render(request, "core/announcement_form.html", {"form": AnnouncementForm()})
+    if "edit" in request.POST:
+        # Back from the preview: refill the form without showing validation noise.
+        form = AnnouncementForm(initial=request.POST.dict())
+        return render(request, "core/announcement_form.html", {"form": form})
+    form = AnnouncementForm(request.POST)
+    if not form.is_valid():
+        return render(request, "core/announcement_form.html", {"form": form})
+    if "confirm" in request.POST:
         notice = announcements.publish(actor=request.user, **form.cleaned_data)
         messages.success(request, "Notice published. Guardians can read it in the portal now.")
         return redirect("core:announcement-detail", pk=notice.pk)
-    return render(request, "core/announcement_form.html", {"form": form})
+    data = form.cleaned_data
+    audience = data["audience"]
+    is_class = audience == Announcement.Audience.CLASS
+    is_section = audience == Announcement.Audience.SECTION
+    preview = Announcement(
+        title=data["title"].strip(), body=data["body"].strip(), audience=audience,
+        class_grade=data["class_grade"] if is_class else None,
+        section=data["section"] if is_section else None,
+    )
+    counts = announcements.preview_counts(
+        audience=audience, class_grade=data["class_grade"], section=data["section"])
+    return render(request, "core/announcement_preview.html", {
+        "form": form, "notice": preview, "counts": counts,
+    })
 
 
 @administrator_required("core.view_announcement")

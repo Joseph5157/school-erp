@@ -104,6 +104,16 @@ def audience_counts(announcement):
             "opted_in": notifications.opted_in_count(guardian_ids)}
 
 
+def preview_counts(*, audience, class_grade=None, section=None):
+    """Recipient counts for a notice that is not saved yet (same rules as publish())."""
+    draft = Announcement(
+        audience=audience,
+        class_grade=class_grade if audience == Announcement.Audience.CLASS else None,
+        section=section if audience == Announcement.Audience.SECTION else None,
+    )
+    return audience_counts(draft)
+
+
 def visible_announcements(user):
     """Live notices whose audience includes one of the user's visible children."""
     students = [item["student"] for item in portal_children(user) if item["visible"]]
