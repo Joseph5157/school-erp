@@ -25,7 +25,11 @@ def _visible_grant_or_404(request, public_id):
 
 
 def _context(request, **extra):
-    return {"children": portal_children(request.user), **extra}
+    children = portal_children(request.user)
+    grant = extra.get("grant")
+    if grant is None:
+        grant = next((item["grant"] for item in children if item["visible"]), None)
+    return {"children": children, "nav_grant": grant, **extra}
 
 
 @require_safe

@@ -8,6 +8,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from core.tests.test_phase6_access_boundary import BoundaryFixture
+from core.tests.test_phase6_portal_shell import PortalFixture
 
 GRANT_ID = uuid.UUID("11111111-1111-1111-1111-111111111111")
 PUB_ID = uuid.UUID("22222222-2222-2222-2222-222222222222")
@@ -74,3 +75,21 @@ class ForbiddenPageTests(BoundaryFixture, TestCase):
         response = anonymous.get(reverse("portal:home"))
         self.assertEqual(response.status_code, 302)
         self.assertIn(reverse("login"), response["Location"])
+
+
+class PortalNavTests(PortalFixture, TestCase):
+    def test_desktop_nav_present_on_home_with_notices_and_child_links(self):
+        page = self.portal.get(reverse("portal:home"))
+        self.assertContains(page, 'class="erp-portal-nav')
+        self.assertContains(page, reverse("portal:notices"))
+        self.assertContains(page, reverse("portal:child", args=[self.asha_grant.public_id]))
+        self.assertContains(page, reverse("portal:attendance", args=[self.asha_grant.public_id]))
+        self.assertContains(page, reverse("portal:report-cards", args=[self.asha_grant.public_id]))
+
+    def test_tabbar_is_stable_on_notices_page(self):
+        page = self.portal.get(reverse("portal:notices"))
+        self.assertContains(page, reverse("portal:attendance", args=[self.asha_grant.public_id]))
+
+    def test_child_tabs_point_at_the_current_child_on_child_page(self):
+        page = self.portal.get(reverse("portal:child", args=[self.asha_grant.public_id]))
+        self.assertContains(page, reverse("portal:attendance", args=[self.asha_grant.public_id]))
