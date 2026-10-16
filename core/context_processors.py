@@ -1,5 +1,5 @@
-from core.breadcrumbs import breadcrumb_context
 from core.authorization import is_guardian, is_teacher, user_areas
+from core.breadcrumbs import breadcrumb_context
 from core.navigation import current_area, office_nav, teacher_tabs
 
 
@@ -10,7 +10,10 @@ def roles(request):
     match = getattr(request, "resolver_match", None)
     url_name = match.url_name if match is not None else None
     area = current_area(request)
-    trail = breadcrumb_context(match) if area == "admin" else {"breadcrumbs": [], "nav_section": None}
+    if area == "admin":
+        trail = breadcrumb_context(match)
+    else:
+        trail = {"breadcrumbs": [], "nav_section": None}
     return {
         "user_is_teacher": is_teacher(user),
         "user_is_guardian": is_guardian(user),

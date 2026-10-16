@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.test import TestCase
-from django.urls import reverse, resolve
+from django.urls import resolve, reverse
 
 from core import models as core_models
 from core.authorization import user_areas
