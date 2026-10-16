@@ -1,7 +1,7 @@
 from datetime import date
 
-from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group
+from django.contrib.auth import authenticate, get_user_model
+from django.contrib.auth.models import Group, Permission
 from django.test import TestCase
 from django.urls import reverse
 
@@ -239,14 +239,52 @@ class TeacherManageTests(AuthorizationClientsMixin, TestCase):
         self.assertRedirects(back, self.url("teacher-detail"))
         self.assertTrue(User.objects.get(pk=self.teacher.pk).is_active)
 
-    def test_administrator_who_is_also_a_teacher_cannot_deactivate_self(self):
-        self.admin_user.groups.add(Group.objects.get(name=TEACHERS_GROUP_NAME))
-        url = reverse("core:teacher-deactivate", args=[self.admin_user.pk])
-        response = self.administrator.post(url, {"reason": "Oops"})
+    def test_administrator_who_is_also_a_teacher_is_never_a_target(self):
+        teachers = Group.objects.get(name=TEACHERS_GROUP_NAME)
+        other = User.objects.create_user(username="admin2", password="pass-12345")
+        other.groups.add(Group.objects.get(name="School Administrators"), teachers)
+        self.admin_user.groups.add(teachers)
+        other_client = self.client_class()
+        other_client.login(username="admin2", password="pass-12345")
+        names = ("teacher-detail", "teacher-reset-password", "teacher-username",
+                 "teacher-deactivate", "teacher-reactivate")
+        before = list(User.objects.order_by("pk").values_list(
+            "pk", "username", "password", "is_active", "session_version"))
+        for client, target in ((self.administrator, other), (self.administrator, self.admin_user),
+                               (other_client, self.admin_user), (other_client, other)):
+            for name in names:
+                with self.subTest(target=target.username, name=name):
+                    url = reverse(f"core:{name}", args=[target.pk])
+                    self.assertEqual(client.get(url).status_code, 404)
+                    self.assertEqual(
+                        client.post(url, {"reason": "x", "username": "zz.zz"}).status_code, 404)
+        listing = self.administrator.get(reverse("core:teacher-list"))
+        self.assertNotContains(listing, "admin2")
+        after = list(User.objects.order_by("pk").values_list(
+            "pk", "username", "password", "is_active", "session_version"))
+        self.assertEqual(before, after)
+
+    def test_reset_never_leaks_the_new_password(self):
+        response = self.administrator.post(self.url("teacher-reset-password"))
+        shown = response.context["password"]
+        self.assertNotIn(shown, str(list(response.context["messages"])))
+        self.assertNotIn(shown, str(dict(self.administrator.session)))
+        for event in SecurityEvent.objects.filter(subject_user=self.teacher):
+            self.assertNotIn(shown, str(event.detail))
+        self.assertIsNone(authenticate(username="asha.rao", password=self.password))
+        self.assertIsNotNone(authenticate(username="asha.rao", password=shown))
+
+    def test_workload_link_needs_the_assignment_view_permission(self):
+        perm = Permission.objects.get(codename="manage_teacher_accounts")
+        limited = User.objects.create_user(username="limited", password="pass-12345")
+        limited.user_permissions.add(perm)
+        client = self.client_class()
+        client.login(username="limited", password="pass-12345")
+        load = reverse("core:teacher-load", args=[self.teacher.pk])
+        response = client.get(self.url("teacher-detail"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "cannot deactivate your own login")
-        self.assertContains(response, "erp-form-errors")
-        self.assertTrue(User.objects.get(pk=self.admin_user.pk).is_active)
+        self.assertNotContains(response, load)
+        self.assertContains(self.administrator.get(self.url("teacher-detail")), load)
 
     def test_breadcrumbs_link_back_to_the_teacher_and_the_list(self):
         response = self.administrator.get(self.url("teacher-deactivate"))

@@ -3,7 +3,7 @@
 A teacher is an active login in the Teachers group; classes and subjects come
 from the existing assignment pages. Every workflow is atomic and audited with
 a SecurityEvent, and works only on Teachers-group logins that are not
-superusers. Temporary passwords are returned once to the caller for display
+superusers, staff or administrators. Temporary passwords are returned once to the caller for display
 on a slip and are never stored in plain text, logged or put in an audit
 detail.
 """
@@ -17,17 +17,28 @@ from django.db.models import Count
 from accounts.models import SecurityEvent
 from accounts.usernames import clean_new_username
 from core.guardian_accounts import generate_temporary_password
-from core.models import TEACHERS_GROUP_NAME
+from core.models import ADMINISTRATORS_GROUP_NAME, TEACHERS_GROUP_NAME
 
 Event = SecurityEvent.EventType
 NOT_A_TEACHER = "That login is not a teacher account."
 
 
+def _manageable_teachers(queryset):
+    """Teachers-group logins that are not superusers, staff or administrators.
+
+    Administrators who also teach are managed in the Django admin: letting one
+    administrator reset another's password would be privilege escalation.
+    One predicate, shared by the list/detail queryset and the row lock.
+    """
+    return queryset.filter(
+        groups__name=TEACHERS_GROUP_NAME, is_superuser=False, is_staff=False
+    ).exclude(groups__name=ADMINISTRATORS_GROUP_NAME)
+
+
 def teacher_queryset():
-    """Teachers-group logins (active and inactive), never superusers."""
+    """Manageable Teachers-group logins (active and inactive)."""
     return (
-        get_user_model()
-        .objects.filter(groups__name=TEACHERS_GROUP_NAME, is_superuser=False)
+        _manageable_teachers(get_user_model().objects.all())
         .annotate(
             assignment_count=Count("assessment_assignments", distinct=True)
             + Count("class_teacher_assignments", distinct=True)
@@ -37,12 +48,13 @@ def teacher_queryset():
 
 def _lock_teacher(user):
     """The row-locked Teachers-group login, or ValidationError. Use inside atomic()."""
+    if not _manageable_teachers(get_user_model().objects.all()).filter(pk=user.pk).exists():
+        raise ValidationError(NOT_A_TEACHER)
     locked = get_user_model().objects.select_for_update().filter(pk=user.pk).first()
-    if (
-        locked is None
-        or locked.is_superuser
-        or not locked.groups.filter(name=TEACHERS_GROUP_NAME).exists()
-    ):
+    # Re-check on the locked row: status may have changed while we waited.
+    if locked is None or not _manageable_teachers(
+        get_user_model().objects.filter(pk=locked.pk)
+    ).exists():
         raise ValidationError(NOT_A_TEACHER)
     return locked
 

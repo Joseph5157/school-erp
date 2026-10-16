@@ -1775,6 +1775,7 @@ class AcademicSubjectOfferingSection(models.Model):
 
 
 TEACHERS_GROUP_NAME = "Teachers"
+ADMINISTRATORS_GROUP_NAME = "School Administrators"
 
 
 class AssessmentTeacherAssignment(models.Model):

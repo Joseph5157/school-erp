@@ -1,8 +1,8 @@
 """Phase 3D office views: teacher logins (audit F09). Administrators only."""
 
+from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db.models import Q
-from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.cache import add_never_cache_headers
 
@@ -74,7 +74,9 @@ def teacher_create(request):
     form = TeacherCreateForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         try:
-            user, password = teacher_accounts.create_teacher(actor=request.user, **form.cleaned_data)
+            user, password = teacher_accounts.create_teacher(
+                actor=request.user, **form.cleaned_data
+            )
         except ValidationError as error:
             form.add_error("username", error)
         else:
@@ -93,7 +95,7 @@ def teacher_detail(request, pk):
         "class_assignments": teacher.class_teacher_assignments.select_related(
             "academic_year", "section__class_grade"
         ),
-        "events": SecurityEvent.objects.filter(subject_user=teacher)[:10],
+        "events": SecurityEvent.objects.filter(subject_user=teacher).select_related("actor")[:10],
     })
 
 

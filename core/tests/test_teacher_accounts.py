@@ -185,3 +185,33 @@ class TeacherServiceTests(TestCase):
                 fresh = User.objects.get(pk=target.pk)
                 self.assertTrue(fresh.is_active)
                 self.assertEqual(fresh.username, target.username)
+
+
+class TeacherServiceExcludesAdministratorsTests(TestCase):
+    def setUp(self):
+        self.actor = make_actor()
+        teachers = Group.objects.get(name=TEACHERS_GROUP_NAME)
+        self.admin_teacher = User.objects.create_user(username="adm.teach", password="pass-12345")
+        self.admin_teacher.groups.add(teachers, Group.objects.get(name="School Administrators"))
+        self.staff_teacher = User.objects.create_user(
+            username="staff.teach", password="pass-12345", is_staff=True)
+        self.staff_teacher.groups.add(teachers)
+
+    def test_excluded_from_queryset_and_refused_by_every_workflow(self):
+        calls = (
+            lambda u: teacher_accounts.reset_teacher_password(user=u, actor=self.actor),
+            lambda u: teacher_accounts.change_teacher_username(
+                user=u, new_username="new.name", actor=self.actor),
+            lambda u: teacher_accounts.deactivate_teacher(user=u, reason="x", actor=self.actor),
+            lambda u: teacher_accounts.reactivate_teacher(user=u, actor=self.actor),
+        )
+        self.assertEqual(teacher_accounts.teacher_queryset().count(), 0)
+        for target in (self.admin_teacher, self.staff_teacher):
+            before = User.objects.values().get(pk=target.pk)
+            for index, call in enumerate(calls):
+                with self.subTest(target=target.username, call=index):
+                    with self.assertRaises(ValidationError):
+                        call(target)
+            self.assertEqual(before, User.objects.values().get(pk=target.pk))
+        self.assertFalse(SecurityEvent.objects.filter(subject_user__in=[
+            self.admin_teacher, self.staff_teacher]).exists())
