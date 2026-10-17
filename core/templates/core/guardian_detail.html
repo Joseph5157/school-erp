@@ -2,6 +2,9 @@
 {% block title %}{{ guardian.full_name }}{% endblock %}
 {% block content %}
 <h1 class="h3 mb-3">{{ guardian.full_name }}</h1>
+{% if perms.core.change_guardian %}
+    <a class="btn btn-outline-primary mb-3" href="{% url 'core:guardian-edit' guardian.pk %}">Edit contact details</a>
+{% endif %}
 {% include "partials/_section_nav.html" with sections=profile_sections only %}
 <dl class="row">
     <dt class="col-sm-3">Phone</dt>

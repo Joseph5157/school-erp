@@ -26,12 +26,18 @@ history the project depends on.
 - Flow: upload, parse, validate (dry run), preview with row-level errors,
   explicit confirmation, then one atomic commit. The batch succeeds entirely
   or not at all.
-- Guardians are matched by phone number so siblings share one record;
-  same name plus date of birth is flagged for human review. Nothing is
-  auto-merged.
-- Safety: file size, row and sheet limits; read-only parsing; formulas and
-  macros ignored; .xlsm rejected. Exported files neutralize cells beginning
-  with =, +, - or @.
+- An existing Guardian is reused only when both the normalized phone number
+  and the normalized name match, so siblings share one record. The same
+  phone with a different name produces a warning and a separate Guardian,
+  because two parents can share a phone. Within one file, a Guardian with no
+  phone is identified by email plus name. A Guardian with neither phone nor
+  email produces a warning and is never matched. Same student name plus date
+  of birth is flagged for human review. Nothing is auto-merged. (Amended
+  2026-10-17; see below.)
+- Safety: file size, row and sheet limits; read-only parsing; a cell
+  containing a formula is rejected with a row-level error (paste values
+  only); macros are not read and .xlsm is rejected. Exported files neutralize
+  cells beginning with =, +, - or @. (Amended 2026-10-17; see below.)
 - `ImportBatch` and per-row results are retained for audit. An import records
   a security event.
 
@@ -41,6 +47,20 @@ history the project depends on.
 - Messy real data will surface duplicates and invalid dates; the preview is
   the place to resolve them.
 - Needs a schema change to mark imported applicants (reviewed migration).
+
+## Amendments
+
+- **2026-10-17 - Guardian matching and formulas.** The original text said
+  Guardians were matched by phone alone and that formulas were ignored. The
+  implemented and accepted behaviour is stricter: matching uses normalized
+  phone plus normalized name (core/imports.py), and formulas are rejected
+  rather than ignored. This amendment records that behaviour so the code is
+  not "corrected" back to phone-only matching, which would merge different
+  parents who share a phone.
+- **2026-10-17 - Pending-batch retention.** Parsed rows in a pending batch
+  are cleared after 24 hours. Expiry runs when import pages are used and
+  through the `expire_import_batches` management command, which must be run
+  on a schedule in production.
 
 ## Related
 

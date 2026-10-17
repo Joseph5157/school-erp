@@ -44,6 +44,8 @@ def import_upload(request):
 
 @administrator_required("core.view_importbatch")
 def import_detail(request, pk):
+    # Opening an old batch by URL must not leave its parsed rows in place.
+    imports.expire_stale_batches()
     batch = get_object_or_404(
         ImportBatch.objects.select_related("academic_year", "uploaded_by", "finished_by"), pk=pk
     )
