@@ -1,6 +1,6 @@
 # R12 — Subject historical-name integrity: implementation plan
 
-Design: ADR 0019 (Proposed). Plan only; no code written yet.
+Design: ADR 0019. Implemented in R12 PR #78.
 
 ## Staging findings (read-only, 2026-10-17)
 
