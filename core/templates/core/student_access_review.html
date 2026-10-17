@@ -15,7 +15,7 @@
             <tr>
                 <td>{{ grant.student_guardian.guardian.full_name }}</td>
                 <td>{{ grant.student_guardian.get_relationship_type_display }}</td>
-                <td>{{ grant.granted_at|date:"Y-m-d" }}</td>
+                <td>{{ grant.granted_at|date:"j M Y" }}</td>
                 <td>
                     {% for value, label in decisions %}
                     <label class="me-3"><input type="radio" name="decision_{{ grant.pk }}" value="{{ value }}" required> {{ label }}</label>

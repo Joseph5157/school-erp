@@ -7,7 +7,7 @@
     {% for duty in duties %}
     <li><a href="{% url 'core:my-subject-results' duty.pk %}">{{ duty.offering.academic_year.name }} &middot; {{ duty.offering.subject.name }} &middot; {{ duty.section }}</a></li>
     {% empty %}
-    <li>You do not teach a Subject yet.</li>
+    <li>You do not teach a Subject yet. The school office assigns Subjects &mdash; ask them if you expected to see one.</li>
     {% endfor %}
 </ul>
 {% endblock %}

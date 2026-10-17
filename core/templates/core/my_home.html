@@ -21,7 +21,7 @@
     </div>
 </div>
 {% empty %}
-{% include "partials/_empty.html" with text="You are not a class teacher today." %}
+{% include "partials/_empty.html" with title="You are not a class teacher today." text="Class and subject assignments are set by the school office. If you expected to see a class here, ask the office to check your assignment." %}
 {% endfor %}
 <p><a href="{% url 'core:my-attendance-history' %}">Attendance history for my Sections</a></p>
 

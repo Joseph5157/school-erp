@@ -41,7 +41,7 @@
     Login <strong>{{ active_account.user.username }}</strong>
     {% if active_account.user.must_change_password %}<span class="badge bg-warning text-dark">must change password</span>{% endif %}
     {% if not active_account.user.is_active %}<span class="badge bg-danger">login inactive</span>{% endif %}
-    &middot; verified by {{ active_account.identity_verified_by }} ({{ active_account.get_identity_verification_method_display }}) on {{ active_account.created_at|date:"Y-m-d" }}
+    &middot; verified by {{ active_account.identity_verified_by }} ({{ active_account.get_identity_verification_method_display }}) on {{ active_account.created_at|date:"j M Y" }}
 </p>
 <p>
     {% if perms.core.reset_guardian_password %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'core:guardian-account-reset-password' active_account.pk %}">Reset password</a>{% endif %}
@@ -58,7 +58,7 @@
 {% endif %}
 {% endif %}
 {% for account in accounts %}{% if not account.is_active %}
-<p class="small text-muted mb-1">Earlier link: {{ account.user.username }}, {{ account.created_at|date:"Y-m-d" }} &ndash; revoked {{ account.revoked_at|date:"Y-m-d" }} by {{ account.revoked_by }} ({{ account.revocation_reason }})</p>
+<p class="small text-muted mb-1">Earlier link: {{ account.user.username }}, {{ account.created_at|date:"j M Y" }} &ndash; revoked {{ account.revoked_at|date:"j M Y" }} by {{ account.revoked_by }} ({{ account.revocation_reason }})</p>
 {% endif %}{% endfor %}
 </section>
 {% endif %}
@@ -75,8 +75,8 @@
             <td>{{ row.link.student.full_name }}</td>
             <td>{{ row.link.get_relationship_type_display }}</td>
             <td>
-                {% if row.active_grant %}Granted {{ row.active_grant.granted_at|date:"Y-m-d" }} by {{ row.active_grant.granted_by }}{% if row.under_review %} <a class="badge bg-warning text-dark" href="{% url 'core:guardian-access-reviews' %}">under review &mdash; no data shown</a>{% endif %}{% else %}<span class="text-muted">Not granted</span>{% endif %}
-                {% for grant in row.grants %}{% if not grant.is_active %}<div class="small text-muted">Revoked {{ grant.revoked_at|date:"Y-m-d" }} by {{ grant.revoked_by }} ({{ grant.revocation_reason }})</div>{% endif %}{% endfor %}
+                {% if row.active_grant %}Granted {{ row.active_grant.granted_at|date:"j M Y" }} by {{ row.active_grant.granted_by }}{% if row.under_review %} <a class="badge bg-warning text-dark" href="{% url 'core:guardian-access-reviews' %}">under review &mdash; no data shown</a>{% endif %}{% else %}<span class="text-muted">Not granted</span>{% endif %}
+                {% for grant in row.grants %}{% if not grant.is_active %}<div class="small text-muted">Revoked {{ grant.revoked_at|date:"j M Y" }} by {{ grant.revoked_by }} ({{ grant.revocation_reason }})</div>{% endif %}{% endfor %}
             </td>
             <td class="text-end">
                 {% if row.active_grant %}
@@ -101,7 +101,7 @@
 <section id="history" aria-labelledby="history-heading">
 <h2 class="h5 mt-4" id="history-heading">Account and access history</h2>
 <ul class="small">
-    {% for event in events %}<li>{{ event.occurred_at|date:"Y-m-d H:i" }} &middot; {{ event.get_event_type_display }}{% if event.actor %} by {{ event.actor }}{% endif %}</li>{% empty %}<li class="text-muted">None.</li>{% endfor %}
+    {% for event in events %}<li>{{ event.occurred_at|date:"j M Y, H:i" }} &middot; {{ event.get_event_type_display }}{% if event.actor %} by {{ event.actor }}{% endif %}</li>{% empty %}<li class="text-muted">None.</li>{% endfor %}
 </ul>
 </section>
 {% endif %}

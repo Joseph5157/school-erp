@@ -22,7 +22,7 @@
         <span class="erp-spacer"></span>
         {% if user.is_authenticated %}
             {% include "partials/_account_menu.html" %}
-        {% else %}
+        {% elif request.resolver_match.url_name != 'login' %}
             <a class="btn btn-outline-primary btn-sm" href="{% url 'login' %}">Log in</a>
         {% endif %}
     </header>

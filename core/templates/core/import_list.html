@@ -17,7 +17,7 @@
     {% for batch in batches %}
         <tr>
             <td><a href="{% url 'core:import-detail' batch.pk %}">{{ batch.pk }}</a></td>
-            <td>{{ batch.uploaded_at|date:"Y-m-d H:i" }}</td>
+            <td>{{ batch.uploaded_at|date:"j M Y, H:i" }}</td>
             <td>{{ batch.uploaded_by }}</td>
             <td>{{ batch.file_name }}</td>
             <td>{{ batch.academic_year }}</td>

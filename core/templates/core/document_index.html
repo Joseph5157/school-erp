@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Documents{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">Documents</h1>
+{% include "partials/_page_header.html" with eyebrow="Daily operations" title="Documents" purpose="Issue certificates and report cards as numbered PDFs." only %}
 <div class="list-group mb-4">
     <a class="list-group-item list-group-item-action" href="{% url 'core:bonafide-create' %}">Bonafide certificate</a>
     <a class="list-group-item list-group-item-action" href="{% url 'core:document-report-cards' %}">Report card PDF</a>
@@ -16,7 +16,7 @@
             <td>{{ doc.serial }}</td>
             <td>{{ doc.get_document_type_display }}</td>
             <td>{{ doc.student.full_name|default:"—" }}</td>
-            <td>{{ doc.issued_at|date:"Y-m-d H:i" }}</td>
+            <td>{{ doc.issued_at|date:"j M Y, H:i" }}</td>
             <td><a href="{% url 'core:document-pdf' doc.pk %}">PDF</a></td>
         </tr>
     {% empty %}

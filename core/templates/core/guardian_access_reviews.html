@@ -32,6 +32,6 @@
 </table>
 <h2 class="h5 mt-4">Recent decisions</h2>
 <ul class="small">
-    {% for review in recent %}<li>{{ review.decided_at|date:"Y-m-d H:i" }} &middot; {{ review.grant.student_guardian.student.full_name }} / {{ review.grant.student_guardian.guardian.full_name }} &middot; {{ review.get_trigger_display }}: <strong>{{ review.get_decision_display }}</strong> by {{ review.decided_by }}{% if review.note %} ({{ review.note }}){% endif %}</li>{% empty %}<li class="text-muted">None yet.</li>{% endfor %}
+    {% for review in recent %}<li>{{ review.decided_at|date:"j M Y, H:i" }} &middot; {{ review.grant.student_guardian.student.full_name }} / {{ review.grant.student_guardian.guardian.full_name }} &middot; {{ review.get_trigger_display }}: <strong>{{ review.get_decision_display }}</strong> by {{ review.decided_by }}{% if review.note %} ({{ review.note }}){% endif %}</li>{% empty %}<li class="text-muted">None yet.</li>{% endfor %}
 </ul>
 {% endblock %}

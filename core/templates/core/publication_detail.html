@@ -2,8 +2,8 @@
 {% block title %}Publication {{ pub.student.full_name }} {{ pub.term_label }} v{{ pub.version }}{% endblock %}
 {% block content %}
 <h1 class="h3 mb-1">{{ pub.student.full_name }} &mdash; {{ pub.academic_year_label }} {{ pub.term_label }}, version {{ pub.version }}</h1>
-<p class="text-muted">{{ pub.get_status_display }}. Published {{ pub.published_at|date:"Y-m-d H:i" }} by {{ pub.published_by }}.
-   {% if pub.status_changed_at %}Status changed {{ pub.status_changed_at|date:"Y-m-d H:i" }} by {{ pub.status_changed_by }}{% if pub.status_reason %} ({{ pub.status_reason }}){% endif %}.{% endif %}
+<p class="text-muted">{{ pub.get_status_display }}. Published {{ pub.published_at|date:"j M Y, H:i" }} by {{ pub.published_by }}.
+   {% if pub.status_changed_at %}Status changed {{ pub.status_changed_at|date:"j M Y, H:i" }} by {{ pub.status_changed_by }}{% if pub.status_reason %} ({{ pub.status_reason }}){% endif %}.{% endif %}
    {% if pub.is_current and not live_matches %}<strong>Source results or remark have changed since release.</strong>{% endif %}</p>
 <p>{{ pub.class_grade_label }} &middot; Section {{ pub.section_label }}{% if pub.is_partial %} &middot; partial ({{ pub.pending_assessments }} assessment(s) not finalized at release){% endif %}</p>
 <table class="table table-sm">
@@ -23,6 +23,6 @@
 {% endif %}
 <h2 class="h5 mt-4">All versions</h2>
 <ul>
-    {% for v in versions %}<li><a href="{% url 'core:publication-detail' v.pk %}">Version {{ v.version }}</a> &middot; {{ v.get_status_display }} &middot; published {{ v.published_at|date:"Y-m-d H:i" }} by {{ v.published_by }}{% if v.status_changed_at %} &middot; {{ v.get_status_display|lower }} {{ v.status_changed_at|date:"Y-m-d H:i" }} by {{ v.status_changed_by }}{% if v.status_reason %} ({{ v.status_reason }}){% endif %}{% endif %}</li>{% endfor %}
+    {% for v in versions %}<li><a href="{% url 'core:publication-detail' v.pk %}">Version {{ v.version }}</a> &middot; {{ v.get_status_display }} &middot; published {{ v.published_at|date:"j M Y, H:i" }} by {{ v.published_by }}{% if v.status_changed_at %} &middot; {{ v.get_status_display|lower }} {{ v.status_changed_at|date:"j M Y, H:i" }} by {{ v.status_changed_by }}{% if v.status_reason %} ({{ v.status_reason }}){% endif %}{% endif %}</li>{% endfor %}
 </ul>
 {% endblock %}

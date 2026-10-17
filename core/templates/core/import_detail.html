@@ -4,12 +4,12 @@
 <h1 class="h3 mb-3">Import {{ batch.pk }} — {{ batch.get_status_display }}</h1>
 <dl class="row">
     <dt class="col-sm-3">File</dt><dd class="col-sm-9">{{ batch.file_name }}</dd>
-    <dt class="col-sm-3">Uploaded</dt><dd class="col-sm-9">{{ batch.uploaded_at|date:"Y-m-d H:i" }} by {{ batch.uploaded_by }}</dd>
+    <dt class="col-sm-3">Uploaded</dt><dd class="col-sm-9">{{ batch.uploaded_at|date:"j M Y, H:i" }} by {{ batch.uploaded_by }}</dd>
     <dt class="col-sm-3">Academic Year</dt><dd class="col-sm-9">{{ batch.academic_year }}</dd>
-    <dt class="col-sm-3">Enrollment start date</dt><dd class="col-sm-9">{{ batch.enrollment_start_date|date:"Y-m-d" }}</dd>
+    <dt class="col-sm-3">Enrollment start date</dt><dd class="col-sm-9">{{ batch.enrollment_start_date|date:"j M Y" }}</dd>
     <dt class="col-sm-3">Rows</dt><dd class="col-sm-9">{{ batch.student_rows }} student rows, {{ batch.class_rows }} class rows</dd>
     {% if batch.finished_at %}
-        <dt class="col-sm-3">Finished</dt><dd class="col-sm-9">{{ batch.finished_at|date:"Y-m-d H:i" }}{% if batch.finished_by %} by {{ batch.finished_by }}{% endif %}</dd>
+        <dt class="col-sm-3">Finished</dt><dd class="col-sm-9">{{ batch.finished_at|date:"j M Y, H:i" }}{% if batch.finished_by %} by {{ batch.finished_by }}{% endif %}</dd>
     {% endif %}
     {% if batch.failure_reason %}
         <dt class="col-sm-3">Reason</dt><dd class="col-sm-9">{{ batch.failure_reason }}</dd>
@@ -49,7 +49,7 @@
             <tr>
                 <td>{{ student.row }}</td>
                 <td>{{ student.full_name }}</td>
-                <td>{{ student.date_of_birth|date:"Y-m-d"|default:"—" }}</td>
+                <td>{{ student.date_of_birth|date:"j M Y"|default:"—" }}</td>
                 <td>{{ student.admission_number|default:"—" }}</td>
                 <td>{{ student.placement }}</td>
                 <td>{{ student.roll_number|default:"—" }}</td>
