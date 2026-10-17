@@ -332,6 +332,7 @@ body.has-tabbar .erp-messages {
   gap: var(--erp-space-2);
 }
 .erp-page-header-actions { flex: 0 0 auto; }
+.erp-page-header-copy .erp-page-header-meta { justify-content: flex-start; }
 
 .erp-status {
   display: inline-flex;
@@ -465,7 +466,17 @@ body.has-tabbar .erp-messages {
 
 /* ---------- U2: attendance roster ---------- */
 
-.erp-count-line { color: var(--erp-ink-soft); margin-bottom: .75rem; }
+.erp-countbar {
+  background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
+  padding: var(--erp-space-3); margin-bottom: var(--erp-space-3);
+}
+.erp-countbar .erp-count-line, .erp-countbar .erp-count-tabs { margin-bottom: 0; }
+.erp-count-line { color: var(--erp-ink-soft); margin-bottom: .75rem; font-weight: 600; }
+.erp-count-line .is-warn, .erp-actionbar-status.is-warn { color: var(--erp-warn); font-weight: 700; }
+.erp-count-tabs [data-erp-filter].is-warn:not([aria-pressed="true"]) {
+  background: var(--erp-warn-wash); border-color: var(--erp-warn); color: var(--erp-warn);
+}
+.erp-empty--submitted .erp-empty-icon { color: var(--erp-ok); }
 .erp-count-tabs { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: .75rem; align-items: center; }
 .erp-count-tabs [data-erp-filter] {
   border: 1px solid var(--erp-rule); background: var(--erp-surface); color: var(--erp-ink);
@@ -492,7 +503,7 @@ body.has-tabbar .erp-messages {
 .erp-toggles { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
 .erp-toggles input[type="radio"] { position: absolute; opacity: 0; width: 1px; height: 1px; }
 .erp-toggle {
-  display: grid; place-items: center; min-height: 2.75rem; border-radius: 8px; cursor: pointer;
+  display: grid; place-items: center; min-height: 44px; border-radius: 8px; cursor: pointer;
   border: 1px solid var(--erp-rule); background: var(--erp-paper); font-weight: 600; margin: 0;
 }
 .erp-toggles input:focus-visible + .erp-toggle { outline: 3px solid var(--erp-accent); outline-offset: 2px; }
@@ -504,7 +515,7 @@ body.has-tabbar .erp-messages {
 }
 .erp-note { grid-column: 1 / -1; }
 .erp-note label { display: block; }
-.erp-note input { width: 100%; padding: .4rem .6rem; border: 1px solid var(--erp-rule); border-radius: 6px; }
+.erp-note input { scroll-margin-bottom: 8rem; width: 100%; padding: .4rem .6rem; border: 1px solid var(--erp-rule); border-radius: 6px; }
 /* Without :has() support the note simply stays visible. */
 @supports selector(:has(*)) {
   .erp-note:not(.is-filled) { display: none; }
@@ -515,7 +526,8 @@ body.has-tabbar .erp-messages {
 .erp-actionbar {
   position: sticky; bottom: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: .5rem; align-items: center;
   background: var(--erp-surface); border-top: 1px solid var(--erp-rule);
-  padding: .75rem; margin-inline: -.75rem; padding-bottom: calc(.75rem + env(safe-area-inset-bottom));
+  padding: .75rem; margin-inline: -.75rem; padding-bottom: calc(.75rem + env(safe-area-inset-bottom, 0px));
+  padding-inline: max(.75rem, env(safe-area-inset-left, 0px)) max(.75rem, env(safe-area-inset-right, 0px));
 }
 .erp-actionbar-status { flex: 1 1 100%; font-size: .9rem; color: var(--erp-ink-soft); }
 .erp-actionbar .btn { flex: 1; min-height: 2.75rem; }

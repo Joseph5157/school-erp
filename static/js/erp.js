@@ -54,7 +54,11 @@
         var target = roster.querySelector('[data-erp-count="' + key + '"]');
         if (target) target.textContent = counts[key];
       });
+      roster.querySelectorAll(".erp-count-unmarked").forEach(function (el) {
+        el.classList.toggle("is-warn", counts.unmarked > 0);
+      });
       if (hint) {
+        hint.classList.toggle("is-warn", counts.unmarked > 0);
         hint.textContent = counts.unmarked
           ? "Mark all students to submit (" + counts.unmarked + " unmarked)"
           : "All students marked";

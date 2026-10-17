@@ -1,13 +1,15 @@
 {# Roster for a DRAFT register. Include inside <form id="attendance-capture"> with can_submit=<bool>. #}
 {% with counts=capture_form.counts %}
 <div class="erp-roster" data-erp-roster>
-    <p class="erp-count-line" data-erp-static-counts>All {{ counts.all }} · Unmarked {{ counts.unmarked }} · Present {{ counts.present }} · Absent {{ counts.absent }}</p>
-    <div class="erp-count-tabs" data-erp-tabs hidden>
-        <button type="button" data-erp-filter="all" aria-pressed="true">All <span data-erp-count="all">{{ counts.all }}</span></button>
-        <button type="button" data-erp-filter="unmarked" aria-pressed="false">Unmarked <span data-erp-count="unmarked">{{ counts.unmarked }}</span></button>
-        <button type="button" data-erp-filter="present" aria-pressed="false">Present <span data-erp-count="present">{{ counts.present }}</span></button>
-        <button type="button" data-erp-filter="absent" aria-pressed="false">Absent <span data-erp-count="absent">{{ counts.absent }}</span></button>
-        <button type="button" class="btn btn-outline-secondary btn-sm erp-mark-present" data-erp-mark-present>Mark unanswered as present</button>
+    <div class="erp-countbar">
+        <p class="erp-count-line" data-erp-static-counts>{{ counts.all }} student{{ counts.all|pluralize }} &middot; {{ counts.present }} present &middot; {{ counts.absent }} absent &middot; <span class="erp-count-unmarked{% if counts.unmarked %} is-warn{% endif %}">{{ counts.unmarked }} unmarked</span></p>
+        <div class="erp-count-tabs" data-erp-tabs hidden>
+            <button type="button" data-erp-filter="all" aria-pressed="true">All <span data-erp-count="all">{{ counts.all }}</span></button>
+            <button type="button" data-erp-filter="unmarked" class="erp-count-unmarked{% if counts.unmarked %} is-warn{% endif %}" aria-pressed="false">Unmarked <span data-erp-count="unmarked">{{ counts.unmarked }}</span></button>
+            <button type="button" data-erp-filter="present" aria-pressed="false">Present <span data-erp-count="present">{{ counts.present }}</span></button>
+            <button type="button" data-erp-filter="absent" aria-pressed="false">Absent <span data-erp-count="absent">{{ counts.absent }}</span></button>
+            <button type="button" class="btn btn-outline-secondary btn-sm erp-mark-present" data-erp-mark-present>Mark unanswered as present</button>
+        </div>
     </div>
 
     {% for enrollment, status_field, note_field in capture_form.rows %}
@@ -29,7 +31,7 @@
     {% endfor %}
 
     <div class="erp-actionbar">
-        <span class="erp-actionbar-status" data-erp-hint aria-live="polite">{{ counts.unmarked }} unmarked</span>
+        <span class="erp-actionbar-status{% if counts.unmarked %} is-warn{% endif %}" data-erp-hint aria-live="polite">{{ counts.unmarked }} unmarked</span>
         <button type="submit" name="action" value="save" class="btn btn-outline-primary">Save draft</button>
         {% if can_submit %}<button type="submit" name="action" value="submit" class="btn btn-primary">Save and submit</button>{% endif %}
     </div>

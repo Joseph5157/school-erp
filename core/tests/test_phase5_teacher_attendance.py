@@ -176,6 +176,23 @@ class TeacherAttendanceTests(Phase4Fixture, TestCase):
         self.open_register()
         self.assertFalse(AttendanceRegister.objects.exists())
 
+    def test_count_bar_has_static_text_without_javascript(self):
+        self.open_register()
+        page = self.teacher.get(self.url)
+        self.assertContains(
+            page, 'data-erp-static-counts>2 students &middot; 0 present &middot; 0 absent'
+        )
+        self.assertContains(page, "2 unmarked</span>")
+        self.assertContains(page, "erp-count-unmarked is-warn")
+
+    def test_submitted_state_uses_badge_and_empty_card(self):
+        self.open_register()
+        self.both()
+        page = self.teacher.get(self.url)
+        self.assertContains(page, "erp-empty--submitted")
+        self.assertContains(page, "erp-status--submitted")
+        self.assertNotContains(page, "data-erp-static-counts")
+
     def test_admin_opened_draft_can_be_completed_by_teacher(self):
         AttendanceRegister.objects.create(
             academic_year=self.year, class_grade=self.grade6, section=self.six_a, date=MONDAY
