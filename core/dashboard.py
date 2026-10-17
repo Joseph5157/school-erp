@@ -12,9 +12,7 @@ from core import guardian_access, nav_badges, reports
 from core import models as core_models
 from core.models import (
     AcademicEnrollment,
-    AcademicYear,
     Applicant,
-    Section,
 )
 
 
@@ -110,8 +108,3 @@ _CARDS = (
 def overview_cards(user):
     today = core_models.business_today()  # looked up late so tests can pin it
     return [build(today) for build, perm in _CARDS if user.has_perm(perm)]
-
-
-def needs_setup():
-    """True until the school has an Academic Year and at least one Section."""
-    return not (AcademicYear.objects.exists() and Section.objects.exists())

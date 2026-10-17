@@ -18,6 +18,7 @@ from core import (
     guardian_accounts,
     publication,
     reports,
+    setup_checklist,
 )
 from core.authorization import (
     administrator_required,
@@ -737,12 +738,14 @@ def choose_area(request):
 
 @administrator_required("core.view_school")
 def admin_overview(request):
+    steps = setup_checklist.setup_steps()
     return render(
         request,
         "core/admin_overview.html",
         {
             "cards": dashboard.overview_cards(request.user),
-            "needs_setup": dashboard.needs_setup(),
+            "setup_steps": steps,
+            "setup_complete": setup_checklist.setup_complete(steps),
         },
     )
 

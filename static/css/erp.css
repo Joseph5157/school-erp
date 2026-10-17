@@ -574,6 +574,19 @@ body.has-tabbar .erp-messages {
 .erp-queue-count { font-size: 2rem; font-weight: 700; margin: 0; line-height: 1.1; }
 .erp-queue-summary { margin: 0; color: var(--erp-ink-soft); }
 
+/* "Set up your school" checklist on the Overview page. */
+.erp-setup { background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius); padding: var(--erp-space-4); margin-bottom: var(--erp-space-4); }
+.erp-setup-title { font-size: 1rem; margin: 0 0 var(--erp-space-1); }
+.erp-setup-summary { margin: 0 0 var(--erp-space-3); color: var(--erp-ink-soft); font-size: var(--erp-text-sm); }
+.erp-setup-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--erp-space-2); }
+.erp-setup-step { display: flex; align-items: center; gap: var(--erp-space-3); padding: var(--erp-space-2) 0; border-bottom: 1px solid var(--erp-rule); flex-wrap: wrap; }
+.erp-setup-step:last-child { border-bottom: 0; padding-bottom: 0; }
+.erp-setup-label { font-size: var(--erp-text-sm); flex: 1 1 auto; }
+.erp-setup-step--done .erp-setup-label { color: var(--erp-ink-soft); }
+.erp-setup-check { color: var(--erp-accent); font-weight: 700; }
+.erp-setup-problem { color: var(--erp-ink-soft); }
+.erp-setup-count { min-width: 2ch; text-align: center; padding: .125rem var(--erp-space-2); background: var(--erp-accent-wash); color: var(--erp-accent-strong); border-radius: 999px; font-size: var(--erp-text-xs); font-weight: 600; }
+
 .erp-breadcrumb ol { display: flex; flex-wrap: wrap; gap: var(--erp-space-2); list-style: none; padding: 0; margin: 0 0 var(--erp-space-3); font-size: var(--erp-text-sm); color: var(--erp-ink-soft); }
 .erp-breadcrumb li + li::before { content: "/"; margin-right: var(--erp-space-2); }
 .erp-breadcrumb a { color: var(--erp-accent); }
