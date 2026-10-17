@@ -2,11 +2,14 @@
 
 import datetime
 import io
+from io import StringIO
+from unittest import mock
 
 import openpyxl
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.management import call_command
 from django.db import DatabaseError, transaction
 from django.test import TestCase
 from django.urls import reverse
@@ -357,6 +360,48 @@ class CommitTests(ImportFixture):
         with self.assertRaises(imports.CommitError):
             imports.commit_batch(stale, user=self.admin)
         self.assertEqual(Student.objects.count(), 0)
+
+
+class PayloadRetentionTests(ImportFixture):
+    """Parsed rows must not outlive PENDING_LIFETIME, even if nobody calls an import action."""
+
+    def after_lifetime(self):
+        later = timezone.now() + imports.PENDING_LIFETIME + datetime.timedelta(minutes=1)
+        # Patch the name inside core.imports only; a global clock jump would
+        # also expire the test client's session.
+        return mock.patch("core.imports.timezone", now=lambda: later)
+
+    def test_opening_an_old_batch_expires_it_and_clears_the_payload(self):
+        batch = self.batch_for(workbook([student_row("Asha")]))
+        self.assertTrue(batch.payload)
+        with self.after_lifetime():
+            response = self.client.get(reverse("core:import-detail", args=[batch.pk]))
+        self.assertEqual(response.status_code, 200)
+        batch.refresh_from_db()
+        self.assertEqual(batch.status, ImportBatch.Status.EXPIRED)
+        self.assertEqual(batch.payload, {})
+        self.assertNotContains(response, "Asha")
+
+    def test_discarding_an_old_batch_leaves_no_payload(self):
+        batch = self.batch_for(workbook([student_row("Asha")]))
+        with self.after_lifetime():
+            self.client.post(reverse("core:import-discard", args=[batch.pk]))
+        batch.refresh_from_db()
+        self.assertEqual(batch.payload, {})
+
+    def test_expire_command_clears_old_batches_and_keeps_fresh_ones(self):
+        old = self.batch_for(workbook([student_row("Asha")]))
+        with self.after_lifetime():
+            call_command("expire_import_batches", stdout=StringIO())
+        old.refresh_from_db()
+        self.assertEqual(old.status, ImportBatch.Status.EXPIRED)
+        self.assertEqual(old.payload, {})
+
+        fresh = self.batch_for(workbook([student_row("Arjun")]))
+        call_command("expire_import_batches", stdout=StringIO())
+        fresh.refresh_from_db()
+        self.assertEqual(fresh.status, ImportBatch.Status.VALIDATED)
+        self.assertTrue(fresh.payload)
 
 
 class HistoryGuardTests(ImportFixture):
