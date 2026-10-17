@@ -43,5 +43,5 @@ register for one Section and date); both were fixed in the tests.
   history deleted before R10 cannot be recovered (ADR 0018).
 - A slot can legitimately have no current teacher after an assignment ends
   without a successor or when only a future one exists; the gap report shows it.
-- Notification idempotency is per guardian, student and day, so recording
-  consent later does not re-create an alert already skipped that day.
+- Absence-alert idempotency is per guardian, student and day, so recording
+  consent later does not re-create an absence alert already skipped that day.
