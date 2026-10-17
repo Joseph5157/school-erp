@@ -2,7 +2,8 @@
 {% block title %}{{ student.full_name }}{% endblock %}
 {% block content %}
 <h1 class="h3 mb-1">{{ student.full_name }}</h1>
-<p class="text-muted">{{ enrollment.section }} &middot; {{ enrollment.academic_year.name }} &middot; {{ student.get_status_display }}</p>
+<p class="text-muted mb-1">{{ enrollment.section }} &middot; {{ enrollment.academic_year.name }} &middot; {{ student.get_status_display }}</p>
+{% if student.admission_number %}<p class="text-muted">Admission number: {{ student.admission_number }}</p>{% endif %}
 
 <h2 class="h5 mt-4">Attendance this year</h2>
 <p>Present {{ attendance.present }}, absent {{ attendance.absent }}{% if attendance.percentage is not None %} &mdash; {{ attendance.percentage }}% present{% endif %}.</p>
