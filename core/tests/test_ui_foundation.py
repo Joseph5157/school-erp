@@ -1,5 +1,7 @@
 """U1 UI foundation: static files, shell, navigation, auth pages, components."""
 
+import re
+
 from django.conf import settings
 from django.contrib import messages as django_messages
 from django.contrib.auth.models import AnonymousUser, Permission
@@ -200,7 +202,12 @@ class GuardianShellTests(BoundaryFixture, TestCase):
             for name in ("portal:child", "portal:attendance", "portal:report-cards")
         ]
         for url in urls:
-            html = self.portal.get(url).content.decode().lower()
+            # Strip hidden inputs (e.g. the CSRF token in the logout form): their
+            # random values can accidentally contain an excluded word and make
+            # this test flaky.
+            html = re.sub(
+                r'<input[^>]*type="hidden"[^>]*>', "", self.portal.get(url).content.decode()
+            ).lower()
             for word in ("fee", "announcement", "pdf", "download"):
                 self.assertNotIn(word, html, f"{word!r} found on {url}")
             self.assertNotIn(f"/students/{self.asha.pk}/", html)
