@@ -37,10 +37,11 @@ to their own dates.
   row, in one transaction that locks the offering. Nothing is overwritten.
 - **D4 Future-dated assignments are allowed.** They must be inside the
   Academic Year and grant no access before `start_date`.
-- **D5 Deletion.** An assignment may be deleted only if it has never taken
-  effect (start date after the school-local business date) and nothing depends
-  on it (no result entered by that teacher for that offering + Section inside
-  its range). Any other assignment is ended instead. A future assignment with
+- **D5 Deletion.** A row is historically relevant as soon as its start date
+  has arrived (on or before the school-local business date), even with zero
+  results; it is then ended, never deleted. A row that has not yet taken
+  effect may be deleted only if nothing depends on it (no result entered by
+  that teacher for that offering + Section inside its range). A future assignment with
   a wrong teacher or start date is deleted and recreated; R10 adds no general
   workflow for editing historical rows.
 - **D6 Operational ownership (DRAFT work).** Entering or changing DRAFT
@@ -54,15 +55,18 @@ to their own dates.
   falls inside one of that teacher's assignments for it. The date used is the
   assessment date, not the finalization or entry date. This is the same rule
   already applied to class teachers.
-- **D8 Former assignments.** After an assignment ends, the teacher loses
-  student-list and student-profile access (these use current scope only, ADR
-  0012 D8), result entry, and anything dated after the end. They keep
-  read-only access to finalized results whose assessment date fell inside the
-  assignment, through a past-duties section on "My results". No entry,
-  gradebook editing or Student profile comes with it.
-- **D9 Losing teacher status.** Leaving the Teachers group or being
-  deactivated removes all access immediately, including D8's historical
-  reads (the same as ADR 0011 D14), and never changes the rows. The
+- **D8 Former assignments.** Ending a subject-teacher assignment removes
+  current Student scope (student list and profile use current scope only, ADR
+  0012 D8), DRAFT mutation rights, and access to later assessments. An
+  *active* teacher keeps read-only access to finalized results whose
+  assessment dates fell within that historical assignment, through a
+  past-duties section on "My results". No entry, gradebook editing or Student
+  profile comes with it.
+- **D9 Losing teacher status.** Deactivation or removal from the Teachers
+  group removes **all** teacher access immediately, including D8's
+  historical and past-duty views (ADR 0011 D14). "Former assignment" never
+  means a former employee can still log in and read results. The rows are
+  never changed by this. The
   "active Teachers-group login" check applies only when a row is created, so
   an administrator can still end a departed teacher's row.
 - **D10 Offering scope.** An offering's Section scope still cannot drop a
@@ -102,4 +106,4 @@ the surviving teacher taught the Subject for the whole past year.
 
 ## Related
 
-ADR 0010, ADR 0011, ADR 0012 (D8, D9, D14 by reference to ADR 0011).
+ADR 0010, ADR 0011 (D14), ADR 0012 (D8, D9).
