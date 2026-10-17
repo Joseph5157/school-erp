@@ -73,6 +73,40 @@ class StudentAccessTests(Phase4Fixture, TestCase):
         self.assertEqual(self.rao_client.get(url).status_code, 403)
         self.assertEqual(self.iyer_client.get(url).status_code, 403)
 
+    # --- admission number (ADR 0012 D8) ---
+
+    def give_admission_numbers(self):
+        self.asha.admission_number = "A-1023"
+        self.asha.save()
+        self.bina.admission_number = "B-2044"
+        self.bina.save()
+
+    def test_class_teacher_sees_the_admission_number(self):
+        self.give_admission_numbers()
+        page = self.rao_client.get(self.asha_url)
+        self.assertContains(page, "Admission number")
+        self.assertContains(page, "A-1023")
+
+    def test_subject_teacher_sees_the_admission_number(self):
+        self.give_admission_numbers()
+        page = self.iyer_client.get(self.asha_url)
+        self.assertContains(page, "A-1023")
+
+    def test_admission_number_is_left_out_when_none_is_recorded(self):
+        page = self.rao_client.get(self.asha_url)
+        self.assertEqual(page.status_code, 200)
+        self.assertNotContains(page, "Admission number")
+
+    def test_out_of_scope_admission_number_is_not_exposed(self):
+        self.give_admission_numbers()
+        url = reverse("core:my-student-detail", args=[self.bina.pk])
+        for client in (self.rao_client, self.iyer_client):
+            response = client.get(url)
+            self.assertEqual(response.status_code, 403)
+            self.assertNotContains(response, "B-2044", status_code=403)
+        # And the class list never leaks it either.
+        self.assertNotContains(self.rao_client.get(reverse("core:my-students")), "B-2044")
+
     def test_transferred_student_leaves_old_teachers_list(self):
         self.asha.enroll(academic_year=self.year, class_grade=self.grade6,
                          section=self.six_b, start_date=TODAY)
