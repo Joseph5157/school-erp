@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Page not found{% endblock %}
+{% block content %}
+<div class="erp-auth">
+    <h1>We can't find that page</h1>
+    <p class="text-secondary">
+        The address may be mistyped, or the page may have moved. Nothing has
+        been changed.
+    </p>
+    <p class="mb-0">
+        <a class="btn btn-primary" href="{% url 'home' %}">Go to my area</a>
+    </p>
+</div>
+{% endblock %}

@@ -175,6 +175,9 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "en-us"
 
+# House date style ("15 Oct 2026"); see config/formats/en/formats.py.
+FORMAT_MODULE_PATH = ["config.formats"]
+
 # The school's local timezone. Business dates (e.g. "is this date in the
 # future?") come from timezone.localdate(), so this must be the school's
 # timezone, not UTC. USE_TZ stays on: stored timestamps remain timezone-aware.

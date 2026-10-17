@@ -11,7 +11,7 @@
     <tbody>
     {% for notice in announcements %}
         <tr>
-            <td>{{ notice.published_at|date:"Y-m-d H:i" }}</td>
+            <td>{{ notice.published_at|date:"j M Y, H:i" }}</td>
             <td><a href="{% url 'core:announcement-detail' notice.pk %}">{{ notice.title }}</a></td>
             <td>{{ notice.audience_label }}</td>
             <td>{% if notice.is_withdrawn %}Withdrawn{% else %}Live{% endif %}</td>

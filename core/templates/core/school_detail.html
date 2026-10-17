@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}School configuration{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">School configuration</h1>
+{% include "partials/_page_header.html" with eyebrow="School setup" title="School configuration" purpose="The school identity used on documents and in guardian messages." only %}
 <dl class="row">
     <dt class="col-sm-3">Name</dt>
     <dd class="col-sm-9">{{ school.name }}</dd>
