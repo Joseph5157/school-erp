@@ -28,7 +28,7 @@
                     {% elif row.action == "republish" %}<span class="badge bg-primary">Will republish</span>{% if row.current %} (replaces version {{ row.current.version }}, {{ row.current.get_status_display }}){% endif %}
                     {% elif row.action == "incomplete" %}
                         <span class="badge bg-warning text-dark">Incomplete</span>
-                        <div class="small">Not yet finalized: {% for a in row.pending %}{{ a.offering.subject.name }} {{ a.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</div>
+                        <div class="small">Not yet finalized: {% for a in row.pending %}{{ a.subject_display }} {{ a.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</div>
                         {% if perms.core.publish_termpublication %}
                         <label class="small"><input type="checkbox" name="include" value="{{ row.student.pk }}"{% if row.selected %} checked{% endif %}> Publish the finalized results anyway (marked partial)</label>
                         {% endif %}

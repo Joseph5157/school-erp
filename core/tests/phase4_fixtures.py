@@ -105,7 +105,7 @@ class Phase4Fixture:
 
         Assessment.objects.filter(pk=assessment.pk).update(
             status=Assessment.Status.FINALIZED, finalized_by=self.admin,
-            finalized_at=timezone.now(),
+            finalized_at=timezone.now(), subject_label=assessment.offering.subject.name,
         )
         assessment.refresh_from_db()
 

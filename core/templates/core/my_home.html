@@ -31,7 +31,7 @@
     <div class="erp-card-row">
         <div>
             <p class="erp-card-title"><a href="{% url 'core:assessment-marks-entry' assessment.pk %}">{{ assessment.name }}</a></p>
-            <p class="erp-card-meta">{{ assessment.offering.subject.name }} &middot; {{ assessment.section }} &middot; {{ assessment.assessment_date|date:"j M" }}</p>
+            <p class="erp-card-meta">{{ assessment.subject_display }} &middot; {{ assessment.section }} &middot; {{ assessment.assessment_date|date:"j M" }}</p>
         </div>
         <span class="erp-pill is-pending">{{ assessment.unmarked_count }} unmarked</span>
     </div>

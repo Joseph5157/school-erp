@@ -132,7 +132,11 @@ class SubjectForm(forms.ModelForm):
         model = Subject
         fields = ["name", "code", "is_active"]
         labels = {"is_active": "Active"}
-        help_texts = {"code": "Optional short code, e.g. MATH. Stored in capitals."}
+        help_texts = {
+            "name": "Renaming applies to draft and future assessments. Finalized results keep "
+                    "the name they were finalized with.",
+            "code": "Optional short code, e.g. MATH. Stored in capitals.",
+        }
 
 
 class AcademicTermForm(forms.ModelForm):

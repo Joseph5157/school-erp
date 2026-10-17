@@ -4,7 +4,7 @@
 <h1 class="h3 mb-3">Correct result</h1>
 <dl class="row">
     <dt class="col-sm-3">Student</dt><dd class="col-sm-9">{{ result.academic_enrollment.student.full_name }}</dd>
-    <dt class="col-sm-3">Assessment</dt><dd class="col-sm-9">{{ assessment.offering.subject.name }} {{ assessment.section }} &middot; {{ assessment.name }} ({{ assessment.assessment_date }})</dd>
+    <dt class="col-sm-3">Assessment</dt><dd class="col-sm-9">{{ assessment.subject_display }} {{ assessment.section }} &middot; {{ assessment.name }} ({{ assessment.assessment_date }})</dd>
     <dt class="col-sm-3">Current result</dt><dd class="col-sm-9">{% if result.status == "MARKED" %}{{ result.score }} / {{ assessment.maximum_marks }}{% else %}Absent{% endif %}</dd>
 </dl>
 <p class="text-muted">The assessment stays finalized. The previous value, your name, the time and the reason are kept permanently.</p>

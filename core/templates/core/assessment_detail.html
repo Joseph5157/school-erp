@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ assessment.name }}{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">{{ assessment.offering.subject.name }}: {{ assessment.name }}</h1>
+<h1 class="h3 mb-3">{{ assessment.subject_display }}: {{ assessment.name }}</h1>
 <dl class="row">
     <dt class="col-sm-3">Academic year / Term</dt><dd class="col-sm-9">{{ assessment.term.academic_year.name }} &middot; {{ assessment.term.name }}</dd>
     <dt class="col-sm-3">Section</dt><dd class="col-sm-9">{{ assessment.section }}</dd>
