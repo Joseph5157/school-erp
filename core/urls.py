@@ -16,6 +16,9 @@ urlpatterns = [
     path("school/", views.school_detail, name="school-detail"),
     path("school/create/", views.school_create, name="school-create"),
     path("school/edit/", views.school_update, name="school-update"),
+    path("school/logo/", views.school_logo_image, name="school-logo"),
+    path("school/logo/upload/", views.school_logo_upload, name="school-logo-upload"),
+    path("school/logo/remove/", views.school_logo_remove, name="school-logo-remove"),
     path("academic-years/", views.academic_year_list, name="academic-year-list"),
     path("academic-years/create/", views.academic_year_create, name="academic-year-create"),
     path(

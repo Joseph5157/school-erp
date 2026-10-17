@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator
 
 from accounts.usernames import USERNAME_HELP
+from core import school_logo
 from core.documents import bonafide
 from core.models import (
     TEACHERS_GROUP_NAME,
@@ -61,6 +62,21 @@ class SchoolForm(forms.ModelForm):
                 "Set the portal address (PORTAL_BASE_URL) before sending WhatsApp messages."
             )
         return mode
+
+
+class SchoolLogoForm(forms.Form):
+    """Upload or replace the school logo (ADR 0020). The view stores the result."""
+
+    image = forms.FileField(
+        label="Logo image",
+        help_text="PNG or JPEG, up to 512 KB and 2000 × 2000 pixels. It is stored "
+                  "at most 600 pixels wide.",
+    )
+
+    def clean_image(self):
+        data = school_logo.read_upload(self.cleaned_data["image"])
+        school_logo.normalize(data)  # surface problems as field errors
+        return data
 
 
 class AcademicYearForm(forms.ModelForm):

@@ -91,6 +91,49 @@ class School(models.Model):
         return self.name
 
 
+class SchoolLogo(models.Model):
+    """One immutable version of the School's logo (ADR 0020).
+
+    Append-only: database triggers refuse UPDATE and DELETE. Replacing the
+    logo adds a version; removing it adds a tombstone (`is_removal`) with no
+    image and no SHA-256. The current logo is the newest row of the School by
+    `uploaded_at`, then `pk`, and only if that row is not a tombstone. `image`
+    is always the normalized PNG produced by `core.school_logo`.
+    """
+
+    school = models.ForeignKey(School, on_delete=models.PROTECT, related_name="logos")
+    is_removal = models.BooleanField(default=False)
+    image = models.BinaryField(null=True, blank=True)
+    sha256 = models.CharField(max_length=64, null=True, blank=True)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
+    )
+    uploaded_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        default_permissions = ()
+        ordering = ["uploaded_at", "pk"]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(is_removal=False, image__isnull=False, sha256__isnull=False)
+                    | models.Q(is_removal=True, image__isnull=True, sha256__isnull=True)
+                ),
+                name="schoollogo_active_has_image_tombstone_has_none",
+            ),
+        ]
+
+    @classmethod
+    def current_for(cls, school):
+        """The school's current logo version, or None (no logo or removed)."""
+        latest = cls.objects.filter(school=school).order_by("-uploaded_at", "-pk").first()
+        return None if latest is None or latest.is_removal else latest
+
+    def __str__(self):
+        kind = "removed" if self.is_removal else "logo"
+        return f"{self.school} {kind} v{self.pk}"
+
+
 class AcademicYear(models.Model):
     """An explicit academic year/session record (docs/DOMAIN_MODEL.md - Academic Year).
 

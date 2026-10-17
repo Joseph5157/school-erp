@@ -14,7 +14,8 @@ from django.contrib.auth import logout
 from django.shortcuts import redirect
 from django.urls import Resolver404, resolve, reverse
 
-ALLOWED_WHILE_CHANGE_REQUIRED = {"password_change", "logout"}
+# The logo is shown in the header of the password-change page itself.
+ALLOWED_WHILE_CHANGE_REQUIRED = {"password_change", "logout", "school-logo"}
 STARTED_KEY = "_auth_started_at"
 SEEN_KEY = "_auth_last_seen"
 
