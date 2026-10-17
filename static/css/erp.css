@@ -627,6 +627,13 @@ body.has-tabbar .erp-messages {
 /* Collapsed, single-line summary shown once every step is done. */
 .erp-setup-complete { display: flex; align-items: center; gap: var(--erp-space-2); margin: 0 0 var(--erp-space-4); padding: var(--erp-space-3) var(--erp-space-4); border-radius: var(--erp-radius); background: var(--erp-ok-wash); color: var(--erp-ok-strong); font-size: var(--erp-text-sm); font-weight: 600; }
 
+/* Student list: initials avatar with the name and admission number underneath. */
+.erp-student-name { display: flex; align-items: center; gap: var(--erp-space-3); min-width: 0; }
+.erp-student-name .erp-initials { flex: 0 0 auto; }
+.erp-student-name-copy { min-width: 0; }
+.erp-student-name-copy a { font-weight: 600; }
+.erp-student-admission { display: block; color: var(--erp-ink-soft); font-size: var(--erp-text-xs); }
+
 .erp-breadcrumb ol { display: flex; flex-wrap: wrap; gap: var(--erp-space-2); list-style: none; padding: 0; margin: 0 0 var(--erp-space-3); font-size: var(--erp-text-sm); color: var(--erp-ink-soft); }
 .erp-breadcrumb li + li::before { content: "/"; margin-right: var(--erp-space-2); }
 .erp-breadcrumb a { color: var(--erp-accent); }

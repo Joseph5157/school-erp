@@ -2,34 +2,83 @@
 {% block title %}Students{% endblock %}
 {% block content %}
 {% include "partials/_page_header.html" with eyebrow="People" title="Students" purpose="Find a student by name, email address, or phone number." only %}
-<form method="get" class="mb-3" role="search" aria-label="Search students">
+<form method="get" class="mb-3" role="search" aria-label="Filter students">
     {% if table.sort_param %}<input type="hidden" name="sort" value="{{ table.sort_param }}">{% endif %}
-    <label for="student-search" class="form-label">Search students</label>
-    <div class="input-group">
-        <input type="search" id="student-search" name="q" value="{{ query }}" class="form-control" placeholder="Name, email, or phone">
-        <label for="student-status" class="visually-hidden">Status</label>
-        <select id="student-status" name="status" class="form-select">
-            <option value="">All statuses</option>
-            {% for value, label in status_choices %}<option value="{{ value }}"{% if value == status %} selected{% endif %}>{{ label }}</option>{% endfor %}
-        </select>
-        <button type="submit" class="btn btn-outline-secondary">Search</button>
-        {% if query or status %}<a class="btn btn-link" href="{% url 'core:student-list' %}">{% if status %}Clear filters{% else %}Clear search{% endif %}</a>{% endif %}
+    <div class="row g-2 align-items-end">
+        <div class="col-12 col-md-5 col-lg-4">
+            <label for="student-search" class="form-label">Search students</label>
+            <input type="search" id="student-search" name="q" value="{{ query }}" class="form-control" placeholder="Name, email, or phone">
+        </div>
+        <div class="col-6 col-md-3 col-lg-2">
+            <label for="student-status" class="form-label">Status</label>
+            <select id="student-status" name="status" class="form-select">
+                <option value="">All statuses</option>
+                {% for value, label in status_choices %}<option value="{{ value }}"{% if value == status %} selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+        </div>
+        {% if class_choices %}
+        <div class="col-6 col-md-2">
+            <label for="student-class" class="form-label">Class</label>
+            <select id="student-class" name="class" class="form-select">
+                <option value="">All classes</option>
+                {% for c in class_choices %}<option value="{{ c.pk }}"{% if c.pk == class_filter %} selected{% endif %}>{{ c.name }}</option>{% endfor %}
+            </select>
+        </div>
+        {% endif %}
+        {% if section_choices %}
+        <div class="col-6 col-md-2">
+            <label for="student-section" class="form-label">Section</label>
+            <select id="student-section" name="section" class="form-select">
+                <option value="">All sections</option>
+                {% for s in section_choices %}<option value="{{ s.pk }}"{% if s.pk == section_filter %} selected{% endif %}>{{ s.class_grade.name }} {{ s.name }}</option>{% endfor %}
+            </select>
+        </div>
+        {% endif %}
+        <div class="col-auto">
+            <button type="submit" class="btn btn-outline-secondary">Search</button>
+        </div>
+        {% if has_filters %}
+        <div class="col-auto">
+            <a class="btn btn-link" href="{% url 'core:student-list' %}">{% if only_search %}Clear search{% else %}Clear filters{% endif %}</a>
+        </div>
+        {% endif %}
     </div>
 </form>
+<nav class="erp-chips mb-3" aria-label="Student quick filters">
+    {% for chip in chips %}
+    <a href="{{ chip.url }}"{% if chip.active %} class="active" aria-current="page"{% endif %}>{{ chip.label }}</a>
+    {% endfor %}
+</nav>
 <div class="erp-table-scroll" role="region" aria-label="Students" tabindex="0">
 <table class="table">
     {% include "partials/_table_head.html" with table=table caption="Students" only %}
     <tbody>
         {% for student in table.page %}
         <tr>
-            <td><a href="{% url 'core:student-detail' student.pk %}">{{ student.full_name }}</a></td>
+            <td>
+                <div class="erp-student-name">
+                    <span class="erp-initials" aria-hidden="true">{{ student.full_name|slice:":1"|upper }}</span>
+                    <span class="erp-student-name-copy">
+                        <a href="{% url 'core:student-detail' student.pk %}">{{ student.full_name }}</a>
+                        {% if student.admission_number %}<span class="erp-student-admission">{{ student.admission_number }}</span>{% endif %}
+                    </span>
+                </div>
+            </td>
+            <td>{{ student.current_class|default:"-" }}</td>
+            <td>{{ student.current_section|default:"-" }}</td>
+            <td>{{ student.guardian_name|default:"-" }}</td>
             <td>{% include "partials/_status_badge.html" with label=student.get_status_display tone=student.status|lower only %}</td>
-            <td>{{ student.email|default:"-" }}</td>
-            <td>{{ student.phone|default:"-" }}</td>
         </tr>
         {% empty %}
         <tr>
-            <td colspan="4">No Students found.{% if perms.core.view_applicant %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:applicant-list' %}">Review applicants</a>{% endif %}</td>
+            <td colspan="5">
+                {% if has_filters %}
+                No students match these filters.
+                <a class="btn btn-outline-secondary btn-sm mt-2" href="{% url 'core:student-list' %}">Clear filters</a>
+                {% else %}
+                No Students found.{% if perms.core.view_applicant %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:applicant-list' %}">Review applicants</a>{% endif %}
+                {% endif %}
+            </td>
         </tr>
         {% endfor %}
     </tbody>
