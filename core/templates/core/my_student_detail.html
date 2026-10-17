@@ -14,7 +14,7 @@
     <tbody>
     {% for result in results %}
         <tr>
-            <td>{{ result.assessment.offering.subject.name }}</td>
+            <td>{{ result.assessment.subject_display }}</td>
             <td>{{ result.assessment.name }}</td>
             <td>{{ result.assessment.assessment_date }}</td>
             {% include "core/_result_cells.html" %}

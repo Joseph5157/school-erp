@@ -4,7 +4,7 @@
 {% block tabbar %}{% if not form.enrollments %}{{ block.super }}{% endif %}{% endblock %}
 {% block content %}
 <p class="mb-2"><a href="{% url 'core:my-assessments' %}">‹ My assessments</a></p>
-<h1 class="h3 mb-1">{{ assessment.offering.subject.name }} {{ assessment.section }}: {{ assessment.name }}</h1>
+<h1 class="h3 mb-1">{{ assessment.subject_display }} {{ assessment.section }}: {{ assessment.name }}</h1>
 <p class="text-muted mb-3">{{ assessment.term.name }} &middot; {{ assessment.assessment_date }} &middot; out of {{ assessment.maximum_marks|floatformat:"-2" }}{% if assessment.pass_mark is not None %} &middot; pass mark {{ assessment.pass_mark|floatformat:"-2" }}{% endif %}
     <span class="erp-pill{% if assessment.is_finalized %} is-submitted{% else %} is-draft{% endif %}">{{ assessment.get_status_display }}</span></p>
 {% if form %}

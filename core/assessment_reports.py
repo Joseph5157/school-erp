@@ -7,9 +7,13 @@ the grading bands frozen on the assessment at finalization. Reports never
 store a copy of marks. No rank, GPA, weighting, promotion or transcripts.
 """
 
-from collections import OrderedDict
+from collections import OrderedDict, namedtuple
 
 from core.models import Assessment, StudentResult, TermRemark
+
+# A report-card heading: the Subject (identity) under the name its results were
+# finalized with. A Subject renamed mid-year gets one group per name (ADR 0019).
+SubjectGroup = namedtuple("SubjectGroup", ["subject", "name"])
 
 
 def finalized_results(queryset=None):
@@ -45,7 +49,9 @@ def student_history(student):
     return list(
         finalized_results(
             StudentResult.objects.filter(academic_enrollment__student=student)
-        ).order_by("assessment__assessment_date", "assessment__offering__subject__name", "pk")
+        )
+        .annotate(subject_order=Assessment.subject_display_expression("assessment__"))
+        .order_by("assessment__assessment_date", "subject_order", "pk")
     )
 
 
@@ -79,15 +85,22 @@ def subject_section_results(offering, section, term=None, date_range=None):
 def term_report_card(student, term):
     """Report 4: a Student's finalized results for one Term, grouped by Subject.
 
-    Returns a dict with the Term placement, subjects (subject -> results in
+    Returns a dict with the Term placement, subjects (SubjectGroup -> results in
     date order) and the optional Term remark. Nothing is totalled or weighted.
     """
-    results = finalized_results(
-        StudentResult.objects.filter(academic_enrollment__student=student, assessment__term=term)
-    ).order_by("assessment__offering__subject__name", "assessment__assessment_date", "pk")
+    results = (
+        finalized_results(
+            StudentResult.objects.filter(
+                academic_enrollment__student=student, assessment__term=term
+            )
+        )
+        .annotate(subject_order=Assessment.subject_display_expression("assessment__"))
+        .order_by("subject_order", "assessment__assessment_date", "pk")
+    )
     subjects = OrderedDict()
     for result in results:
-        subjects.setdefault(result.assessment.offering.subject, []).append(result)
+        group = SubjectGroup(result.assessment.offering.subject, result.assessment.subject_display)
+        subjects.setdefault(group, []).append(result)
     return {
         "student": student,
         "term": term,

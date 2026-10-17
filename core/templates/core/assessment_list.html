@@ -21,7 +21,7 @@
         <tr>
             <td>{{ assessment.assessment_date }}</td>
             <td>{{ assessment.term.name }}</td>
-            <td>{{ assessment.offering.subject.name }}</td>
+            <td>{{ assessment.subject_display }}</td>
             <td>{{ assessment.section }}</td>
             <td><a href="{% url 'core:assessment-detail' assessment.pk %}">{{ assessment.name }}</a></td>
             <td>{{ assessment.maximum_marks }}</td>

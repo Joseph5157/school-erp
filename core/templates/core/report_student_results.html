@@ -14,7 +14,7 @@
             <td>{{ result.assessment.assessment_date }}</td>
             <td>{{ result.assessment.term.academic_year.name }} {{ result.assessment.term.name }}</td>
             <td>{{ result.academic_enrollment.section }}</td>
-            <td>{{ result.assessment.offering.subject.name }}</td>
+            <td>{{ result.assessment.subject_display }}</td>
             <td>{{ result.assessment.name }}</td>
             {% include "core/_result_cells.html" %}
         </tr>

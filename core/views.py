@@ -477,7 +477,9 @@ def academic_year_assessments(request, pk):
         "core/assessment_list.html",
         {
             "academic_year": academic_year,
-            "assessments": assessments.order_by("assessment_date", "offering__subject__name"),
+            "assessments": assessments.annotate(
+                subject_order=Assessment.subject_display_expression()
+            ).order_by("assessment_date", "subject_order"),
             "form": form,
         },
     )
@@ -1136,7 +1138,9 @@ def _teacher_visible_results(user, student, academic_year):
                 academic_enrollment__student=student,
                 assessment__term__academic_year=academic_year,
             )
-        ).order_by("assessment__offering__subject__name", "assessment__assessment_date", "pk")
+        )
+        .annotate(subject_order=Assessment.subject_display_expression("assessment__"))
+        .order_by("subject_order", "assessment__assessment_date", "pk")
     )
 
 

@@ -7,7 +7,8 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxLengthValidator, MinValueValidator, RegexValidator
 from django.db import IntegrityError, models, transaction
-from django.db.models.functions import Upper
+from django.db.models import F, Value
+from django.db.models.functions import Coalesce, NullIf, Upper
 from django.utils import timezone
 
 
@@ -2510,6 +2511,7 @@ class Assessment(models.Model):
 
     LOCKED_FIELDS = (
         "term_id", "offering_id", "section_id", "assessment_date", "maximum_marks",
+        "subject_label",
     )
 
     term = models.ForeignKey(AcademicTerm, on_delete=models.PROTECT, related_name="assessments")
@@ -2535,6 +2537,12 @@ class Assessment(models.Model):
         blank=True,
         help_text="Frozen grading scale (name and bands) captured at finalization.",
     )
+    subject_label = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Subject name captured at finalization (ADR 0019); empty while a draft.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -2542,6 +2550,13 @@ class Assessment(models.Model):
         ordering = ["-assessment_date", "offering", "section", "name"]
         permissions = [("finalize_assessment", "Can finalize assessment results")]
         constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(status="DRAFT", subject_label="")
+                    | (models.Q(status="FINALIZED") & ~models.Q(subject_label=""))
+                ),
+                name="assessment_subject_label_matches_status",
+            ),
             models.CheckConstraint(
                 condition=(
                     models.Q(
@@ -2608,6 +2623,7 @@ class Assessment(models.Model):
                 "maximum_marks": (
                     Decimal(str(self.maximum_marks)) if self.maximum_marks is not None else None
                 ),
+                "subject_label": self.subject_label,
             }
             if current != original:
                 raise ValidationError(
@@ -2736,12 +2752,15 @@ class Assessment(models.Model):
                 raise ValidationError(problems)
             scale = self.applicable_scale()
             self.grading_snapshot = scale.snapshot() if scale is not None else None
+            # Later Subject renames never change what this finalized record shows (ADR 0019).
+            self.subject_label = Subject.objects.get(pk=self.offering.subject_id).name
             self.status = self.Status.FINALIZED
             self.finalized_by = actor
             self.finalized_at = timezone.now()
             self.save(
                 update_fields=[
-                    "status", "finalized_by", "finalized_at", "grading_snapshot", "updated_at",
+                    "status", "finalized_by", "finalized_at", "grading_snapshot",
+                    "subject_label", "updated_at",
                 ]
             )
 
@@ -2810,8 +2829,24 @@ class Assessment(models.Model):
     def subject(self):
         return self.offering.subject
 
+    @property
+    def subject_display(self):
+        """The Subject name to show: captured at finalization, live while a draft (ADR 0019)."""
+        if self.status == self.Status.FINALIZED and self.subject_label:
+            return self.subject_label
+        return self.offering.subject.name
+
+    @staticmethod
+    def subject_display_expression(prefix=""):
+        """SQL form of `subject_display` for ordering; `prefix` reaches an Assessment
+        from another model, e.g. "assessment__" from a StudentResult queryset."""
+        return Coalesce(
+            NullIf(F(f"{prefix}subject_label"), Value("")),
+            F(f"{prefix}offering__subject__name"),
+        )
+
     def __str__(self):
-        return f"{self.offering.subject.name} {self.section} - {self.name}"
+        return f"{self.subject_display} {self.section} - {self.name}"
 
 
 # ---------------------------------------------------------------------------

@@ -85,7 +85,8 @@ class ReportSemanticsTests(ReportFixture, TestCase):
                        reason="Re-totalled.")
         self.assertEqual(assessment_reports.result_sheet(self.ut1)[1].score, Decimal("19"))
         card = assessment_reports.term_report_card(self.ravi, self.term1)
-        self.assertEqual(card["subjects"][self.maths_subject][0].grade, "A")
+        group = assessment_reports.SubjectGroup(self.maths_subject, "Mathematics")
+        self.assertEqual(card["subjects"][group][0].grade, "A")
 
     def test_grading_scale_edit_does_not_change_finalized_reports(self):
         self.scale.boundaries.filter(label="A").update(min_percentage=99)
@@ -107,8 +108,9 @@ class ReportSemanticsTests(ReportFixture, TestCase):
                                   remark="Steady improvement.", written_by=self.rao)
         card = assessment_reports.term_report_card(self.ravi, self.term1)
         self.assertEqual(card["placement"], self.ravi_b)  # Section at term end
+        group = assessment_reports.SubjectGroup(self.maths_subject, "Mathematics")
         self.assertEqual(
-            [r.assessment.name for r in card["subjects"][self.maths_subject]],
+            [r.assessment.name for r in card["subjects"][group]],
             ["Unit Test 1", "Unit Test 2"],
         )
         self.assertEqual(card["remark"].remark, "Steady improvement.")

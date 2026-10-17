@@ -12,6 +12,11 @@
   publishes nothing new.
 - Corrections mark the current version STALE in the same transaction; the
   portal also re-checks the fingerprint of the released source values.
+- The Subject label is released content and stays fingerprinted, but renaming
+  a Subject must never hide a card (ADR 0019). Scheme 2 (new versions) takes
+  it from the label captured on the finalized Assessment. Scheme 1 (versions
+  released before R12) takes it from the stored snapshot entry, so their
+  stored hashes stay valid and only real result or remark changes show up.
 """
 
 import hashlib
@@ -32,7 +37,7 @@ from core.models import (
     TermRemark,
 )
 
-FINGERPRINT_SCHEME = 1
+FINGERPRINT_SCHEME = 2
 Event = SecurityEvent.EventType
 
 
@@ -41,12 +46,16 @@ def _text(value):
 
 
 def entry_values(result):
-    """Displayed values of one result — the only result fields ever released."""
+    """Displayed values of one result — the only result fields ever released.
+
+    The Subject label is the one captured at finalization (scheme 2); callers
+    verifying a scheme 1 version replace it with the stored snapshot label.
+    """
     assessment = result.assessment
     pass_fail = result.pass_fail
     return {
         "result_id": result.pk,
-        "subject_label": assessment.offering.subject.name,
+        "subject_label": assessment.subject_display,
         "assessment_label": assessment.name,
         "assessment_date": assessment.assessment_date,
         "maximum_marks": assessment.maximum_marks,
@@ -59,10 +68,14 @@ def entry_values(result):
     }
 
 
-def fingerprint(entries, remark):
-    """SHA-256 over the released values (scheme 1); stored values only."""
+def fingerprint(entries, remark, scheme=None):
+    """SHA-256 over the released values; stored values only.
+
+    `scheme` is part of the hashed content, so the same values hash differently
+    under each scheme; it defaults to the scheme used for new versions.
+    """
     canonical = {
-        "scheme": FINGERPRINT_SCHEME,
+        "scheme": FINGERPRINT_SCHEME if scheme is None else scheme,
         "entries": sorted(
             ({key: _text(value) for key, value in entry.items()} for entry in entries),
             key=lambda e: int(e["result_id"]),
@@ -78,6 +91,31 @@ def _results_queryset():
     )
 
 
+def _as_released(entries, scheme, stored_labels):
+    """`entries` as a version of `scheme` released them.
+
+    Scheme 1 hashed the label stored in its snapshot rows, so a Subject renamed
+    since then must not change what is verified. Later schemes hash the label
+    captured on the finalized Assessment, which never changes.
+    """
+    if scheme >= 2:
+        return entries
+    return [
+        {**entry, "subject_label": stored_labels.get(entry["result_id"], entry["subject_label"])}
+        for entry in entries
+    ]
+
+
+def _fingerprint_as_released(current, content):
+    """The preview `content` hashed the way the `current` version was hashed."""
+    stored = (
+        dict(current.entries.values_list("result_id", "subject_label"))
+        if current.fingerprint_scheme < 2 else {}
+    )
+    entries = _as_released(content["entries"], current.fingerprint_scheme, stored)
+    return fingerprint(entries, content["remark"], current.fingerprint_scheme)
+
+
 def release_content(student, term):
     results = (
         _results_queryset()
@@ -86,8 +124,8 @@ def release_content(student, term):
             assessment__term=term,
             assessment__status=Assessment.Status.FINALIZED,
         )
-        .order_by("assessment__offering__subject__name", "assessment__assessment_date",
-                  "assessment__name", "pk")
+        .annotate(subject_order=Assessment.subject_display_expression("assessment__"))
+        .order_by("subject_order", "assessment__assessment_date", "assessment__name", "pk")
     )
     entries = [entry_values(result) for result in results]
     remark = TermRemark.objects.filter(term=term, student=student).first()
@@ -104,11 +142,13 @@ def live_fingerprint(publication):
             pk__in=publication.entries.values("result_id")
         )
     ]
+    stored = dict(publication.entries.values_list("result_id", "subject_label"))
+    entries = _as_released(entries, publication.fingerprint_scheme, stored)
     remark = None
     if publication.remark_id_ref is not None:
         live = TermRemark.objects.filter(pk=publication.remark_id_ref).first()
         remark = {"id": publication.remark_id_ref, "text": live.remark if live else None}
-    return fingerprint(entries, remark)
+    return fingerprint(entries, remark, publication.fingerprint_scheme)
 
 
 def guardian_visible(publication):
@@ -138,11 +178,15 @@ def guardian_visible_many(publications):
         return visible
 
     entry_ids = {}
+    stored_labels = {}
     result_ids = set()
     for row in TermPublicationEntry.objects.filter(publication__in=candidates).values(
-        "publication_id", "result_id"
+        "publication_id", "result_id", "subject_label"
     ):
         entry_ids.setdefault(row["publication_id"], []).append(row["result_id"])
+        stored_labels.setdefault(row["publication_id"], {})[row["result_id"]] = (
+            row["subject_label"]
+        )
         result_ids.add(row["result_id"])
 
     values_by_result = {}
@@ -165,11 +209,15 @@ def guardian_visible_many(publications):
             for result_id in entry_ids.get(item.pk, [])
             if result_id in values_by_result
         ]
+        entries = _as_released(entries, item.fingerprint_scheme,
+                               stored_labels.get(item.pk, {}))
         if item.remark_id_ref is None:
             remark = None
         else:
             remark = {"id": item.remark_id_ref, "text": remarks.get(item.remark_id_ref)}
-        visible[item.pk] = fingerprint(entries, remark) == item.fingerprint
+        visible[item.pk] = (
+            fingerprint(entries, remark, item.fingerprint_scheme) == item.fingerprint
+        )
     return visible
 
 
@@ -236,7 +284,7 @@ def plan_publication(term, section, include=()):
         elif not content["entries"] and content["remark"] is None:
             row["action"] = SKIP_NOTHING
         elif (current is not None and current.status == TermPublication.Status.PUBLISHED
-              and current.fingerprint == content["fingerprint"]
+              and current.fingerprint == _fingerprint_as_released(current, content)
               and current.is_partial == bool(missing)):
             row["action"] = SKIP_ALREADY
         elif missing:
