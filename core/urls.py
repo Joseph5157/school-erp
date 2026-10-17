@@ -222,6 +222,16 @@ urlpatterns = [
     path("applicants/<int:pk>/progress/", views.applicant_progress, name="applicant-progress"),
     path("students/", views.student_list, name="student-list"),
     path("students/<int:pk>/", views.student_detail, name="student-detail"),
+    path(
+        "students/<int:pk>/guardians/add/",
+        views.student_guardian_add,
+        name="student-guardian-add",
+    ),
+    path(
+        "student-guardians/<int:pk>/edit/",
+        views.student_guardian_edit,
+        name="student-guardian-edit",
+    ),
     path("students/<int:pk>/enroll/", views.student_enroll, name="student-enroll"),
     path("terms/<int:pk>/publication/", views.term_publication, name="term-publication"),
     path("publications/stale/", views.publications_stale, name="publications-stale"),
@@ -255,6 +265,7 @@ urlpatterns = [
     path("guardians/", views.guardian_list, name="guardian-list"),
     path("guardians/create/", views.guardian_create, name="guardian-create"),
     path("guardians/<int:pk>/", views.guardian_detail, name="guardian-detail"),
+    path("guardians/<int:pk>/edit/", views.guardian_edit, name="guardian-edit"),
     path(
         "guardians/<int:pk>/consent/",
         notification_views.guardian_consent_record,

@@ -30,6 +30,7 @@ from core.models import (
     SchoolCalendarDay,
     Section,
     Student,
+    StudentGuardian,
     Subject,
     business_today,
 )
@@ -663,6 +664,40 @@ class ApplicantGuardianForm(forms.ModelForm):
             if duplicates.exists():
                 raise ValidationError("This Guardian is already associated with this Applicant.")
         return cleaned_data
+
+
+class StudentGuardianForm(forms.ModelForm):
+    """Associate a Guardian with an existing Student.
+
+    `student` comes from the URL, not the request. It is not a form field, so
+    the one-link-per-Guardian rule is checked explicitly, as for Applicants.
+    """
+
+    class Meta:
+        model = StudentGuardian
+        fields = ["guardian", "relationship_type"]
+
+    def __init__(self, *args, student, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.student = student
+        self.instance.student = student
+
+    def clean(self):
+        cleaned_data = super().clean()
+        guardian = cleaned_data.get("guardian")
+        if guardian is not None and StudentGuardian.objects.filter(
+            student=self.student, guardian=guardian
+        ).exists():
+            raise ValidationError("This Guardian is already associated with this Student.")
+        return cleaned_data
+
+
+class StudentGuardianRelationshipForm(forms.ModelForm):
+    """Change only the relationship type of an existing Student-Guardian link."""
+
+    class Meta:
+        model = StudentGuardian
+        fields = ["relationship_type"]
 
 
 class AttendanceRegisterForm(forms.ModelForm):

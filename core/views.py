@@ -67,6 +67,8 @@ from core.forms import (
     GuardianAccountLinkForm,
     GuardianForm,
     GuardianUsernameForm,
+    StudentGuardianForm,
+    StudentGuardianRelationshipForm,
     MissingAttendanceForm,
     MonthlySectionSummaryForm,
     OfferedSubjectsLookupForm,
@@ -1854,6 +1856,52 @@ def guardian_create(request):
     else:
         form = GuardianForm()
     return render(request, "core/guardian_form.html", {"form": form})
+
+
+@administrator_required("core.change_guardian")
+def guardian_edit(request, pk):
+    guardian = get_object_or_404(Guardian, pk=pk)
+    if request.method == "POST":
+        form = GuardianForm(request.POST, instance=guardian)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Guardian updated.")
+            return redirect("core:guardian-detail", pk=guardian.pk)
+    else:
+        form = GuardianForm(instance=guardian)
+    return render(request, "core/guardian_form.html", {"form": form, "guardian": guardian})
+
+
+@administrator_required("core.add_studentguardian")
+def student_guardian_add(request, pk):
+    student = get_object_or_404(Student, pk=pk)
+    if request.method == "POST":
+        form = StudentGuardianForm(request.POST, student=student)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Guardian associated with Student.")
+            return redirect("core:student-detail", pk=student.pk)
+    else:
+        form = StudentGuardianForm(student=student)
+    return render(request, "core/student_guardian_form.html", {"form": form, "student": student})
+
+
+@administrator_required("core.change_studentguardian")
+def student_guardian_edit(request, pk):
+    link = get_object_or_404(StudentGuardian.objects.select_related("student", "guardian"), pk=pk)
+    if request.method == "POST":
+        form = StudentGuardianRelationshipForm(request.POST, instance=link)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Relationship updated.")
+            return redirect("core:student-detail", pk=link.student_id)
+    else:
+        form = StudentGuardianRelationshipForm(instance=link)
+    return render(
+        request,
+        "core/student_guardian_form.html",
+        {"form": form, "student": link.student, "link": link},
+    )
 
 
 @administrator_required("core.view_guardian")

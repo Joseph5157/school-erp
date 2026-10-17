@@ -22,7 +22,7 @@
         <a class="btn btn-success" href="{{ row.link }}" target="_blank" rel="noopener">Send on WhatsApp</a>
         <form method="post" action="{% url 'core:notification-mark-sent' n.pk %}">{% csrf_token %}<button type="submit" class="btn btn-outline-primary">Mark as sent</button></form>
         {% else %}
-        <p class="text-danger small mb-0">Phone number missing or not usable &mdash; <a href="{% url 'core:guardian-detail' n.guardian.pk %}">update the guardian</a>.</p>
+        <p class="text-danger small mb-0">Phone number missing or not usable &mdash; <a href="{% url 'core:guardian-edit' n.guardian.pk %}">update the guardian</a>.</p>
         {% endif %}
         <form method="post" action="{% url 'core:notification-dismiss' n.pk %}" class="d-flex gap-1">
             {% csrf_token %}

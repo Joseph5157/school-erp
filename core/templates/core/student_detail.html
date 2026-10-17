@@ -131,11 +131,15 @@
 
 <section id="guardians" aria-labelledby="guardians-heading">
 <h2 class="h5" id="guardians-heading">Guardians</h2>
+{% if perms.core.add_studentguardian %}
+    <a class="btn btn-primary mb-3" href="{% url 'core:student-guardian-add' student.pk %}">Associate Guardian</a>
+{% endif %}
 <table class="table">
     <thead>
         <tr>
             <th>Guardian</th>
             <th>Relationship</th>
+            {% if perms.core.change_studentguardian %}<th></th>{% endif %}
         </tr>
     </thead>
     <tbody>
@@ -143,6 +147,7 @@
         <tr>
             <td><a href="{% url 'core:guardian-detail' link.guardian.pk %}">{{ link.guardian.full_name }}</a></td>
             <td>{{ link.get_relationship_type_display }}</td>
+            {% if perms.core.change_studentguardian %}<td><a href="{% url 'core:student-guardian-edit' link.pk %}">Change relationship</a></td>{% endif %}
         </tr>
         {% empty %}
         <tr>
