@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed (2026-10-17, Phase 7 follow-up). Not yet accepted or frozen.
+Accepted (2026-10-17, Phase 7 follow-up, PR #79) — FROZEN.
 
 Extends ADR 0016 (issued documents are immutable; reprints render from the
 stored payload) by adding a logo reference to the letterhead. Changes no
@@ -48,7 +48,7 @@ replaced or removed.
   check constraint enforces the two shapes: an active version has the image
   and the SHA-256 present; a tombstone has neither.
 - **D4 Current logo.** "Latest" is deterministic: the newest row of the
-  school ordered by `uploaded_at`, then `pk`. The logo shown in the UI is that
+  school ordered by `uploaded_at` descending, then `pk` descending. The logo shown in the UI is that
   version, and only if it is not a tombstone. If it is a tombstone, or no
   version exists, the UI shows the text brand.
 - **D5 Accepted uploads.** PNG or JPEG only. SVG and every other type are
