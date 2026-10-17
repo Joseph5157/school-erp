@@ -1,6 +1,7 @@
 """ADR 0020 Gate 1: school logo versions, validation, serving and management."""
 
 import hashlib
+import threading
 from datetime import timedelta
 from io import BytesIO
 
@@ -66,6 +67,40 @@ class NormalizeTests(SimpleTestCase):
         with self.assertRaisesMessage(ValidationError, "not a readable"):
             school_logo.normalize(data)
         self.assertTrue(ImageFile.LOAD_TRUNCATED_IMAGES)  # restored for other users
+
+    def test_repeated_and_concurrent_normalization_keeps_the_global_flag(self):
+        good = image_bytes("PNG", size=(300, 300))
+        bad = good[:-40]
+        for original in (True, False):
+            with self.subTest(original=original):
+                ImageFile.LOAD_TRUNCATED_IMAGES = original
+                self.addCleanup(setattr, ImageFile, "LOAD_TRUNCATED_IMAGES", False)
+                outcomes = []
+
+                def work(data, outcomes=outcomes):
+                    for _ in range(20):
+                        try:
+                            school_logo.normalize(data)
+                            outcomes.append("ok")
+                        except ValidationError:
+                            outcomes.append("refused")
+
+                threads = [threading.Thread(target=work, args=(data,))
+                           for data in (good, bad) * 4]
+                for thread in threads:
+                    thread.start()
+                for thread in threads:
+                    thread.join()
+                self.assertEqual(ImageFile.LOAD_TRUNCATED_IMAGES, original)
+                self.assertEqual(outcomes.count("ok"), 80)
+                self.assertEqual(outcomes.count("refused"), 80)
+
+    def test_flag_is_restored_when_decoding_fails(self):
+        ImageFile.LOAD_TRUNCATED_IMAGES = True
+        self.addCleanup(setattr, ImageFile, "LOAD_TRUNCATED_IMAGES", False)
+        with self.assertRaises(ValidationError):
+            school_logo.normalize(b"junk")
+        self.assertTrue(ImageFile.LOAD_TRUNCATED_IMAGES)
 
     def test_over_512_kb_is_refused_not_shrunk(self):
         with self.assertRaisesMessage(ValidationError, "larger than 512 KB"):

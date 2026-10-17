@@ -6,6 +6,7 @@ is stored, as an immutable `SchoolLogo` version.
 """
 
 import hashlib
+import threading
 from io import BytesIO
 
 from django.core.exceptions import ValidationError
@@ -21,6 +22,11 @@ STORED_WIDTH = 600
 ACCEPTED_FORMATS = ("PNG", "JPEG")
 
 _UNREADABLE = "This file is not a readable PNG or JPEG image."
+
+# Guards the save/set/decode/restore of Pillow's process-wide
+# ImageFile.LOAD_TRUNCATED_IMAGES, so two threads cannot save each other's
+# temporary False as the "original" value and leave it switched off.
+_TRUNCATION_LOCK = threading.Lock()
 
 
 def _decode(data):
@@ -56,12 +62,13 @@ def normalize(data):
         raise ValidationError("The file is larger than 512 KB.")
     # WeasyPrint switches Pillow into truncated-image tolerance when it is imported;
     # a cut-off upload must be refused, so decode with that tolerance off.
-    tolerant = ImageFile.LOAD_TRUNCATED_IMAGES
-    ImageFile.LOAD_TRUNCATED_IMAGES = False
-    try:
-        image = _decode(data)
-    finally:
-        ImageFile.LOAD_TRUNCATED_IMAGES = tolerant
+    with _TRUNCATION_LOCK:
+        tolerant = ImageFile.LOAD_TRUNCATED_IMAGES
+        ImageFile.LOAD_TRUNCATED_IMAGES = False
+        try:
+            image = _decode(data)
+        finally:
+            ImageFile.LOAD_TRUNCATED_IMAGES = tolerant
 
     image = ImageOps.exif_transpose(image)
     has_alpha = image.mode in ("RGBA", "LA", "PA") or "transparency" in image.info
