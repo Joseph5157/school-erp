@@ -2,8 +2,7 @@
 
 ## Status
 
-Proposed (2026-10-17, completed-scope repair R10) — becomes FROZEN when the
-R10 pull request is merged.
+Accepted (2026-10-17, completed-scope repair R10, PR #76) — FROZEN.
 
 Amends ADR 0010 (undated, single-row assignment) and makes ADR 0012 D9
 executable for subject teachers. ADR 0011 (class teachers) is unchanged and is
