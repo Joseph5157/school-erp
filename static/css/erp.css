@@ -332,6 +332,7 @@ body.has-tabbar .erp-messages {
   gap: var(--erp-space-2);
 }
 .erp-page-header-actions { flex: 0 0 auto; }
+.erp-page-header-copy .erp-page-header-meta { justify-content: flex-start; }
 
 .erp-status {
   display: inline-flex;
