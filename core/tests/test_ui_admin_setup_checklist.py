@@ -141,6 +141,32 @@ class SetupChecklistRenderingTests(Phase4Fixture, TestCase):
         )
         self.assertContains(response, "Assign")
 
+    def test_checklist_collapses_to_a_single_line_when_done(self):
+        self.complete_setup()
+        response = self.client.get(reverse("core:admin-overview"))
+        self.assertContains(response, "School setup complete")
+        self.assertNotContains(response, "Set up your school")
+        self.assertNotContains(response, 'class="erp-setup-list"')
+        self.assertNotContains(response, 'class="progress erp-setup-bar"')
+
+    def test_progress_bar_and_only_the_next_step_gets_a_filled_button(self):
+        response = self.client.get(reverse("core:admin-overview"))
+        self.assertContains(response, 'class="progress erp-setup-bar"')
+        self.assertContains(response, "of 8 done")
+        # The first incomplete step is the class-teacher step; only it is filled.
+        class_url = reverse("core:academic-year-class-teachers", args=[self.year.pk])
+        self.assertContains(
+            response,
+            f'class="btn btn-primary btn-sm erp-setup-action" href="{class_url}"',
+        )
+        # The following incomplete step (subject teachers) stays outline only.
+        subject_url = reverse("core:academic-year-teacher-assignments", args=[self.year.pk])
+        self.assertContains(
+            response,
+            f'class="btn btn-outline-secondary btn-sm erp-setup-action" href="{subject_url}"',
+        )
+        self.assertContains(response, "A subject teacher for every subject")
+
 
 class SetupChecklistAdminOnlyTests(AuthorizationClientsMixin, TestCase):
     def test_overview_still_refuses_non_administrators(self):

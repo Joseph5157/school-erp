@@ -2,29 +2,10 @@
 {% block title %}Overview{% endblock %}
 {% block content %}
 {% include "partials/_page_header.html" with eyebrow="School administration" title="Overview" purpose="What needs attention today." only %}
-{% if not setup_complete %}
-<section class="erp-setup" aria-labelledby="setup-title">
-    <h2 class="erp-setup-title" id="setup-title">Set up your school</h2>
-    <p class="erp-setup-summary">Work through these and the daily tasks will appear here.</p>
-    <ol class="erp-setup-list">
-        {% for step in setup_steps %}
-        <li class="erp-setup-step{% if step.done %} erp-setup-step--done{% endif %}">
-            {% if step.done %}
-            <span class="erp-setup-check" aria-hidden="true">✓</span>
-            <span class="erp-setup-label">{{ step.label }}</span>
-            {% else %}
-            <span class="erp-setup-label">{{ step.label }}<span class="erp-setup-problem"> — {{ step.problem }}</span></span>
-            <span class="erp-setup-count" aria-hidden="true">{{ step.count }}</span>
-            <a class="btn btn-outline-primary btn-sm" href="{{ step.url }}">{{ step.action }}<span class="visually-hidden">: {{ step.label }}</span></a>
-            {% endif %}
-        </li>
-        {% endfor %}
-    </ol>
-</section>
-{% endif %}
+{% include "partials/_setup_checklist_card.html" %}
 {% if cards %}
-<div class="erp-queue-grid">
-    {% for card in cards %}{% include "partials/_queue_card.html" with card=card only %}{% endfor %}
+<div class="erp-stat-grid">
+    {% for card in cards %}{% include "partials/_stat_card.html" with card=card only %}{% endfor %}
 </div>
 {% elif setup_complete %}
 <p class="text-muted">Nothing to show for your role.</p>

@@ -739,6 +739,11 @@ def choose_area(request):
 @administrator_required("core.view_school")
 def admin_overview(request):
     steps = setup_checklist.setup_steps()
+    done_count = sum(1 for step in steps if step["done"])
+    # The first incomplete step is the "next" one: only it gets the filled button.
+    next_key = next((step["key"] for step in steps if not step["done"]), None)
+    for step in steps:
+        step["is_next"] = step["key"] == next_key
     return render(
         request,
         "core/admin_overview.html",
@@ -746,6 +751,8 @@ def admin_overview(request):
             "cards": dashboard.overview_cards(request.user),
             "setup_steps": steps,
             "setup_complete": setup_checklist.setup_complete(steps),
+            "setup_done": done_count,
+            "setup_total": len(steps),
         },
     )
 
