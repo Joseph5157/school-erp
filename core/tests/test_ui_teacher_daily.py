@@ -88,7 +88,7 @@ class CapturePartialTests(U2Fixture, TestCase):
         self.assertContains(page, 'data-erp-count="unmarked">1<')
         self.assertContains(page, 'data-erp-count="present">1<')
         self.assertContains(page, 'data-erp-count="absent">1<')
-        self.assertContains(page, "All 3 · Unmarked 1 · Present 1 · Absent 1")
+        self.assertContains(page, "3 students &middot; 1 present &middot; 1 absent")
         self.assertContains(page, "1 unmarked")
 
     def test_saved_note_is_marked_filled(self):
@@ -144,11 +144,11 @@ class TakeAttendancePageTests(U2Fixture, TestCase):
     def test_draft_and_submitted_pills(self):
         self.draft(asha="PRESENT")
         self.assertContains(self.teacher.get(self.url),
-                            '<span class="erp-pill is-draft">Draft</span>')
+                            '<span class="visually-hidden">Status: </span>Draft')
         self.draft(asha="PRESENT", ravi="PRESENT", bina="ABSENT")
         self.register().submit(actor=self.rao)
         page = self.teacher.get(self.url)
-        self.assertContains(page, '<span class="erp-pill is-submitted">Submitted</span>')
+        self.assertContains(page, '<span class="visually-hidden">Status: </span>Submitted')
         self.assertContains(page, '<span class="erp-pill is-absent">Absent</span>')
         self.assertContains(page, "only be changed by an administrator")
 

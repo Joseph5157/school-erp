@@ -4,13 +4,20 @@
 {% block tabbar %}{% if not capture_form.enrollments %}{{ block.super }}{% endif %}{% endblock %}
 {% block content %}
 <p class="mb-2"><a href="{% url 'core:my-home' %}">‹ My day</a></p>
-<h1 class="h3 mb-1">Attendance: {{ section }}</h1>
-<p class="text-muted mb-3">{{ today|date:"l, j F Y" }} &middot; {{ year.name }}
-    {% if register.is_submitted %}<span class="erp-pill is-submitted">Submitted</span>{% elif register %}<span class="erp-pill is-draft">Draft</span>{% endif %}</p>
+{% with header_line=today|date:"l, j F Y"|add:" · "|add:year.name %}
+{% if register.is_submitted %}
+{% include "partials/_page_header.html" with eyebrow="Attendance" title=section purpose=header_line status_label="Submitted" status_tone="submitted" only %}
+{% elif register %}
+{% include "partials/_page_header.html" with eyebrow="Attendance" title=section purpose=header_line status_label="Draft" status_tone="draft" only %}
+{% else %}
+{% include "partials/_page_header.html" with eyebrow="Attendance" title=section purpose=header_line only %}
+{% endif %}
+{% endwith %}
 
 {% if register is None %}
     {% if is_instructional %}
     <div class="erp-empty">
+        <span class="erp-empty-icon" aria-hidden="true">○</span>
         <p class="erp-empty-title">Attendance has not been taken today.</p>
         <form method="post">
             {% csrf_token %}
@@ -18,11 +25,15 @@
         </form>
     </div>
     {% else %}
-    <div class="erp-empty"><p>Today is not a school day for {{ year.name }}; no attendance is expected.</p></div>
+    {% include "partials/_empty.html" with title="Not a school day" text="Today is not a school day for "|add:year.name|add:"; no attendance is expected." %}
     {% endif %}
 {% elif register.is_submitted %}
-    <p>Submitted {{ register.submitted_at }} by {{ register.submitted_by.get_full_name|default:register.submitted_by.username }}.
-       Submitted attendance can only be changed by an administrator, through a correction.</p>
+    <div class="erp-empty erp-empty--submitted">
+        <span class="erp-empty-icon" aria-hidden="true">✓</span>
+        <p class="erp-empty-title">{% include "partials/_status_badge.html" with label="Submitted" tone="submitted" only %}</p>
+        <p>Submitted {{ register.submitted_at }} by {{ register.submitted_by.get_full_name|default:register.submitted_by.username }}.
+           Submitted attendance can only be changed by an administrator, through a correction.</p>
+    </div>
     {% include "core/_attendance_entries.html" %}
 {% else %}
     <p class="text-muted">Unmarked Students are <strong>not</strong> treated as absent.</p>
