@@ -115,7 +115,7 @@ class StudentTableTests(AuthorizationClientsMixin, TestCase):
 
     def test_filter_with_no_matches_offers_clear_filters(self):
         response = self.administrator.get(self.url, {"q": "zzz-no-match"})
-        self.assertContains(response, "No Students found.")
+        self.assertContains(response, "No students match these filters.")
         self.assertContains(response, "No results")
         self.assertContains(response, "Clear filters")
 

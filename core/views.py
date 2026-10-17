@@ -1,3 +1,6 @@
+from datetime import timedelta
+from urllib.parse import urlencode
+
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
@@ -7,6 +10,7 @@ from django.db.models import Count, Exists, OuterRef, Q, Subquery
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.cache import add_never_cache_headers
 
 from accounts.models import SecurityEvent
@@ -2305,16 +2309,74 @@ def guardian_access_revoke(request, pk):
 
 STUDENT_COLUMNS = (
     Column("Name", "name", ("full_name",)),
+    Column("Class"),
+    Column("Section"),
+    Column("Guardian"),
     Column("Status", "status", ("status",)),
-    Column("Email"),
-    Column("Phone"),
 )
+
+# Quick-filter chips. Values are URL tokens; the order is the display order.
+STUDENT_CHIP_CHOICES = (
+    ("all", "All"),
+    ("new", "New this month"),
+    ("unplaced", "Not in a class"),
+    ("absent", "Absent 3+ days this year"),
+)
+
+
+def _current_academic_year(today):
+    """The Academic Year containing `today`, else the most recent by start date.
+
+    "Most recent by start date" alone would pick a future year that has been
+    set up in advance and make every Student look unplaced, so prefer the year
+    that is actually in progress.
+    """
+    return (
+        AcademicYear.objects.filter(start_date__lte=today, end_date__gte=today)
+        .order_by("-start_date")
+        .first()
+        or AcademicYear.objects.order_by("-start_date").first()
+    )
+
+
+def _parse_id(request, name, valid_ids):
+    """The GET value when it is an integer in `valid_ids`, else None."""
+    raw = request.GET.get(name, "")
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        return None
+    return value if value in valid_ids else None
+
+
+def _student_chips(request, chip):
+    """Chip links: each keeps the other filters, only the active one is marked."""
+    active = chip or "all"
+    base = {k: v for k, v in request.GET.items() if v and k not in ("sort", "page", "chip")}
+    chips = []
+    for key, label in STUDENT_CHIP_CHOICES:
+        data = dict(base)
+        if key != "all":
+            data["chip"] = key
+        query = urlencode(data)
+        chips.append(
+            {
+                "key": key,
+                "label": label,
+                "url": request.path + (f"?{query}" if query else ""),
+                "active": key == active,
+            }
+        )
+    return chips
 
 
 @administrator_required("core.view_student")
 def student_list(request):
     query = request.GET.get("q", "").strip()
     status = parse_choice(request, "status", Student.Status.choices)
+    chip = parse_choice(request, "chip", STUDENT_CHIP_CHOICES)
+    current_year = _current_academic_year(business_today())
+
     students = Student.objects.all()
     if query:
         students = students.filter(
@@ -2324,7 +2386,73 @@ def student_list(request):
         )
     if status:
         students = students.filter(status=status)
+
+    # Current-year placement and one guardian name, resolved in the page query
+    # (subqueries) rather than per row.
+    active_enrollments = AcademicEnrollment.objects.filter(
+        student=OuterRef("pk"),
+        status=AcademicEnrollment.Status.ACTIVE,
+        academic_year=current_year,
+    )
+    students = students.annotate(
+        current_class=Subquery(active_enrollments.values("class_grade__name")[:1]),
+        current_section=Subquery(active_enrollments.values("section__name")[:1]),
+        guardian_name=Subquery(
+            StudentGuardian.objects.filter(student=OuterRef("pk"))
+            .values("guardian__full_name")
+            .order_by("guardian__full_name")[:1]
+        ),
+    )
+
+    if chip == "new":
+        students = students.filter(created_at__gte=timezone.now() - timedelta(days=30))
+    elif chip == "unplaced":
+        students = students.filter(~Exists(active_enrollments))
+    elif chip == "absent":
+        students = students.annotate(
+            absent_days=Count(
+                "enrollments__attendance_entries",
+                filter=Q(
+                    enrollments__academic_year=current_year,
+                    enrollments__attendance_entries__status=AttendanceStatus.ABSENT,
+                ),
+            )
+        ).filter(absent_days__gte=3)
+
+    class_choices = []
+    section_choices = []
+    class_filter = section_filter = None
+    if current_year is not None:
+        class_choices = list(ClassGrade.objects.order_by("name"))
+        section_choices = list(
+            Section.objects.select_related("class_grade").order_by(
+                "class_grade__name", "name"
+            )
+        )
+        class_filter = _parse_id(request, "class", {c.pk for c in class_choices})
+        section_filter = _parse_id(request, "section", {s.pk for s in section_choices})
+        if class_filter is not None:
+            students = students.filter(
+                enrollments__class_grade_id=class_filter,
+                enrollments__status=AcademicEnrollment.Status.ACTIVE,
+                enrollments__academic_year=current_year,
+            )
+        if section_filter is not None:
+            students = students.filter(
+                enrollments__section_id=section_filter,
+                enrollments__status=AcademicEnrollment.Status.ACTIVE,
+                enrollments__academic_year=current_year,
+            )
+
     table = build_table(request, students, STUDENT_COLUMNS, "name")
+
+    has_filters = bool(
+        query or status or chip or class_filter is not None or section_filter is not None
+    )
+    only_search = query and not (
+        status or chip or class_filter is not None or section_filter is not None
+    )
+
     return render(
         request,
         "core/student_list.html",
@@ -2334,6 +2462,14 @@ def student_list(request):
             "query": query,
             "status": status,
             "status_choices": Student.Status.choices,
+            "chip": chip,
+            "chips": _student_chips(request, chip),
+            "class_filter": class_filter,
+            "section_filter": section_filter,
+            "class_choices": class_choices,
+            "section_choices": section_choices,
+            "has_filters": has_filters,
+            "only_search": only_search,
         },
     )
 
