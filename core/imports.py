@@ -73,8 +73,8 @@ STUDENT_COLUMNS = [
     ("class", "Class", True),
     ("section", "Section", True),
     ("roll_number", "Roll number", False),
-    ("guardian1_name", "Guardian 1 name", True),
-    ("guardian1_relationship", "Guardian 1 relationship", True),
+    ("guardian1_name", "Guardian 1 name", False),
+    ("guardian1_relationship", "Guardian 1 relationship", False),
     ("guardian1_phone", "Guardian 1 phone", False),
     ("guardian1_email", "Guardian 1 email", False),
     ("guardian2_name", "Guardian 2 name", False),
@@ -485,7 +485,9 @@ def validate(sheets, academic_year, enrollment_start_date):
             values = {k: record.get(prefix + k, "") for k in ("name", "relationship", "phone",
                                                                 "email")}
             label = f"Guardian {number}"
-            if number == 2 and not any(values.values()):
+            if not any(values.values()):
+                # A guardian is optional (Phase 1 lets a Student exist with none);
+                # once any of its cells is filled, name and relationship are required.
                 continue
             guardian_ok = True
             if not values["name"]:
@@ -549,6 +551,11 @@ def validate(sheets, academic_year, enrollment_start_date):
                     "first_row": row,
                 })
             links.append({"guardian": guardians[identity], "relationship": relationship.value})
+
+        if ok and not links:
+            warn(SHEET_STUDENTS, row, "Guardian 1 name",
+                 "No guardian listed: this student will have no guardian, so no portal "
+                 "access or messages until one is added.")
 
         if full_name:
             identity = (name_key(full_name), date_of_birth)
@@ -802,8 +809,9 @@ def template_workbook():
     lines = [
         "School ERP bulk import",
         "",
-        "Students sheet: one row per student. Required: Full name, Class, Section, "
-        "Guardian 1 name, Guardian 1 relationship.",
+        "Students sheet: one row per student. Required: Full name, Class, Section.",
+        "Guardians are optional (up to two per student). If you fill in any cell for a "
+        "guardian, that guardian's name and relationship are required.",
         "Classes sheet (optional): Class and Section pairs to create if they do not exist yet.",
         "A student row may only use a Class/Section that already exists or is listed on "
         "the Classes sheet.",

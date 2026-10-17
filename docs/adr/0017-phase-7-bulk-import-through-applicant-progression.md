@@ -57,6 +57,12 @@ history the project depends on.
   rather than ignored. This amendment records that behaviour so the code is
   not "corrected" back to phone-only matching, which would merge different
   parents who share a phone.
+- **2026-10-17 - Guardians are optional.** A student row may list 0, 1 or 2
+  guardians, matching the Phase 1 lifecycle in which a Student can exist with
+  none. A guardian whose cells are all empty is skipped; if any cell of a
+  guardian is filled, its name and relationship are required. A student with
+  no guardian imports with a warning (no portal access or messages until one
+  is added), which must be reviewed before the batch is committed.
 - **2026-10-17 - Pending-batch retention.** Parsed rows in a pending batch
   are cleared after 24 hours. Expiry runs when import pages are used and
   through the `expire_import_batches` management command, which must be run
