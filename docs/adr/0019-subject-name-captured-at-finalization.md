@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed (2026-10-17, completed-scope repair R12).
+Accepted (2026-10-17, completed-scope repair R12, PR #78) — FROZEN.
 
 Clarifies ADR 0009 (Subject identity) and keeps ADR 0014 (published content is
 never silently changed) true when a Subject is renamed. Does not change any
