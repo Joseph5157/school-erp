@@ -1,5 +1,7 @@
+from datetime import date
+
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Permission
+from django.contrib.auth.models import Group, Permission
 from django.test import TestCase
 from django.urls import resolve, reverse
 
@@ -8,10 +10,14 @@ from core.authorization import user_areas
 from core.breadcrumbs import breadcrumb_context
 from core.dashboard import overview_cards
 from core.models import (
+    TEACHERS_GROUP_NAME,
     Applicant,
     AttendanceRegister,
     AttendanceStatus,
+    School,
     SchoolCalendarDay,
+    SectionClassTeacher,
+    Subject,
 )
 from core.navigation import office_nav
 from core.tests.phase4_fixtures import Phase4Fixture
@@ -158,6 +164,18 @@ class OverviewCardTests(AuthorizationClientsMixin, AttendanceFixtureMixin, TestC
         user = User.objects.create_user(username="viewer", password="pass-12345")
         user.user_permissions.add(Permission.objects.get(codename="view_school"))
         self.assertEqual(overview_cards(User.objects.get(pk=user.pk)), [])
+
+        # A fully set-up school, so the "Set up your school" checklist is
+        # hidden and the empty-state copy is the only thing left to render.
+        School.objects.create(name="Greenwood High")
+        Subject.objects.create(name="Mathematics")
+        teacher = User.objects.create_user(username="rao", password="pass-12345")
+        teacher.groups.add(Group.objects.get(name=TEACHERS_GROUP_NAME))
+        SectionClassTeacher.assign(
+            teacher=teacher, academic_year=self.year, section=self.section,
+            start_date=date(2026, 6, 1),
+        )
+
         client = self.client_class()
         client.login(username="viewer", password="pass-12345")
         response = client.get(reverse("core:admin-overview"))
