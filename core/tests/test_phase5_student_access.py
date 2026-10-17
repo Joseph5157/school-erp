@@ -193,6 +193,6 @@ class StudentAccessTests(Phase4Fixture, TestCase):
             StudentResult.objects.create(assessment=assessment, academic_enrollment=self.asha_e,
                                          status=ResultStatus.ABSENT, entered_by=self.admin)
             self.force_finalize(assessment)
-        self.maths.teacher_assignments.all().delete()  # iyer is no longer Maths teacher
+        self.maths.teacher_assignments.get().end(date(2026, 8, 31))  # iyer stops teaching Maths
         names = {r.assessment.name for r in self.rao_client.get(self.asha_url).context["results"]}
         self.assertEqual(names, {"July UT"})

@@ -1454,15 +1454,21 @@ def teacher_assignment_create(request, pk):
     academic_year = get_object_or_404(AcademicYear, pk=pk)
     form = TeacherAssignmentForm(request.POST or None, academic_year=academic_year)
     if request.method == "POST" and form.is_valid():
-        assignment = AssessmentTeacherAssignment(
-            teacher=form.cleaned_data["teacher"],
-            offering=form.cleaned_data["offering"],
-            section=form.cleaned_data["section"],
-        )
+        offering = form.cleaned_data["offering"]
+        section = form.cleaned_data["section"]
         try:
-            with transaction.atomic():
-                assignment.full_clean()
-                assignment.save()
+            if AssessmentTeacherAssignment.objects.filter(
+                offering=offering, section=section
+            ).exists():
+                raise ValidationError(
+                    "A teacher is already assigned to this Subject and Section."
+                )
+            AssessmentTeacherAssignment.assign(
+                teacher=form.cleaned_data["teacher"],
+                offering=offering,
+                section=section,
+                start_date=academic_year.start_date,
+            )
         except ValidationError as error:
             form.add_error(None, error)
         except IntegrityError:
@@ -1484,8 +1490,12 @@ def teacher_assignment_delete(request, pk):
     )
     year_pk = assignment.offering.academic_year_id
     if request.method == "POST":
-        assignment.delete()
-        messages.success(request, "Teacher assignment removed.")
+        try:
+            assignment.delete()
+        except ValidationError as error:
+            messages.error(request, " ".join(error.messages))
+        else:
+            messages.success(request, "Teacher assignment removed.")
     return redirect("core:academic-year-teacher-assignments", pk=year_pk)
 
 

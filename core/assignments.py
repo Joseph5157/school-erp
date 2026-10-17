@@ -208,6 +208,7 @@ def plan_copy(source, target):
     )
     for assignment in (
         AssessmentTeacherAssignment.objects.filter(offering__academic_year=source)
+        .effective_on(source.end_date)
         .select_related("teacher", "offering__subject", "offering__class_grade",
                         "section__class_grade")
         .order_by("offering__class_grade__name", "offering__subject__name", "section__name")
@@ -268,6 +269,7 @@ def apply_copy(source, target, token):
                     teacher=teacher,
                     offering=AcademicSubjectOffering.objects.get(pk=item.offering_id),
                     section=section,
+                    start_date=target.start_date,
                 )
             row.full_clean()
             try:

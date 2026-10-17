@@ -57,7 +57,8 @@ class TeacherFixture:
 
     def assign(self, teacher, offering, section):
         assignment = AssessmentTeacherAssignment(
-            teacher=teacher, offering=offering, section=section
+            teacher=teacher, offering=offering, section=section,
+            start_date=self.year.start_date,
         )
         assignment.full_clean()
         assignment.save()
@@ -116,7 +117,8 @@ class AssignmentRuleTests(TeacherFixture, TestCase):
             self.assign(self.iyer, self.maths, self.six_a)
         with self.assertRaises(IntegrityError), transaction.atomic():
             AssessmentTeacherAssignment.objects.create(
-                teacher=self.iyer, offering=self.maths, section=self.six_a
+                teacher=self.iyer, offering=self.maths, section=self.six_a,
+                start_date=self.year.start_date,
             )
         self.assign(self.iyer, self.maths, self.six_b)  # other Section is fine
         self.assign(self.rao, self.sanskrit, self.six_b)  # one teacher, several duties
@@ -199,6 +201,12 @@ class TeacherAssignmentViewTests(TeacherFixture, TestCase):
         remove_url = reverse("core:teacher-assignment-delete", args=[assignment.pk])
         self.client.get(remove_url)  # GET never deletes
         self.assertTrue(AssessmentTeacherAssignment.objects.exists())
+        # A row that has taken effect is ended, never deleted (ADR 0018 D5).
+        self.assertRedirects(self.client.post(remove_url), self.list_url)
+        self.assertTrue(AssessmentTeacherAssignment.objects.exists())
+        AssessmentTeacherAssignment.objects.filter(pk=assignment.pk).update(
+            start_date=self.year.end_date
+        )
         self.assertRedirects(self.client.post(remove_url), self.list_url)
         self.assertFalse(AssessmentTeacherAssignment.objects.exists())
 
