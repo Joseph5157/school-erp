@@ -113,7 +113,7 @@ class Phase4AcceptanceJourneyTests(TestCase):
         for section in (six_a, six_b):
             self.client.post(reverse("core:teacher-assignment-create", args=[self.year.pk]),
                              {"teacher": self.teacher_user.pk, "offering": maths.pk,
-                              "section": section.pk})
+                              "section": section.pk, "start_date": "2026-06-01"})
         self.assertEqual(AssessmentTeacherAssignment.objects.count(), 2)
         # Phase 5 (ADR 0012 D10): the class teacher writes Term remarks.
         self.client.post(reverse("core:class-teacher-assign", args=[self.year.pk]),

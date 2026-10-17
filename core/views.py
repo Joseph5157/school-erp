@@ -53,6 +53,7 @@ from core.forms import (
     ApplicantGuardianForm,
     AssessmentFilterForm,
     AssessmentForm,
+    AssignmentEndForm,
     AttendanceCaptureForm,
     AttendanceCorrectionForm,
     AttendanceDateForm,
@@ -514,7 +515,7 @@ def _assessment_context(assessment):
     rows = [(enrollment, results.get(enrollment.pk)) for enrollment in roster]
     teacher = assessment.offering.teacher_assignments.filter(
         section=assessment.section
-    ).select_related("teacher").first()
+    ).effective_on(assessment.assessment_date).select_related("teacher").first()
     return {
         "assessment": assessment,
         "problems": (
@@ -1472,20 +1473,50 @@ def grade_boundary_delete(request, pk):
 
 @administrator_required("core.view_assessmentteacherassignment")
 def academic_year_teacher_assignments(request, pk):
+    """Each Subject/Section slot with its current teacher and full dated history."""
     academic_year = get_object_or_404(AcademicYear, pk=pk)
-    assignments = (
+    today = business_today()
+    active = assignments.active_teacher_ids()
+    by_slot = {}
+    for row in (
         AssessmentTeacherAssignment.objects.filter(offering__academic_year=academic_year)
-        .select_related("teacher", "offering__class_grade", "offering__subject", "section")
-        .order_by("offering__class_grade__name", "offering__subject__name", "section__name")
-    )
+        .select_related("teacher", "offering__class_grade", "offering__subject",
+                        "offering__academic_year", "section")
+        .order_by("offering__class_grade__name", "offering__subject__name", "section__name",
+                  "start_date")
+    ):
+        by_slot.setdefault((row.offering_id, row.section_id), []).append(row)
+    slots = []
+    for rows in by_slot.values():
+        history, current = [], None
+        for row in rows:
+            if row.start_date > today:
+                status = "Starting soon"
+            elif row.last_effective_date < today:
+                status = "Past"
+            else:
+                status, current = "Current", row
+            history.append({
+                "row": row,
+                "status": status,
+                "can_end": status != "Past",
+                "can_delete": status == "Starting soon" and not row.is_historically_relevant,
+            })
+        slots.append({
+            "offering": rows[0].offering,
+            "section": rows[0].section,
+            "current": current,
+            "inactive": current is not None and current.teacher_id not in active,
+            "history": history,
+        })
     form = TeacherAssignmentForm(academic_year=academic_year)
     return render(
         request,
         "core/teacher_assignments.html",
         {
             "academic_year": academic_year,
-            "assignments": assignments,
-            "form": form,
+            "slots": slots,
+            "today": today,
             "teacher_count": form.fields["teacher"].queryset.count(),
         },
     )
@@ -1494,27 +1525,29 @@ def academic_year_teacher_assignments(request, pk):
 @administrator_required("core.add_assessmentteacherassignment")
 def teacher_assignment_create(request, pk):
     academic_year = get_object_or_404(AcademicYear, pk=pk)
-    form = TeacherAssignmentForm(request.POST or None, academic_year=academic_year)
+    today = business_today()
+    initial = {
+        "start_date": min(max(today, academic_year.start_date), academic_year.end_date),
+        "offering": request.GET.get("offering"),
+        "section": request.GET.get("section"),
+    }
+    form = TeacherAssignmentForm(
+        request.POST or None, academic_year=academic_year, initial=initial
+    )
     if request.method == "POST" and form.is_valid():
-        offering = form.cleaned_data["offering"]
-        section = form.cleaned_data["section"]
         try:
-            if AssessmentTeacherAssignment.objects.filter(
-                offering=offering, section=section
-            ).exists():
-                raise ValidationError(
-                    "A teacher is already assigned to this Subject and Section."
-                )
             AssessmentTeacherAssignment.assign(
                 teacher=form.cleaned_data["teacher"],
-                offering=offering,
-                section=section,
-                start_date=academic_year.start_date,
+                offering=form.cleaned_data["offering"],
+                section=form.cleaned_data["section"],
+                start_date=form.cleaned_data["start_date"],
             )
         except ValidationError as error:
             form.add_error(None, error)
         except IntegrityError:
-            form.add_error(None, "A teacher is already assigned to this Subject and Section.")
+            form.add_error(
+                None, "Another assignment starts on that date for this Subject and Section."
+            )
         else:
             messages.success(request, "Teacher assigned.")
             return redirect("core:academic-year-teacher-assignments", pk=academic_year.pk)
@@ -1522,6 +1555,32 @@ def teacher_assignment_create(request, pk):
         request,
         "core/teacher_assignment_form.html",
         {"form": form, "academic_year": academic_year},
+    )
+
+
+@administrator_required("core.change_assessmentteacherassignment")
+def teacher_assignment_end(request, pk):
+    assignment = get_object_or_404(
+        AssessmentTeacherAssignment.objects.select_related(
+            "teacher", "offering__subject", "offering__academic_year", "section"
+        ),
+        pk=pk,
+    )
+    form = AssignmentEndForm(request.POST or None, initial={"end_date": business_today()})
+    if request.method == "POST" and form.is_valid():
+        try:
+            assignment.end(form.cleaned_data["end_date"])
+        except ValidationError as error:
+            form.add_error(None, error)
+        else:
+            messages.success(request, "Teacher assignment ended.")
+            return redirect(
+                "core:academic-year-teacher-assignments", pk=assignment.offering.academic_year_id
+            )
+    return render(
+        request,
+        "core/teacher_assignment_end_form.html",
+        {"form": form, "assignment": assignment},
     )
 
 
@@ -1537,7 +1596,7 @@ def teacher_assignment_delete(request, pk):
         except ValidationError as error:
             messages.error(request, " ".join(error.messages))
         else:
-            messages.success(request, "Teacher assignment removed.")
+            messages.success(request, "Planned teacher assignment deleted.")
     return redirect("core:academic-year-teacher-assignments", pk=year_pk)
 
 

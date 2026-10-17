@@ -81,7 +81,7 @@ def overview(academic_year, on_date):
         (a.offering_id, a.section_id): a
         for a in AssessmentTeacherAssignment.objects.filter(
             offering__academic_year=academic_year
-        ).select_related("teacher")
+        ).effective_on(on_date).select_related("teacher")
     }
     offerings = (
         AcademicSubjectOffering.objects.filter(academic_year=academic_year)

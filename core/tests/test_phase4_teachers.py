@@ -194,7 +194,8 @@ class TeacherAssignmentViewTests(TeacherFixture, TestCase):
     def test_admin_assigns_lists_and_removes(self):
         response = self.client.post(
             self.add_url,
-            {"teacher": self.rao.pk, "offering": self.maths.pk, "section": self.six_a.pk},
+            {"teacher": self.rao.pk, "offering": self.maths.pk, "section": self.six_a.pk,
+             "start_date": "2026-06-01"},
         )
         self.assertRedirects(response, self.list_url)
         listing = self.client.get(self.list_url)
@@ -238,13 +239,15 @@ class TeacherAssignmentViewTests(TeacherFixture, TestCase):
         self.assertContains(bad, "does not take this Subject offering")
         self.client.post(
             self.add_url,
-            {"teacher": self.rao.pk, "offering": self.maths.pk, "section": self.six_a.pk},
+            {"teacher": self.rao.pk, "offering": self.maths.pk, "section": self.six_a.pk,
+             "start_date": "2026-06-01"},
         )
         duplicate = self.client.post(
             self.add_url,
-            {"teacher": self.iyer.pk, "offering": self.maths.pk, "section": self.six_a.pk},
+            {"teacher": self.iyer.pk, "offering": self.maths.pk, "section": self.six_a.pk,
+             "start_date": "2026-06-01"},
         )
-        self.assertContains(duplicate, "already assigned")
+        self.assertContains(duplicate, "overlap")
         self.assertEqual(AssessmentTeacherAssignment.objects.count(), 1)
 
     def test_teacher_cannot_manage_assignments(self):
@@ -253,7 +256,7 @@ class TeacherAssignmentViewTests(TeacherFixture, TestCase):
         for method, url, data in (
             ("get", self.list_url, {}),
             ("post", self.add_url, {"teacher": self.rao.pk, "offering": self.maths.pk,
-                                    "section": self.six_a.pk}),
+                                    "section": self.six_a.pk, "start_date": "2026-06-01"}),
             ("post", reverse("core:teacher-assignment-delete", args=[assignment.pk]), {}),
         ):
             with self.subTest(url=url):

@@ -65,7 +65,7 @@ class Phase5AcceptanceJourneyTests(Phase4Fixture, TestCase):
                           "start_date": "2026-06-01"})
         self.client.post(reverse("core:teacher-assignment-create", args=[self.year.pk]),
                          {"teacher": self.iyer.pk, "offering": self.maths.pk,
-                          "section": self.six_a.pk})
+                          "section": self.six_a.pk, "start_date": "2026-06-01"})
         overview = self.client.get(reverse("core:academic-year-assignments",
                                            args=[self.year.pk]))
         self.assertEqual(overview.context["class_gaps"], 1)  # 6B has none

@@ -95,6 +95,7 @@ class SchoolAdministratorsGroupMigrationTests(TestCase):
                 "change_academicsubjectofferingsection",
                 "view_academicsubjectofferingsection",
                 "add_assessmentteacherassignment",
+                "change_assessmentteacherassignment",
                 "delete_assessmentteacherassignment",
                 "view_assessmentteacherassignment",
                 "add_gradingscale",
