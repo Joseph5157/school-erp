@@ -169,7 +169,7 @@ class DryRunTests(ImportFixture):
             self.assertNotIn(private, found)
 
     def test_missing_required_column(self):
-        header = [h for h in STUDENT_HEADER if h != "Guardian 1 relationship"]
+        header = [h for h in STUDENT_HEADER if h != "Class"]
         batch = self.batch_for(workbook([], student_header=header))
         self.assertIn("Required column is missing.", self.messages_of(batch))
 
@@ -360,6 +360,75 @@ class CommitTests(ImportFixture):
         with self.assertRaises(imports.CommitError):
             imports.commit_batch(stale, user=self.admin)
         self.assertEqual(Student.objects.count(), 0)
+
+
+NO_GUARDIAN = ("", "", "", "")
+
+
+class OptionalGuardianTests(ImportFixture):
+    """A student may be imported with 0, 1 or 2 guardians (Phase 1 lifecycle allows none)."""
+
+    def test_a_student_with_no_guardian_is_valid_but_warned(self):
+        batch = self.batch_for(workbook([student_row("Asha", g1=NO_GUARDIAN)]))
+        self.assertEqual(batch.status, ImportBatch.Status.VALIDATED, self.messages_of(batch))
+        self.assertEqual(batch.error_count, 0)
+        warnings = " | ".join(self.messages_of(batch, "WARNING"))
+        self.assertIn("No guardian", warnings)
+        self.assertNotIn("Asha", warnings)
+
+    def test_committing_a_guardianless_student_creates_no_guardian_records(self):
+        batch = self.batch_for(workbook([student_row("Asha", g1=NO_GUARDIAN)]))
+        imports.commit_batch(batch, user=self.admin, warnings_reviewed=True)
+        batch.refresh_from_db()
+        self.assertEqual(batch.status, ImportBatch.Status.COMMITTED)
+        asha = Student.objects.get(full_name="Asha")
+        self.assertFalse(asha.guardian_links.exists())
+        self.assertFalse(Guardian.objects.exists())
+        self.assertFalse(ApplicantGuardian.objects.exists())
+        self.assertEqual(asha.current_enrollment.section, self.section_a)
+
+    def test_the_warning_must_be_reviewed_before_committing(self):
+        batch = self.batch_for(workbook([student_row("Asha", g1=NO_GUARDIAN)]))
+        with self.assertRaises(imports.CommitError):
+            imports.commit_batch(batch, user=self.admin)
+        self.assertFalse(Student.objects.exists())
+
+    def test_guardian_two_alone_is_imported(self):
+        batch = self.batch_for(workbook([student_row(
+            "Asha", g1=NO_GUARDIAN, g2=("Sita Devi", "Mother", "9848022338", ""))]))
+        self.assertEqual(batch.status, ImportBatch.Status.VALIDATED, self.messages_of(batch))
+        self.assertNotIn("No guardian", " | ".join(self.messages_of(batch, "WARNING")))
+        imports.commit_batch(batch, user=self.admin)
+        asha = Student.objects.get(full_name="Asha")
+        self.assertEqual(asha.guardian_links.get().guardian.full_name, "Sita Devi")
+
+    def test_one_and_two_guardians_still_work(self):
+        batch = self.batch_for(workbook([
+            student_row("Asha"),
+            student_row("Arjun", g2=("Sita Devi", "Mother", "9848022338", "")),
+        ]))
+        self.assertEqual(batch.status, ImportBatch.Status.VALIDATED, self.messages_of(batch))
+        imports.commit_batch(batch, user=self.admin)
+        self.assertEqual(Student.objects.get(full_name="Asha").guardian_links.count(), 1)
+        self.assertEqual(Student.objects.get(full_name="Arjun").guardian_links.count(), 2)
+
+    def test_a_partly_filled_guardian_still_needs_name_and_relationship(self):
+        no_name = self.batch_for(workbook([student_row("Asha", g1=("", "", "9876543210", ""))]))
+        self.assertEqual(no_name.status, ImportBatch.Status.REJECTED)
+        self.assertIn("Guardian 1 name is required.", self.messages_of(no_name))
+
+        no_relationship = self.batch_for(workbook([student_row(
+            "Asha", g1=("Ravi Kumar", "", "9876543210", ""))]))
+        self.assertEqual(no_relationship.status, ImportBatch.Status.REJECTED)
+        self.assertTrue(any("Use Father" in m for m in self.messages_of(no_relationship)))
+
+        bad_second = self.batch_for(workbook([student_row(
+            "Asha", g2=("", "Mother", "", ""))]))
+        self.assertIn("Guardian 2 name is required.", self.messages_of(bad_second))
+
+    def test_the_template_marks_guardians_as_optional(self):
+        required = {label for _, label, needed in imports.STUDENT_COLUMNS if needed}
+        self.assertEqual(required, {"Full name", "Class", "Section"})
 
 
 class PayloadRetentionTests(ImportFixture):
