@@ -1,9 +1,18 @@
 """Completed-scope repairs: Student-Guardian administration and Guardian editing."""
 
+from types import SimpleNamespace
+
 from django.test import TestCase
 from django.urls import reverse
 
-from core.models import Applicant, Guardian, RelationshipType, StudentGuardian
+from core.models import (
+    Applicant,
+    Guardian,
+    GuardianStudentAccess,
+    RelationshipType,
+    StudentGuardian,
+)
+from core.notifications import whatsapp_link
 from core.tests.test_authorization import AuthorizationClientsMixin
 
 
@@ -137,3 +146,45 @@ class GuardianEditTests(AuthorizationClientsMixin, TestCase):
     def test_detail_page_links_to_edit(self):
         page = self.administrator.get(reverse("core:guardian-detail", args=[self.guardian.pk]))
         self.assertContains(page, self.url)
+
+
+class CrossPhaseBoundaryTests(AuthorizationClientsMixin, TestCase):
+    """The repairs must not widen Phase 6 access or bypass Phase 7 phone handling."""
+
+    def setUp(self):
+        super().setUp()
+        self.student = make_student("Ravi Rao")
+        self.guardian = Guardian.objects.create(full_name="Asha Rao", phone="not a phone")
+
+    def test_new_link_grants_no_portal_access(self):
+        self.administrator.post(
+            reverse("core:student-guardian-add", args=[self.student.pk]),
+            {"guardian": self.guardian.pk, "relationship_type": RelationshipType.MOTHER},
+        )
+        self.assertEqual(StudentGuardian.objects.count(), 1)
+        self.assertFalse(GuardianStudentAccess.objects.exists())
+
+    def test_relationship_change_touches_no_access_records(self):
+        link = StudentGuardian.objects.create(
+            student=self.student, guardian=self.guardian,
+            relationship_type=RelationshipType.OTHER,
+        )
+        self.administrator.post(
+            reverse("core:student-guardian-edit", args=[link.pk]),
+            {"relationship_type": RelationshipType.MOTHER},
+        )
+        self.assertFalse(GuardianStudentAccess.objects.exists())
+
+    def test_fixing_the_phone_makes_the_whatsapp_link_available(self):
+        notification = SimpleNamespace(
+            guardian=self.guardian,
+            parameters={},
+            template=SimpleNamespace(body="Hello"),
+        )
+        self.assertIsNone(whatsapp_link(notification))
+        self.administrator.post(
+            reverse("core:guardian-edit", args=[self.guardian.pk]),
+            {"full_name": "Asha Rao", "phone": "9876543210", "email": ""},
+        )
+        self.guardian.refresh_from_db()
+        self.assertIn("wa.me/", whatsapp_link(notification))
