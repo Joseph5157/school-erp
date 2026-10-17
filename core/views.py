@@ -7,11 +7,12 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Exists, OuterRef, Q, Subquery
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.cache import add_never_cache_headers
+from django.views.decorators.http import condition, require_POST
 
 from accounts.models import SecurityEvent
 from core import (
@@ -22,6 +23,7 @@ from core import (
     guardian_accounts,
     publication,
     reports,
+    school_logo,
     setup_checklist,
 )
 from core.authorization import (
@@ -81,6 +83,7 @@ from core.forms import (
     SchoolCalendarDayForm,
     SchoolCalendarDayLabelForm,
     SchoolForm,
+    SchoolLogoForm,
     SectionForm,
     StudentGuardianForm,
     StudentGuardianRelationshipForm,
@@ -109,6 +112,7 @@ from core.models import (
     GuardianStudentAccess,
     School,
     SchoolCalendarDay,
+    SchoolLogo,
     Section,
     SectionClassTeacher,
     Student,
@@ -127,7 +131,70 @@ def school_detail(request):
     school = School.objects.first()
     if school is None:
         return redirect("core:school-create")
-    return render(request, "core/school_detail.html", {"school": school})
+    return render(request, "core/school_detail.html", _school_detail_context(request, school))
+
+
+def _school_detail_context(request, school, logo_form=None):
+    can_change = request.user.has_perm("core.change_school")
+    return {
+        "school": school,
+        "logo": SchoolLogo.current_for(school),
+        "logo_form": (logo_form or SchoolLogoForm()) if can_change else None,
+    }
+
+
+@administrator_required("core.change_school")
+@require_POST
+def school_logo_upload(request):
+    school = School.objects.first()
+    if school is None:
+        return redirect("core:school-create")
+    form = SchoolLogoForm(request.POST, request.FILES)
+    if form.is_valid():
+        try:
+            school_logo.replace_logo(school, form.cleaned_data["image"], actor=request.user)
+        except ValidationError as error:
+            form.add_error("image", error)
+        else:
+            messages.success(request, "School logo updated.")
+            return redirect("core:school-detail")
+    return render(
+        request, "core/school_detail.html", _school_detail_context(request, school, form)
+    )
+
+
+@administrator_required("core.change_school")
+@require_POST
+def school_logo_remove(request):
+    school = School.objects.first()
+    if school is None:
+        return redirect("core:school-create")
+    try:
+        school_logo.remove_logo(school, actor=request.user)
+    except ValidationError as error:
+        messages.error(request, error.messages[0])
+    else:
+        messages.success(request, "School logo removed.")
+    return redirect("core:school-detail")
+
+
+def _logo_etag(request):
+    school = School.objects.first()
+    logo = SchoolLogo.current_for(school) if school is not None else None
+    return logo.sha256 if logo is not None else None
+
+
+@login_required
+@condition(etag_func=_logo_etag)
+def school_logo_image(request):
+    """The current logo as PNG, for any signed-in user (ADR 0020, D9)."""
+    school = School.objects.first()
+    logo = SchoolLogo.current_for(school) if school is not None else None
+    if logo is None:
+        raise Http404("No school logo.")
+    response = HttpResponse(bytes(logo.image), content_type="image/png")
+    response["Cache-Control"] = "private, no-cache"
+    return response
 
 
 @administrator_required("core.add_school")

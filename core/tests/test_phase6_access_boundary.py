@@ -312,6 +312,8 @@ class GuardianSweepTests(BoundaryFixture, TestCase):
             kwargs = {name: 1 for name in pattern.pattern.regex.groupindex}
             url = reverse(f"core:{pattern.name}", kwargs=kwargs)
             names.append(pattern.name)
+            if pattern.name == "school-logo":
+                continue  # signed-in users may fetch the header logo (ADR 0020, D9)
             for method in ("get", "post"):
                 with self.subTest(url=pattern.name, method=method):
                     self.assertEqual(getattr(client, method)(url).status_code, 403)

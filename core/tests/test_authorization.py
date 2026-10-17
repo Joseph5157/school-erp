@@ -2596,6 +2596,10 @@ class AttendanceReportViewTests(AuthorizationClientsMixin, AttendanceFixtureMixi
 class AppWideAuthorizationSweepTests(AuthorizationClientsMixin, TestCase):
     """Gate 8: every core URL requires login and the administrator permission."""
 
+    # The one URL that any signed-in user may open: the school logo image shown in
+    # the header (ADR 0020, D9). Its login requirement is still swept below.
+    SIGNED_IN_ONLY = {"school-logo"}
+
     def _urls(self):
         from django.urls import URLPattern
 
@@ -2621,6 +2625,8 @@ class AppWideAuthorizationSweepTests(AuthorizationClientsMixin, TestCase):
 
     def test_non_administrator_is_forbidden_everywhere(self):
         for name, url in self._urls():
+            if name in self.SIGNED_IN_ONLY:
+                continue
             for method in ("get", "post"):
                 with self.subTest(url=name, method=method):
                     response = getattr(self.non_admin, method)(url)

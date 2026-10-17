@@ -96,6 +96,8 @@ class SecurityEvent(models.Model):
         TEACHER_USERNAME_CHANGED = "TEACHER_USERNAME_CHANGED", "Teacher username changed"
         TEACHER_DEACTIVATED = "TEACHER_DEACTIVATED", "Teacher login deactivated"
         TEACHER_REACTIVATED = "TEACHER_REACTIVATED", "Teacher login reactivated"
+        SCHOOL_LOGO_CHANGED = "SCHOOL_LOGO_CHANGED", "School logo changed"
+        SCHOOL_LOGO_REMOVED = "SCHOOL_LOGO_REMOVED", "School logo removed"
 
     ROUTINE_TYPES = frozenset(
         {

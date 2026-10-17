@@ -17,4 +17,25 @@
 {% if perms.core.change_school %}
     <a class="btn btn-primary" href="{% url 'core:school-update' %}">Edit</a>
 {% endif %}
+<section class="erp-card mt-4" aria-labelledby="school-logo-heading">
+    <h2 class="h5" id="school-logo-heading">School logo</h2>
+    {% if logo %}
+    <p><img src="{% url 'core:school-logo' %}?v={{ logo.pk }}" alt="Current school logo" style="max-height: 96px; max-width: 100%;"></p>
+    {% else %}
+    <p class="text-muted">No logo. The header and documents show the school name as text.</p>
+    {% endif %}
+    {% if logo_form %}
+    <form method="post" action="{% url 'core:school-logo-upload' %}" enctype="multipart/form-data" class="mb-2">
+        {% csrf_token %}
+        {% include "partials/_form_field.html" with field=logo_form.image %}
+        <button type="submit" class="btn btn-outline-primary">{% if logo %}Replace logo{% else %}Upload logo{% endif %}</button>
+    </form>
+    {% if logo %}
+    <form method="post" action="{% url 'core:school-logo-remove' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline-danger">Remove logo</button>
+    </form>
+    {% endif %}
+    {% endif %}
+</section>
 {% endblock %}
