@@ -1603,6 +1603,39 @@ class AcademicTerm(models.Model):
             raise ValidationError(
                 f"These dates overlap {clash.name} ({clash.start_date} to {clash.end_date})."
             )
+        self._check_dates_against_assessments(start, end)
+
+    def _check_dates_against_assessments(self, start, end):
+        """Keep Term dates from moving underneath assessments and finalized results.
+
+        While nothing in the Term is finalized the dates may change, but every
+        existing Assessment must stay inside the new range. Once any Assessment
+        is finalized the date boundaries are frozen: Term rosters, placement at
+        Term end, remarks, report cards and publications all read them.
+        """
+        if self.pk is None:
+            return
+        original = AcademicTerm.objects.filter(pk=self.pk).values("start_date", "end_date").first()
+        if original is None or (original["start_date"], original["end_date"]) == (start, end):
+            return
+        assessments = Assessment.objects.filter(term_id=self.pk)
+        if assessments.filter(status=Assessment.Status.FINALIZED).exists():
+            raise ValidationError(
+                "Results in this Term are finalized, so its start and end dates can "
+                "no longer change."
+            )
+        outside = assessments.exclude(assessment_date__range=(start, end)).order_by(
+            "assessment_date"
+        )
+        if outside.exists():
+            names = ", ".join(
+                f"{a.name} ({a.assessment_date:%d %B %Y})" for a in outside[:5]
+            )
+            more = outside.count() - 5
+            raise ValidationError(
+                "These dates would leave existing assessments outside the Term: "
+                f"{names}{f' and {more} more' if more > 0 else ''}."
+            )
 
     def contains(self, on_date):
         on_date = _as_date(on_date)
