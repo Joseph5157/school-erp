@@ -1,0 +1,31 @@
+{# Setup checklist card: progress bar + one row per step; collapses when done. #}
+{% if not setup_complete %}
+<section class="erp-setup" aria-labelledby="setup-title">
+    <header class="erp-setup-head">
+        <div>
+            <h2 class="erp-setup-title" id="setup-title">Set up your school</h2>
+            <p class="erp-setup-summary">Work through these and the daily tasks will appear here.</p>
+        </div>
+        <p class="erp-setup-progress"><span class="visually-hidden">Setup progress: </span>{{ setup_done }} of {{ setup_total }} done</p>
+    </header>
+    <div class="progress erp-setup-bar" role="progressbar" aria-label="Setup progress" aria-valuenow="{{ setup_done }}" aria-valuemin="0" aria-valuemax="{{ setup_total }}">
+        <div class="progress-bar" style="width: {% widthratio setup_done setup_total 100 %}%"></div>
+    </div>
+    <ol class="erp-setup-list">
+        {% for step in setup_steps %}
+        <li class="erp-setup-step{% if step.done %} erp-setup-step--done{% endif %}">
+            {% if step.done %}
+            <span class="erp-setup-check" aria-hidden="true">✓</span>
+            <span class="erp-setup-label">{{ step.label }}</span>
+            {% else %}
+            <span class="erp-setup-check erp-setup-check--todo" aria-hidden="true"></span>
+            <span class="erp-setup-label">{{ step.label }}<span class="erp-setup-gap">{{ step.problem }}</span></span>
+            <a class="btn {% if step.is_next %}btn-primary{% else %}btn-outline-secondary{% endif %} btn-sm erp-setup-action" href="{{ step.url }}">{{ step.action }}<span class="visually-hidden">: {{ step.label }}</span></a>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ol>
+</section>
+{% else %}
+<p class="erp-setup-complete"><span class="erp-setup-check" aria-hidden="true">✓</span>School setup complete</p>
+{% endif %}
