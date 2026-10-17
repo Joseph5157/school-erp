@@ -2,7 +2,10 @@
 
 ## Status
 
-Accepted
+Superseded by ADR 0007 (`docs/adr/0007-phase-2-attendance-model.md`) for
+Phase 2 attendance decisions. Kept unchanged below as historical evidence of
+the earlier model (four statuses, no formal school calendar); do not
+implement from it.
 
 ## Context
 
