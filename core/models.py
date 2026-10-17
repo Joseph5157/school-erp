@@ -1870,12 +1870,39 @@ class AcademicSubjectOfferingSection(models.Model):
 TEACHERS_GROUP_NAME = "Teachers"
 
 
+class AssessmentTeacherAssignmentQuerySet(models.QuerySet):
+    def effective_on(self, on_date):
+        """Assignments whose inclusive date range contains `on_date`.
+
+        An open-ended assignment runs to the end of its offering's Academic
+        Year and never carries into the next one (ADR 0018 D1).
+        """
+        on_date = _as_date(on_date)
+        return self.filter(start_date__lte=on_date).filter(
+            models.Q(end_date__gte=on_date)
+            | models.Q(end_date__isnull=True, offering__academic_year__end_date__gte=on_date)
+        )
+
+    def delete(self):
+        """Bulk deletes obey the same rule as single ones (ADR 0018 D5)."""
+        rows = list(self.select_related("offering__academic_year"))
+        if any(row.is_historically_relevant for row in rows):
+            raise ValidationError(
+                "Teacher assignments that have taken effect or have dependent records "
+                "cannot be deleted; end them instead."
+            )
+        return super().delete()
+
+
 class AssessmentTeacherAssignment(models.Model):
     """Which teacher enters results for one Subject offering in one Section (ADR 0010).
 
     A teacher is an active login in the "Teachers" group; school-domain records
-    are never the login itself (ADR 0004). Each offering + Section has exactly
-    one owning teacher; shared multi-teacher ownership is outside Phase 4.
+    are never the login itself (ADR 0004). Per ADR 0018 an assignment is
+    effective-dated like a class teacher assignment (ADR 0011): at most one is
+    effective for an offering + Section on any date, a change of teacher ends
+    the current row and starts a new one, and a row that has taken effect is
+    ended, never deleted. Shared multi-teacher ownership is outside scope.
     This is not a timetable, workload, substitution or HR record.
     """
 
@@ -1890,21 +1917,38 @@ class AssessmentTeacherAssignment(models.Model):
     section = models.ForeignKey(
         Section, on_delete=models.PROTECT, related_name="teacher_assignments"
     )
+    start_date = models.DateField(help_text="First date this assignment is effective.")
+    end_date = models.DateField(
+        null=True, blank=True, help_text="Last date this assignment is effective (inclusive)."
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    objects = AssessmentTeacherAssignmentQuerySet.as_manager()
+
     class Meta:
-        ordering = ["offering", "section"]
+        ordering = ["offering", "section", "start_date"]
         constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(end_date__isnull=True)
+                    | models.Q(end_date__gte=models.F("start_date"))
+                ),
+                name="assessmentteacherassignment_end_not_before_start",
+            ),
             models.UniqueConstraint(
-                fields=["offering", "section"],
-                name="assessmentteacherassignment_one_teacher_per_offering_section",
-            )
+                fields=["offering", "section", "start_date"],
+                name="assessmentteacherassignment_unique_offering_section_start",
+            ),
         ]
+
+    # --- validation ---
 
     def clean(self):
         super().clean()
-        if self.teacher_id:
+        # Only new rows need an active teacher, so a departed teacher's row can
+        # still be ended (ADR 0018 D9).
+        if self.pk is None and self.teacher_id:
             teacher = self.teacher
             if not teacher.is_active or not teacher.groups.filter(
                 name=TEACHERS_GROUP_NAME
@@ -1916,9 +1960,135 @@ class AssessmentTeacherAssignment(models.Model):
             raise ValidationError(
                 {"section": "This Section does not take this Subject offering."}
             )
+        start_date = _as_date(self.start_date)
+        end_date = _as_date(self.end_date)
+        if start_date is None:
+            return
+        if end_date is not None and end_date < start_date:
+            raise ValidationError({"end_date": "End date cannot be before the start date."})
+        if self.offering_id:
+            year = self.offering.academic_year
+            if not year.contains(start_date):
+                raise ValidationError(
+                    {"start_date": "Start date must fall within the Academic Year."}
+                )
+            if end_date is not None and not year.contains(end_date):
+                raise ValidationError(
+                    {"end_date": "End date must fall within the Academic Year."}
+                )
+        if self.offering_id and self.section_id and self.overlapping().exists():
+            raise ValidationError(
+                "These dates overlap another teacher assignment for this Subject and Section."
+            )
+
+    def overlapping(self):
+        """Other assignments for this offering + Section whose range meets this one."""
+        start_date = _as_date(self.start_date)
+        end_date = _as_date(self.end_date)
+        others = AssessmentTeacherAssignment.objects.filter(
+            offering_id=self.offering_id, section_id=self.section_id
+        ).filter(models.Q(end_date__isnull=True) | models.Q(end_date__gte=start_date))
+        if end_date is not None:
+            others = others.filter(start_date__lte=end_date)
+        if self.pk is not None:
+            others = others.exclude(pk=self.pk)
+        return others
+
+    # --- state ---
+
+    def is_effective_on(self, on_date):
+        on_date = _as_date(on_date)
+        return _as_date(self.start_date) <= on_date <= self.last_effective_date
+
+    @property
+    def last_effective_date(self):
+        return _as_date(self.end_date) or _as_date(self.offering.academic_year.end_date)
+
+    def dependent_results(self):
+        """Results this teacher entered for this offering + Section inside the range."""
+        return StudentResult.objects.filter(
+            assessment__offering_id=self.offering_id,
+            assessment__section_id=self.section_id,
+            entered_by_id=self.teacher_id,
+            assessment__assessment_date__gte=self.start_date,
+            assessment__assessment_date__lte=self.last_effective_date,
+        )
+
+    def has_dependents(self):
+        return self.dependent_results().exists()
+
+    @property
+    def is_historically_relevant(self):
+        """Started, or depended on: end it, never delete it (ADR 0018 D5).
+
+        A row is historical as soon as its start date arrives, even with no
+        results at all.
+        """
+        return _as_date(self.start_date) <= business_today() or self.has_dependents()
+
+    # --- workflows ---
+
+    @classmethod
+    def _lock_offering(cls, offering):
+        AcademicSubjectOffering.objects.select_for_update().filter(pk=offering.pk).get()
+
+    @classmethod
+    def assign(cls, *, teacher, offering, section, start_date):
+        """Make `teacher` the teacher of `offering` + `section` from `start_date`.
+
+        If another assignment is effective on the day before `start_date` and
+        is open-ended or runs past it, it is ended the day before (a
+        hand-over). Any other overlap is rejected; nothing is overwritten.
+        """
+        start_date = _as_date(start_date)
+        with transaction.atomic():
+            cls._lock_offering(offering)
+            current = (
+                cls.objects.filter(offering=offering, section=section, start_date__lt=start_date)
+                .filter(models.Q(end_date__isnull=True) | models.Q(end_date__gte=start_date))
+                .first()
+            )
+            if current is not None:
+                current.end(start_date - datetime.timedelta(days=1), _locked=True)
+            assignment = cls(
+                teacher=teacher, offering=offering, section=section, start_date=start_date
+            )
+            assignment.full_clean()
+            assignment.save()
+            return assignment
+
+    def end(self, end_date, *, _locked=False):
+        """End this assignment on `end_date` (inclusive); history is kept."""
+        end_date = _as_date(end_date)
+        with transaction.atomic():
+            if not _locked:
+                self._lock_offering(self.offering)
+            self.refresh_from_db()
+            if self.end_date is not None and end_date > _as_date(self.end_date):
+                raise ValidationError("An assignment can only be ended earlier, not extended.")
+            if self.dependent_results().filter(assessment__assessment_date__gt=end_date).exists():
+                raise ValidationError(
+                    "This teacher entered results for this Subject and Section after that "
+                    "date; choose a later end date."
+                )
+            self.end_date = end_date
+            self.full_clean()
+            self.save(update_fields=["end_date", "updated_at"])
+
+    def delete(self, *args, **kwargs):
+        if self.is_historically_relevant:
+            raise ValidationError(
+                "This teacher assignment has taken effect or has dependent records; "
+                "end it instead of deleting it."
+            )
+        return super().delete(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.teacher} - {self.offering} - {self.section.name}"
+        until = f" to {self.end_date}" if self.end_date else ""
+        return (
+            f"{self.teacher} - {self.offering} - {self.section.name} "
+            f"from {self.start_date}{until}"
+        )
 
 
 # ---------------------------------------------------------------------------

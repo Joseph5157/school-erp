@@ -95,7 +95,8 @@ class Phase4Fixture:
 
     def assign(self, teacher, offering, section):
         return AssessmentTeacherAssignment.objects.create(
-            teacher=teacher, offering=offering, section=section
+            teacher=teacher, offering=offering, section=section,
+            start_date=self.year.start_date,
         )
 
     def force_finalize(self, assessment):

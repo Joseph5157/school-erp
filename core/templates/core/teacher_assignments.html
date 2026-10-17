@@ -3,7 +3,10 @@
 {% block content %}
 <h1 class="h3 mb-3">Teacher assignments: {{ academic_year.name }}</h1>
 <p class="text-muted">
-    Each Subject offering and Section has one teacher who enters its marks.
+    Each Subject offering and Section has one teacher at a time, who enters its marks.
+    Changing the teacher ends the current assignment the day before the new one starts;
+    assignments that have started are ended, never deleted, so past results stay with
+    the teacher who taught them. "Current" means effective today ({{ today }}).
     A teacher is a login in the <strong>Teachers</strong> group ({{ teacher_count }} active);
     {% if perms.accounts.manage_teacher_accounts %}add teachers on the <a href="{% url 'core:teacher-list' %}">Teachers page</a>.{% else %}ask a school administrator to add teachers.{% endif %}
 </p>
@@ -11,25 +14,44 @@
     <a class="btn btn-primary mb-3" href="{% url 'core:teacher-assignment-create' academic_year.pk %}">Assign a teacher</a>
 {% endif %}
 <table class="table">
-    <thead><tr><th>Class/Grade</th><th>Subject</th><th>Section</th><th>Teacher</th><th></th></tr></thead>
+    <thead><tr><th>Class/Grade</th><th>Subject</th><th>Section</th><th>Current teacher</th><th>History</th><th></th></tr></thead>
     <tbody>
-        {% for assignment in assignments %}
-        <tr>
-            <td>{{ assignment.offering.class_grade }}</td>
-            <td>{{ assignment.offering.subject }}</td>
-            <td>{{ assignment.section.name }}</td>
-            <td>{{ assignment.teacher.get_full_name|default:assignment.teacher.username }}</td>
+        {% for slot in slots %}
+        <tr{% if slot.inactive or not slot.current %} class="table-warning"{% endif %}>
+            <td>{{ slot.offering.class_grade }}</td>
+            <td>{{ slot.offering.subject }}</td>
+            <td>{{ slot.section.name }}</td>
+            <td>
+                {% if slot.current %}{{ slot.current.teacher.get_full_name|default:slot.current.teacher.username }}
+                    {% if slot.inactive %}<br><small class="text-danger">Login inactive or not a teacher &mdash; reassign.</small>{% endif %}
+                {% else %}<span class="text-muted">No current teacher</span>{% endif %}
+            </td>
+            <td>
+                {% for item in slot.history %}
+                <div>
+                    <span class="badge text-bg-{% if item.status == 'Current' %}success{% elif item.status == 'Past' %}secondary{% else %}info{% endif %}">{{ item.status }}</span>
+                    {{ item.row.teacher.get_full_name|default:item.row.teacher.username }}:
+                    {{ item.row.start_date }} &ndash; {% if item.row.end_date %}{{ item.row.end_date }}{% else %}open-ended{% endif %}
+                    {% if item.can_end and perms.core.change_assessmentteacherassignment %}
+                        <a class="ms-1" href="{% url 'core:teacher-assignment-end' item.row.pk %}">End</a>
+                    {% endif %}
+                    {% if item.can_delete and perms.core.delete_assessmentteacherassignment %}
+                    <form method="post" action="{% url 'core:teacher-assignment-delete' item.row.pk %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-link btn-sm text-danger p-0 ms-1">Delete planned</button>
+                    </form>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </td>
             <td class="text-end">
-                {% if perms.core.delete_assessmentteacherassignment %}
-                <form method="post" action="{% url 'core:teacher-assignment-delete' assignment.pk %}" class="d-inline">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-outline-danger btn-sm">Remove</button>
-                </form>
+                {% if perms.core.add_assessmentteacherassignment %}
+                <a class="btn btn-outline-primary btn-sm" href="{% url 'core:teacher-assignment-create' academic_year.pk %}?offering={{ slot.offering.pk }}&amp;section={{ slot.section.pk }}">Reassign</a>
                 {% endif %}
             </td>
         </tr>
         {% empty %}
-        <tr><td colspan="5">No teachers assigned in this Academic Year yet.</td></tr>
+        <tr><td colspan="6">No teachers assigned in this Academic Year yet.</td></tr>
         {% endfor %}
     </tbody>
 </table>

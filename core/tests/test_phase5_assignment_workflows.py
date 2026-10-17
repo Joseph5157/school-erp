@@ -153,7 +153,8 @@ class CopyPlanTests(AssignmentFixture, TestCase):
     def test_already_assigned_targets_are_skipped(self):
         self.class_teacher(self.iyer, self.six_a, start=date(2027, 6, 1), year=self.next_year)
         AssessmentTeacherAssignment.objects.create(teacher=self.iyer, offering=self.next_maths,
-                                                   section=self.six_a)
+                                                   section=self.six_a,
+                                                   start_date=self.next_year.start_date)
         reasons = [s.reason for s in self.plan()["skips"]]
         self.assertIn("This Section already has a class teacher in the target year.", reasons)
         self.assertIn("This Subject and Section already have a teacher in the target year.",

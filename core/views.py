@@ -28,14 +28,17 @@ from core.authorization import (
     administrator_required,
     can_enter_results,
     can_take_attendance,
+    can_view_finalized_as_subject_teacher,
     can_view_report_card_as_teacher,
     can_write_term_remarks,
     class_teacher_assignments,
     class_teacher_on,
+    current_teacher_assignments,
     guardian_contact_visible,
+    historical_teacher_assignments,
     is_teacher,
-    teacher_assignments,
     teacher_required,
+    teacher_result_windows,
     teacher_student_scope,
     term_remark_sections,
     user_areas,
@@ -50,6 +53,7 @@ from core.forms import (
     ApplicantGuardianForm,
     AssessmentFilterForm,
     AssessmentForm,
+    AssignmentEndForm,
     AttendanceCaptureForm,
     AttendanceCorrectionForm,
     AttendanceDateForm,
@@ -511,7 +515,7 @@ def _assessment_context(assessment):
     rows = [(enrollment, results.get(enrollment.pk)) for enrollment in roster]
     teacher = assessment.offering.teacher_assignments.filter(
         section=assessment.section
-    ).select_related("teacher").first()
+    ).effective_on(assessment.assessment_date).select_related("teacher").first()
     return {
         "assessment": assessment,
         "problems": (
@@ -766,7 +770,7 @@ def admin_overview(request):
 def _open_assessments_needing_marks(user, today):
     """DRAFT assessments in the teacher's Subject/Sections, open for entry,
     with at least one roster Student still unmarked (constant queries)."""
-    duties = list(teacher_assignments(user).values_list("offering_id", "section_id"))
+    duties = list(current_teacher_assignments(user, today).values_list("offering_id", "section_id"))
     if not duties:
         return []
     scope = Q(pk__in=[])
@@ -1103,14 +1107,20 @@ def my_students(request):
 def _teacher_visible_results(user, student, academic_year):
     """Finalized results the teacher may see for this Student and year (D8, D9).
 
-    Subject teacher: their offering + Section. Class teacher: every Subject
+    Subject teacher: their offering + Section on assessment dates inside one
+    of their dated assignments (ADR 0018 D7). Class teacher: every Subject
     assessed in their Section on dates they were its class teacher.
     """
     scope = Q(pk__in=[])
-    for offering_id, section_id in teacher_assignments(user).values_list(
-        "offering_id", "section_id"
+    for row in historical_teacher_assignments(user).filter(
+        offering__academic_year=academic_year
     ):
-        scope |= Q(assessment__offering_id=offering_id, assessment__section_id=section_id)
+        scope |= Q(
+            assessment__offering_id=row.offering_id,
+            assessment__section_id=row.section_id,
+            assessment__assessment_date__gte=row.start_date,
+            assessment__assessment_date__lte=row.last_effective_date,
+        )
     for row in class_teacher_assignments(user).filter(academic_year=academic_year).select_related(
         "academic_year"
     ):
@@ -1166,21 +1176,41 @@ def my_student_detail(request, pk):
 
 @teacher_required
 def my_results(request):
-    duties = teacher_assignments(request.user).order_by(
-        "-offering__academic_year__start_date", "offering__subject__name", "section__name"
+    """Current duties, upcoming ones, and past duties kept read-only (ADR 0018 D8)."""
+    today = business_today()
+    rows = historical_teacher_assignments(request.user).order_by(
+        "-offering__academic_year__start_date", "offering__subject__name", "section__name",
+        "start_date",
     )
-    return render(request, "core/my_results.html", {"duties": duties})
+    duties, upcoming_duties, past_duties = [], [], []
+    for row in rows:
+        if row.start_date > today:
+            upcoming_duties.append(row)
+        elif row.last_effective_date < today:
+            past_duties.append(row)
+        else:
+            duties.append(row)
+    return render(
+        request,
+        "core/my_results.html",
+        {"duties": duties, "upcoming_duties": upcoming_duties, "past_duties": past_duties},
+    )
 
 
 @teacher_required
 def my_subject_results(request, pk):
-    """Finalized results for one of the teacher's Subject/Section assignments."""
-    duty = get_object_or_404(teacher_assignments(request.user), pk=pk)
+    """Finalized results for one of the teacher's Subject/Section assignments.
+
+    Past assignments are included, read-only, and every assignment shows only
+    assessments dated inside its own range (ADR 0018 D7, D8).
+    """
+    duty = get_object_or_404(historical_teacher_assignments(request.user), pk=pk)
     terms = duty.offering.academic_year.terms.all()
     term_id = request.GET.get("term", "")
     term = terms.filter(pk=term_id).first() if term_id.isdigit() else None
     assessments, rows = assessment_reports.subject_section_results(
-        duty.offering, duty.section, term
+        duty.offering, duty.section, term,
+        date_range=(duty.start_date, duty.last_effective_date),
     )
     return render(
         request,
@@ -1206,12 +1236,21 @@ def my_report_card(request, term_pk, student_pk):
 # --- Phase 4 Gate 5: teacher DRAFT result entry (ADR 0010) -----------------
 
 
+def _owned_assessments_q(user, offering, section):
+    """Assessments of a slot the teacher owns now: all DRAFT ones (D6), and
+    FINALIZED ones only if dated inside one of their own assignments (D7)."""
+    visible = Q(status=Assessment.Status.DRAFT)
+    for start, last in teacher_result_windows(user, offering, section):
+        visible |= Q(assessment_date__gte=start, assessment_date__lte=last)
+    return Q(offering=offering, section=section) & visible
+
+
 @teacher_required
 def my_assessments(request):
-    duties = list(teacher_assignments(request.user))
+    duties = list(current_teacher_assignments(request.user))
     query = Q(pk__in=[])
     for duty in duties:
-        query |= Q(offering=duty.offering, section=duty.section)
+        query |= _owned_assessments_q(request.user, duty.offering, duty.section)
     assessments = _assessments().filter(query).order_by("-assessment_date", "name")
     remark_links = []
     years = {
@@ -1232,10 +1271,10 @@ def my_assessments(request):
 @teacher_required
 def my_gradebook(request, pk):
     """Read-only marks for one of the teacher's Subject + Section assignments."""
-    duty = get_object_or_404(teacher_assignments(request.user), pk=pk)
+    duty = get_object_or_404(current_teacher_assignments(request.user), pk=pk)
     assessments = list(
         _assessments()
-        .filter(offering=duty.offering, section=duty.section)
+        .filter(_owned_assessments_q(request.user, duty.offering, duty.section))
         .order_by("assessment_date", "name", "pk")
     )
     students = {}
@@ -1264,6 +1303,10 @@ def assessment_marks_entry(request, pk):
     assessment = get_object_or_404(_assessments(), pk=pk)
     if not can_enter_results(request.user, assessment.offering, assessment.section):
         raise PermissionDenied
+    if assessment.is_finalized and not can_view_finalized_as_subject_teacher(
+        request.user, assessment
+    ):
+        raise PermissionDenied  # finalized while someone else owned the slot (ADR 0018 D7)
     form = None
     if assessment.is_open_for_entry:
         form = ResultEntryForm(request.POST or None, assessment=assessment)
@@ -1430,20 +1473,50 @@ def grade_boundary_delete(request, pk):
 
 @administrator_required("core.view_assessmentteacherassignment")
 def academic_year_teacher_assignments(request, pk):
+    """Each Subject/Section slot with its current teacher and full dated history."""
     academic_year = get_object_or_404(AcademicYear, pk=pk)
-    assignments = (
+    today = business_today()
+    active = assignments.active_teacher_ids()
+    by_slot = {}
+    for row in (
         AssessmentTeacherAssignment.objects.filter(offering__academic_year=academic_year)
-        .select_related("teacher", "offering__class_grade", "offering__subject", "section")
-        .order_by("offering__class_grade__name", "offering__subject__name", "section__name")
-    )
+        .select_related("teacher", "offering__class_grade", "offering__subject",
+                        "offering__academic_year", "section")
+        .order_by("offering__class_grade__name", "offering__subject__name", "section__name",
+                  "start_date")
+    ):
+        by_slot.setdefault((row.offering_id, row.section_id), []).append(row)
+    slots = []
+    for rows in by_slot.values():
+        history, current = [], None
+        for row in rows:
+            if row.start_date > today:
+                status = "Starting soon"
+            elif row.last_effective_date < today:
+                status = "Past"
+            else:
+                status, current = "Current", row
+            history.append({
+                "row": row,
+                "status": status,
+                "can_end": status != "Past",
+                "can_delete": status == "Starting soon" and not row.is_historically_relevant,
+            })
+        slots.append({
+            "offering": rows[0].offering,
+            "section": rows[0].section,
+            "current": current,
+            "inactive": current is not None and current.teacher_id not in active,
+            "history": history,
+        })
     form = TeacherAssignmentForm(academic_year=academic_year)
     return render(
         request,
         "core/teacher_assignments.html",
         {
             "academic_year": academic_year,
-            "assignments": assignments,
-            "form": form,
+            "slots": slots,
+            "today": today,
             "teacher_count": form.fields["teacher"].queryset.count(),
         },
     )
@@ -1452,21 +1525,29 @@ def academic_year_teacher_assignments(request, pk):
 @administrator_required("core.add_assessmentteacherassignment")
 def teacher_assignment_create(request, pk):
     academic_year = get_object_or_404(AcademicYear, pk=pk)
-    form = TeacherAssignmentForm(request.POST or None, academic_year=academic_year)
+    today = business_today()
+    initial = {
+        "start_date": min(max(today, academic_year.start_date), academic_year.end_date),
+        "offering": request.GET.get("offering"),
+        "section": request.GET.get("section"),
+    }
+    form = TeacherAssignmentForm(
+        request.POST or None, academic_year=academic_year, initial=initial
+    )
     if request.method == "POST" and form.is_valid():
-        assignment = AssessmentTeacherAssignment(
-            teacher=form.cleaned_data["teacher"],
-            offering=form.cleaned_data["offering"],
-            section=form.cleaned_data["section"],
-        )
         try:
-            with transaction.atomic():
-                assignment.full_clean()
-                assignment.save()
+            AssessmentTeacherAssignment.assign(
+                teacher=form.cleaned_data["teacher"],
+                offering=form.cleaned_data["offering"],
+                section=form.cleaned_data["section"],
+                start_date=form.cleaned_data["start_date"],
+            )
         except ValidationError as error:
             form.add_error(None, error)
         except IntegrityError:
-            form.add_error(None, "A teacher is already assigned to this Subject and Section.")
+            form.add_error(
+                None, "Another assignment starts on that date for this Subject and Section."
+            )
         else:
             messages.success(request, "Teacher assigned.")
             return redirect("core:academic-year-teacher-assignments", pk=academic_year.pk)
@@ -1477,6 +1558,32 @@ def teacher_assignment_create(request, pk):
     )
 
 
+@administrator_required("core.change_assessmentteacherassignment")
+def teacher_assignment_end(request, pk):
+    assignment = get_object_or_404(
+        AssessmentTeacherAssignment.objects.select_related(
+            "teacher", "offering__subject", "offering__academic_year", "section"
+        ),
+        pk=pk,
+    )
+    form = AssignmentEndForm(request.POST or None, initial={"end_date": business_today()})
+    if request.method == "POST" and form.is_valid():
+        try:
+            assignment.end(form.cleaned_data["end_date"])
+        except ValidationError as error:
+            form.add_error(None, error)
+        else:
+            messages.success(request, "Teacher assignment ended.")
+            return redirect(
+                "core:academic-year-teacher-assignments", pk=assignment.offering.academic_year_id
+            )
+    return render(
+        request,
+        "core/teacher_assignment_end_form.html",
+        {"form": form, "assignment": assignment},
+    )
+
+
 @administrator_required("core.delete_assessmentteacherassignment")
 def teacher_assignment_delete(request, pk):
     assignment = get_object_or_404(
@@ -1484,8 +1591,12 @@ def teacher_assignment_delete(request, pk):
     )
     year_pk = assignment.offering.academic_year_id
     if request.method == "POST":
-        assignment.delete()
-        messages.success(request, "Teacher assignment removed.")
+        try:
+            assignment.delete()
+        except ValidationError as error:
+            messages.error(request, " ".join(error.messages))
+        else:
+            messages.success(request, "Planned teacher assignment deleted.")
     return redirect("core:academic-year-teacher-assignments", pk=year_pk)
 
 

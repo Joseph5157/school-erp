@@ -10,7 +10,7 @@ from django.db.models import ProtectedError
 from django.test import TestCase
 from django.urls import reverse
 
-from core.authorization import can_enter_results, is_teacher, teacher_assignments
+from core.authorization import can_enter_results, current_teacher_assignments, is_teacher
 from core.models import (
     TEACHERS_GROUP_NAME,
     AcademicSubjectOffering,
@@ -57,7 +57,8 @@ class TeacherFixture:
 
     def assign(self, teacher, offering, section):
         assignment = AssessmentTeacherAssignment(
-            teacher=teacher, offering=offering, section=section
+            teacher=teacher, offering=offering, section=section,
+            start_date=self.year.start_date,
         )
         assignment.full_clean()
         assignment.save()
@@ -116,7 +117,8 @@ class AssignmentRuleTests(TeacherFixture, TestCase):
             self.assign(self.iyer, self.maths, self.six_a)
         with self.assertRaises(IntegrityError), transaction.atomic():
             AssessmentTeacherAssignment.objects.create(
-                teacher=self.iyer, offering=self.maths, section=self.six_a
+                teacher=self.iyer, offering=self.maths, section=self.six_a,
+                start_date=self.year.start_date,
             )
         self.assign(self.iyer, self.maths, self.six_b)  # other Section is fine
         self.assign(self.rao, self.sanskrit, self.six_b)  # one teacher, several duties
@@ -169,10 +171,13 @@ class ScopedAuthorizationTests(TeacherFixture, TestCase):
         self.rao.is_active = False
         self.rao.save()
         self.assertFalse(can_enter_results(self.rao, self.maths, self.six_a))
-        self.assertFalse(teacher_assignments(self.rao).exists())
+        self.assertFalse(current_teacher_assignments(self.rao).exists())
 
     def test_teacher_assignments_lists_only_own_duties(self):
-        duties = {(a.offering.subject.name, a.section.name) for a in teacher_assignments(self.rao)}
+        duties = {
+            (a.offering.subject.name, a.section.name)
+            for a in current_teacher_assignments(self.rao)
+        }
         self.assertEqual(duties, {("Mathematics", "A"), ("Sanskrit", "B")})
 
 
@@ -189,7 +194,8 @@ class TeacherAssignmentViewTests(TeacherFixture, TestCase):
     def test_admin_assigns_lists_and_removes(self):
         response = self.client.post(
             self.add_url,
-            {"teacher": self.rao.pk, "offering": self.maths.pk, "section": self.six_a.pk},
+            {"teacher": self.rao.pk, "offering": self.maths.pk, "section": self.six_a.pk,
+             "start_date": "2026-06-01"},
         )
         self.assertRedirects(response, self.list_url)
         listing = self.client.get(self.list_url)
@@ -199,6 +205,12 @@ class TeacherAssignmentViewTests(TeacherFixture, TestCase):
         remove_url = reverse("core:teacher-assignment-delete", args=[assignment.pk])
         self.client.get(remove_url)  # GET never deletes
         self.assertTrue(AssessmentTeacherAssignment.objects.exists())
+        # A row that has taken effect is ended, never deleted (ADR 0018 D5).
+        self.assertRedirects(self.client.post(remove_url), self.list_url)
+        self.assertTrue(AssessmentTeacherAssignment.objects.exists())
+        AssessmentTeacherAssignment.objects.filter(pk=assignment.pk).update(
+            start_date=self.year.end_date
+        )
         self.assertRedirects(self.client.post(remove_url), self.list_url)
         self.assertFalse(AssessmentTeacherAssignment.objects.exists())
 
@@ -227,13 +239,15 @@ class TeacherAssignmentViewTests(TeacherFixture, TestCase):
         self.assertContains(bad, "does not take this Subject offering")
         self.client.post(
             self.add_url,
-            {"teacher": self.rao.pk, "offering": self.maths.pk, "section": self.six_a.pk},
+            {"teacher": self.rao.pk, "offering": self.maths.pk, "section": self.six_a.pk,
+             "start_date": "2026-06-01"},
         )
         duplicate = self.client.post(
             self.add_url,
-            {"teacher": self.iyer.pk, "offering": self.maths.pk, "section": self.six_a.pk},
+            {"teacher": self.iyer.pk, "offering": self.maths.pk, "section": self.six_a.pk,
+             "start_date": "2026-06-01"},
         )
-        self.assertContains(duplicate, "already assigned")
+        self.assertContains(duplicate, "overlap")
         self.assertEqual(AssessmentTeacherAssignment.objects.count(), 1)
 
     def test_teacher_cannot_manage_assignments(self):
@@ -242,7 +256,7 @@ class TeacherAssignmentViewTests(TeacherFixture, TestCase):
         for method, url, data in (
             ("get", self.list_url, {}),
             ("post", self.add_url, {"teacher": self.rao.pk, "offering": self.maths.pk,
-                                    "section": self.six_a.pk}),
+                                    "section": self.six_a.pk, "start_date": "2026-06-01"}),
             ("post", reverse("core:teacher-assignment-delete", args=[assignment.pk]), {}),
         ):
             with self.subTest(url=url):

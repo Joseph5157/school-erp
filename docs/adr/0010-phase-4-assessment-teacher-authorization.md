@@ -63,6 +63,8 @@ DECIDED (Gate 2):
 Later change: ADR 0012 D10 (Phase 5) moves Term remarks to the class
 teacher; subject teacher assignments no longer grant remark writing.
 ADR 0011 adds dated class teacher assignment alongside this one.
+ADR 0018 makes subject teacher assignments effective-dated (start and end
+dates, history kept), replacing the undated single-row model described above.
 
 ## Related requirements/domain decisions
 

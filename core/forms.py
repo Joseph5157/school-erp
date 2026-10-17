@@ -16,7 +16,6 @@ from core.models import (
     Applicant,
     ApplicantGuardian,
     Assessment,
-    AssessmentTeacherAssignment,
     AttendanceRegister,
     AttendanceStatus,
     ClassGrade,
@@ -243,14 +242,27 @@ class ClassTeacherEndForm(forms.Form):
     )
 
 
+class AssignmentEndForm(forms.Form):
+    end_date = forms.DateField(
+        widget=forms.DateInput(attrs={"type": "date"}),
+        help_text="Last day (inclusive) this teacher owns the marks for this Subject and Section.",
+    )
+
+
 class TeacherAssignmentForm(forms.Form):
-    """Assign the teacher who enters results for one offering in one Section."""
+    """Assign, or reassign from a date, the teacher who enters results for one
+    offering in one Section (ADR 0018)."""
 
     teacher = forms.ModelChoiceField(queryset=get_user_model().objects.none())
     offering = forms.ModelChoiceField(
         queryset=AcademicSubjectOffering.objects.none(), label="Subject offering"
     )
     section = forms.ModelChoiceField(queryset=Section.objects.select_related("class_grade"))
+    start_date = forms.DateField(
+        widget=forms.DateInput(attrs={"type": "date"}),
+        help_text="If the Subject and Section already have a teacher on this date, "
+        "that assignment ends the day before.",
+    )
 
     def __init__(self, *args, academic_year=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -276,13 +288,6 @@ class TeacherAssignmentForm(forms.Form):
             return cleaned_data
         if not offering.applies_to(section):
             self.add_error("section", "This Section does not take this Subject offering.")
-        elif AssessmentTeacherAssignment.objects.filter(
-            offering=offering, section=section
-        ).exists():
-            raise ValidationError(
-                "A teacher is already assigned to this Subject and Section; remove that "
-                "assignment first."
-            )
         return cleaned_data
 
 

@@ -12,7 +12,7 @@
 </ul>
 <p class="mb-1"><strong>Subjects</strong></p>
 <ul>
-    {% for row in rows.subject %}<li>{{ row.offering.subject.name }} &middot; {{ row.section }}</li>{% empty %}<li class="text-muted">None</li>{% endfor %}
+    {% for row in rows.subject %}<li>{{ row.offering.subject.name }} &middot; {{ row.section }}: {{ row.start_date }} &ndash; {{ row.end_date|default:"open" }}</li>{% empty %}<li class="text-muted">None</li>{% endfor %}
 </ul>
 {% empty %}
 <p>No assignments.</p>

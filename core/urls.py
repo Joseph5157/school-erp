@@ -193,6 +193,11 @@ urlpatterns = [
         name="grade-boundary-delete",
     ),
     path(
+        "teacher-assignments/<int:pk>/end/",
+        views.teacher_assignment_end,
+        name="teacher-assignment-end",
+    ),
+    path(
         "teacher-assignments/<int:pk>/remove/",
         views.teacher_assignment_delete,
         name="teacher-assignment-delete",
