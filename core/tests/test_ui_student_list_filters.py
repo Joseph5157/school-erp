@@ -8,6 +8,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from core.models import (
+    AcademicYear,
     Applicant,
     AttendanceRegister,
     AttendanceStatus,
@@ -87,6 +88,50 @@ class StudentListFilterTests(AuthorizationClientsMixin, Phase4Fixture, TestCase)
 
         response = self.administrator.get(self.url, {"chip": "absent"})
         self.assertEqual(self.names(response), ["Absent Student"])
+
+    def _old_year(self):
+        return AcademicYear.objects.create(
+            name="2024-25", start_date=date(2024, 6, 1), end_date=date(2025, 3, 31)
+        )
+
+    def test_unplaced_chip_includes_student_placed_only_in_an_old_year(self):
+        self.place("Current Student")
+        old_year = self._old_year()
+        student = Student.objects.create(
+            applicant=Applicant.objects.create(
+                admission_status="ACCEPTED", full_name="Old Placement"
+            ),
+            full_name="Old Placement",
+        )
+        student.enroll(
+            academic_year=old_year, class_grade=self.grade6,
+            section=self.six_a, start_date=date(2024, 6, 1),
+        )
+
+        response = self.administrator.get(self.url, {"chip": "unplaced"})
+        self.assertEqual(self.names(response), ["Old Placement"])
+
+    def test_absent_chip_ignores_absences_from_an_old_year(self):
+        old_year = self._old_year()
+        student = Student.objects.create(
+            applicant=Applicant.objects.create(
+                admission_status="ACCEPTED", full_name="Old Absences"
+            ),
+            full_name="Old Absences",
+        )
+        old_enrollment = student.enroll(
+            academic_year=old_year, class_grade=self.grade6,
+            section=self.six_a, start_date=date(2024, 6, 1),
+        )
+        for day in (1, 2, 3):
+            register = AttendanceRegister.objects.create(
+                academic_year=old_year, class_grade=self.grade6,
+                section=self.six_a, date=date(2024, 7, day),
+            )
+            register.capture(enrollment=old_enrollment, status=AttendanceStatus.ABSENT)
+
+        response = self.administrator.get(self.url, {"chip": "absent"})
+        self.assertEqual(self.names(response), [])
 
     def test_invalid_chip_is_ignored(self):
         self.place("Student One")

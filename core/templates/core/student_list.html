@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Students{% endblock %}
 {% block content %}
-{% include "partials/_page_header.html" with eyebrow="People" title="Students" purpose="Find a student by name, email address, or phone number." only %}
+{% include "partials/_page_header.html" with eyebrow="People" title="Students" purpose="Search by name, email or phone; filter by class and status." only %}
 <form method="get" class="mb-3" role="search" aria-label="Filter students">
     {% if table.sort_param %}<input type="hidden" name="sort" value="{{ table.sort_param }}">{% endif %}
     <div class="row g-2 align-items-end">

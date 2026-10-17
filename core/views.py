@@ -2320,8 +2320,23 @@ STUDENT_CHIP_CHOICES = (
     ("all", "All"),
     ("new", "New this month"),
     ("unplaced", "Not in a class"),
-    ("absent", "Absent 3+ days"),
+    ("absent", "Absent 3+ days this year"),
 )
+
+
+def _current_academic_year(today):
+    """The Academic Year containing `today`, else the most recent by start date.
+
+    "Most recent by start date" alone would pick a future year that has been
+    set up in advance and make every Student look unplaced, so prefer the year
+    that is actually in progress.
+    """
+    return (
+        AcademicYear.objects.filter(start_date__lte=today, end_date__gte=today)
+        .order_by("-start_date")
+        .first()
+        or AcademicYear.objects.order_by("-start_date").first()
+    )
 
 
 def _parse_id(request, name, valid_ids):
@@ -2360,7 +2375,7 @@ def student_list(request):
     query = request.GET.get("q", "").strip()
     status = parse_choice(request, "status", Student.Status.choices)
     chip = parse_choice(request, "chip", STUDENT_CHIP_CHOICES)
-    current_year = AcademicYear.objects.order_by("-start_date").first()
+    current_year = _current_academic_year(business_today())
 
     students = Student.objects.all()
     if query:
@@ -2392,15 +2407,15 @@ def student_list(request):
     if chip == "new":
         students = students.filter(created_at__gte=timezone.now() - timedelta(days=30))
     elif chip == "unplaced":
-        students = students.exclude(
-            enrollments__status=AcademicEnrollment.Status.ACTIVE,
-            enrollments__academic_year=current_year,
-        )
+        students = students.filter(~Exists(active_enrollments))
     elif chip == "absent":
         students = students.annotate(
             absent_days=Count(
                 "enrollments__attendance_entries",
-                filter=Q(enrollments__attendance_entries__status=AttendanceStatus.ABSENT),
+                filter=Q(
+                    enrollments__academic_year=current_year,
+                    enrollments__attendance_entries__status=AttendanceStatus.ABSENT,
+                ),
             )
         ).filter(absent_days__gte=3)
 
