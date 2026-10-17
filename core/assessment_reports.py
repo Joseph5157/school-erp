@@ -49,7 +49,7 @@ def student_history(student):
     )
 
 
-def subject_section_results(offering, section, term=None):
+def subject_section_results(offering, section, term=None, date_range=None):
     """Report 3: finalized assessments x Students for one Subject and Section.
 
     Returns (assessments, rows) where each row is (student, [result or None
@@ -61,6 +61,10 @@ def subject_section_results(offering, section, term=None):
     )
     if term is not None:
         assessments = assessments.filter(term=term)
+    if date_range is not None:
+        assessments = assessments.filter(
+            assessment_date__gte=date_range[0], assessment_date__lte=date_range[1]
+        )
     assessments = list(assessments.select_related("term").order_by("assessment_date", "name"))
     results = finalized_results(StudentResult.objects.filter(assessment__in=assessments))
     by_student = OrderedDict()

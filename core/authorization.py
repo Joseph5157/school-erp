@@ -39,8 +39,19 @@ def is_teacher(user):
     )
 
 
-def teacher_assignments(user):
-    """The AssessmentTeacherAssignments a user may enter results for."""
+# Subject teacher scope (ADR 0018). Two different questions, two helpers:
+#
+# * current_teacher_assignments - what does this teacher own on a date
+#   (default: the business date)? Decides result entry, the working
+#   gradebook, My Students and student profiles (D6).
+# * historical_teacher_assignments - every dated row the teacher ever held.
+#   Used only to decide which FINALIZED results they may still read, by the
+#   assessment's own date (D7, D8). It never grants current access.
+#
+# Both are empty unless the user is an active Teachers-group login (D9).
+
+
+def _subject_assignments(user):
     from core.models import AssessmentTeacherAssignment
 
     if not is_teacher(user):
@@ -50,15 +61,51 @@ def teacher_assignments(user):
     )
 
 
+def current_teacher_assignments(user, on_date=None):
+    """Subject assignments `user` holds on `on_date` (default: the business date)."""
+    from core import models
+
+    return _subject_assignments(user).effective_on(
+        on_date if on_date is not None else models.business_today()
+    )
+
+
+def historical_teacher_assignments(user):
+    """Every subject assignment row `user` has held, past, current or planned."""
+    return _subject_assignments(user)
+
+
+def teacher_result_windows(user, offering, section):
+    """(start, last effective day) of each row `user` held for this slot (D7)."""
+    return [
+        (row.start_date, row.last_effective_date)
+        for row in historical_teacher_assignments(user).filter(
+            offering=offering, section=section
+        )
+    ]
+
+
+def can_view_finalized_as_subject_teacher(user, assessment):
+    """Was `user` assigned to this offering + Section on the assessment's date? (D7)
+
+    The assessment date decides, never who entered or finalized the marks.
+    """
+    return any(
+        start <= assessment.assessment_date <= last
+        for start, last in teacher_result_windows(user, assessment.offering, assessment.section)
+    )
+
+
 def can_enter_results(user, offering, section):
     """May `user` enter DRAFT results for this Subject offering and Section?
 
-    True only for an active member of the Teachers group who is the assigned
-    teacher for exactly this offering and Section. Administrator powers
-    (configuration, finalization, corrections) are separate permissions and
-    do not make someone a result-entering teacher.
+    True only for an active member of the Teachers group whose assignment for
+    exactly this offering and Section is effective today (D6): whoever owns
+    the slot now finishes its DRAFT work, whoever owned it before cannot.
+    Administrator powers (configuration, finalization, corrections) are
+    separate permissions and do not make someone a result-entering teacher.
     """
-    return teacher_assignments(user).filter(offering=offering, section=section).exists()
+    return current_teacher_assignments(user).filter(offering=offering, section=section).exists()
 
 
 def teacher_required(view_func):
@@ -158,7 +205,9 @@ def teacher_student_scope(user, on_date):
     if not is_teacher(user):
         return AcademicEnrollment.objects.none()
     scope = Q(section_id__in=class_teacher_assignments(user, on_date).values("section_id"))
-    for academic_year_id, class_grade_id, section_id in teacher_assignments(user).values_list(
+    for academic_year_id, class_grade_id, section_id in current_teacher_assignments(
+        user, on_date
+    ).values_list(
         "offering__academic_year_id", "offering__class_grade_id", "section_id"
     ):
         scope |= Q(

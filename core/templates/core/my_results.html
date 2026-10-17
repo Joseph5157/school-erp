@@ -10,4 +10,21 @@
     <li>You do not teach a Subject yet. The school office assigns Subjects &mdash; ask them if you expected to see one.</li>
     {% endfor %}
 </ul>
+{% if upcoming_duties %}
+<h2 class="h5 mt-4">Starting soon</h2>
+<ul>
+    {% for duty in upcoming_duties %}
+    <li>{{ duty.offering.subject.name }} &middot; {{ duty.section }} &mdash; from {{ duty.start_date }}</li>
+    {% endfor %}
+</ul>
+{% endif %}
+{% if past_duties %}
+<h2 class="h5 mt-4">Past duties</h2>
+<p class="text-muted">Read-only. Only results from the dates you taught each Subject are shown.</p>
+<ul>
+    {% for duty in past_duties %}
+    <li><a href="{% url 'core:my-subject-results' duty.pk %}">{{ duty.offering.academic_year.name }} &middot; {{ duty.offering.subject.name }} &middot; {{ duty.section }}</a> <span class="text-muted">({{ duty.start_date }} to {{ duty.last_effective_date }})</span></li>
+    {% endfor %}
+</ul>
+{% endif %}
 {% endblock %}

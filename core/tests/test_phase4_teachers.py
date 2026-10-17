@@ -10,7 +10,7 @@ from django.db.models import ProtectedError
 from django.test import TestCase
 from django.urls import reverse
 
-from core.authorization import can_enter_results, is_teacher, teacher_assignments
+from core.authorization import can_enter_results, current_teacher_assignments, is_teacher
 from core.models import (
     TEACHERS_GROUP_NAME,
     AcademicSubjectOffering,
@@ -171,10 +171,13 @@ class ScopedAuthorizationTests(TeacherFixture, TestCase):
         self.rao.is_active = False
         self.rao.save()
         self.assertFalse(can_enter_results(self.rao, self.maths, self.six_a))
-        self.assertFalse(teacher_assignments(self.rao).exists())
+        self.assertFalse(current_teacher_assignments(self.rao).exists())
 
     def test_teacher_assignments_lists_only_own_duties(self):
-        duties = {(a.offering.subject.name, a.section.name) for a in teacher_assignments(self.rao)}
+        duties = {
+            (a.offering.subject.name, a.section.name)
+            for a in current_teacher_assignments(self.rao)
+        }
         self.assertEqual(duties, {("Mathematics", "A"), ("Sanskrit", "B")})
 
 
