@@ -29,6 +29,7 @@ _ATTENDANCE = Crumb("Attendance", "core:attendance-register-list")
 _ANNOUNCEMENTS = Crumb("Announcements", "core:announcement-list")
 _TEACHERS = Crumb("Teachers", "core:teacher-list")
 _TEACHER = Crumb("Teacher", "core:teacher-detail", True)
+_TIMETABLE = Crumb("Timetable", "core:timetable-index")
 
 RULES = {
     "student-detail": Rule("student-list", (_STUDENTS,), "Student"),
@@ -51,6 +52,29 @@ RULES = {
     "teacher-deactivate": Rule("teacher-list", (_TEACHERS, _TEACHER), "Deactivate"),
     "teacher-reactivate": Rule("teacher-list", (_TEACHERS, _TEACHER), "Reactivate"),
     "teacher-load": Rule("teacher-list", (_TEACHERS, _TEACHER), "Workload"),
+    "timetable-periods": Rule("timetable-index", (_TIMETABLE,), "Periods"),
+    "timetable-period-create": Rule(
+        "timetable-index",
+        (_TIMETABLE, Crumb("Periods", "core:timetable-periods", True)),
+        "Add period",
+    ),
+    "timetable-period-update": Rule("timetable-index", (_TIMETABLE,), "Edit period"),
+    "timetable-period-delete": Rule("timetable-index", (_TIMETABLE,), "Delete period"),
+    "timetable-issues": Rule("timetable-index", (_TIMETABLE,), "Issues"),
+    "timetable-sections": Rule("timetable-index", (_TIMETABLE,), "Sections"),
+    "timetable-grid": Rule(
+        "timetable-index",
+        (_TIMETABLE, Crumb("Sections", "core:timetable-sections", True)),
+        "Weekly timetable",
+    ),
+    "timetable-slot-create": Rule(
+        "timetable-index",
+        (_TIMETABLE, Crumb("Sections", "core:timetable-sections", True)),
+        "Add slot",
+    ),
+    "timetable-slot-change": Rule("timetable-index", (_TIMETABLE,), "Change slot"),
+    "timetable-slot-end": Rule("timetable-index", (_TIMETABLE,), "End slot"),
+    "timetable-slot-delete": Rule("timetable-index", (_TIMETABLE,), "Delete slot"),
     "announcement-detail": Rule("announcement-list", (_ANNOUNCEMENTS,), "Announcement"),
 }
 

@@ -232,6 +232,67 @@ body.erp { min-height: 100vh; }
 .erp-teacher .erp-day-card .stretched-link:focus-visible::after {
   outline: 2px solid var(--erp-focus-color); outline-offset: 2px; border-radius: var(--erp-radius);
 }
+/* TDB-1 header and Today overview. Two tiles stay side by side down to 360px; a tile
+   without a link is flat text (no hover, no chevron) so it does not read as tappable. */
+.erp-teacher .erp-day-head { margin-bottom: 1.5rem; }
+.erp-teacher .erp-day-greeting { margin: 0 0 .25rem; font-weight: 600; color: var(--erp-ink); }
+.erp-teacher .erp-day-date { margin: 0; }
+.erp-teacher .erp-day-date .erp-pill { margin-left: .25rem; }
+.erp-teacher .erp-tiles {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem;
+}
+.erp-teacher .erp-tile {
+  position: relative; display: grid; align-content: start; gap: .25rem; min-width: 0;
+  min-height: 5.5rem; padding: 1rem; overflow-wrap: anywhere;
+  background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
+}
+.erp-teacher .erp-tile:not(.is-link) { background: var(--erp-paper); }
+.erp-teacher .erp-tile.is-link:hover { border-color: var(--erp-accent); }
+.erp-teacher .erp-tile-label {
+  margin: 0; font-size: .78rem; font-weight: 600; letter-spacing: .02em; color: var(--erp-ink-soft);
+}
+.erp-teacher .erp-tile-state { margin: 0; font-size: 1.05rem; font-weight: 700; line-height: 1.25; color: var(--erp-ink); }
+.erp-teacher .erp-tile:not(.is-link) .erp-tile-state { color: var(--erp-ink-soft); }
+.erp-teacher .erp-tile-state a { color: inherit; text-decoration: none; }
+.erp-teacher .erp-tile-meta { margin: 0; font-size: .85rem; color: var(--erp-ink-soft); }
+.erp-teacher .erp-tile-chevron { position: absolute; top: .75rem; right: .75rem; }
+.erp-teacher .erp-tile .stretched-link:focus-visible { outline: none; }
+.erp-teacher .erp-tile .stretched-link:focus-visible::after {
+  outline: 2px solid var(--erp-focus-color); outline-offset: 2px; border-radius: var(--erp-radius);
+}
+.erp-teacher .erp-day-rows {
+  list-style: none; margin: .5rem 0 0; padding: 0; overflow: hidden;
+  background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
+}
+.erp-teacher .erp-day-row {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem;
+  padding: .75rem 1rem; min-height: 2.75rem;
+}
+.erp-teacher .erp-day-row + .erp-day-row { border-top: 1px solid var(--erp-rule); }
+.erp-teacher .erp-day-row .erp-day-main { flex: 1 1 9rem; }
+.erp-teacher .erp-day-row .erp-day-title { font-size: 1rem; }
+/* TDB-2 Teaching assignments and Term remarks: compact divided rows. Only rows with .is-link
+   look tappable (chevron, hover); Subjects I teach rows are plain text. */
+.erp-teacher .erp-assign-group + .erp-assign-group { margin-top: 1rem; }
+.erp-teacher .erp-assign-label {
+  margin: 0 0 .5rem; font-size: .78rem; font-weight: 700; letter-spacing: .02em;
+  text-transform: uppercase; color: var(--erp-ink-soft);
+}
+.erp-teacher .erp-assign-rows { margin: 0; }
+.erp-teacher .erp-assign-row {
+  position: relative; display: flex; align-items: center; justify-content: space-between;
+  gap: .5rem; min-height: 2.75rem; padding: .75rem 1rem; overflow-wrap: anywhere;
+}
+.erp-teacher .erp-assign-row + .erp-assign-row { border-top: 1px solid var(--erp-rule); }
+.erp-teacher .erp-assign-row .erp-day-title { font-size: 1rem; }
+.erp-teacher .erp-assign-row .erp-day-title.stretched-link { color: inherit; text-decoration: none; }
+.erp-teacher .erp-assign-row.is-link:hover { background: var(--erp-paper); }
+.erp-teacher .erp-assign-row .stretched-link:focus-visible { outline: none; }
+.erp-teacher .erp-assign-row .stretched-link:focus-visible::after {
+  outline: 2px solid var(--erp-focus-color); outline-offset: -2px;
+}
+.erp-teacher .erp-assign-empty { margin: 0; color: var(--erp-ink-soft); }
+.erp-teacher .erp-remarks { margin-top: 2rem; }
 /* Neutral empty state: the page cannot prove the teacher finished anything, so no success colour or tick. */
 .erp-teacher .erp-day-empty {
   display: grid; gap: .25rem; padding: 1rem;
@@ -858,3 +919,24 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
   padding: var(--erp-space-4);
 }
 .erp-child-name { font-size: 1.1rem; margin: 0 0 .25rem; }
+
+/* ---------- TDB-4D: Section weekly timetable ---------- */
+
+.erp-schedule-date { max-width: 24rem; }
+.erp-timetable { margin-bottom: 0; }
+.erp-timetable th, .erp-timetable td { vertical-align: top; }
+.erp-timetable thead th { white-space: nowrap; }
+.erp-timetable tbody td { min-width: 8.5rem; }
+.erp-timetable thead th:first-child,
+.erp-timetable tbody th[scope="row"] {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 4rem;
+  background: var(--erp-paper);
+  box-shadow: 1px 0 0 var(--erp-rule);
+  white-space: nowrap;
+}
+.erp-slot-subject { margin: 0; font-weight: 650; }
+.erp-slot-meta { margin: 0; color: var(--erp-ink-soft); font-size: var(--erp-text-sm); }
+.erp-slot-actions { margin-top: var(--erp-space-2); }

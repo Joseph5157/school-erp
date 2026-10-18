@@ -101,7 +101,11 @@ the surviving teacher taught the Subject for the whole past year.
   is a known boundary, the same as for `SectionClassTeacher`: writes that
   bypass the model methods (raw SQL, bulk updates) can create overlaps.
 - Not covered: timetable periods, cover or substitute teachers, shared
-  ownership, and editing historical rows.
+  ownership, and editing historical rows. (Update, 2026-10-18: timetable
+  periods and weekly slots are now covered by ADR 0021, which derives the
+  teacher of a slot from these assignments and changes nothing decided here.
+  Cover teachers, shared ownership and editing historical rows remain not
+  covered.)
 
 ## Related
 

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Delete period{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Delete period {{ period.label }} <small class="text-muted">{{ academic_year.name }}</small></h1>
+{% if in_use %}
+<p role="alert">{{ in_use_message }}</p>
+<a class="btn btn-outline-secondary" href="{% url 'core:timetable-periods' academic_year.pk %}">Back to periods</a>
+{% else %}
+<p>Period {{ period.label }} (order {{ period.sequence }}) will be removed from {{ academic_year.name }}. It is not used by any timetable slot.</p>
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger">Delete period</button>
+    <a class="btn btn-link" href="{% url 'core:timetable-periods' academic_year.pk %}">Cancel</a>
+</form>
+{% endif %}
+{% endblock %}

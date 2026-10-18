@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Delete slot{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Delete slot <small class="text-muted">{{ section }} &middot; {{ slot.period.label }} &middot; {{ slot.get_weekday_display }}</small></h1>
+{% if started %}
+<p role="alert">This timetable slot has taken effect and cannot be deleted, so the timetable keeps its history. End it instead: it will stop applying after the last day you choose.</p>
+<div class="erp-form-actions">
+    {% if can_end %}<a class="btn btn-primary" href="{{ end_url }}">End this slot</a>{% endif %}
+    <a class="btn btn-link" href="{{ grid_url }}">Back to timetable</a>
+</div>
+{% else %}
+<p>{{ slot.offering.subject.name }} for {{ section }} in {{ slot.period.label }} on {{ slot.get_weekday_display }}, starting {{ slot.start_date|date:"j M Y" }}, will be removed. It has not started, so nothing in the history changes.</p>
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger">Delete slot</button>
+    <a class="btn btn-link" href="{{ grid_url }}">Cancel</a>
+</form>
+{% endif %}
+{% endblock %}

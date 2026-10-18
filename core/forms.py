@@ -1,3 +1,5 @@
+import datetime
+
 from django import forms
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -32,6 +34,7 @@ from core.models import (
     Student,
     StudentGuardian,
     Subject,
+    TimetablePeriod,
     business_today,
 )
 
@@ -184,6 +187,307 @@ class AcademicTermForm(forms.ModelForm):
             if clash.exists():
                 self.add_error(field, "Another Term in this Academic Year already uses this.")
         return cleaned_data
+
+
+class FieldAccessibilityMixin:
+    """Wire the ids written by partials/_form_field.html onto the inputs.
+
+    The partial renders helper text as `<id>_helptext` and errors as `<id>_error`.
+    This links them to the input (`aria-describedby`), flags invalid inputs
+    (`aria-invalid`) and starts focus on the first invalid input (`autofocus`),
+    all server-rendered so the form works with JavaScript off (UI_DESIGN_RULES 6).
+    """
+
+    focus_summary = False  # True when only non-field errors exist: focus the summary
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._describe_fields()
+
+    def _describe_fields(self):
+        for name, field in self.fields.items():
+            bound = self[name]
+            ids = []
+            if field.help_text:
+                ids.append(f"{bound.auto_id}_helptext")
+            if self.is_bound and self._errors is not None and name in self._errors:
+                ids.append(f"{bound.auto_id}_error")
+            if ids:
+                field.widget.attrs["aria-describedby"] = " ".join(ids)
+            else:
+                field.widget.attrs.pop("aria-describedby", None)
+
+    def apply_error_state(self):
+        """Mark invalid inputs and pick the focus target; call again after `add_error`."""
+        self._describe_fields()
+        for field in self.fields.values():
+            field.widget.attrs.pop("aria-invalid", None)
+            field.widget.attrs.pop("autofocus", None)
+        invalid = [name for name in self.fields if name in self.errors]
+        for name in invalid:
+            self.fields[name].widget.attrs["aria-invalid"] = "true"
+        if invalid:
+            self.fields[invalid[0]].widget.attrs["autofocus"] = True
+        self.focus_summary = bool(self.errors) and not invalid
+
+    def full_clean(self):
+        super().full_clean()
+        self.apply_error_state()
+
+
+class TimetablePeriodForm(FieldAccessibilityMixin, forms.ModelForm):
+    """Create or change a Period; the Academic Year is fixed by the URL or the record."""
+
+    DUPLICATE_MESSAGES = {
+        "sequence": "Another period in this Academic Year already uses this order number. "
+        "Choose a different one.",
+        "label": "Another period in this Academic Year already uses this label. "
+        "Choose a different one.",
+    }
+
+    class Meta:
+        model = TimetablePeriod
+        fields = ["sequence", "label"]
+        widgets = {"sequence": forms.NumberInput(attrs={"min": 1, "inputmode": "numeric"})}
+        help_texts = {
+            "sequence": "Position in the school day (1 is first). Periods are ordered by this.",
+            "label": "The name shown on timetables, for example P1.",
+        }
+        error_messages = {
+            "sequence": {
+                "required": "Enter a position, for example 1.",
+                "invalid": "Enter a whole number, for example 1.",
+                "min_value": "Enter a position of 1 or more.",
+                "max_value": "Enter a smaller position (32767 at most).",
+            },
+            "label": {"required": "Enter a label, for example P1."},
+        }
+
+    def __init__(self, *args, academic_year=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if academic_year is not None:
+            self.instance.academic_year = academic_year
+        # Django derives min=0 from the unsigned column; a period starts at 1.
+        self.fields["sequence"].widget.attrs["min"] = 1
+
+    def clean(self):
+        cleaned_data = super().clean()
+        year = self.instance.academic_year
+        for field in ("sequence", "label"):
+            value = cleaned_data.get(field)
+            if value in (None, ""):
+                continue
+            clash = TimetablePeriod.objects.filter(academic_year=year, **{field: value})
+            if self.instance.pk is not None:
+                clash = clash.exclude(pk=self.instance.pk)
+            if clash.exists():
+                self.add_error(field, self.DUPLICATE_MESSAGES[field])
+        return cleaned_data
+
+
+_DATE_WIDGET = forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")
+
+
+def _long_date(value):
+    return f"{value.day} {value:%b %Y}"
+
+
+class ScheduleDateForm(FieldAccessibilityMixin, forms.Form):
+    """The one date the weekly grid represents (TDB-4D). Not a domain field."""
+
+    date = forms.DateField(
+        label="Schedule date",
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+        help_text="The timetable in force on this date is shown.",
+        error_messages={"required": "Enter a date.", "invalid": "Enter a valid date."},
+    )
+
+    def __init__(self, *args, academic_year, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.academic_year = academic_year
+
+    def clean_date(self):
+        value = self.cleaned_data["date"]
+        year = self.academic_year
+        if not year.contains(value):
+            raise ValidationError(
+                f"Choose a date between {_long_date(year.start_date)} and "
+                f"{_long_date(year.end_date)}, inside {year.name}."
+            )
+        return value
+
+
+class ReportDateForm(ScheduleDateForm):
+    """The one date the timetable issues report is evaluated on (TDB-4E)."""
+
+    date = forms.DateField(
+        label="Report date",
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+        help_text="Slots with no teacher are checked on this date. Teacher clashes are "
+        "listed for the whole Academic Year and marked against it.",
+        error_messages={"required": "Enter a date.", "invalid": "Enter a valid date."},
+    )
+
+
+class OfferingChoiceField(forms.ModelChoiceField):
+    def label_from_instance(self, obj):
+        return obj.subject.name
+
+
+def _section_offerings(academic_year, section):
+    return (
+        AcademicSubjectOffering.objects.for_section(academic_year, section)
+        .select_related("subject")
+        .order_by("subject__name")
+    )
+
+
+def _offering_field(help_text):
+    return OfferingChoiceField(
+        queryset=AcademicSubjectOffering.objects.none(),
+        label="Subject",
+        help_text=help_text,
+        error_messages={
+            "required": "Choose a Subject.",
+            "invalid_choice": "Choose one of the Subjects offered to this Section this year.",
+        },
+    )
+
+
+class TimetableSlotCreateForm(FieldAccessibilityMixin, forms.Form):
+    """Add a slot to one cell; period, weekday and Section come from the URL."""
+
+    offering = _offering_field("Only Subjects offered to this Section this year are listed.")
+    start_date = forms.DateField(
+        label="Start date", widget=_DATE_WIDGET,
+        help_text="First day the slot applies. It cannot be in the past.",
+        error_messages={"required": "Enter a start date.", "invalid": "Enter a valid date."},
+    )
+    end_date = forms.DateField(
+        label="End date", required=False, widget=_DATE_WIDGET,
+        help_text="Last day the slot applies, inclusive. Optional: blank runs to the end of "
+        "the Academic Year.",
+        error_messages={"invalid": "Enter a valid date."},
+    )
+
+    def __init__(self, *args, academic_year, section, today, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.today = today
+        self.fields["offering"].queryset = _section_offerings(academic_year, section)
+
+    def clean_start_date(self):
+        value = self.cleaned_data["start_date"]
+        if value < self.today:
+            raise ValidationError(
+                f"This date is in the past. Choose {_long_date(self.today)} or later: the "
+                "timetable only changes going forward."
+            )
+        return value
+
+    def clean(self):
+        cleaned = super().clean()
+        start, end = cleaned.get("start_date"), cleaned.get("end_date")
+        if start and end and end < start:
+            self.add_error("end_date", "End date cannot be before the start date.")
+        return cleaned
+
+
+class TimetableSlotChangeForm(FieldAccessibilityMixin, forms.Form):
+    """Replace a slot from a date: the old row is ended the day before (TDB-4B).
+
+    Period, weekday and Section stay fixed; only the Subject, the start of the
+    replacement and its optional end are chosen.
+    """
+
+    offering = _offering_field("Only Subjects offered to this Section this year are listed.")
+    effective_from = forms.DateField(
+        label="Effective from", widget=_DATE_WIDGET,
+        error_messages={"required": "Enter the first day of the change.",
+                        "invalid": "Enter a valid date."},
+    )
+    end_date = forms.DateField(
+        label="End date", required=False, widget=_DATE_WIDGET,
+        help_text="Last day the new slot applies, inclusive. Optional: blank runs to the end "
+        "of the Academic Year.",
+        error_messages={"invalid": "Enter a valid date."},
+    )
+
+    def __init__(self, *args, slot, today, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.slot = slot
+        self.today = today
+        started = slot.start_date <= today
+        self.min_date = (
+            max(today, slot.start_date + datetime.timedelta(days=1)) if started else today
+        )
+        self.fields["offering"].queryset = _section_offerings(
+            slot.period.academic_year, slot.section
+        )
+        self.fields["effective_from"].help_text = (
+            "The old slot's history is kept; it ends the day before this date. "
+            f"The earliest date is {_long_date(self.min_date)}."
+            if started
+            else "This slot has not started, so it is replaced from this date."
+        )
+        # BoundField copies help_text when first built; rebuild so the new text renders.
+        self._bound_fields_cache.pop("effective_from", None)
+        self._describe_fields()
+        self.initial.setdefault("offering", slot.offering_id)
+        self.initial.setdefault("effective_from", self.min_date if started else slot.start_date)
+        self.initial.setdefault("end_date", slot.end_date)
+
+    def clean_effective_from(self):
+        value = self.cleaned_data["effective_from"]
+        if value < self.min_date:
+            raise ValidationError(
+                f"This date is in the past. Choose {_long_date(self.min_date)} or later: "
+                "history is never rewritten."
+            )
+        last = self.slot.end_date
+        if self.slot.start_date <= self.today and last is not None and value > last:
+            raise ValidationError(
+                f"This slot has already ended (last day {_long_date(last)}). Choose a date "
+                "up to then, or add a new slot."
+            )
+        return value
+
+    def clean(self):
+        cleaned = super().clean()
+        start, end = cleaned.get("effective_from"), cleaned.get("end_date")
+        if start and end and end < start:
+            self.add_error("end_date", "End date cannot be before the effective-from date.")
+        return cleaned
+
+
+class TimetableSlotEndForm(FieldAccessibilityMixin, forms.Form):
+    """End a slot on a date (inclusive). It can only be shortened, never extended."""
+
+    end_date = forms.DateField(
+        label="Last day", widget=_DATE_WIDGET,
+        help_text="The last day the slot applies, inclusive: the slot still runs on this day.",
+        error_messages={"required": "Enter the last day.", "invalid": "Enter a valid date."},
+    )
+
+    def __init__(self, *args, slot, today, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.slot = slot
+        self.min_date = max(today, slot.start_date)
+        self.today = today
+        self.initial.setdefault("end_date", self.min_date)
+
+    def clean_end_date(self):
+        value = self.cleaned_data["end_date"]
+        if value < self.min_date:
+            raise ValidationError(
+                f"This date is in the past. Choose {_long_date(self.min_date)} or later: "
+                "history is never rewritten."
+            )
+        if self.slot.end_date is not None and value > self.slot.end_date:
+            raise ValidationError(
+                f"A slot can only be ended earlier, not extended. It already ends on "
+                f"{_long_date(self.slot.end_date)}."
+            )
+        return value
 
 
 class SubjectOfferingForm(forms.Form):

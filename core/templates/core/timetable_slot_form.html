@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+{% include "partials/_page_header.html" with eyebrow="Timetable" title=title purpose=cell_label only %}
+<form method="post" class="erp-form">
+    {% csrf_token %}
+    {% include "partials/_form_required_legend.html" %}
+    {% include "partials/_form_error_summary.html" with form=form %}
+    {% for field in form %}{% include "partials/_form_field.html" with field=field only %}{% endfor %}
+    <div class="erp-form-actions">
+        <button type="submit" class="btn btn-primary">{{ submit_label }}</button>
+        <a class="btn btn-link" href="{{ cancel_url }}">Cancel</a>
+    </div>
+</form>
+{% endblock %}

@@ -85,7 +85,8 @@ class AttendancePanelTests(TeacherHomeFixture, TestCase):
 
     def test_not_a_class_teacher(self):
         response = self.teacher.get(self.url)
-        self.assertContains(response, "You are not a class teacher today.")
+        self.assertContains(response, "Not required")
+        self.assertContains(response, "No class assigned")
 
     def test_states_follow_todays_register(self):
         self.make_student("Asha")

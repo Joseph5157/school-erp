@@ -1,0 +1,10 @@
+{# Live error summary. Use: {% include "partials/_form_error_summary.html" with form=form %} #}
+{% if form.errors %}
+<div class="erp-form-errors" role="alert" id="form-error-summary"{% if form.focus_summary %} tabindex="-1" autofocus{% endif %}>
+    <p class="mb-1"><strong>Fix {{ form.errors|length }} problem{{ form.errors|length|pluralize }} before {{ action_text|default:"saving" }}:</strong></p>
+    <ul class="mb-0">
+        {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+        {% for field in form %}{% if field.errors %}<li><a href="#{{ field.id_for_label }}">{{ field.label }}: {{ field.errors.0 }}</a></li>{% endif %}{% endfor %}
+    </ul>
+</div>
+{% endif %}

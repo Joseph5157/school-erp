@@ -157,25 +157,18 @@ class MyDayTests(U2Fixture, TestCase):
     def home(self):
         return self.teacher.get(reverse("core:my-home"))
 
-    def test_not_taken_card(self):
+    def test_not_taken_tile(self):
         page = self.home()
-        self.assertContains(page, '<span class="erp-pill is-pending">Not taken</span>')
-        self.assertContains(page, "Take attendance")
+        self.assertEqual(page.context["attendance_tile"]["state"], "Not taken")
 
-    def test_draft_card(self):
+    def test_draft_tile(self):
         self.draft(asha="PRESENT")
-        page = self.home()
-        self.assertContains(
-            page, '<span class="erp-pill is-draft">Draft &mdash; not yet submitted</span>'
-        )
-        self.assertContains(page, ">Continue<")
+        self.assertEqual(self.home().context["attendance_tile"]["state"], "Draft")
 
-    def test_submitted_card(self):
+    def test_submitted_tile(self):
         self.draft(asha="PRESENT", ravi="PRESENT", bina="PRESENT")
         self.register().submit(actor=self.rao)
-        page = self.home()
-        self.assertContains(page, '<span class="erp-pill is-submitted">Submitted</span>')
-        self.assertContains(page, ">View<")
+        self.assertEqual(self.home().context["attendance_tile"]["state"], "Submitted")
 
     def test_not_a_school_day_card_has_no_action(self):
         with mock.patch("core.models.AcademicYear.is_instructional_day", return_value=False):

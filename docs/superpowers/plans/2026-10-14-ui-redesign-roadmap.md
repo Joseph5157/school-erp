@@ -28,6 +28,8 @@
 | **U7 Reports and audit** | Reports hub with categories; report pages with From/To and headline numbers; history timelines for corrections, publications and access reviews | 2.7 Shopify + HoneyBook, 2.8 Basecamp | U1, U5 |
 | Later (Phase 7) | Announcements list | 5.14 Mindtrip | Phase 7 models |
 
+**Completed extension: Teacher Dashboard (TDB-0 to TDB-6, branch `ui/teacher-dashboard`).** Follows U3.1 and leaves U1-U7 numbering unchanged. The Teacher "Today" page is now a dashboard: greeting as the single `<h1>`, School day status, Attendance and Marks overview, Today's timetable, Teaching assignments and Term remarks. The timetable added `TimetablePeriod` and `TimetableSlot` (ADR 0021) with office Period setup, Section weekly grids and a Timetable issues report. Spec: `docs/superpowers/specs/2026-10-18-ui-tdb-0-teacher-dashboard-design.md`.
+
 Still undecided (resolve when the owning plan is written):
 - 2.4 admission/enrolment forms (U5) — only Workable/Gusto flows were shortlisted.
 - Role switching (U1) has no pick; U1 reuses the 4.1 Cash App sheet style.

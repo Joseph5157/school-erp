@@ -265,57 +265,48 @@ class MyDayPolishTests(MarksFixture, TestCase):
         return register
 
     def attendance_links(self, page):
-        return page.content.decode().count(f'href="{self.attendance_url}"')
+        # Links in the Today overview only; the Teaching assignments row is separate (TDB-2).
+        overview = page.content.decode().split('id="day-assignments"')[0]
+        return overview.count(f'href="{self.attendance_url}"')
 
     def test_heading_and_real_date_are_kept(self):
         page = self.home()
-        self.assertContains(page, '<h1 class="h3 mb-1">My day</h1>')
+        self.assertRegex(
+            page.content.decode(), r"<h1[^>]*>Good (morning|afternoon|evening), rao</h1>"
+        )
         self.assertContains(page, "Monday, 12 October 2026")
-        self.assertContains(page, "Attendance</h2>")
-        self.assertContains(page, "Marks to enter</h2>")
+        self.assertEqual(page.content.decode().count("<h1"), 1)
 
-    def test_section_is_the_dominant_element_of_an_attendance_card(self):
+    def check_single_link(self, state):
         page = self.home()
-        self.assertContains(page, f'<p class="erp-day-title">{self.six_a}</p>')
-
-    def test_not_taken_has_exactly_one_primary_action(self):
-        page = self.home()
-        self.assertContains(page, '<span class="erp-pill is-pending">Not taken</span>')
-        self.assertContains(page, ">Take attendance<")
-        self.assertContains(page, "btn btn-primary")
+        self.assertContains(page, f">{state}</a>")
         self.assertEqual(self.attendance_links(page), 1)
-        self.assertContains(page, f'aria-label="Take attendance for {self.six_a}"')
+        self.assertNotContains(page, ">Take attendance<")
 
-    def test_draft_has_exactly_one_continue_action(self):
+    def test_not_taken_is_one_direct_attendance_link(self):
+        self.check_single_link("Not taken")
+
+    def test_draft_is_one_direct_attendance_link(self):
         self.draft_register()
-        page = self.home()
-        self.assertContains(
-            page, '<span class="erp-pill is-draft">Draft &mdash; not yet submitted</span>')
-        self.assertContains(page, ">Continue<")
-        self.assertNotContains(page, ">Take attendance<")
-        self.assertEqual(self.attendance_links(page), 1)
+        self.check_single_link("Draft")
 
-    def test_submitted_has_exactly_one_view_action(self):
+    def test_submitted_is_one_direct_attendance_link(self):
         self.draft_register(submit=True)
-        page = self.home()
-        self.assertContains(page, '<span class="erp-pill is-submitted">Submitted</span>')
-        self.assertContains(page, ">View<")
-        self.assertNotContains(page, ">Take attendance<")
-        self.assertNotContains(page, ">Continue<")
-        self.assertEqual(self.attendance_links(page), 1)
+        self.check_single_link("Submitted")
 
     def test_not_a_school_day_has_no_action(self):
         with mock.patch("core.models.AcademicYear.is_instructional_day", return_value=False):
             page = self.home()
         self.assertContains(page, '<span class="erp-pill">Not a school day</span>')
+        self.assertContains(page, "Not required")
         self.assertEqual(self.attendance_links(page), 0)
 
-    def test_teacher_without_a_class_keeps_the_empty_wording(self):
+    def test_teacher_without_a_class_has_a_flat_not_required_tile(self):
         iyer = self.client_class()
         iyer.login(username="iyer", password="pass-12345")
         page = iyer.get(self.url)
-        self.assertContains(page, "You are not a class teacher today.")
-        self.assertContains(page, "ask the office to check your assignment")
+        self.assertEqual(page.context["attendance_tile"]["state"], "Not required")
+        self.assertContains(page, "No class assigned")
 
     def test_attendance_history_is_a_clear_secondary_action(self):
         page = self.home()
@@ -325,28 +316,25 @@ class MyDayPolishTests(MarksFixture, TestCase):
         self.assertContains(page, "Attendance history for my Sections")
         self.assertNotContains(page, f'<p><a href="{history}">')
 
-    def test_waiting_marks_keep_real_data_and_links(self):
+    def test_waiting_marks_are_one_tile_not_a_list(self):
         page = self.home()
         waiting = page.context["assessments"]
         self.assertTrue(waiting)
         self.assertNotContains(page, "No marks waiting")
+        self.assertNotContains(page, "Marks to enter")
         for assessment in waiting:
-            self.assertContains(page, f'href="{self.entry_url(assessment)}"')
-            self.assertContains(page, assessment.name)
-            self.assertContains(page, f"{assessment.unmarked_count} unmarked")
+            self.assertNotContains(page, assessment.name)
 
     def test_empty_marks_state_is_neutral_and_links_to_assessments(self):
         self.force_finalize(self.test1)
         self.force_finalize(self.test2)
         page = self.home()
         self.assertEqual(page.context["assessments"], [])
-        self.assertContains(page, "No marks waiting")
-        self.assertContains(page, "No open assessments are waiting for your marks.")
-        self.assertNotContains(page, "Nothing waiting")
+        self.assertContains(page, ">Nothing waiting</a>")
         self.assertContains(page, f'href="{reverse("core:my-assessments")}"')
-        self.assertContains(page, ">My assessments<")
+        self.assertNotContains(page, "erp-day-done")
 
-    def test_term_remarks_are_whole_card_links_with_real_progress(self):
+    def test_term_remarks_are_compact_whole_row_links_with_real_counts(self):
         page = self.home()
         rows = page.context["remarks"]
         self.assertTrue(rows)
@@ -358,9 +346,8 @@ class MyDayPolishTests(MarksFixture, TestCase):
                     f'?section={row["section"].pk}')
             self.assertContains(page, f'href="{href}"')
             self.assertContains(page, f'{row["written"]} of {row["expected"]} written')
-            self.assertContains(
-                page, f'max="{row["expected"] or 1}" value="{row["written"]}"')
-        self.assertContains(page, 'class="erp-progress"')
+        self.assertNotContains(page, "erp-progress")
+        self.assertNotContains(page, "erp-day-linkcard")
 
     def test_no_tables_and_no_totals_or_ranks(self):
         html = self.home().content.decode()
@@ -811,9 +798,8 @@ class TeacherSharedAccessibilityTests(MarksFixture, TestCase):
         self.force_finalize(self.test1)
         self.force_finalize(self.test2)
         html = self.teacher.get(reverse("core:my-home")).content.decode()
-        self.assertIn("No marks waiting", html)
-        self.assertIn("No open assessments are waiting for your marks.", html)
-        self.assertIn('class="erp-day-empty"', html)
+        self.assertIn("Nothing waiting", html)
+        self.assertIn("No open assessments are waiting", html)
         self.assertNotIn("erp-day-done", html)
         self.assertNotIn("&#10003;", html)
         self.assertNotIn("\u2713", html)

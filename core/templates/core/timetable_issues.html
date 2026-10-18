@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Timetable issues - {{ academic_year.name }}{% endblock %}
+{% block content %}
+{% include "partials/_page_header.html" with eyebrow="Timetable" title="Timetable issues" purpose=academic_year.name only %}
+<p class="text-muted">A read-only check of the timetable. It shows what needs attention; fix it from the Section timetables or the teacher assignments.</p>
+<form method="get" class="erp-form erp-schedule-date">
+    {% include "partials/_form_error_summary.html" with form=date_form action_text="showing the report" %}
+    {% include "partials/_form_field.html" with field=date_form.date only %}
+    <div class="erp-form-actions">
+        <button type="submit" class="btn btn-outline-primary">Show report</button>
+    </div>
+</form>
+
+<h2 class="h4 mt-4">Teacher clashes</h2>
+<p class="text-muted">A teacher derived from the subject assignment for two Sections in the same period and weekday. Every clash in {{ academic_year.name }} is listed, including past and planned ones, marked against {{ report_date|date:"j M Y" }}.</p>
+{% if clashes %}
+<div class="erp-table-scroll" role="region" aria-label="Teacher clashes" tabindex="0">
+<table class="table">
+    <thead>
+        <tr><th scope="col">Teacher</th><th scope="col">Status</th><th scope="col">Period and day</th><th scope="col">Sections</th><th scope="col">Dates</th></tr>
+    </thead>
+    <tbody>
+        {% for clash in clashes %}
+        <tr>
+            <td>{{ clash.teacher }}</td>
+            <td>{% if clash.status == "in_force" %}<strong>In force on this date</strong>{% elif clash.status == "upcoming" %}Starts later{% else %}Ended{% endif %}</td>
+            <td>{{ clash.period }}, {{ clash.weekday }}</td>
+            <td>
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <a class="btn btn-outline-secondary btn-sm" href="{{ clash.url_a }}">{{ clash.section_a }}<span class="visually-hidden"> timetable</span></a>
+                    <span class="erp-slot-meta">{{ clash.subject_a }}</span>
+                </div>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <a class="btn btn-outline-secondary btn-sm" href="{{ clash.url_b }}">{{ clash.section_b }}<span class="visually-hidden"> timetable</span></a>
+                    <span class="erp-slot-meta">{{ clash.subject_b }}</span>
+                </div>
+            </td>
+            <td>{{ clash.start|date:"j M Y" }} to {{ clash.end|date:"j M Y" }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+{% else %}
+{% include "partials/_empty.html" with title="No teacher clashes" text="No teacher is scheduled into two Sections in the same period and weekday." %}
+{% endif %}
+
+<h2 class="h4 mt-4">Slots with no teacher</h2>
+{% if not school_day %}
+<p role="status"><strong>Not a school day.</strong> {{ report_date|date:"l j M Y" }} is not an instructional day in {{ academic_year.name }}, so slots are not checked for a missing teacher. Choose a school day.</p>
+{% else %}
+<p class="text-muted">Slots effective on {{ report_date|date:"l j M Y" }} whose Subject and Section have no teacher assigned on that date. They are valid; they appear on no teacher's list until a teacher is assigned.</p>
+{% if missing %}
+<div class="erp-table-scroll" role="region" aria-label="Slots with no teacher" tabindex="0">
+<table class="table">
+    <thead>
+        <tr><th scope="col">Section</th><th scope="col">Period</th><th scope="col">Day</th><th scope="col">Subject</th><th scope="col">Effective</th><th scope="col"><span class="visually-hidden">Open</span></th></tr>
+    </thead>
+    <tbody>
+        {% for row in missing %}
+        <tr>
+            <td>{{ row.section }}</td>
+            <td>{{ row.period }}</td>
+            <td>{{ row.weekday }}</td>
+            <td>{{ row.subject }}</td>
+            <td>{{ row.range }}</td>
+            <td><a class="btn btn-outline-secondary btn-sm" href="{{ row.url }}">Open timetable<span class="visually-hidden"> for {{ row.section }}, {{ row.period }}, {{ row.weekday }}</span></a></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+{% elif effective_count %}
+{% include "partials/_empty.html" with title="All slots covered" text="Every slot effective on this date has a teacher." %}
+{% else %}
+{% include "partials/_empty.html" with title="No slots" text="No slots are effective on this date." %}
+{% endif %}
+{% endif %}
+{% endblock %}

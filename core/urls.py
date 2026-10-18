@@ -6,6 +6,7 @@ from core import (
     import_views,
     notification_views,
     teacher_views,
+    timetable_views,
     views,
 )
 
@@ -45,6 +46,63 @@ urlpatterns = [
     path("subjects/", views.subject_list, name="subject-list"),
     path("subjects/create/", views.subject_create, name="subject-create"),
     path("subjects/<int:pk>/edit/", views.subject_update, name="subject-update"),
+    path("timetable/", timetable_views.timetable_index, name="timetable-index"),
+    path(
+        "academic-years/<int:pk>/timetable/periods/",
+        timetable_views.timetable_periods,
+        name="timetable-periods",
+    ),
+    path(
+        "academic-years/<int:pk>/timetable/periods/add/",
+        timetable_views.timetable_period_create,
+        name="timetable-period-create",
+    ),
+    path(
+        "academic-years/<int:pk>/timetable/issues/",
+        timetable_views.timetable_issues,
+        name="timetable-issues",
+    ),
+    path(
+        "academic-years/<int:pk>/timetable/sections/",
+        timetable_views.timetable_sections,
+        name="timetable-sections",
+    ),
+    path(
+        "academic-years/<int:pk>/timetable/sections/<int:section_pk>/",
+        timetable_views.timetable_grid,
+        name="timetable-grid",
+    ),
+    path(
+        "academic-years/<int:pk>/timetable/sections/<int:section_pk>/slots/add/"
+        "<int:period_pk>/<int:weekday>/",
+        timetable_views.timetable_slot_create,
+        name="timetable-slot-create",
+    ),
+    path(
+        "timetable/slots/<int:pk>/change/",
+        timetable_views.timetable_slot_change,
+        name="timetable-slot-change",
+    ),
+    path(
+        "timetable/slots/<int:pk>/end/",
+        timetable_views.timetable_slot_end,
+        name="timetable-slot-end",
+    ),
+    path(
+        "timetable/slots/<int:pk>/delete/",
+        timetable_views.timetable_slot_delete,
+        name="timetable-slot-delete",
+    ),
+    path(
+        "timetable/periods/<int:pk>/edit/",
+        timetable_views.timetable_period_update,
+        name="timetable-period-update",
+    ),
+    path(
+        "timetable/periods/<int:pk>/delete/",
+        timetable_views.timetable_period_delete,
+        name="timetable-period-delete",
+    ),
     path("academic-years/<int:pk>/terms/", views.academic_year_terms, name="academic-year-terms"),
     path("academic-years/<int:pk>/terms/add/", views.term_create, name="term-create"),
     path("terms/<int:pk>/edit/", views.term_update, name="term-update"),

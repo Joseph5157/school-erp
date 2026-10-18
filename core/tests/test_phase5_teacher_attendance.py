@@ -94,7 +94,7 @@ class TeacherAttendanceTests(Phase4Fixture, TestCase):
 
     def test_home_links_to_attendance(self):
         page = self.teacher.get(reverse("core:my-home"))
-        self.assertContains(page, "Take attendance")
+        self.assertContains(page, "Not taken")
         self.assertContains(page, self.url)
 
     # --- D7: submitted is read-only ---
