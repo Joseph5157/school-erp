@@ -1,5 +1,6 @@
 """TDB-4C: office Period setup screens (ADR 0021 D2, D9)."""
 
+import re
 from datetime import date
 
 from django.contrib.auth.models import Group, Permission
@@ -298,3 +299,114 @@ class NoAcademicYearTests(Phase4Fixture, TestCase):
         self.client.force_login(admin)
         response = self.client.get(reverse("core:timetable-index"))
         self.assertContains(response, "No Academic Years yet")
+
+
+class PeriodFormAccessibilityTests(Phase4Fixture, TestCase):
+    """UI_DESIGN_RULES section 6: labels, help, errors, announcement, focus."""
+
+    def setUp(self):
+        self.build_phase4()
+        self.client.force_login(self.admin)
+        self.url = reverse("core:timetable-period-create", args=[self.year.pk])
+
+    def tag(self, response, field_id, name="input"):
+        html = response.content.decode()
+        found = re.search(rf"<{name}\b[^>]*\bid=\"{field_id}\"[^>]*>", html)
+        self.assertIsNotNone(found, f"no <{name}> with id {field_id}")
+        return found.group(0)
+
+    def test_fields_have_labels_help_and_required_text(self):
+        response = self.client.get(self.url)
+        html = response.content.decode()
+        for field in ("sequence", "label"):
+            self.assertIn(f'for="id_{field}"', html)
+            self.assertIn(f'id="id_{field}_helptext"', html)
+            self.assertIn(
+                f'aria-describedby="id_{field}_helptext"', self.tag(response, f"id_{field}")
+            )
+        self.assertIn("(required)", html)  # text, not only the asterisk
+        self.assertIn("Fields marked with an asterisk are required", html)
+        self.assertIn("erp-field-help", html)  # muted helper style
+
+    def test_sequence_keeps_numeric_input_behaviour(self):
+        tag = self.tag(self.client.get(self.url), "id_sequence")
+        self.assertIn('type="number"', tag)
+        self.assertIn('min="1"', tag)
+        self.assertIn('inputmode="numeric"', tag)
+
+    def test_clean_form_has_no_error_state_or_autofocus(self):
+        response = self.client.get(self.url)
+        html = response.content.decode()
+        self.assertNotIn("aria-invalid", html)
+        self.assertNotIn("autofocus", html)
+        self.assertNotIn("erp-form-errors", html)
+
+    def test_failed_post_marks_the_invalid_field_and_associates_its_error(self):
+        response = self.client.post(self.url, {"sequence": "0", "label": "Assembly"})
+        sequence = self.tag(response, "id_sequence")
+        self.assertIn('aria-invalid="true"', sequence)
+        self.assertIn("id_sequence_helptext id_sequence_error", sequence)
+        self.assertContains(response, 'id="id_sequence_error"')
+        self.assertContains(response, "Enter a position of 1 or more.")
+        # the valid field is not flagged and its typed value is kept
+        label = self.tag(response, "id_label")
+        self.assertNotIn("aria-invalid", label)
+        self.assertIn('value="Assembly"', label)
+        self.assertIn('value="0"', sequence)
+
+    def test_failed_post_announces_a_summary_and_starts_focus_on_the_first_invalid_field(self):
+        response = self.client.post(self.url, {"sequence": "0", "label": ""})
+        html = response.content.decode()
+        self.assertRegex(html, r'<div class="erp-form-errors" role="alert"')
+        self.assertIn('href="#id_sequence"', html)
+        self.assertIn('href="#id_label"', html)
+        self.assertIn("autofocus", self.tag(response, "id_sequence"))
+        self.assertNotIn("autofocus", self.tag(response, "id_label"))
+        self.assertEqual(html.count("autofocus"), 1)
+
+    def test_duplicate_errors_are_field_local_and_actionable(self):
+        TimetablePeriod.objects.create(academic_year=self.year, sequence=1, label="P1")
+        response = self.client.post(self.url, {"sequence": "1", "label": "P1"})
+        self.assertContains(response, "already uses this order number")
+        self.assertContains(response, "already uses this label")
+        for field in ("sequence", "label"):
+            self.assertIn('aria-invalid="true"', self.tag(response, f"id_{field}"))
+
+    def test_missing_values_say_what_to_enter(self):
+        response = self.client.post(self.url, {"sequence": "", "label": ""})
+        self.assertContains(response, "Enter a position, for example 1.")
+        self.assertContains(response, "Enter a label, for example P1.")
+
+    def test_edit_form_has_the_same_error_wiring(self):
+        period = TimetablePeriod.objects.create(academic_year=self.year, sequence=1, label="P1")
+        url = reverse("core:timetable-period-update", args=[period.pk])
+        response = self.client.post(url, {"sequence": "-3", "label": "P1"})
+        self.assertIn('aria-invalid="true"', self.tag(response, "id_sequence"))
+        self.assertContains(response, 'href="#id_sequence"')
+
+
+class PeriodTableMobileTests(Phase4Fixture, TestCase):
+    """The project's dense-table rule and 44px tap targets (UI_DESIGN_RULES 5, 15)."""
+
+    def setUp(self):
+        self.build_phase4()
+        self.client.force_login(self.admin)
+        TimetablePeriod.objects.create(academic_year=self.year, sequence=1, label="P1")
+
+    def test_tables_scroll_inside_their_own_labelled_region(self):
+        for url, label in (
+            (reverse("core:timetable-index"), "Academic Years"),
+            (reverse("core:timetable-periods", args=[self.year.pk]), "Periods"),
+        ):
+            html = self.client.get(url).content.decode()
+            self.assertIn(f'class="erp-table-scroll" role="region" aria-label="{label}"', html)
+            self.assertIn('tabindex="0"', html)
+
+    def test_row_actions_are_buttons_so_they_get_the_touch_target_size(self):
+        html = self.client.get(
+            reverse("core:timetable-periods", args=[self.year.pk])
+        ).content.decode()
+        self.assertRegex(html, r'<a class="btn [^"]*" href="/timetable/periods/\d+/edit/"')
+        self.assertRegex(
+            html, r'<a class="btn btn-outline-danger[^"]*" href="/timetable/periods/\d+/delete/"'
+        )

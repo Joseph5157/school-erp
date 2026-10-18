@@ -6,6 +6,7 @@
 {% if perms.core.add_timetableperiod %}
     <a class="btn btn-primary mb-3" href="{% url 'core:timetable-period-create' academic_year.pk %}">Add period</a>
 {% endif %}
+<div class="erp-table-scroll" role="region" aria-label="Periods" tabindex="0">
 <table class="table">
     <thead><tr><th scope="col">Order</th><th scope="col">Label</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
     <tbody>
@@ -14,8 +15,10 @@
             <td>{{ period.sequence }}</td>
             <td>{{ period.label }}</td>
             <td>
-                {% if perms.core.change_timetableperiod %}<a href="{% url 'core:timetable-period-update' period.pk %}">Edit<span class="visually-hidden"> {{ period.label }}</span></a>{% endif %}
-                {% if perms.core.delete_timetableperiod %}&middot; <a href="{% url 'core:timetable-period-delete' period.pk %}">Delete<span class="visually-hidden"> {{ period.label }}</span></a>{% endif %}
+                <div class="d-flex flex-wrap gap-2">
+                    {% if perms.core.change_timetableperiod %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'core:timetable-period-update' period.pk %}">Edit<span class="visually-hidden"> {{ period.label }}</span></a>{% endif %}
+                    {% if perms.core.delete_timetableperiod %}<a class="btn btn-outline-danger btn-sm" href="{% url 'core:timetable-period-delete' period.pk %}">Delete<span class="visually-hidden"> {{ period.label }}</span></a>{% endif %}
+                </div>
             </td>
         </tr>
         {% empty %}
@@ -23,4 +26,5 @@
         {% endfor %}
     </tbody>
 </table>
+</div>
 {% endblock %}

@@ -187,8 +187,51 @@ class AcademicTermForm(forms.ModelForm):
         return cleaned_data
 
 
-class TimetablePeriodForm(forms.ModelForm):
+class FieldAccessibilityMixin:
+    """Wire the ids written by partials/_form_field.html onto the inputs.
+
+    The partial renders helper text as `<id>_helptext` and errors as `<id>_error`.
+    This links them to the input (`aria-describedby`), flags invalid inputs
+    (`aria-invalid`) and starts focus on the first invalid input (`autofocus`),
+    all server-rendered so the form works with JavaScript off (UI_DESIGN_RULES 6).
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._describe_fields()
+
+    def _describe_fields(self):
+        for name, field in self.fields.items():
+            bound = self[name]
+            ids = []
+            if field.help_text:
+                ids.append(f"{bound.auto_id}_helptext")
+            if self.is_bound and self._errors is not None and name in self._errors:
+                ids.append(f"{bound.auto_id}_error")
+            if ids:
+                field.widget.attrs["aria-describedby"] = " ".join(ids)
+            else:
+                field.widget.attrs.pop("aria-describedby", None)
+
+    def full_clean(self):
+        super().full_clean()
+        self._describe_fields()
+        invalid = [name for name in self.fields if name in self.errors]
+        for name in invalid:
+            self.fields[name].widget.attrs["aria-invalid"] = "true"
+        if invalid:
+            self.fields[invalid[0]].widget.attrs["autofocus"] = True
+
+
+class TimetablePeriodForm(FieldAccessibilityMixin, forms.ModelForm):
     """Create or change a Period; the Academic Year is fixed by the URL or the record."""
+
+    DUPLICATE_MESSAGES = {
+        "sequence": "Another period in this Academic Year already uses this order number. "
+        "Choose a different one.",
+        "label": "Another period in this Academic Year already uses this label. "
+        "Choose a different one.",
+    }
 
     class Meta:
         model = TimetablePeriod
@@ -198,11 +241,22 @@ class TimetablePeriodForm(forms.ModelForm):
             "sequence": "Position in the school day (1 is first). Periods are ordered by this.",
             "label": "The name shown on timetables, for example P1.",
         }
+        error_messages = {
+            "sequence": {
+                "required": "Enter a position, for example 1.",
+                "invalid": "Enter a whole number, for example 1.",
+                "min_value": "Enter a position of 1 or more.",
+                "max_value": "Enter a smaller position (32767 at most).",
+            },
+            "label": {"required": "Enter a label, for example P1."},
+        }
 
     def __init__(self, *args, academic_year=None, **kwargs):
         super().__init__(*args, **kwargs)
         if academic_year is not None:
             self.instance.academic_year = academic_year
+        # Django derives min=0 from the unsigned column; a period starts at 1.
+        self.fields["sequence"].widget.attrs["min"] = 1
 
     def clean(self):
         cleaned_data = super().clean()
@@ -215,7 +269,7 @@ class TimetablePeriodForm(forms.ModelForm):
             if self.instance.pk is not None:
                 clash = clash.exclude(pk=self.instance.pk)
             if clash.exists():
-                self.add_error(field, "Another period in this Academic Year already uses this.")
+                self.add_error(field, self.DUPLICATE_MESSAGES[field])
         return cleaned_data
 
 
