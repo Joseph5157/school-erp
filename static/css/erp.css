@@ -292,6 +292,28 @@ body.erp { min-height: 100vh; }
 .erp-teacher .erp-assess-name:focus-visible::after {
   outline: 2px solid var(--erp-focus-color); outline-offset: -2px;
 }
+/* U3.1 Results (Gate T5). Current and past duties are whole-row links in a bordered list;
+   "Starting soon" is informational (dashed, no link affordance); "Read-only" is a plain pill. */
+.erp-teacher .erp-results-list {
+  margin: 0; padding: 0; overflow: hidden; background: var(--erp-surface);
+  border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
+}
+.erp-teacher .erp-results-list--info { background: transparent; border-style: dashed; }
+.erp-teacher .erp-results-row {
+  display: flex; align-items: center; gap: .75rem; min-height: 3.25rem; padding: .5rem 1rem;
+}
+.erp-teacher .erp-results-row + .erp-results-row { border-top: 1px solid var(--erp-rule); }
+.erp-teacher .erp-results-row.is-link:hover { background: var(--erp-paper); }
+.erp-teacher .erp-results-main { flex: 1; min-width: 0; display: grid; gap: .125rem; }
+.erp-teacher .erp-results-main .erp-pill { justify-self: start; margin-top: .25rem; }
+.erp-teacher .erp-results-name {
+  font-size: 1.0625rem; font-weight: 600; line-height: 1.25; color: var(--erp-ink);
+  text-decoration: none; overflow-wrap: anywhere;
+}
+.erp-teacher .erp-results-name:focus-visible { outline: none; }
+.erp-teacher a.erp-results-name:focus-visible::after {
+  outline: 2px solid var(--erp-focus-color); outline-offset: -2px;
+}
 .erp-teacher .erp-day-quiet {
   display: inline-flex; align-items: center; min-height: 2.75rem;
   color: var(--erp-accent-strong); font-size: var(--erp-text-sm);

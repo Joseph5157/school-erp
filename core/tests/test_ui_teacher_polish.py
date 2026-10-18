@@ -6,7 +6,9 @@ from unittest import mock
 
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import formats
 
+from core.models import AssessmentTeacherAssignment as Assignment
 from core.models import AttendanceRegister, School, SectionClassTeacher
 from core.navigation import TEACHER_TAB_PARENTS, teacher_tabs
 from core.tests.phase4_fixtures import Phase4Fixture
@@ -620,5 +622,146 @@ class MyAssessmentsPolishTests(MarksFixture, TestCase):
         self.class_teacher()
         html = self.page().content.decode()
         for word in ("Total", "Average", "Rank", "<progress", "unmarked", "%"):
+            self.assertNotIn(word, html)
+        self.assertNotIn("<table", html)
+
+
+RESULT_ROW = re.compile(r'<li class="erp-results-row([^"]*)">(.*?)</li>', re.DOTALL)
+
+
+class MyResultsPolishTests(MarksFixture, TestCase):
+    """U3.1 Gate T5: Results."""
+
+    def setUp(self):
+        super().setUp()
+        self.url = reverse("core:my-results")
+        # rao: Maths 6A handed over to iyer on 1 Oct (past), Sanskrit 6B (current),
+        # Maths 6B from 1 Nov (starting soon). Today is 12 Oct.
+        Assignment.assign(teacher=self.iyer, offering=self.maths, section=self.six_a,
+                          start_date=date(2026, 10, 1))
+        self.past = Assignment.objects.get(pk=self.duty.pk)
+        self.current = self.assign(self.rao, self.sanskrit, self.six_b)
+        self.upcoming = Assignment.assign(teacher=self.rao, offering=self.maths,
+                                          section=self.six_b, start_date=date(2026, 11, 1))
+
+    def page(self):
+        return self.teacher.get(self.url)
+
+    def section(self, page, ident):
+        html = page.content.decode()
+        return html.split(f'id="{ident}"', 1)[1].split("</section>", 1)[0]
+
+    def rows(self, block):
+        return RESULT_ROW.findall(block)
+
+    def test_context_sorts_the_three_kinds_of_duty(self):
+        page = self.page()
+        self.assertEqual(list(page.context["duties"]), [self.current])
+        self.assertEqual(list(page.context["upcoming_duties"]), [self.upcoming])
+        self.assertEqual(list(page.context["past_duties"]), [self.past])
+
+    def test_heading_and_finalized_only_explanation_are_kept(self):
+        page = self.page()
+        self.assertContains(page, '<h1 class="h3 mb-3">Results for my Subjects</h1>')
+        self.assertContains(
+            page, "Finalized results only, for the Subjects and Sections you teach.")
+
+    def test_current_duty_is_one_whole_row_link(self):
+        page = self.page()
+        rows = self.rows(self.section(page, "results-current"))
+        self.assertEqual(len(rows), 1)
+        classes, row = rows[0]
+        self.assertIn("is-link", classes)
+        self.assertEqual(row.count("<a "), 1)
+        self.assertIn(
+            f'<a class="erp-results-name stretched-link" '
+            f'href="{reverse("core:my-subject-results", args=[self.current.pk])}">'
+            f'{self.current.offering.subject.name} &middot; {self.current.section}</a>', row)
+        self.assertIn(
+            f'<span class="erp-card-meta">{self.current.offering.academic_year.name}</span>', row)
+        self.assertIn('aria-hidden="true">&rsaquo;', row)
+
+    def test_no_current_duty_is_truthful_and_keeps_the_other_sections(self):
+        self.current.end(date(2026, 10, 5))
+        page = self.page()
+        self.assertEqual(list(page.context["duties"]), [])
+        self.assertContains(page, "No current Subject duties")
+        self.assertContains(page, "The school office assigns Subjects")
+        self.assertNotContains(page, "No subject results yet")
+        self.assertNotContains(page, "no finalized results")
+        self.assertContains(page, "Starting soon")
+        self.assertContains(page, "Past duties")
+
+    def test_teacher_with_no_duties_at_all_sees_the_same_neutral_state(self):
+        self.make_user("newt", self.teachers)
+        client = self.client_class()
+        client.login(username="newt", password="pass-12345")
+        page = client.get(self.url)
+        self.assertContains(page, "No current Subject duties")
+        self.assertContains(page, "The school office assigns Subjects")
+        self.assertNotContains(page, "No subject results yet")
+        self.assertNotContains(page, "Starting soon")
+        self.assertNotContains(page, "Past duties")
+
+    def test_starting_soon_rows_are_informational_with_the_real_start_date(self):
+        page = self.page()
+        block = self.section(page, "results-soon")
+        rows = self.rows(block)
+        self.assertEqual(len(rows), 1)
+        classes, row = rows[0]
+        self.assertNotIn("is-link", classes)
+        self.assertNotIn("<a ", row)
+        self.assertNotIn("&rsaquo;", row)
+        self.assertIn(
+            f"{self.upcoming.offering.subject.name} &middot; {self.upcoming.section}", row)
+        self.assertIn(f"from {formats.localize(self.upcoming.start_date)}", row)
+        self.assertIn("erp-results-list--info", block)
+
+    def test_past_duties_are_read_only_links_with_the_real_dates(self):
+        page = self.page()
+        block = self.section(page, "results-past")
+        self.assertIn(
+            "Read-only. Only results from the dates you taught each Subject are shown.", block)
+        rows = self.rows(block)
+        self.assertEqual(len(rows), 1)
+        classes, row = rows[0]
+        self.assertIn("is-link", classes)
+        self.assertEqual(row.count("<a "), 1)
+        self.assertIn(
+            f'href="{reverse("core:my-subject-results", args=[self.past.pk])}"', row)
+        self.assertIn(
+            f"{formats.localize(self.past.start_date)} to "
+            f"{formats.localize(self.past.last_effective_date)}", row)
+        self.assertIn('<span class="erp-pill">Read-only</span>', row)
+
+    def test_sections_and_rows_keep_the_views_order(self):
+        page = self.page()
+        html = page.content.decode()
+        self.assertLess(html.index('id="results-current"'), html.index('id="results-soon"'))
+        self.assertLess(html.index('id="results-soon"'), html.index('id="results-past"'))
+        hrefs = re.findall(r'class="erp-results-name stretched-link" href="([^"]+)"', html)
+        expected = [reverse("core:my-subject-results", args=[d.pk])
+                    for d in list(page.context["duties"]) + list(page.context["past_duties"])]
+        self.assertEqual(hrefs, expected)
+
+    def test_status_labels_are_not_links_or_buttons(self):
+        page = self.page()
+        main = page.content.decode().split("<main", 1)[1].split("</main>", 1)[0]
+        self.assertNotIn("<button", main)
+        for ident in ("results-current", "results-soon", "results-past"):
+            for _, row in self.rows(self.section(page, ident)):
+                for pill in re.findall(r'<span class="erp-pill[^"]*">[^<]+</span>', row):
+                    before = row[:row.index(pill)]
+                    self.assertGreater(before.rfind("</a>"), before.rfind("<a "))
+
+    def test_only_navigable_rows_have_a_link(self):
+        page = self.page()
+        for ident, links in (("results-current", 1), ("results-soon", 0), ("results-past", 1)):
+            for _, row in self.rows(self.section(page, ident)):
+                self.assertEqual(row.count("<a "), links)
+
+    def test_no_totals_averages_ranks_or_invented_counts(self):
+        html = self.page().content.decode()
+        for word in ("Total", "Average", "Rank", "<progress", "%", "published"):
             self.assertNotIn(word, html)
         self.assertNotIn("<table", html)

@@ -79,7 +79,8 @@ Out of scope: take-attendance, attendance history, marks entry, gradebook, term 
 
 - Current, future and historical duty access is unchanged.
 - Replace raw `<ul>` with consistent compact result rows/cards.
-- Empty state: **No subject results yet**, with why (nothing finalized/published for the Subjects you teach) and what happens next.
+- Empty state (no current duties): **No current Subject duties**, with a short explanation that Subject and Section assignments come from the school office. The title is based on what `my_results` actually knows: the index only sees the teacher's current, upcoming and past Subject/Section assignments. Whether finalized results exist is determined inside the Subject results page, so the index must not say "no results yet" or claim anything about finalized or published results. The state shows whenever there are no current duties, including when only upcoming or past duties exist.
+- Current duty rows are whole-row links (Subject + Section dominant, academic year secondary, one link per row, decorative chevron). `Starting soon` rows are informational and not links, so they must not look tappable; they show the real start date.
 - `Starting soon` and `Past duties` stay distinct sections. Past duties visibly say **Read-only** (badge or label near each group, in addition to the existing explanation text).
 - Status labels are not styled as buttons.
 
@@ -109,7 +110,7 @@ New `core/tests/test_ui_teacher_polish.py` pins:
 
 - Bottom-nav labels (`Today`, `Students`, `Assessments`, `Results`), order, `aria-current` on the active item, text label present for every item.
 - Page headings unchanged (`My day`, `My students`, ...).
-- Purposeful empty states: "No assessments assigned" and "No subject results yet" appear when there is no data, and the old wording is gone.
+- Purposeful empty states: "No assessments assigned" and "No current Subject duties" appear when the teacher has no assessment duty / no current Subject duty, and the old wording is gone. The Results index never claims that finalized results do or do not exist.
 - My day neutral "No marks waiting" state, attendance action per state, term-remarks card link.
 - Results: `Starting soon`, `Past duties` and a Read-only marker; no tappable status labels.
 - Accessibility-critical markup: real buttons vs links, one link per student row, `aria-hidden` on decorative icons/avatars.

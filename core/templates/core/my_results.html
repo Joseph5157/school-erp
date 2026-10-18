@@ -1,30 +1,62 @@
 {% extends "base.html" %}
 {% block title %}Results{% endblock %}
 {% block content %}
+<div class="erp-day erp-results-page">
 <h1 class="h3 mb-3">Results for my Subjects</h1>
 <p class="text-muted">Finalized results only, for the Subjects and Sections you teach.</p>
-<ul>
+
+<section aria-labelledby="results-current">
+<h2 class="erp-section-title" id="results-current">Current duties</h2>
+{% if duties %}
+<ul class="erp-results-list list-unstyled">
     {% for duty in duties %}
-    <li><a href="{% url 'core:my-subject-results' duty.pk %}">{{ duty.offering.academic_year.name }} &middot; {{ duty.offering.subject.name }} &middot; {{ duty.section }}</a></li>
-    {% empty %}
-    <li>You do not teach a Subject yet. The school office assigns Subjects &mdash; ask them if you expected to see one.</li>
+    <li class="erp-results-row is-link position-relative">
+        <span class="erp-results-main">
+            <a class="erp-results-name stretched-link" href="{% url 'core:my-subject-results' duty.pk %}">{{ duty.offering.subject.name }} &middot; {{ duty.section }}</a>
+            <span class="erp-card-meta">{{ duty.offering.academic_year.name }}</span>
+        </span>
+        <span class="erp-day-chevron" aria-hidden="true">&rsaquo;</span>
+    </li>
     {% endfor %}
 </ul>
+{% else %}
+{% include "partials/_empty.html" with title="No current Subject duties" text="You have no current Subject and Section duty. The school office assigns Subjects — ask them if you expected to see one." %}
+{% endif %}
+</section>
+
 {% if upcoming_duties %}
-<h2 class="h5 mt-4">Starting soon</h2>
-<ul>
+<section aria-labelledby="results-soon">
+<h2 class="erp-section-title" id="results-soon">Starting soon</h2>
+<ul class="erp-results-list erp-results-list--info list-unstyled">
     {% for duty in upcoming_duties %}
-    <li>{{ duty.offering.subject.name }} &middot; {{ duty.section }} &mdash; from {{ duty.start_date }}</li>
+    <li class="erp-results-row">
+        <span class="erp-results-main">
+            <span class="erp-results-name">{{ duty.offering.subject.name }} &middot; {{ duty.section }}</span>
+            <span class="erp-card-meta">{{ duty.offering.academic_year.name }} &middot; from {{ duty.start_date }}</span>
+        </span>
+    </li>
     {% endfor %}
 </ul>
+</section>
 {% endif %}
+
 {% if past_duties %}
-<h2 class="h5 mt-4">Past duties</h2>
+<section aria-labelledby="results-past">
+<h2 class="erp-section-title" id="results-past">Past duties</h2>
 <p class="text-muted">Read-only. Only results from the dates you taught each Subject are shown.</p>
-<ul>
+<ul class="erp-results-list list-unstyled">
     {% for duty in past_duties %}
-    <li><a href="{% url 'core:my-subject-results' duty.pk %}">{{ duty.offering.academic_year.name }} &middot; {{ duty.offering.subject.name }} &middot; {{ duty.section }}</a> <span class="text-muted">({{ duty.start_date }} to {{ duty.last_effective_date }})</span></li>
+    <li class="erp-results-row is-link position-relative">
+        <span class="erp-results-main">
+            <a class="erp-results-name stretched-link" href="{% url 'core:my-subject-results' duty.pk %}">{{ duty.offering.subject.name }} &middot; {{ duty.section }}</a>
+            <span class="erp-card-meta">{{ duty.offering.academic_year.name }} &middot; {{ duty.start_date }} to {{ duty.last_effective_date }}</span>
+            <span class="erp-pill">Read-only</span>
+        </span>
+        <span class="erp-day-chevron" aria-hidden="true">&rsaquo;</span>
+    </li>
     {% endfor %}
 </ul>
+</section>
 {% endif %}
+</div>
 {% endblock %}
