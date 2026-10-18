@@ -60,6 +60,20 @@ RULES = {
     ),
     "timetable-period-update": Rule("timetable-index", (_TIMETABLE,), "Edit period"),
     "timetable-period-delete": Rule("timetable-index", (_TIMETABLE,), "Delete period"),
+    "timetable-sections": Rule("timetable-index", (_TIMETABLE,), "Sections"),
+    "timetable-grid": Rule(
+        "timetable-index",
+        (_TIMETABLE, Crumb("Sections", "core:timetable-sections", True)),
+        "Weekly timetable",
+    ),
+    "timetable-slot-create": Rule(
+        "timetable-index",
+        (_TIMETABLE, Crumb("Sections", "core:timetable-sections", True)),
+        "Add slot",
+    ),
+    "timetable-slot-change": Rule("timetable-index", (_TIMETABLE,), "Change slot"),
+    "timetable-slot-end": Rule("timetable-index", (_TIMETABLE,), "End slot"),
+    "timetable-slot-delete": Rule("timetable-index", (_TIMETABLE,), "Delete slot"),
     "announcement-detail": Rule("announcement-list", (_ANNOUNCEMENTS,), "Announcement"),
 }
 

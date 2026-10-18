@@ -58,6 +58,37 @@ urlpatterns = [
         name="timetable-period-create",
     ),
     path(
+        "academic-years/<int:pk>/timetable/sections/",
+        timetable_views.timetable_sections,
+        name="timetable-sections",
+    ),
+    path(
+        "academic-years/<int:pk>/timetable/sections/<int:section_pk>/",
+        timetable_views.timetable_grid,
+        name="timetable-grid",
+    ),
+    path(
+        "academic-years/<int:pk>/timetable/sections/<int:section_pk>/slots/add/"
+        "<int:period_pk>/<int:weekday>/",
+        timetable_views.timetable_slot_create,
+        name="timetable-slot-create",
+    ),
+    path(
+        "timetable/slots/<int:pk>/change/",
+        timetable_views.timetable_slot_change,
+        name="timetable-slot-change",
+    ),
+    path(
+        "timetable/slots/<int:pk>/end/",
+        timetable_views.timetable_slot_end,
+        name="timetable-slot-end",
+    ),
+    path(
+        "timetable/slots/<int:pk>/delete/",
+        timetable_views.timetable_slot_delete,
+        name="timetable-slot-delete",
+    ),
+    path(
         "timetable/periods/<int:pk>/edit/",
         timetable_views.timetable_period_update,
         name="timetable-period-update",

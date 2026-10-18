@@ -5,7 +5,7 @@ from datetime import date
 
 from django.contrib.auth.models import Group, Permission
 from django.test import TestCase
-from django.urls import get_resolver, reverse
+from django.urls import reverse
 
 from core.models import AcademicYear, TimetablePeriod, TimetableSlot
 from core.navigation import office_nav
@@ -283,14 +283,10 @@ class PeriodScreenTests(Phase4Fixture, TestCase):
 
     # --- scope -------------------------------------------------------------------
 
-    def test_no_slot_workflow_exists_yet(self):
-        core_resolver = get_resolver().namespace_dict["core"][1]
-        names = {key for key in core_resolver.reverse_dict if isinstance(key, str)}
-        self.assertIn("timetable-periods", names)
-        self.assertFalse([n for n in names if "slot" in n or "timetable-grid" in n])
+    def test_period_pages_carry_no_slot_workflow(self):
         self.make_period(1, "P1")
         page = self.client.get(self.list_url)
-        self.assertNotContains(page, "slot", html=False, msg_prefix="no slot workflow yet")
+        self.assertNotContains(page, "slot", html=False, msg_prefix="periods page has no slots")
 
 
 class NoAcademicYearTests(Phase4Fixture, TestCase):

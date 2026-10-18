@@ -919,3 +919,24 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
   padding: var(--erp-space-4);
 }
 .erp-child-name { font-size: 1.1rem; margin: 0 0 .25rem; }
+
+/* ---------- TDB-4D: Section weekly timetable ---------- */
+
+.erp-schedule-date { max-width: 24rem; }
+.erp-timetable { margin-bottom: 0; }
+.erp-timetable th, .erp-timetable td { vertical-align: top; }
+.erp-timetable thead th { white-space: nowrap; }
+.erp-timetable tbody td { min-width: 8.5rem; }
+.erp-timetable thead th:first-child,
+.erp-timetable tbody th[scope="row"] {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 4rem;
+  background: var(--erp-paper);
+  box-shadow: 1px 0 0 var(--erp-rule);
+  white-space: nowrap;
+}
+.erp-slot-subject { margin: 0; font-weight: 650; }
+.erp-slot-meta { margin: 0; color: var(--erp-ink-soft); font-size: var(--erp-text-sm); }
+.erp-slot-actions { margin-top: var(--erp-space-2); }
