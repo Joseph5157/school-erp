@@ -224,20 +224,22 @@ body.erp { min-height: 100vh; }
 .erp-teacher .erp-day-linkcard .erp-day-title,
 .erp-teacher .erp-day-linkcard .erp-card-meta { display: block; }
 .erp-teacher .erp-day-linkcard:hover { border-color: var(--erp-accent); }
-.erp-teacher .erp-day-linkcard:focus-visible { outline: none; box-shadow: var(--erp-focus-ring); }
-.erp-teacher .erp-day .stretched-link:focus-visible { outline: none; }
-.erp-teacher .erp-day .stretched-link:focus-visible::after {
+.erp-teacher .erp-day-linkcard:focus-visible {
+  outline: 2px solid var(--erp-focus-color); outline-offset: 2px;
+}
+/* Cards only: list rows sit inside an overflow-hidden list, so they draw their ring inset below. */
+.erp-teacher .erp-day-card .stretched-link:focus-visible { outline: none; }
+.erp-teacher .erp-day-card .stretched-link:focus-visible::after {
   outline: 2px solid var(--erp-focus-color); outline-offset: 2px; border-radius: var(--erp-radius);
 }
-.erp-teacher .erp-day-done {
-  display: flex; gap: .75rem; align-items: flex-start; padding: 1rem;
-  background: var(--erp-accent-wash); border-radius: var(--erp-radius);
+/* Neutral empty state: the page cannot prove the teacher finished anything, so no success colour or tick. */
+.erp-teacher .erp-day-empty {
+  display: grid; gap: .25rem; padding: 1rem;
+  background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
 }
-.erp-teacher .erp-day-done-icon {
-  flex: none; display: grid; place-items: center; width: 1.75rem; height: 1.75rem;
-  border-radius: 50%; background: var(--erp-accent); color: #fff; font-weight: 700;
-}
-.erp-teacher .erp-day-done .erp-day-title { font-size: 1rem; }
+.erp-teacher .erp-day-empty .erp-day-title { font-size: 1rem; }
+.erp-teacher .erp-assess-empty { margin-bottom: 1.5rem; }
+.erp-teacher .erp-section-note { margin: 0 0 .5rem; }
 /* U3.1 My students (Gate T3). One bordered list per Section with divided, whole-row
    targets; scoped to the Teacher area so the shared .erp-entry list is not changed. */
 .erp-teacher .erp-students-group + .erp-students-group { margin-top: 1.5rem; }

@@ -26,9 +26,9 @@
     </ul>
 </section>
 {% empty %}
-<section>
+<div class="erp-assess-empty">
 {% include "partials/_empty.html" with title="No assessments assigned" text="You are not assigned to a Subject and Section yet. Subject and Section assignments are set by the school office; once you have one, its assessments appear here." %}
-</section>
+</div>
 {% endfor %}
 
 <section aria-labelledby="assess-remarks">

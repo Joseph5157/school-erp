@@ -765,3 +765,73 @@ class MyResultsPolishTests(MarksFixture, TestCase):
         for word in ("Total", "Average", "Rank", "<progress", "%", "published"):
             self.assertNotIn(word, html)
         self.assertNotIn("<table", html)
+
+
+class TeacherSharedAccessibilityTests(MarksFixture, TestCase):
+    """U3.1 Gate T6: shared polish and accessibility across the four primary screens."""
+
+    PAGES = ("core:my-home", "core:my-students", "core:my-assessments", "core:my-results")
+
+    def setUp(self):
+        super().setUp()
+        SectionClassTeacher.assign(
+            teacher=self.rao, academic_year=self.year, section=self.six_a,
+            start_date=date(2026, 6, 1),
+        )
+        self.assign(self.rao, self.sanskrit, self.six_b)
+
+    def pages(self, client=None):
+        client = client or self.teacher
+        return {name: client.get(reverse(name)).content.decode() for name in self.PAGES}
+
+    def no_duty_client(self):
+        self.make_user("newt", self.teachers)
+        client = self.client_class()
+        client.login(username="newt", password="pass-12345")
+        return client
+
+    def test_each_page_has_exactly_one_h1_and_no_skipped_heading_level(self):
+        for client in (self.teacher, self.no_duty_client()):
+            for name, html in self.pages(client).items():
+                with self.subTest(page=name):
+                    levels = [int(m) for m in re.findall(r"<h([1-6])[ >]", html)]
+                    self.assertEqual(levels.count(1), 1)
+                    self.assertEqual(levels[0], 1)
+                    for before, after in zip(levels, levels[1:], strict=False):
+                        self.assertLessEqual(after, before + 1)
+
+    def test_every_section_landmark_has_an_accessible_name(self):
+        for client in (self.teacher, self.no_duty_client()):
+            for name, html in self.pages(client).items():
+                with self.subTest(page=name):
+                    for tag in re.findall(r"<section\b[^>]*>", html):
+                        self.assertRegex(tag, r'aria-label(ledby)?="[^"]+"')
+
+    def test_no_marks_waiting_is_neutral_not_a_success_state(self):
+        self.force_finalize(self.test1)
+        self.force_finalize(self.test2)
+        html = self.teacher.get(reverse("core:my-home")).content.decode()
+        self.assertIn("No marks waiting", html)
+        self.assertIn("No open assessments are waiting for your marks.", html)
+        self.assertIn('class="erp-day-empty"', html)
+        self.assertNotIn("erp-day-done", html)
+        self.assertNotIn("&#10003;", html)
+        self.assertNotIn("\u2713", html)
+        self.assertIn(f'href="{reverse("core:my-assessments")}"', html)
+
+    def test_decorative_chevrons_and_initials_are_aria_hidden(self):
+        for name, html in self.pages().items():
+            with self.subTest(page=name):
+                for tag in re.findall(r'<span class="[^"]*(?:chevron|initials)[^"]*"[^>]*>', html):
+                    self.assertIn('aria-hidden="true"', tag)
+
+    def test_status_pills_are_never_links_or_buttons(self):
+        for name, html in self.pages().items():
+            with self.subTest(page=name):
+                for pill in re.findall(r"<(\w+) class=\"erp-pill", html):
+                    self.assertEqual(pill, "span")
+
+    def test_assessments_empty_state_is_not_a_bare_section(self):
+        html = self.pages(self.no_duty_client())["core:my-assessments"]
+        self.assertIn("No assessments assigned", html)
+        self.assertIn('class="erp-assess-empty"', html)
