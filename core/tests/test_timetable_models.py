@@ -132,10 +132,13 @@ class TimetableFoundationTests(Phase4Fixture, TestCase):
         self.assertIn(slot, effective(date(2026, 6, 20)))
         self.assertNotIn(slot, effective(date(2026, 6, 21)))
 
-    def test_effective_on_treats_null_end_date_as_open_ended(self):
+    def test_effective_on_runs_a_null_end_date_to_the_academic_year_end(self):
+        # ADR 0021 D3: null means the end of the Period's Academic Year, never beyond.
         slot = self.make_slot(start_date=date(2026, 6, 10), end_date=None)
         self.assertIn(slot, TimetableSlot.objects.effective_on(date(2026, 6, 10)))
-        self.assertIn(slot, TimetableSlot.objects.effective_on(date(2030, 1, 1)))
+        self.assertIn(slot, TimetableSlot.objects.effective_on(date(2027, 3, 31)))
+        self.assertNotIn(slot, TimetableSlot.objects.effective_on(date(2027, 4, 1)))
+        self.assertNotIn(slot, TimetableSlot.objects.effective_on(date(2030, 1, 1)))
         self.assertNotIn(slot, TimetableSlot.objects.effective_on(date(2026, 6, 9)))
 
     def test_effective_on_accepts_a_datetime(self):

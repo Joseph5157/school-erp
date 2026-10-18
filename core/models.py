@@ -1859,6 +1859,15 @@ class AcademicSubjectOffering(models.Model):
                     f"Section(s) {names} have an assigned teacher; remove the assignment "
                     "before taking them out of this offering."
                 )
+            scheduled = self.timetable_slots.exclude(section__in=sections).select_related(
+                "section"
+            )
+            if scheduled.exists():
+                names = ", ".join(sorted({slot.section.name for slot in scheduled}))
+                raise ValidationError(
+                    f"Section(s) {names} have a timetable slot for this offering, current or "
+                    "historical; they cannot be taken out of it."
+                )
         with transaction.atomic():
             self.section_links.exclude(section__in=sections).delete()
             existing = set(self.section_links.values_list("section_id", flat=True))
@@ -3880,11 +3889,23 @@ class TimetablePeriod(models.Model):
 
 class TimetableSlotQuerySet(models.QuerySet):
     def effective_on(self, on_date):
-        """Slots whose inclusive date range contains `on_date`."""
+        """Slots whose inclusive date range contains `on_date`.
+
+        A null end date runs to the end of the Period's Academic Year and never
+        beyond it (ADR 0021 D3).
+        """
         on_date = _as_date(on_date)
-        return self.filter(start_date__lte=on_date).filter(
-            models.Q(end_date__isnull=True) | models.Q(end_date__gte=on_date)
-        )
+        return self.filter(
+            start_date__lte=on_date, period__academic_year__end_date__gte=on_date
+        ).filter(models.Q(end_date__isnull=True) | models.Q(end_date__gte=on_date))
+
+    def delete(self):
+        """Bulk deletes obey the same rule as single ones (ADR 0021 D4)."""
+        if self.filter(start_date__lte=business_today()).exists():
+            raise ValidationError(
+                "Timetable slots that have taken effect cannot be deleted; end them instead."
+            )
+        return super().delete()
 
 
 class TimetableSlot(models.Model):
@@ -3933,6 +3954,152 @@ class TimetableSlot(models.Model):
                 name="timetableslot_unique_cell_start",
             ),
         ]
+
+    # --- validation (R1-R5) ---
+
+    def clean(self):
+        super().clean()
+        if not (self.period_id and self.section_id and self.offering_id):
+            return
+        year = self.period.academic_year
+        errors = {}
+        if self.offering.academic_year_id != year.pk:
+            errors["offering"] = "The offering must be for the same Academic Year as the period."
+        elif not self.offering.applies_to(self.section):
+            errors["offering"] = "This Section does not take this Subject offering."
+        if self.weekday == 5 and not year.saturdays_instructional:
+            errors["weekday"] = "This Academic Year has no instructional Saturdays."
+        start_date = _as_date(self.start_date)
+        end_date = _as_date(self.end_date)
+        if start_date is not None:
+            if end_date is not None and end_date < start_date:
+                errors["end_date"] = "End date cannot be before the start date."
+            if not year.contains(start_date):
+                errors["start_date"] = "Start date must fall within the Academic Year."
+            if end_date is not None and "end_date" not in errors and not year.contains(end_date):
+                errors["end_date"] = "End date must fall within the Academic Year."
+        if errors:
+            raise ValidationError(errors)
+        if start_date is not None and self.overlapping().exists():
+            raise ValidationError(
+                "These dates overlap another slot for this Section, period and weekday."
+            )
+
+    def overlapping(self):
+        """Other slots in this period + weekday + Section whose range meets this one (R4)."""
+        start_date = _as_date(self.start_date)
+        end_date = _as_date(self.end_date) or _as_date(self.period.academic_year.end_date)
+        others = TimetableSlot.objects.filter(
+            period_id=self.period_id, weekday=self.weekday, section_id=self.section_id,
+            start_date__lte=end_date,
+        ).filter(models.Q(end_date__isnull=True) | models.Q(end_date__gte=start_date))
+        if self.pk is not None:
+            others = others.exclude(pk=self.pk)
+        return others
+
+    # --- lifecycle (ADR 0021 D4, D6) ---
+
+    @property
+    def has_started(self):
+        return _as_date(self.start_date) <= business_today()
+
+    @staticmethod
+    def _lock(periods, sections):
+        """Lock the periods, then the Sections, in a fixed order (no deadlocks).
+
+        The Section lock serialises R4 for a cell. The period lock also
+        serialises the R6 clash check, which reads other Sections' slots in the
+        same period.
+        """
+        for pk in sorted({period.pk for period in periods}):
+            TimetablePeriod.objects.select_for_update().filter(pk=pk).get()
+        for pk in sorted({section.pk for section in sections}):
+            Section.objects.select_for_update().filter(pk=pk).get()
+
+    @classmethod
+    def _validated_new(cls, **values):
+        from core import timetable
+
+        slot = cls(**values)
+        slot.full_clean()
+        timetable.ensure_no_clash(slot)
+        return slot
+
+    @classmethod
+    def create(cls, *, period, weekday, section, offering, start_date, end_date=None):
+        """Schedule `offering` for `section` in `period` on `weekday` (R1-R6 enforced)."""
+        with transaction.atomic():
+            cls._lock([period], [section])
+            slot = cls._validated_new(
+                period=period, weekday=weekday, section=section, offering=offering,
+                start_date=start_date, end_date=end_date,
+            )
+            slot.save()
+            return slot
+
+    def end(self, end_date, *, _locked=False):
+        """End this slot on `end_date` (inclusive); history is kept."""
+        end_date = _as_date(end_date)
+        with transaction.atomic():
+            if not _locked:
+                self._lock([self.period], [self.section])
+            self.refresh_from_db()
+            if end_date < _as_date(self.start_date):
+                raise ValidationError("End date cannot be before the start date.")
+            if self.end_date is not None and end_date > _as_date(self.end_date):
+                raise ValidationError("A slot can only be ended earlier, not extended.")
+            if not self.period.academic_year.contains(end_date):
+                raise ValidationError("End date must fall within the Academic Year.")
+            self.end_date = end_date
+            self.save(update_fields=["end_date", "updated_at"])
+
+    def change(self, *, effective_from, **changes):
+        """Replace this slot from `effective_from`; returns the new slot.
+
+        `changes` may set period, weekday, section, offering or end_date; anything
+        omitted carries over. A slot that has started is ended the day before
+        `effective_from` and a new row starts that day, so history is kept
+        (`effective_from` must be after its start). A slot that has not started
+        is simply replaced. The whole change is one transaction.
+        """
+        unknown = set(changes) - {"period", "weekday", "section", "offering", "end_date"}
+        if unknown:
+            raise TypeError(f"Cannot change {', '.join(sorted(unknown))}.")
+        effective_from = _as_date(effective_from)
+        with transaction.atomic():
+            period = changes.get("period", self.period)
+            section = changes.get("section", self.section)
+            self._lock([self.period, period], [self.section, section])
+            self.refresh_from_db()
+            original_end = _as_date(self.end_date)
+            if self.has_started:
+                if effective_from <= _as_date(self.start_date):
+                    raise ValidationError(
+                        "A slot that has started keeps its history: the change must begin "
+                        "after the slot's start date."
+                    )
+                if original_end is not None and effective_from > original_end:
+                    raise ValidationError("This slot has already ended before that date.")
+                self.end(effective_from - datetime.timedelta(days=1), _locked=True)
+            else:
+                super().delete()
+            replacement = self._validated_new(
+                period=period,
+                weekday=changes.get("weekday", self.weekday),
+                section=section,
+                offering=changes.get("offering", self.offering),
+                start_date=effective_from,
+                end_date=changes["end_date"] if "end_date" in changes else original_end,
+            )
+            replacement.save()
+            return replacement
+
+    def delete(self, *args, **kwargs):
+        if self.has_started:
+            raise ValidationError(
+                "This timetable slot has taken effect; end it instead of deleting it."
+            )
+        return super().delete(*args, **kwargs)
 
     def __str__(self):
         return f"{self.get_weekday_display()} {self.period} {self.section}"
