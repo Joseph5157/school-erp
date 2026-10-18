@@ -196,6 +196,19 @@ class GuardianShellTests(BoundaryFixture, TestCase):
             self.assertContains(page, self.portal_url(name))
         self.assertContains(page, "Report cards")
 
+    def test_report_cards_tab_has_a_short_phone_label_only(self):
+        page = self.portal.get(self.portal_url("portal:child"))
+        html = page.content.decode()
+        url = self.portal_url("portal:report-cards")
+        tabbar = html.split('class="erp-tabbar', 1)[1].split("</nav>", 1)[0]
+        header = html.split('class="erp-portal-nav', 1)[1].split("</nav>", 1)[0]
+        self.assertIn(f'href="{url}">Reports</a>', tabbar)
+        self.assertNotIn("Report cards", tabbar)
+        self.assertIn(f'href="{url}">Report cards</a>', header)
+        self.assertNotIn(">Reports<", header)
+        for label in ("Home", "Notices", "Overview", "Attendance"):
+            self.assertIn(f">{label}</a>", tabbar)
+
     def test_portal_pages_still_have_no_excluded_words(self):
         urls = [reverse("portal:home")] + [
             self.portal_url(name)
