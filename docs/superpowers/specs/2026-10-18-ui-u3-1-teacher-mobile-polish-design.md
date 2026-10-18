@@ -55,7 +55,7 @@ Out of scope: take-attendance, attendance history, marks entry, gradebook, term 
 
 - Date line is preserved with real data.
 - **Attendance card per duty:** Section name is the dominant (loud) element; state pill (Not taken / Draft / Submitted / Not a school day) is secondary; one clear action (`Take attendance`, `Continue` or `View`; none when not a school day).
-- **Marks to enter:** assessment cards unchanged in data. When none: a deliberate completed state, "All marks entered" style message with a quiet link to all assessments, replacing the loose "Nothing waiting."
+- **Marks to enter:** assessment cards unchanged in data. When none: a deliberate neutral state titled **"No marks waiting"**, with the line "No open assessments are waiting for your marks." and a quiet "My assessments" link, replacing the loose "Nothing waiting." The title is neutral on purpose: the current view only proves that no open assessments are waiting. It cannot tell "all done" from "nothing assigned", so the UI must not claim the teacher completed anything.
 - **Term remarks:** compact card per term and Section with honest `written / expected` text and the existing `<progress>`; the whole card is tappable (single link, stretched).
 - `Attendance history` becomes a clear secondary navigation action (outline/link button with chevron), not a raw inline link.
 - Spacing: 24px between major blocks, 16px inside groups, 8px between related lines. One accent for actions; status colours only for status.
@@ -110,7 +110,7 @@ New `core/tests/test_ui_teacher_polish.py` pins:
 - Bottom-nav labels (`Today`, `Students`, `Assessments`, `Results`), order, `aria-current` on the active item, text label present for every item.
 - Page headings unchanged (`My day`, `My students`, ...).
 - Purposeful empty states: "No assessments assigned" and "No subject results yet" appear when there is no data, and the old wording is gone.
-- My day completed-marks state, attendance action per state, term-remarks card link.
+- My day neutral "No marks waiting" state, attendance action per state, term-remarks card link.
 - Results: `Starting soon`, `Past duties` and a Read-only marker; no tappable status labels.
 - Accessibility-critical markup: real buttons vs links, one link per student row, `aria-hidden` on decorative icons/avatars.
 - No "Total", "Average", "Rank" text on the four screens.

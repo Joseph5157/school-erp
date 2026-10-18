@@ -365,3 +365,140 @@ class MyDayPolishTests(MarksFixture, TestCase):
         self.assertNotIn("<table", html)
         for word in ("Total", "Average", "Rank"):
             self.assertNotIn(word, html)
+
+
+ROW = re.compile(r'<li class="erp-student-row[^"]*">(.*?)</li>', re.DOTALL)
+
+
+class MyStudentsPolishTests(MarksFixture, TestCase):
+    """U3.1 Gate T3: My students."""
+
+    def setUp(self):
+        super().setUp()
+        SectionClassTeacher.assign(
+            teacher=self.rao, academic_year=self.year, section=self.six_a,
+            start_date=date(2026, 6, 1),
+        )
+        self.url = reverse("core:my-students")
+
+    def page(self):
+        return self.teacher.get(self.url)
+
+    def rows(self, page):
+        return ROW.findall(page.content.decode())
+
+    def register(self, submit):
+        register = AttendanceRegister.objects.create(
+            academic_year=self.year, class_grade=self.grade6, section=self.six_a,
+            date=date(2026, 10, 12),
+        )
+        register.save_draft_entry(enrollment=self.asha, status="PRESENT")
+        register.save_draft_entry(enrollment=self.bina, status="ABSENT")
+        register.save_draft_entry(enrollment=self.ravi, status="PRESENT")
+        if submit:
+            register.submit(actor=self.rao)
+        return register
+
+    def test_heading_and_context_wording_are_kept(self):
+        page = self.page()
+        self.assertContains(page, '<h1 class="h3 mb-1">My students</h1>')
+        self.assertContains(page, "Students enrolled today (")
+        self.assertContains(page, "in Sections you are class teacher of or teach a Subject in.")
+        self.assertContains(page, f"{self.six_a} ")
+
+    def test_each_row_has_exactly_one_link_to_the_student(self):
+        page = self.page()
+        rows = self.rows(page)
+        self.assertEqual(len(rows), 3)
+        expected = {
+            e.student.full_name: reverse("core:my-student-detail", args=[e.student.pk])
+            for e in (self.asha, self.bina, self.ravi)
+        }
+        for row in rows:
+            self.assertEqual(row.count("<a "), 1)
+            link = re.search(
+                r'<a class="erp-student-name stretched-link" href="([^"]+)">([^<]+)</a>', row)
+            self.assertEqual(expected[link.group(2)], link.group(1))
+            self.assertNotIn("<button", row)
+
+    def test_initials_are_decorative_and_the_name_is_the_link_text(self):
+        for row in self.rows(self.page()):
+            initial = re.search(
+                r'<span class="erp-initials" aria-hidden="true">(.)</span>', row)
+            name = re.search(r'class="erp-student-name[^"]*"[^>]*>([^<]+)</a>', row).group(1)
+            self.assertEqual(initial.group(1), name[0].upper())
+            self.assertIn('aria-hidden="true">&rsaquo;', row)
+
+    def test_class_teacher_badge_only_on_class_teacher_sections(self):
+        self.make_student("Kiran", section=self.six_b)
+        self.assign(self.rao, self.sanskrit, self.six_b)
+        html = self.page().content.decode()
+        six_a = html[html.index(str(self.six_a)):html.index(str(self.six_b))]
+        six_b = html[html.index(str(self.six_b)):]
+        self.assertIn('<span class="erp-pill is-accepted">Class teacher</span>', six_a)
+        self.assertNotIn("Class teacher</span>", six_b)
+
+    def test_submitted_attendance_shows_semantic_non_interactive_chips(self):
+        self.register(submit=True)
+        page = self.page()
+        self.assertContains(page, '<span class="erp-pill is-present">Present</span>', count=2)
+        self.assertContains(page, '<span class="erp-pill is-absent">Absent</span>', count=1)
+        self.assertNotContains(page, "not submitted yet")
+        for row in self.rows(page):
+            self.assertEqual(row.count("<a "), 1)
+            self.assertNotRegex(row, r"<(a|button)[^>]*>\s*(Present|Absent)")
+
+    def test_draft_attendance_keeps_the_not_submitted_wording_and_no_chips(self):
+        self.register(submit=False)
+        page = self.page()
+        self.assertContains(page, "Today's attendance not submitted yet.")
+        self.assertNotContains(page, "erp-pill is-present")
+        self.assertNotContains(page, "erp-pill is-absent")
+
+    def test_missing_attendance_keeps_the_not_submitted_wording_and_no_chips(self):
+        page = self.page()
+        self.assertContains(page, "Today's attendance not submitted yet.")
+        self.assertNotContains(page, "erp-pill is-present")
+
+    def test_subject_only_section_has_no_chips_or_attendance_note(self):
+        self.make_student("Kiran", section=self.six_b)
+        self.assign(self.rao, self.sanskrit, self.six_b)
+        self.register(submit=True)
+        html = self.page().content.decode()
+        part = html[html.index(str(self.six_b)):]
+        self.assertNotIn("erp-pill is-present", part)
+        self.assertNotIn("erp-pill is-absent", part)
+        self.assertNotIn("not submitted yet", part)
+        self.assertIn("Kiran", part)
+
+    def test_empty_state_for_a_teacher_with_no_sections(self):
+        iyer = self.client_class()
+        iyer.login(username="iyer", password="pass-12345")
+        page = iyer.get(self.url)
+        self.assertContains(page, "No Students in your Sections today.")
+        self.assertContains(page, "Ask the school office if this looks wrong.")
+        self.assertEqual(self.rows(page), [])
+
+    def test_order_and_urls_follow_the_view(self):
+        self.make_student("Kiran", section=self.six_b)
+        self.assign(self.rao, self.sanskrit, self.six_b)
+        page = self.page()
+        html = page.content.decode()
+        names = re.findall(r'class="erp-student-name[^"]*" href="[^"]+">([^<]+)</a>', html)
+        hrefs = re.findall(r'class="erp-student-name[^"]*" href="([^"]+)">', html)
+        groups = page.context["groups"]
+        self.assertEqual(
+            names, [e.student.full_name for g in groups for e in g["enrollments"]])
+        self.assertEqual(
+            hrefs,
+            [reverse("core:my-student-detail", args=[e.student.pk])
+             for g in groups for e in g["enrollments"]])
+        for group in groups:
+            in_group = [e.student.full_name for e in group["enrollments"]]
+            self.assertEqual(in_group, sorted(in_group))
+
+    def test_no_table_search_or_sort_controls(self):
+        html = self.page().content.decode()
+        self.assertNotIn("<table", html)
+        self.assertNotIn('type="search"', html)
+        self.assertNotIn("<select", html)

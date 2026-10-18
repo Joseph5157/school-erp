@@ -238,6 +238,29 @@ body.erp { min-height: 100vh; }
   border-radius: 50%; background: var(--erp-accent); color: #fff; font-weight: 700;
 }
 .erp-teacher .erp-day-done .erp-day-title { font-size: 1rem; }
+/* U3.1 My students (Gate T3). One bordered list per Section with divided, whole-row
+   targets; scoped to the Teacher area so the shared .erp-entry list is not changed. */
+.erp-teacher .erp-students-group + .erp-students-group { margin-top: 1.5rem; }
+.erp-teacher .erp-students-page .erp-section-title { margin: 0 0 .5rem; }
+.erp-teacher .erp-students {
+  margin: 0; padding: 0; overflow: hidden;
+  background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
+}
+.erp-teacher .erp-student-row {
+  display: flex; align-items: center; gap: .75rem; min-height: 3rem; padding: .5rem 1rem;
+}
+.erp-teacher .erp-student-row + .erp-student-row { border-top: 1px solid var(--erp-rule); }
+.erp-teacher .erp-student-row:hover { background: var(--erp-paper); }
+.erp-teacher .erp-student-row .erp-initials { flex: none; width: 2rem; height: 2rem; font-size: .9rem; }
+.erp-teacher .erp-student-name {
+  flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: 1.0625rem; font-weight: 600;
+  line-height: 1.25; color: var(--erp-ink); text-decoration: none;
+}
+.erp-teacher .erp-student-name:focus-visible { outline: none; }
+.erp-teacher .erp-student-name:focus-visible::after {
+  outline: 2px solid var(--erp-focus-color); outline-offset: -2px;
+}
+.erp-teacher .erp-student-chevron { flex: none; color: var(--erp-ink-soft); font-size: 1.5rem; line-height: 1; }
 .erp-teacher .erp-day-quiet {
   display: inline-flex; align-items: center; min-height: 2.75rem;
   color: var(--erp-accent-strong); font-size: var(--erp-text-sm);
