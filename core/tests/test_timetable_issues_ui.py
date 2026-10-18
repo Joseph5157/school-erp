@@ -559,3 +559,41 @@ class RangeEndTests(IssuesFixture, TestCase):
         self.assign_from(self.rao, self.maths, self.six_a, date(2026, 6, 1), None)
         for day in (date(2026, 6, 3), date(2026, 10, 21), YEAR_END):
             self.assertEqual(self.missing_rows(day), [], day)
+
+
+@pinned()
+class MissingTeacherRangeColumnTests(IssuesFixture, TestCase):
+    """The no-teacher table shows each slot's effective date range."""
+
+    def setUp(self):
+        self.build_grid()
+
+    def row_for(self, **overrides):
+        self.raw_slot(weekday=2, **overrides)
+        response = self.client.get(self.issues_url(date(2026, 10, 21)))
+        return response, self.missing(response)[0]
+
+    def test_explicit_end_shows_the_closed_range(self):
+        response, row = self.row_for(start_date=date(2026, 6, 1), end_date=date(2026, 12, 31))
+        self.assertEqual(row["range"], "1 Jun 2026 – 31 Dec 2026")
+        self.assertContains(response, "1 Jun 2026 – 31 Dec 2026")
+
+    def test_null_end_says_it_runs_through_the_academic_year_end(self):
+        response, row = self.row_for(start_date=date(2026, 6, 1), end_date=None)
+        self.assertEqual(row["range"], "From 1 Jun 2026 · through 31 Mar 2027")
+        self.assertContains(response, "From 1 Jun 2026 · through 31 Mar 2027")
+
+    def test_a_slot_that_starts_on_the_report_date_and_one_ending_on_it(self):
+        self.raw_slot(weekday=2, start_date=date(2026, 10, 21))
+        self.raw_slot(weekday=2, period=self.p2, start_date=date(2026, 6, 1),
+                      end_date=date(2026, 10, 21))
+        ranges = {r["period"]: r["range"]
+                  for r in self.missing(self.client.get(self.issues_url(date(2026, 10, 21))))}
+        self.assertEqual(ranges["P1"], "From 21 Oct 2026 · through 31 Mar 2027")
+        self.assertEqual(ranges["P2"], "1 Jun 2026 – 21 Oct 2026")
+
+    def test_the_table_has_a_labelled_effective_column_in_its_region(self):
+        self.raw_slot(weekday=2)
+        html = self.client.get(self.issues_url(date(2026, 10, 21))).content.decode()
+        self.assertIn('aria-label="Slots with no teacher"', html)
+        self.assertRegex(html, r'<th scope="col">Effective</th>')

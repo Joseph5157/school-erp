@@ -54,7 +54,7 @@
 <div class="erp-table-scroll" role="region" aria-label="Slots with no teacher" tabindex="0">
 <table class="table">
     <thead>
-        <tr><th scope="col">Section</th><th scope="col">Period</th><th scope="col">Day</th><th scope="col">Subject</th><th scope="col"><span class="visually-hidden">Open</span></th></tr>
+        <tr><th scope="col">Section</th><th scope="col">Period</th><th scope="col">Day</th><th scope="col">Subject</th><th scope="col">Effective</th><th scope="col"><span class="visually-hidden">Open</span></th></tr>
     </thead>
     <tbody>
         {% for row in missing %}
@@ -63,6 +63,7 @@
             <td>{{ row.period }}</td>
             <td>{{ row.weekday }}</td>
             <td>{{ row.subject }}</td>
+            <td>{{ row.range }}</td>
             <td><a class="btn btn-outline-secondary btn-sm" href="{{ row.url }}">Open timetable<span class="visually-hidden"> for {{ row.section }}, {{ row.period }}, {{ row.weekday }}</span></a></td>
         </tr>
         {% endfor %}

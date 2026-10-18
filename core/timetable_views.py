@@ -433,6 +433,15 @@ def _clash_rows(academic_year, report_date):
     return rows
 
 
+def _slot_range_text(slot, academic_year):
+    """Effective range: closed when ended, else "through" the Academic Year's end."""
+    start = f"{slot.start_date.day} {slot.start_date:%b %Y}"
+    if slot.end_date:
+        return f"{start} – {slot.end_date.day} {slot.end_date:%b %Y}"
+    end = academic_year.end_date
+    return f"From {start} · through {end.day} {end:%b %Y}"
+
+
 def _missing_teacher_rows(academic_year, report_date):
     """(rows, effective slot count): effective slots with no effective assignment."""
     slots = list(
@@ -453,6 +462,7 @@ def _missing_teacher_rows(academic_year, report_date):
             "period_sequence": slot.period.sequence,
             "weekday": slot.get_weekday_display(),
             "subject": slot.offering.subject.name,
+            "range": _slot_range_text(slot, academic_year),
             "url": _grid_url(academic_year, slot.section, report_date),
         }
         for slot in slots
