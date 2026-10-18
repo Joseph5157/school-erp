@@ -36,6 +36,25 @@
 <a class="btn btn-outline-secondary erp-day-secondary" href="{% url 'core:my-attendance-history' %}"><span>Attendance history for my Sections</span><span class="erp-day-chevron" aria-hidden="true">&rsaquo;</span></a>
 </section>
 
+{% if timetable_rows is not None %}
+<section aria-labelledby="day-timetable">
+<h2 class="erp-section-title" id="day-timetable">Today's timetable</h2>
+{% if timetable_rows %}
+<ul class="erp-day-rows erp-assign-rows" aria-labelledby="day-timetable">
+{% for row in timetable_rows %}
+<li class="erp-assign-row">
+    <span class="erp-day-main">
+        <span class="erp-day-title">{{ row.period }} &middot; {{ row.section }} &middot; {{ row.subject }}</span>
+    </span>
+</li>
+{% endfor %}
+</ul>
+{% else %}
+<p class="erp-assign-empty">No periods scheduled for you today.</p>
+{% endif %}
+</section>
+{% endif %}
+
 <section aria-labelledby="day-assignments">
 <h2 class="erp-section-title" id="day-assignments">Teaching assignments</h2>
 <div class="erp-assign-group">

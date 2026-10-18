@@ -25,6 +25,7 @@ from core import (
     reports,
     school_logo,
     setup_checklist,
+    timetable,
 )
 from core.authorization import (
     administrator_required,
@@ -983,6 +984,15 @@ def my_home(request):
             instructional[year.pk] = year.is_instructional_day(today)
         school_day = instructional[year.pk]
 
+    def year_is_instructional(year):
+        if year.pk not in instructional:
+            instructional[year.pk] = year.is_instructional_day(today)
+        return instructional[year.pk]
+
+    timetable_rows = timetable.todays_teacher_timetable(
+        subject_duties, today, year_is_instructional
+    )
+
     assessments = _open_assessments_needing_marks(request.user, today)
 
     remarks = []
@@ -1031,6 +1041,7 @@ def my_home(request):
                 key=lambda r: (str(r["section"]), r["subject"]),
             ),
             "school_day": school_day,
+            "timetable_rows": timetable_rows,
             "attendance": attendance,
             "attendance_tile": _attendance_tile(attendance),
             "attendance_rows": [r for r in attendance if r["state"] != "NOT_INSTRUCTIONAL"],

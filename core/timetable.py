@@ -22,6 +22,7 @@ from django.core.exceptions import ValidationError
 from django.db.models import Q
 
 from core.models import (
+    AcademicYear,
     AssessmentTeacherAssignment,
     TimetableSlot,
     _as_date,
@@ -141,3 +142,47 @@ def ensure_no_clash(slot):
         for c in clashes
     ]
     raise ValidationError(lines)
+
+
+def todays_teacher_timetable(assignments, today, year_is_instructional):
+    """Rows for the Teacher dashboard's "Today's timetable" section (ADR 0021 D10).
+
+    `assignments` are the teacher's own current subject assignments (ADR 0018); a slot
+    belongs to the teacher only through its offering + Section. `year_is_instructional`
+    answers `AcademicYear.is_instructional_day(today)` for a year (and may cache it).
+
+    Returns None when the section must be hidden: no slot is effective today in an
+    Academic Year that is an instructional day today (no timetable configured, or a
+    non-school day). Otherwise a list of rows, possibly empty (the "no periods for you"
+    state), ordered by period sequence. Never stores or guesses a teacher, and never
+    invents free periods or placeholders.
+    """
+    years = AcademicYear.objects.filter(
+        pk__in=TimetableSlot.objects.effective_on(today).values("period__academic_year_id")
+    )
+    open_year_ids = {year.pk for year in years if year_is_instructional(year)}
+    if not open_year_ids:
+        return None
+    pairs = {(row.offering_id, row.section_id) for row in assignments}
+    if not pairs:
+        return []
+    slots = (
+        TimetableSlot.objects.effective_on(today)
+        .filter(
+            weekday=today.weekday(),
+            period__academic_year_id__in=open_year_ids,
+            offering_id__in={offering for offering, _ in pairs},
+            section_id__in={section for _, section in pairs},
+        )
+        .select_related("period", "section__class_grade", "offering__subject")
+        .order_by("period__sequence", "section__class_grade__name", "section__name")
+    )
+    return [
+        {
+            "period": slot.period.label,
+            "section": slot.section,
+            "subject": slot.offering.subject.name,
+        }
+        for slot in slots
+        if (slot.offering_id, slot.section_id) in pairs
+    ]
