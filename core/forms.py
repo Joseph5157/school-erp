@@ -317,6 +317,18 @@ class ScheduleDateForm(FieldAccessibilityMixin, forms.Form):
         return value
 
 
+class ReportDateForm(ScheduleDateForm):
+    """The one date the timetable issues report is evaluated on (TDB-4E)."""
+
+    date = forms.DateField(
+        label="Report date",
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+        help_text="Slots with no teacher are checked on this date. Teacher clashes are "
+        "listed for the whole Academic Year and marked against it.",
+        error_messages={"required": "Enter a date.", "invalid": "Enter a valid date."},
+    )
+
+
 class OfferingChoiceField(forms.ModelChoiceField):
     def label_from_instance(self, obj):
         return obj.subject.name

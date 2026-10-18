@@ -12,7 +12,8 @@
             <td class="text-end">
                 <div class="d-flex flex-wrap justify-content-end gap-2">
                     <a class="btn btn-outline-primary btn-sm" href="{% url 'core:timetable-periods' academic_year.pk %}">Set up periods<span class="visually-hidden"> for {{ academic_year.name }}</span></a>
-                    {% if perms.core.view_timetableslot %}<a class="btn btn-outline-primary btn-sm" href="{% url 'core:timetable-sections' academic_year.pk %}">Section timetables<span class="visually-hidden"> for {{ academic_year.name }}</span></a>{% endif %}
+                    {% if perms.core.view_timetableslot %}<a class="btn btn-outline-primary btn-sm" href="{% url 'core:timetable-sections' academic_year.pk %}">Section timetables<span class="visually-hidden"> for {{ academic_year.name }}</span></a>
+                    <a class="btn btn-outline-primary btn-sm" href="{% url 'core:timetable-issues' academic_year.pk %}">Timetable issues<span class="visually-hidden"> for {{ academic_year.name }}</span></a>{% endif %}
                 </div>
             </td>
         </tr>

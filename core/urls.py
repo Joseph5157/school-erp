@@ -58,6 +58,11 @@ urlpatterns = [
         name="timetable-period-create",
     ),
     path(
+        "academic-years/<int:pk>/timetable/issues/",
+        timetable_views.timetable_issues,
+        name="timetable-issues",
+    ),
+    path(
         "academic-years/<int:pk>/timetable/sections/",
         timetable_views.timetable_sections,
         name="timetable-sections",

@@ -60,6 +60,7 @@ RULES = {
     ),
     "timetable-period-update": Rule("timetable-index", (_TIMETABLE,), "Edit period"),
     "timetable-period-delete": Rule("timetable-index", (_TIMETABLE,), "Delete period"),
+    "timetable-issues": Rule("timetable-index", (_TIMETABLE,), "Issues"),
     "timetable-sections": Rule("timetable-index", (_TIMETABLE,), "Sections"),
     "timetable-grid": Rule(
         "timetable-index",

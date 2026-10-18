@@ -15,10 +15,12 @@ from django.db.models import Count, ProtectedError
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.views.decorators.http import require_GET
 
-from core import models
+from core import models, timetable
 from core.authorization import administrator_required
 from core.forms import (
+    ReportDateForm,
     ScheduleDateForm,
     TimetablePeriodForm,
     TimetableSlotChangeForm,
@@ -390,5 +392,100 @@ def timetable_slot_delete(request, pk):
             "started": slot.has_started, "grid_url": grid_url,
             "end_url": _with_date(reverse("core:timetable-slot-end", args=[slot.pk]), on),
             "can_end": request.user.has_perm("core.change_timetableslot"),
+        },
+    )
+
+
+# --- TDB-4E: Timetable issues report (read-only) -----------------------------------------
+
+_CLASH_ORDER = {"in_force": 0, "upcoming": 1, "ended": 2}
+
+
+def _clash_status(clash, on):
+    if clash.start <= on <= clash.end:
+        return "in_force"
+    return "upcoming" if clash.start > on else "ended"
+
+
+def _clash_rows(academic_year, report_date):
+    """Teacher clashes for the year, from the one shared helper (ADR 0021 D6)."""
+    rows = []
+    for clash in timetable.find_all_clashes(academic_year):
+        status = _clash_status(clash, report_date)
+        open_on = report_date if status == "in_force" else clash.start
+        first, second = sorted((clash.slot, clash.other), key=lambda s: str(s.section))
+        rows.append({
+            "teacher": _teacher_name(clash.teacher),
+            "period": clash.slot.period.label,
+            "period_sequence": clash.slot.period.sequence,
+            "weekday": clash.slot.get_weekday_display(),
+            "weekday_number": clash.slot.weekday,
+            "start": clash.start,
+            "end": clash.end,
+            "status": status,
+            "section_a": str(first.section), "subject_a": first.offering.subject.name,
+            "section_b": str(second.section), "subject_b": second.offering.subject.name,
+            "url_a": _grid_url(academic_year, first.section, open_on),
+            "url_b": _grid_url(academic_year, second.section, open_on),
+        })
+    rows.sort(key=lambda r: (_CLASH_ORDER[r["status"]], r["start"], r["period_sequence"],
+                             r["weekday_number"], r["section_a"]))
+    return rows
+
+
+def _missing_teacher_rows(academic_year, report_date):
+    """(rows, effective slot count): effective slots with no effective assignment."""
+    slots = list(
+        TimetableSlot.objects.effective_on(report_date)
+        .filter(period__academic_year=academic_year)
+        .select_related("period", "section__class_grade", "offering__subject")
+    )
+    covered = set(
+        AssessmentTeacherAssignment.objects.effective_on(report_date)
+        .filter(offering__academic_year=academic_year)
+        .values_list("offering_id", "section_id")
+    )
+    rows = [
+        {
+            "slot": slot,
+            "section": str(slot.section),
+            "period": slot.period.label,
+            "period_sequence": slot.period.sequence,
+            "weekday": slot.get_weekday_display(),
+            "subject": slot.offering.subject.name,
+            "url": _grid_url(academic_year, slot.section, report_date),
+        }
+        for slot in slots
+        if (slot.offering_id, slot.section_id) not in covered
+    ]
+    rows.sort(key=lambda r: (r["section"], r["period_sequence"], r["slot"].weekday))
+    return rows, len(slots)
+
+
+@administrator_required("core.view_timetableperiod")
+@administrator_required("core.view_timetableslot")
+@require_GET
+def timetable_issues(request, pk):
+    academic_year = get_object_or_404(AcademicYear, pk=pk)
+    report_date = _default_schedule_date(academic_year, models.business_today())
+    if "date" in request.GET:
+        date_form = ReportDateForm(request.GET, academic_year=academic_year)
+        if date_form.is_valid():
+            report_date = date_form.cleaned_data["date"]
+    else:
+        date_form = ReportDateForm(academic_year=academic_year, initial={"date": report_date})
+
+    school_day = academic_year.is_instructional_day(report_date)
+    missing, effective_count = (
+        _missing_teacher_rows(academic_year, report_date) if school_day else (None, 0)
+    )
+    return render(
+        request,
+        "core/timetable_issues.html",
+        {
+            "academic_year": academic_year, "report_date": report_date,
+            "date_form": date_form, "school_day": school_day,
+            "clashes": _clash_rows(academic_year, report_date),
+            "missing": missing, "effective_count": effective_count,
         },
     )
