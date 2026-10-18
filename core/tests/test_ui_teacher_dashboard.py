@@ -19,6 +19,8 @@ from core.models import (
     AttendanceRegister,
     ResultStatus,
     Section,
+    SectionClassTeacher,
+    TermRemark,
 )
 from core.tests.test_phase5_teacher_home import MONDAY, SUNDAY, TeacherHomeFixture, on
 
@@ -152,7 +154,7 @@ class AttendanceTileTests(DashboardFixture, TestCase):
 
     def test_one_section_has_no_detail_rows(self):
         self.class_teacher(self.rao, self.six_a)
-        self.assertNotContains(self.page(), "erp-day-rows")
+        self.assertNotContains(self.page(), 'aria-label="Attendance by Section"')
 
     def test_several_sections_make_a_flat_summary_with_compact_rows(self):
         self.class_teacher(self.rao, self.six_a)
@@ -274,6 +276,146 @@ class DashboardQueryCountTests(DashboardFixture, TestCase):
             extra = Section.objects.create(class_grade=self.grade6, name=name)
             self.class_teacher(self.rao, extra)
             self.assign(self.rao, self.maths, extra)
+            self.assign(self.rao, self.sanskrit, extra)
             self.make_student(f"Student {name}", section=extra)
             self.make_assessment(name=f"UT {name}", section=extra)
         self.assertEqual(self.count(), small)
+
+
+class TeachingAssignmentTests(DashboardFixture, TestCase):
+    def groups(self):
+        html = self.page().content.decode()
+        body = html.split('id="day-assignments"')[1].split("</section>")[0]
+        class_part, subject_part = body.split('id="assign-subjects"')
+        return class_part, subject_part
+
+    def attendance_href(self, section):
+        return reverse("core:my-attendance", args=[section.pk])
+
+    def test_class_teacher_rows_are_current_sections_only(self):
+        self.class_teacher(self.rao, self.six_a)
+        SectionClassTeacher.objects.create(
+            teacher=self.rao, academic_year=self.year, section=self.six_b,
+            start_date=date(2026, 6, 1), end_date=date(2026, 9, 30),
+        )
+        extra = Section.objects.create(class_grade=self.grade6, name="C")
+        SectionClassTeacher.objects.create(
+            teacher=self.rao, academic_year=self.year, section=extra, start_date=date(2026, 11, 1),
+        )
+        class_part, _ = self.groups()
+        self.assertIn(str(self.six_a), class_part)
+        self.assertNotIn(str(self.six_b), class_part)
+        self.assertNotIn(str(extra), class_part)
+
+    def test_class_row_shows_section_year_and_one_attendance_link(self):
+        self.class_teacher(self.rao, self.six_a)
+        self.class_teacher(self.rao, self.six_b)
+        class_part, _ = self.groups()
+        self.assertEqual(class_part.count("<li "), 2)
+        self.assertEqual(class_part.count("<a "), 2)
+        self.assertIn(self.year.name, class_part)
+        for section in (self.six_a, self.six_b):
+            self.assertIn(f'href="{self.attendance_href(section)}"', class_part)
+        self.assertEqual(class_part.count("stretched-link"), 2)
+
+    def test_subject_rows_are_current_section_and_subject_pairs_only(self):
+        self.assign(self.rao, self.maths, self.six_a)
+        self.assign(self.rao, self.maths, self.six_b)
+        self.assign(self.rao, self.sanskrit, self.six_b)
+        AssessmentTeacherAssignment.objects.create(
+            teacher=self.rao, offering=self.sanskrit, section=self.six_a,
+            start_date=date(2026, 6, 1), end_date=date(2026, 6, 30),
+        )  # ended
+        rows = self.page().context["subject_rows"]
+        self.assertEqual(
+            [(str(r["section"]), r["subject"]) for r in rows],
+            [(str(self.six_a), "Mathematics"), (str(self.six_b), "Mathematics"),
+             (str(self.six_b), "Sanskrit")],
+        )
+        _, subject_part = self.groups()
+        self.assertIn(f"{self.six_b} &middot; Sanskrit", subject_part)
+        self.assertIn(self.year.name, subject_part)
+
+    def test_ended_and_future_subject_assignments_do_not_appear(self):
+        AssessmentTeacherAssignment.objects.create(
+            teacher=self.rao, offering=self.maths, section=self.six_a,
+            start_date=date(2026, 6, 1), end_date=date(2026, 9, 30),
+        )
+        AssessmentTeacherAssignment.objects.create(
+            teacher=self.rao, offering=self.maths, section=self.six_b,
+            start_date=date(2026, 11, 1),
+        )
+        self.assertEqual(self.page().context["subject_rows"], [])
+        _, subject_part = self.groups()
+        self.assertIn("No subjects are assigned to you today.", subject_part)
+        self.assertNotIn("Mathematics", subject_part)
+
+    def test_subject_rows_have_no_links_and_do_not_look_tappable(self):
+        self.assign(self.rao, self.maths, self.six_a)
+        _, subject_part = self.groups()
+        self.assertNotIn("<a ", subject_part)
+        self.assertNotIn("is-link", subject_part)
+        self.assertNotIn("erp-day-chevron", subject_part)
+
+    def test_same_section_may_be_in_both_groups(self):
+        self.class_teacher(self.rao, self.six_a)
+        self.assign(self.rao, self.maths, self.six_a)
+        class_part, subject_part = self.groups()
+        self.assertIn(str(self.six_a), class_part)
+        self.assertIn(f"{self.six_a} &middot; Mathematics", subject_part)
+
+    def test_groups_are_separated_by_text_headings_after_the_overview(self):
+        html = self.page().content.decode()
+        self.assertEqual(html.count("<h1"), 1)
+        for label in ("Teaching assignments", "Class teacher", "Subjects I teach"):
+            self.assertIn(f">{label}</h", html)
+        self.assertLess(html.index("Today overview"), html.index("Teaching assignments"))
+
+    def test_empty_wording_for_each_group(self):
+        class_part, subject_part = self.groups()
+        self.assertIn("You are not a class teacher today.", class_part)
+        self.assertIn("No subjects are assigned to you today.", subject_part)
+        self.class_teacher(self.rao, self.six_a)
+        class_part, subject_part = self.groups()
+        self.assertNotIn("You are not a class teacher today.", class_part)
+        self.assertIn("No subjects are assigned to you today.", subject_part)
+
+    def test_handed_over_class_is_not_listed(self):
+        self.class_teacher(self.rao, self.six_a)
+        self.class_teacher(self.iyer, self.six_a, start=MONDAY)
+        class_part, _ = self.groups()
+        self.assertNotIn(str(self.six_a), class_part)
+
+
+class TermRemarksTreatmentTests(DashboardFixture, TestCase):
+    def test_hidden_when_there_is_no_remark_data(self):
+        html = self.page().content.decode()
+        self.assertNotIn("day-remarks", html)
+        self.assertNotIn("Term remarks", html)
+
+    def test_semantics_unchanged_started_terms_with_real_counts(self):
+        self.class_teacher(self.rao, self.six_a)
+        asha, _ = self.make_student("Asha")
+        self.make_student("Ravi")
+        TermRemark.objects.create(term=self.term1, student=asha, remark="Good",
+                                  written_by=self.rao)
+        page = self.page()
+        self.assertEqual(
+            [(r["term"], r["expected"], r["written"]) for r in page.context["remarks"]],
+            [(self.term1, 2, 1), (self.term2, 2, 0)],
+        )
+        self.assertContains(page, "1 of 2 written")
+        self.assertContains(page, "0 of 2 written")
+
+    def test_compact_rows_last_on_the_page_linking_to_term_remarks(self):
+        self.class_teacher(self.rao, self.six_a)
+        self.make_student("Asha")
+        html = self.page().content.decode()
+        self.assertGreater(html.index("day-remarks"), html.index("day-assignments"))
+        self.assertEqual(html.count('id="day-remarks"'), 1)
+        self.assertNotIn("erp-progress", html)
+        self.assertNotIn("erp-card ", html)
+        section = html.split('id="day-remarks"')[1].split("</section>")[0]
+        href = reverse("core:term-remarks", args=[self.term1.pk]) + f"?section={self.six_a.pk}"
+        self.assertIn(f'href="{href}"', section)
+        self.assertEqual(section.count("<li "), 2)

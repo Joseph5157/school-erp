@@ -265,7 +265,9 @@ class MyDayPolishTests(MarksFixture, TestCase):
         return register
 
     def attendance_links(self, page):
-        return page.content.decode().count(f'href="{self.attendance_url}"')
+        # Links in the Today overview only; the Teaching assignments row is separate (TDB-2).
+        overview = page.content.decode().split('id="day-assignments"')[0]
+        return overview.count(f'href="{self.attendance_url}"')
 
     def test_heading_and_real_date_are_kept(self):
         page = self.home()
@@ -332,7 +334,7 @@ class MyDayPolishTests(MarksFixture, TestCase):
         self.assertContains(page, f'href="{reverse("core:my-assessments")}"')
         self.assertNotContains(page, "erp-day-done")
 
-    def test_term_remarks_are_whole_card_links_with_real_progress(self):
+    def test_term_remarks_are_compact_whole_row_links_with_real_counts(self):
         page = self.home()
         rows = page.context["remarks"]
         self.assertTrue(rows)
@@ -344,9 +346,8 @@ class MyDayPolishTests(MarksFixture, TestCase):
                     f'?section={row["section"].pk}')
             self.assertContains(page, f'href="{href}"')
             self.assertContains(page, f'{row["written"]} of {row["expected"]} written')
-            self.assertContains(
-                page, f'max="{row["expected"] or 1}" value="{row["written"]}"')
-        self.assertContains(page, 'class="erp-progress"')
+        self.assertNotContains(page, "erp-progress")
+        self.assertNotContains(page, "erp-day-linkcard")
 
     def test_no_tables_and_no_totals_or_ranks(self):
         html = self.home().content.decode()

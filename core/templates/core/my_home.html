@@ -14,9 +14,6 @@
 {% include "core/_day_tile.html" with label="Attendance" tile=attendance_tile %}
 {% include "core/_day_tile.html" with label="Marks" tile=marks_tile %}
 </div>
-{% if no_duty %}
-{% include "partials/_empty.html" with title="You are not a class teacher today." text="Class and subject assignments are set by the school office. If you expected to see a class here, ask the office to check your assignment." %}
-{% endif %}
 {% if attendance_rows|length > 1 %}
 <ul class="erp-day-rows" aria-label="Attendance by Section">
 {% for row in attendance_rows %}
@@ -39,21 +36,59 @@
 <a class="btn btn-outline-secondary erp-day-secondary" href="{% url 'core:my-attendance-history' %}"><span>Attendance history for my Sections</span><span class="erp-day-chevron" aria-hidden="true">&rsaquo;</span></a>
 </section>
 
-{% if remarks %}
-<section aria-labelledby="day-remarks">
-<h2 class="erp-section-title" id="day-remarks">Term remarks</h2>
-{% for row in remarks %}
-<a class="erp-card erp-day-card erp-day-linkcard" href="{% url 'core:term-remarks' row.term.pk %}?section={{ row.section.pk }}">
-    <span class="erp-card-row">
-        <span class="erp-day-main">
-            <span class="erp-day-title">{{ row.term.academic_year.name }} {{ row.term.name }} &middot; {{ row.section }}</span>
-            <span class="erp-card-meta">{{ row.written }} of {{ row.expected }} written</span>
-        </span>
-        <span class="erp-day-chevron" aria-hidden="true">&rsaquo;</span>
+<section aria-labelledby="day-assignments">
+<h2 class="erp-section-title" id="day-assignments">Teaching assignments</h2>
+<div class="erp-assign-group">
+<h3 class="erp-assign-label" id="assign-class">Class teacher</h3>
+{% if class_rows %}
+<ul class="erp-day-rows erp-assign-rows" aria-labelledby="assign-class">
+{% for row in class_rows %}
+<li class="erp-assign-row is-link">
+    <span class="erp-day-main">
+        <a class="erp-day-title stretched-link" href="{{ row.url }}" aria-label="{{ row.section }}, {{ row.year.name }}, attendance">{{ row.section }}</a>
+        <span class="erp-card-meta">{{ row.year.name }}</span>
     </span>
-    <progress class="erp-progress" max="{{ row.expected|default:1 }}" value="{{ row.written }}" aria-hidden="true">{{ row.written }} of {{ row.expected }}</progress>
-</a>
+    <span class="erp-day-chevron" aria-hidden="true">&rsaquo;</span>
+</li>
 {% endfor %}
+</ul>
+{% else %}
+{% include "partials/_empty.html" with title="You are not a class teacher today." text="Class and subject assignments are set by the school office. If you expected to see a class here, ask the office to check your assignment." %}
+{% endif %}
+</div>
+<div class="erp-assign-group">
+<h3 class="erp-assign-label" id="assign-subjects">Subjects I teach</h3>
+{% if subject_rows %}
+<ul class="erp-day-rows erp-assign-rows" aria-labelledby="assign-subjects">
+{% for row in subject_rows %}
+<li class="erp-assign-row">
+    <span class="erp-day-main">
+        <span class="erp-day-title">{{ row.section }} &middot; {{ row.subject }}</span>
+        <span class="erp-card-meta">{{ row.year.name }}</span>
+    </span>
+</li>
+{% endfor %}
+</ul>
+{% else %}
+<p class="erp-assign-empty">No subjects are assigned to you today.</p>
+{% endif %}
+</div>
+</section>
+
+{% if remarks %}
+<section class="erp-remarks" aria-labelledby="day-remarks">
+<h2 class="erp-assign-label" id="day-remarks">Term remarks</h2>
+<ul class="erp-day-rows erp-assign-rows">
+{% for row in remarks %}
+<li class="erp-assign-row is-link">
+    <span class="erp-day-main">
+        <a class="erp-day-title stretched-link" href="{% url 'core:term-remarks' row.term.pk %}?section={{ row.section.pk }}">{{ row.term.academic_year.name }} {{ row.term.name }} &middot; {{ row.section }}</a>
+        <span class="erp-card-meta">{{ row.written }} of {{ row.expected }} written</span>
+    </span>
+    <span class="erp-day-chevron" aria-hidden="true">&rsaquo;</span>
+</li>
+{% endfor %}
+</ul>
 </section>
 {% endif %}
 </div>

@@ -945,7 +945,9 @@ def my_home(request):
             "academic_year", "section__class_grade"
         )
     )
-    subject_duties = list(current_teacher_assignments(request.user, today))
+    subject_duties = list(
+        current_teacher_assignments(request.user, today).select_related("section__class_grade")
+    )
     registers = {
         register.section_id: register
         for register in AttendanceRegister.objects.filter(
@@ -1015,7 +1017,19 @@ def my_home(request):
         {
             "today": today,
             "greeting": _greeting(request.user),
-            "no_duty": not duties and not subject_duties,
+            "class_rows": [
+                {"section": duty.section, "year": duty.academic_year,
+                 "url": reverse("core:my-attendance", args=[duty.section_id])}
+                for duty in sorted(duties, key=lambda d: str(d.section))
+            ],
+            "subject_rows": sorted(
+                (
+                    {"section": row.section, "subject": row.offering.subject.name,
+                     "year": row.offering.academic_year}
+                    for row in subject_duties
+                ),
+                key=lambda r: (str(r["section"]), r["subject"]),
+            ),
             "school_day": school_day,
             "attendance": attendance,
             "attendance_tile": _attendance_tile(attendance),
