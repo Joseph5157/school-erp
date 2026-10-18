@@ -1,21 +1,26 @@
 {% extends "base.html" %}
 {% block title %}My students{% endblock %}
 {% block content %}
+<div class="erp-students-page">
 <h1 class="h3 mb-1">My students</h1>
 <p class="text-muted">Students enrolled today ({{ today }}) in Sections you are class teacher of or teach a Subject in.</p>
 {% for group in groups %}
-<h2 class="erp-section-title">{{ group.section }} {% if group.is_class_teacher %}<span class="erp-pill is-accepted">Class teacher</span>{% endif %}</h2>
+<section class="erp-students-group" aria-labelledby="students-section-{{ forloop.counter }}">
+<h2 class="erp-section-title" id="students-section-{{ forloop.counter }}">{{ group.section }} {% if group.is_class_teacher %}<span class="erp-pill is-accepted">Class teacher</span>{% endif %}</h2>
 {% if group.is_class_teacher and not group.attendance_submitted %}<p class="text-muted small mb-2">Today's attendance not submitted yet.</p>{% endif %}
-<ul class="erp-entries list-unstyled">
+<ul class="erp-students list-unstyled">
     {% for enrollment in group.enrollments %}
-    <li class="erp-entry">
+    <li class="erp-student-row position-relative">
         <span class="erp-initials" aria-hidden="true">{{ enrollment.student.full_name|slice:":1"|upper }}</span>
-        <a class="erp-entry-name" href="{% url 'core:my-student-detail' enrollment.student.pk %}">{{ enrollment.student.full_name }}</a>
+        <a class="erp-student-name stretched-link" href="{% url 'core:my-student-detail' enrollment.student.pk %}">{{ enrollment.student.full_name }}</a>
         {% if group.is_class_teacher and enrollment.today_status %}<span class="erp-pill is-{{ enrollment.today_status|lower }}">{% if enrollment.today_status == "PRESENT" %}Present{% else %}Absent{% endif %}</span>{% endif %}
+        <span class="erp-student-chevron" aria-hidden="true">&rsaquo;</span>
     </li>
     {% endfor %}
 </ul>
+</section>
 {% empty %}
 {% include "partials/_empty.html" with title="No Students in your Sections today." text="Students appear here once you are assigned as class teacher or subject teacher of a Section. Ask the school office if this looks wrong." %}
 {% endfor %}
+</div>
 {% endblock %}

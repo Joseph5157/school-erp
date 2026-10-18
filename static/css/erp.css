@@ -193,6 +193,133 @@ body.erp { min-height: 100vh; }
   color: var(--erp-ink-soft); text-decoration: none;
 }
 .erp-tabbar a.active { color: var(--erp-accent); font-weight: 700; box-shadow: inset 0 3px 0 var(--erp-accent); }
+/* U3.1 Teacher bottom bar: icon above a one-line label. Scoped to the Teacher
+   area (body.erp-teacher) so the guardian bar, which shares .erp-tabbar, is unchanged. */
+.erp-teacher .erp-tabbar a {
+  flex-direction: column; gap: .125rem; padding: .375rem .125rem;
+  min-width: 2.75rem; min-height: max(2.75rem, var(--erp-tabbar-h));
+  font-size: .75rem;
+}
+.erp-teacher .erp-tabbar .erp-tab-label { white-space: nowrap; }
+.erp-teacher .erp-tabbar .erp-tab-icon { flex: none; }
+
+/* U3.1 My day (Gate T2). Scoped to the Teacher area; the shared .erp-card is not changed.
+   Spacing: 24px between sections, 16px card padding, 8px between related lines. */
+.erp-teacher .erp-day section + section { margin-top: 1.5rem; }
+.erp-teacher .erp-day .erp-section-title { margin: 0 0 .5rem; }
+.erp-teacher .erp-day .erp-card { padding: 1rem; margin-bottom: .5rem; }
+.erp-teacher .erp-day-main { min-width: 0; display: grid; gap: .25rem; }
+.erp-teacher .erp-day-title {
+  margin: 0; font-size: 1.125rem; font-weight: 700; line-height: 1.25; color: var(--erp-ink);
+}
+.erp-teacher .erp-day-state { margin: .25rem 0 0; }
+.erp-teacher .erp-day .btn {
+  display: inline-flex; align-items: center; justify-content: center; min-height: 2.75rem;
+}
+.erp-teacher .erp-day .erp-day-secondary {
+  display: flex; justify-content: space-between; width: 100%; margin-top: .5rem;
+}
+.erp-teacher .erp-day-chevron { color: var(--erp-ink-soft); font-size: 1.5rem; line-height: 1; }
+.erp-teacher .erp-day-linkcard { display: block; color: inherit; text-decoration: none; }
+.erp-teacher .erp-day-linkcard .erp-day-title,
+.erp-teacher .erp-day-linkcard .erp-card-meta { display: block; }
+.erp-teacher .erp-day-linkcard:hover { border-color: var(--erp-accent); }
+.erp-teacher .erp-day-linkcard:focus-visible {
+  outline: 2px solid var(--erp-focus-color); outline-offset: 2px;
+}
+/* Cards only: list rows sit inside an overflow-hidden list, so they draw their ring inset below. */
+.erp-teacher .erp-day-card .stretched-link:focus-visible { outline: none; }
+.erp-teacher .erp-day-card .stretched-link:focus-visible::after {
+  outline: 2px solid var(--erp-focus-color); outline-offset: 2px; border-radius: var(--erp-radius);
+}
+/* Neutral empty state: the page cannot prove the teacher finished anything, so no success colour or tick. */
+.erp-teacher .erp-day-empty {
+  display: grid; gap: .25rem; padding: 1rem;
+  background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
+}
+.erp-teacher .erp-day-empty .erp-day-title { font-size: 1rem; }
+.erp-teacher .erp-assess-empty { margin-bottom: 1.5rem; }
+.erp-teacher .erp-section-note { margin: 0 0 .5rem; }
+/* U3.1 My students (Gate T3). One bordered list per Section with divided, whole-row
+   targets; scoped to the Teacher area so the shared .erp-entry list is not changed. */
+.erp-teacher .erp-students-group + .erp-students-group { margin-top: 1.5rem; }
+.erp-teacher .erp-students-page .erp-section-title { margin: 0 0 .5rem; }
+.erp-teacher .erp-students {
+  margin: 0; padding: 0; overflow: hidden;
+  background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
+}
+.erp-teacher .erp-student-row {
+  display: flex; align-items: center; gap: .75rem; min-height: 3rem; padding: .5rem 1rem;
+}
+.erp-teacher .erp-student-row + .erp-student-row { border-top: 1px solid var(--erp-rule); }
+.erp-teacher .erp-student-row:hover { background: var(--erp-paper); }
+.erp-teacher .erp-student-row .erp-initials { flex: none; width: 2rem; height: 2rem; font-size: .9rem; }
+.erp-teacher .erp-student-name {
+  flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: 1.0625rem; font-weight: 600;
+  line-height: 1.25; color: var(--erp-ink); text-decoration: none;
+}
+.erp-teacher .erp-student-name:focus-visible { outline: none; }
+.erp-teacher .erp-student-name:focus-visible::after {
+  outline: 2px solid var(--erp-focus-color); outline-offset: -2px;
+}
+.erp-teacher .erp-student-chevron { flex: none; color: var(--erp-ink-soft); font-size: 1.5rem; line-height: 1; }
+/* U3.1 My assessments (Gate T4). One bordered group per Subject + Section duty: a header
+   (Subject + Section dominant, year secondary, Gradebook as a secondary action) and
+   divided assessment rows. Reuses the My day link-card language for term remarks. */
+.erp-teacher .erp-assess-duty {
+  overflow: hidden; background: var(--erp-surface);
+  border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
+}
+.erp-teacher .erp-assess-head {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: .5rem .75rem; padding: 1rem;
+}
+.erp-teacher .erp-assess-headtext { flex: 1 1 12rem; min-width: 0; display: grid; gap: .25rem; }
+.erp-teacher .erp-assess-title {
+  margin: 0; font-size: 1.125rem; font-weight: 700; line-height: 1.25;
+  color: var(--erp-ink); overflow-wrap: anywhere;
+}
+.erp-teacher .erp-assess-list { margin: 0; padding: 0; }
+.erp-teacher .erp-assess-row {
+  display: flex; align-items: center; gap: .75rem; min-height: 3rem; padding: .5rem 1rem;
+  border-top: 1px solid var(--erp-rule);
+}
+.erp-teacher .erp-assess-row:hover { background: var(--erp-paper); }
+.erp-teacher .erp-assess-main { flex: 1; min-width: 0; display: grid; gap: .125rem; }
+.erp-teacher .erp-assess-name {
+  font-size: 1rem; font-weight: 600; line-height: 1.25; color: var(--erp-ink);
+  text-decoration: none; overflow-wrap: anywhere;
+}
+.erp-teacher .erp-assess-name:focus-visible { outline: none; }
+.erp-teacher .erp-assess-name:focus-visible::after {
+  outline: 2px solid var(--erp-focus-color); outline-offset: -2px;
+}
+/* U3.1 Results (Gate T5). Current and past duties are whole-row links in a bordered list;
+   "Starting soon" is informational (dashed, no link affordance); "Read-only" is a plain pill. */
+.erp-teacher .erp-results-list {
+  margin: 0; padding: 0; overflow: hidden; background: var(--erp-surface);
+  border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
+}
+.erp-teacher .erp-results-list--info { background: transparent; border-style: dashed; }
+.erp-teacher .erp-results-row {
+  display: flex; align-items: center; gap: .75rem; min-height: 3.25rem; padding: .5rem 1rem;
+}
+.erp-teacher .erp-results-row + .erp-results-row { border-top: 1px solid var(--erp-rule); }
+.erp-teacher .erp-results-row.is-link:hover { background: var(--erp-paper); }
+.erp-teacher .erp-results-main { flex: 1; min-width: 0; display: grid; gap: .125rem; }
+.erp-teacher .erp-results-main .erp-pill { justify-self: start; margin-top: .25rem; }
+.erp-teacher .erp-results-name {
+  font-size: 1.0625rem; font-weight: 600; line-height: 1.25; color: var(--erp-ink);
+  text-decoration: none; overflow-wrap: anywhere;
+}
+.erp-teacher .erp-results-name:focus-visible { outline: none; }
+.erp-teacher a.erp-results-name:focus-visible::after {
+  outline: 2px solid var(--erp-focus-color); outline-offset: -2px;
+}
+.erp-teacher .erp-day-quiet {
+  display: inline-flex; align-items: center; min-height: 2.75rem;
+  color: var(--erp-accent-strong); font-size: var(--erp-text-sm);
+}
 @media (max-width: 991.98px) {
   body.has-tabbar .erp-content {
     padding-bottom: calc(var(--erp-tabbar-h) + 2rem + env(safe-area-inset-bottom, 0px));

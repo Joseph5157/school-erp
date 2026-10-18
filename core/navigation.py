@@ -12,6 +12,8 @@ class NavLink:
     label: str
     url_name: str  # namespaced, e.g. "core:student-list"
     perm: str | None = None
+    mobile_label: str | None = None  # shorter label for the phone bottom bar
+    icon: str | None = None  # key into partials/_tab_icon.html
 
 
 OFFICE_NAV = (
@@ -49,11 +51,26 @@ OFFICE_NAV = (
 )
 
 TEACHER_TABS = (
-    NavLink("My day", "core:my-home"),
-    NavLink("My students", "core:my-students"),
-    NavLink("My assessments", "core:my-assessments"),
-    NavLink("Results", "core:my-results"),
+    NavLink("My day", "core:my-home", mobile_label="Today", icon="today"),
+    NavLink("My students", "core:my-students", mobile_label="Students", icon="students"),
+    NavLink("My assessments", "core:my-assessments",
+            mobile_label="Assessments", icon="assessments"),
+    NavLink("Results", "core:my-results", mobile_label="Results", icon="results"),
 )
+
+# Nested Teacher pages mapped to the bottom-nav destination they belong to
+# (short URL names). The destinations themselves match on their own name.
+TEACHER_TAB_PARENTS = {
+    "my-attendance": "my-home",
+    "my-attendance-history": "my-home",
+    "my-attendance-assignment": "my-home",
+    "my-attendance-register": "my-home",
+    "my-student-detail": "my-students",
+    "my-gradebook": "my-assessments",
+    "assessment-marks-entry": "my-assessments",
+    "my-subject-results": "my-results",
+    "my-report-card": "my-results",
+}
 
 # Teacher pages whose URL name does not start with "my-".
 _TEACHER_URL_NAMES = {"assessment-marks-entry"}
@@ -67,6 +84,8 @@ def _link(link, url_name, section=None, counts=None):
     short = _short(link.url_name)
     return {
         "label": link.label,
+        "mobile_label": link.mobile_label or link.label,
+        "icon": link.icon,
         "url": reverse(link.url_name),
         "active": url_name == short or section == short,
         "badge": (counts or {}).get(link.url_name, 0),
@@ -93,7 +112,9 @@ def office_nav(user, url_name, section=None, counts=None):
 
 
 def teacher_tabs(url_name):
-    return [_link(tab, url_name) for tab in TEACHER_TABS]
+    """Teacher tabs; a nested page keeps its parent destination active."""
+    parent = TEACHER_TAB_PARENTS.get(url_name)
+    return [_link(tab, url_name, parent) for tab in TEACHER_TABS]
 
 
 def current_area(request):
