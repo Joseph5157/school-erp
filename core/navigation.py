@@ -58,6 +58,20 @@ TEACHER_TABS = (
     NavLink("Results", "core:my-results", mobile_label="Results", icon="results"),
 )
 
+# Nested Teacher pages mapped to the bottom-nav destination they belong to
+# (short URL names). The destinations themselves match on their own name.
+TEACHER_TAB_PARENTS = {
+    "my-attendance": "my-home",
+    "my-attendance-history": "my-home",
+    "my-attendance-assignment": "my-home",
+    "my-attendance-register": "my-home",
+    "my-student-detail": "my-students",
+    "my-gradebook": "my-assessments",
+    "assessment-marks-entry": "my-assessments",
+    "my-subject-results": "my-results",
+    "my-report-card": "my-results",
+}
+
 # Teacher pages whose URL name does not start with "my-".
 _TEACHER_URL_NAMES = {"assessment-marks-entry"}
 
@@ -98,7 +112,9 @@ def office_nav(user, url_name, section=None, counts=None):
 
 
 def teacher_tabs(url_name):
-    return [_link(tab, url_name) for tab in TEACHER_TABS]
+    """Teacher tabs; a nested page keeps its parent destination active."""
+    parent = TEACHER_TAB_PARENTS.get(url_name)
+    return [_link(tab, url_name, parent) for tab in TEACHER_TABS]
 
 
 def current_area(request):
