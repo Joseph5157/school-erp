@@ -1,6 +1,6 @@
 # UI Design Rules
 
-Status: adopted 2026-10-18 with U3.1 Teacher Mobile Polish (Gate T0), expanded after review.
+Status: **Proposed** (2026-10-18) with U3.1 Teacher Mobile Polish, Gate T0. It becomes adopted when Gate T0 is approved and merged.
 Applies to every screen. Tokens live in `static/css/erp.css` (`--erp-*`); domain behaviour rules stay in `docs/UI_REFERENCES.md` ("Rules the design must keep") and are restated in section 16.
 
 These rules refine the U1/U2/U3 decisions; they do not replace them: Django + Bootstrap 5.3.3, server-rendered, no build step, works with JS off.
@@ -28,13 +28,13 @@ These rules refine the U1/U2/U3 decisions; they do not replace them: Django + Bo
 - Colour is never the only signal: every status also has text or an icon with a text equivalent.
 - Border and surface first. A very subtle downward shadow only where depth genuinely helps (sticky bars, floating menus). Figure-ground: the thing in front (sheet, menu, sticky bar) is visibly separated from what is behind it.
 - Corners: card outer radius 10-12px (`--erp-radius`), inner controls 6-8px (`--erp-radius-sm`). No 24px consumer-app rounding.
-- Motion only where it explains a change: about 150-250ms, ease-out. Honour `prefers-reduced-motion` (already in `erp.css`). No motion that blocks input.
+- Motion only where it explains a change: about 150-250ms, ease-out. Any motion that is introduced must respect `prefers-reduced-motion` (no transition or animation under `reduce`), and it must be checked when the motion is added. No motion that blocks input.
 
 ## 4. Buttons and actions
 
 - A real `<button>` performs an action; a real `<a>` navigates. Do not style one as the other's semantics.
 - **One primary action per decision area.** Secondary actions are outline or link style.
-- Labels are verb + object ("Save draft", "Take attendance"), never "Submit" or "OK".
+- Labels are verb + object ("Save draft", "Take attendance"), never a generic "Submit" or "OK". Outcome labels such as "Submit attendance" are correct.
 - Destructive actions are spatially separated from the primary action, say what they destroy, and show the count when acting on several records ("Delete 12 students"). Where the action is reversible, offer **Undo** instead of a confirmation dialog; where it is not, confirm with the consequences listed.
 - A disabled-looking control must be visibly different from a secondary one (Phase 3E). A control that cannot act says why, nearby, in text.
 - A click or tap is acknowledged immediately (see section 7, immediate acknowledgement); a submit button is not left re-clickable while its request is in flight.
@@ -45,14 +45,14 @@ Each law is stated as the rule it imposes on this ERP.
 
 | Law | Rule |
 |---|---|
-| **Fitts** (target size and distance) | Touch targets at least 44x44 CSS px with spacing; the primary action of a task sits in thumb reach (sticky bottom bar on phones). |
+| **Fitts** (target size and distance) | Touch targets at least 44x44 CSS px with spacing; the primary action of a long or action-heavy task sits in thumb reach (see section 15 for when a sticky bar is used). |
 | **Hick / choice overload** | A decision area shows few options: one primary action, at most two or three secondary. Long option sets are searchable or grouped, not a flat wall of buttons or a 30-item menu. |
 | **Jakob** (familiarity) | Use platform and Bootstrap conventions: underlined/obvious links, a back path, bottom nav on phones, labelled form fields. Do not reinvent a control without a measured reason. |
 | **Similarity and affordance** | Things that look the same behave the same. Tappable things look tappable (colour, chevron, underline or button shape); non-interactive things do not (status pills have no hover state, no button shape, no pointer cursor). |
 | **Proximity** | Related items are grouped by spacing (section 2) before borders or boxes. |
-| **Serial position** | The most important items go first and last. In a bottom bar the most-used destination is first and the account/overflow last; in a list the item needing action comes before finished items. |
+| **Serial position** | The most important items go first (and, where a list has a prominent end, a needed action is not buried in the middle). In a list, items needing action come before finished items. |
 | **Peak-end** | The end of a task is designed: after save/submit/finalize, show a clear confirmation naming what happened and a sensible next step. Errors end with a recovery path, never a dead end. |
-| **Closure and goal gradient** | Multi-step tasks show a visible step indicator ("Step 2 of 4") and finished work. Completion shows a deliberate done state ("All marks entered"), not blank space. |
+| **Closure and goal gradient** | Multi-step tasks show a visible step indicator ("Step 2 of 4") and finished work. Completion shows a deliberate done state ("All marks entered"), not blank space. Where it helps, a **controlled partial glimpse** of the next card or section at the edge of the viewport may signal that content continues; do not manufacture overflow (no padding, clipping or fake rows to force a peek). |
 | **Truthful, earned progress** | Progress reflects real counts ("18 of 32 written") from real data. No percentages, bars or streaks that are invented, padded or pre-filled to look further along. |
 | **Figure-ground** | One thing is the focus at a time: a sheet or dialog dims or separates the page behind it; sticky bars have an edge or shadow. |
 | **Banner blindness** | Important status is inline with the content it refers to, not in banner-like strips at the top or in coloured ad-like boxes. Keep banners for rare page-level state and make them specific. |
@@ -65,8 +65,9 @@ Each law is stated as the rule it imposes on this ERP.
 
 - Every input has a visible `<label>`; helper text is muted and sits under the field, associated by `aria-describedby`.
 - Right `type`, `inputmode`, `autocomplete` and `enterkeyhint` for the field (numeric keypad for scores, `tel` for phones).
-- **Six input states are designed and distinct:** default, focused (visible focus ring), filled, disabled, read-only, error. Read-only is not styled as disabled: its value is still readable and selectable.
-- **When to validate:** on blur or on submit, never on every keystroke while the user is still typing. Validate on input only where it is safe and helpful (character counters, format hints, matching a password confirmation after the first blur). Clear an error as soon as the value becomes valid.
+- **Six input states are designed and distinct:** default, focus (visible focus ring), filled, error, success, disabled. **Read-only** is an additional seventh state where it applies (for example a locked value on a finalized record); it is not styled as disabled, and its value stays readable and selectable. Success is shown only when it is meaningful (a verified value), not on every valid field.
+- **When to validate:** safe client-side feedback on **blur** (format, required, range), never on every keystroke while the user is still typing. **Final, authoritative validation happens on submit and on the server**; client checks never replace it. Visible **rule checklists** (for example password rules) may update live as the user types where that helps them meet the rule. Clear an error as soon as the value becomes valid.
+- **Do not lose unsaved work:** a form with unsaved changes warns before in-app navigation or browser Back/close discards them, or keeps a draft; the warning is not shown when nothing changed. Server-rejected input is re-displayed, never dropped.
 - **Messages are field-local and actionable:** shown next to the field, associated with it (`aria-describedby`, `aria-invalid="true"`), and say what to change ("Enter a score from 0 to 20"), not just what is wrong. A form-level summary may list the errors with links to the fields; it never replaces the field-local message.
 - Errors are announced through the live region. Focus moves to the first invalid field or the summary after a failed submit.
 - **Keep input on error.** Never clear the form or a field to show an error, and never silently alter what the user typed.
@@ -81,6 +82,8 @@ Loading, error, and each kind of empty state are different and must never look a
 - **Reserve the layout** before content arrives (skeleton or fixed-height placeholder) so nothing shifts when data lands.
 - **Immediate acknowledgement:** every click/tap shows a response within about 100ms (pressed state, spinner on the button, or navigation start).
 - Prefer a skeleton shaped like the content over a spinner for page and list loads; use an inline spinner for a button action. No full-page blocking spinners.
+- **Independent regions load independently:** a slow or failed region (a card, a list, a count) shows its own loading or error state and does not block or blank the rest of the page.
+- **Ghost or sample previews are optional** and only when they are **clearly illustrative**: labelled as an example ("Sample"), visually distinct (dashed/muted, not interactive), and never styled or worded so they could be mistaken for real student, staff, attendance or marks data. They never contain realistic names, numbers or statuses that look real, and they disappear when real data arrives.
 - Long operations have a **timeout** with a message ("This is taking longer than usual") and a **retry** action. The user can still leave.
 - No invented progress. Show a real count/step, or an indeterminate indicator.
 
@@ -101,6 +104,8 @@ Loading, error, and each kind of empty state are different and must never look a
 - Primary destinations are always visible with **text labels**; icons support the label and are never the only signal.
 - Phone primary navigation is a bottom bar of at most four or five items with the most-used first (serial position). No hamburger for those destinations.
 - Navigation links stay permission-gated in templates; views still enforce access.
+- **Keep navigation shallow:** at most two levels visible; no deep or multi-level flyout menus, and no hover-only menus (they fail on touch and keyboard).
+- Leaving a page with unsaved form work follows the unsaved-work rule in section 6.
 - Breadcrumbs or a Back link on every page below a primary destination; Back never loses the user's place (section 9).
 
 ## 9. Lists, pagination and continuity
@@ -166,7 +171,7 @@ Loading, error, and each kind of empty state are different and must never look a
 ## 15. Mobile layout
 
 - Phone-first for teachers and guardians; desktop-first for the office. Every page is usable at 360px.
-- Primary actions on phones live in a sticky bottom bar above the safe area; the tab bar is hidden while a sticky action bar is shown (U2 decision).
+- A **sticky bottom primary-action bar** is for long or action workflows where the action must stay reachable (take attendance, marks entry), not for every mobile page. Short pages keep their action inline. Where one is used it sits above the safe area, and the tab bar is hidden while it is shown (U2 decision).
 - Content is not hidden behind sticky bars: pages reserve bottom padding for them.
 
 ## 16. Domain rules the UI must keep
