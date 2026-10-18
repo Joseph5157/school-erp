@@ -55,7 +55,7 @@ Responsibilities:
 - student-appropriate academic information
 - profile
 - attendance
-- timetable later
+- timetable later (a Student or Guardian timetable remains later work)
 - assessments/results later
 - announcements later
 
@@ -101,3 +101,5 @@ CURRENT:
 - online payments
 
 FROZEN: The initial product is not a generic, feature-heavy platform. It is a focused school operations system grounded in real administrative workflows.
+
+SCOPE UPDATE (2026-10-18, ADR 0021): a narrow timetable capability is now in scope: office configuration of periods and weekly slots, and the signed-in teacher's own periods on the Teacher Today dashboard. Student and guardian timetables, substitutions, special timetable days, exam schedules, rooms and electives remain out of scope or deferred. The earlier statements above about phases that excluded timetable remain accurate for those phases.

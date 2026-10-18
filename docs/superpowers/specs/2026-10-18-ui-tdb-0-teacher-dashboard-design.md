@@ -66,7 +66,7 @@ Two compact tiles side by side on mobile (they stay two columns at 360px; conten
   P3  Grade 8-A · Science
   ```
 - **The repo has no timetable or period domain model** (no Period, Slot, Timetable or Routine model; `AssessmentTeacherAssignment` states it "is not a timetable, workload, substitution or HR record"). A timetable needs proper domain design and admin setup first (gates TDB-3 and TDB-4), then integration (TDB-5).
-- **TDB-3 proposal (ADR 0021, Proposed, awaiting review):** `TimetablePeriod` (per Academic Year, ordered by `sequence`, label like P1, optional unused times) and effective-dated `TimetableSlot` (period, weekday, Section, `AcademicSubjectOffering`). The teacher is **derived** from the existing ADR 0018 assignment, not stored, so the timetable never becomes a second authorization source. TDB-5 reads today's slots for the teacher's current assignments, ordered by period, on instructional days only, with no free-period or placeholder rows. This section changes if ADR 0021 changes.
+- **TDB-3 decision (ADR 0021, Accepted):** `TimetablePeriod` (per Academic Year; only `sequence` and `label` like P1, no clock times) and effective-dated `TimetableSlot` (period, weekday, Section, `AcademicSubjectOffering`). The teacher is **derived** from the existing ADR 0018 assignment, not stored, so the timetable never becomes a second authorization source. TDB-5 reads today's slots for the teacher's current assignments, ordered by period, on instructional days only, with no free-period or placeholder rows. When the day is instructional, a timetable exists and the teacher has no row, the section shows "No periods scheduled for you today."; with no timetable configured, or on a non-instructional day, the section is hidden. This section changes if ADR 0021 changes.
 - Until TDB-5 ships the dashboard renders **no timetable section, no placeholder rows and no "coming soon" card**. Never derive periods from assignments, class order or any heuristic. Never show fake rows.
 
 ### 4. Teaching assignments (major section)
@@ -125,7 +125,7 @@ The two tiles are the dashboard's Attendance and Marks summary. The existing lar
 | **TDB-0** | This design / spec freeze | No |
 | **TDB-1** | Header plus Today overview from existing data | No |
 | **TDB-2** | Teaching assignments section, plus optional compact Term remarks | No |
-| **TDB-3** | Timetable / period domain design: `docs/adr/0021-timetable-periods-and-weekly-slots.md` (Proposed; ten open decisions for review). Substitutions, special days, exams, rooms deferred | Design only |
+| **TDB-3** | Timetable / period domain design: `docs/adr/0021-timetable-periods-and-weekly-slots.md` (Accepted 2026-10-18). Substitutions, special days, exams, rooms, electives, year copy deferred | Design only |
 | **TDB-4** | Timetable office setup as outlined in ADR 0021: models and migration, permissions for School Administrators, period list and per-Section weekly grid, integrity rules R1-R7, conflicts report, tests | Yes (migration) |
 | **TDB-5** | Today's timetable dashboard integration, period-based | No new models |
 | **TDB-6** | Responsive, accessibility and final verification at 360/390px, JS off, focus, 44px targets | No |

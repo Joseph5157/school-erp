@@ -176,6 +176,8 @@ FROZEN (ADR 0012, Phase 5): the class teacher effective on a date may take and s
 
 OPEN: Period/slot-level attendance, leave workflows, portals, notifications, and timetable integration are later work and are not part of Phase 2.
 
+SCOPE UPDATE (2026-10-18, ADR 0021): a limited timetable is now in scope as separate later work, not as Phase 2 attendance: `TimetablePeriod` (Academic Year, sequence, label) and effective-dated `TimetableSlot` (period, weekday Monday-Saturday, Section, AcademicSubjectOffering). The teacher of a slot is derived from the effective subject teacher assignment (ADR 0018) and is never stored; a timetable grants no authorization. Substitutions, special days, exams, rooms, electives and year copy stay deferred. Period/slot-level attendance remains out of scope.
+
 ## Communication
 
 CURRENT: Potential channels include email, WhatsApp, Telegram, and in-app notifications.

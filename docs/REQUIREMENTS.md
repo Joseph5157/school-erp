@@ -424,7 +424,7 @@ journey in `core/tests/test_phase5_acceptance.py`.
 
 ## Explicitly out of scope for Phase 5
 
-- timetable, periods, period/slot-level attendance
+- timetable, periods, period/slot-level attendance (timetable periods and weekly slots were later brought into scope by ADR 0021; period/slot-level attendance was not)
 - substitute/cover workflows, co-class-teachers, workload tracking
 - staff profiles, HR, payroll, leave, staff attendance
 - lesson plans, homework, gradebooks outside assessments
@@ -538,3 +538,7 @@ FROZEN: A feature or milestone is done when, where applicable:
 - human business acceptance is completed
 
 Do not impose an arbitrary code-coverage percentage. Testing should prioritize meaningful business rules, permissions, lifecycle transitions, integrity, and important contracts.
+
+## Scope update: limited timetable (2026-10-18, ADR 0021)
+
+The statements above that timetable was out of scope describe the phases they name and remain accurate for them. A narrow timetable capability is now in scope: an office user configures an Academic Year's ordered periods and effective-dated weekly slots (Section, Subject offering, weekday, period), and a teacher sees their own periods for the day on the Teacher dashboard. The teacher of a slot is derived from the existing subject teacher assignment and a timetable grants no access. Still out of scope or deferred: Student and Guardian timetables, substitutions and cover, special timetable days, exam schedules, rooms, electives and split groups, copying a timetable to a new year, and period-level attendance.
