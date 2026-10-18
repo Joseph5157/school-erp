@@ -328,11 +328,64 @@ class TeacherClashTests(TimetableFixture, TestCase):
         self.slot(section=self.six_b, offering=self.sanskrit)
         self.assertEqual(TimetableSlot.objects.count(), 2)
 
-    def test_inactive_teacher_is_not_a_derived_teacher(self):
+    def _september_clash(self):
+        """Rao in 6A and 6B, P1 Monday: a clash blocked at save, so built raw."""
+        TimetableSlot.objects.create(
+            period=self.p1, weekday=0, section=self.six_a, offering=self.maths,
+            start_date=date(2026, 6, 1), end_date=date(2026, 9, 30),
+        )
+        TimetableSlot.objects.create(
+            period=self.p1, weekday=0, section=self.six_b, offering=self.sanskrit,
+            start_date=date(2026, 6, 1), end_date=date(2026, 9, 30),
+        )
+
+    def assertSeptemberClashRemains(self):
+        report = timetable.find_all_clashes(self.year)
+        self.assertEqual(len(report), 1)
+        self.assertEqual(report[0].teacher, self.rao)
+        self.assertEqual((report[0].start, report[0].end), (date(2026, 6, 1), date(2026, 9, 30)))
+
+    def test_historical_clash_survives_the_teacher_being_deactivated(self):
+        self._september_clash()
+        self.assertSeptemberClashRemains()
+        self.rao.is_active = False
+        self.rao.save()
+        self.assertSeptemberClashRemains()
+
+    def test_historical_clash_survives_removal_from_the_teachers_group(self):
+        self._september_clash()
+        self.rao.groups.remove(self.teachers)
+        self.assertSeptemberClashRemains()
+
+    def test_save_time_check_still_sees_a_former_teachers_assignment(self):
         self.rao.is_active = False
         self.rao.save()
         self.slot()
-        self.slot(section=self.six_b, offering=self.sanskrit)
+        with self.assertRaises(ValidationError):
+            self.slot(section=self.six_b, offering=self.sanskrit)
+
+    def test_former_teacher_still_has_no_access(self):
+        self.rao.is_active = False
+        self.rao.save()
+        with pin_today(date(2026, 10, 19)):
+            self.assertFalse(authorization.can_enter_results(self.rao, self.maths, self.six_a))
+            self.assertFalse(authorization.current_teacher_assignments(self.rao).exists())
+        self.rao.is_active = True
+        self.rao.save()
+        self.rao.groups.remove(self.teachers)
+        with pin_today(date(2026, 10, 19)):
+            self.assertFalse(authorization.can_enter_results(self.rao, self.maths, self.six_a))
+
+    def test_assignment_rows_remain_the_source_of_historical_identity(self):
+        self.rao.is_active = False
+        self.rao.groups.remove(self.teachers)
+        self.rao.save()
+        self.assertEqual(
+            AssessmentTeacherAssignment.objects.filter(teacher=self.rao).count(), 2
+        )
+        self._september_clash()
+        clash = timetable.find_all_clashes(self.year)[0]
+        self.assertEqual(clash.teacher.pk, self.rao.pk)
 
     def test_change_that_creates_a_clash_is_blocked_and_rolled_back(self):
         with pin_today():

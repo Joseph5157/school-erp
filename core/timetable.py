@@ -8,8 +8,9 @@ re-implemented in `clean()` methods, forms or views.
 
 A slot has no stored teacher. Its teacher on a date is the holder of the
 `AssessmentTeacherAssignment` for the same offering + Section effective that
-day (ADR 0018), provided that holder is still an active member of the Teachers
-group. Everything here works on date ranges, never on "today's teacher".
+day (ADR 0018). The holder's current account state (active, Teachers group) is
+an authorization question and plays no part here: history and planned clashes
+follow the assignment rows alone (ADR 0018 D9). Everything here works on date ranges, never on "today's teacher".
 """
 
 from dataclasses import dataclass
@@ -20,7 +21,6 @@ from django.core.exceptions import ValidationError
 from django.db.models import Q
 
 from core.models import (
-    TEACHERS_GROUP_NAME,
     AssessmentTeacherAssignment,
     TimetableSlot,
     _as_date,
@@ -44,18 +44,15 @@ def slot_last_effective_date(slot):
 
 
 def _assignment_spans(pairs):
-    """{(offering_id, section_id): [(teacher, first, last), ...]} for derived teachers."""
+    """{(offering_id, section_id): [(teacher, first, last), ...]} from assignment rows."""
     if not pairs:
         return {}
     rows = (
         AssessmentTeacherAssignment.objects.filter(
             offering_id__in={offering for offering, _ in pairs},
             section_id__in={section for _, section in pairs},
-            teacher__is_active=True,
-            teacher__groups__name=TEACHERS_GROUP_NAME,
         )
         .select_related("teacher", "offering__academic_year")
-        .distinct()
     )
     spans = {}
     for row in rows:
