@@ -3845,3 +3845,94 @@ class DocumentSerialCounter(models.Model):
                 fields=["document_type", "academic_year"], name="documentserialcounter_unique"
             ),
         ]
+
+
+class TimetablePeriod(models.Model):
+    """A numbered teaching period of the school day in one Academic Year (ADR 0021).
+
+    Periods carry no clock times, break type, teacher or room.
+    """
+
+    academic_year = models.ForeignKey(
+        AcademicYear, on_delete=models.PROTECT, related_name="timetable_periods"
+    )
+    sequence = models.PositiveSmallIntegerField(validators=[MinValueValidator(1)])
+    label = models.CharField(max_length=30)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["academic_year", "sequence"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["academic_year", "sequence"],
+                name="timetableperiod_unique_year_sequence",
+            ),
+            models.UniqueConstraint(
+                fields=["academic_year", "label"],
+                name="timetableperiod_unique_year_label",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.label} ({self.academic_year})"
+
+
+class TimetableSlotQuerySet(models.QuerySet):
+    def effective_on(self, on_date):
+        """Slots whose inclusive date range contains `on_date`."""
+        on_date = _as_date(on_date)
+        return self.filter(start_date__lte=on_date).filter(
+            models.Q(end_date__isnull=True) | models.Q(end_date__gte=on_date)
+        )
+
+
+class TimetableSlot(models.Model):
+    """One Subject offering taught to one Section in one period on one weekday (ADR 0021).
+
+    The teacher is never stored; it is derived from the ADR 0018 assignment.
+    `weekday` follows Python's `date.weekday()`: 0 = Monday ... 5 = Saturday.
+    """
+
+    WEEKDAY_CHOICES = [
+        (0, "Monday"),
+        (1, "Tuesday"),
+        (2, "Wednesday"),
+        (3, "Thursday"),
+        (4, "Friday"),
+        (5, "Saturday"),
+    ]
+
+    period = models.ForeignKey(TimetablePeriod, on_delete=models.PROTECT, related_name="slots")
+    weekday = models.PositiveSmallIntegerField(choices=WEEKDAY_CHOICES)
+    section = models.ForeignKey(Section, on_delete=models.PROTECT, related_name="timetable_slots")
+    offering = models.ForeignKey(
+        AcademicSubjectOffering, on_delete=models.PROTECT, related_name="timetable_slots"
+    )
+    start_date = models.DateField()
+    end_date = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    objects = TimetableSlotQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["period__academic_year", "weekday", "period__sequence", "section"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(weekday__gte=0, weekday__lte=5),
+                name="timetableslot_weekday_monday_to_saturday",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(end_date__isnull=True)
+                | models.Q(end_date__gte=models.F("start_date")),
+                name="timetableslot_end_date_not_before_start_date",
+            ),
+            models.UniqueConstraint(
+                fields=["period", "weekday", "section", "start_date"],
+                name="timetableslot_unique_cell_start",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.get_weekday_display()} {self.period} {self.section}"
