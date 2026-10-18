@@ -327,18 +327,19 @@ class MyDayPolishTests(MarksFixture, TestCase):
         page = self.home()
         waiting = page.context["assessments"]
         self.assertTrue(waiting)
-        self.assertNotContains(page, "All marks entered")
+        self.assertNotContains(page, "No marks waiting")
         for assessment in waiting:
             self.assertContains(page, f'href="{self.entry_url(assessment)}"')
             self.assertContains(page, assessment.name)
             self.assertContains(page, f"{assessment.unmarked_count} unmarked")
 
-    def test_completed_marks_state_replaces_nothing_waiting(self):
+    def test_empty_marks_state_is_neutral_and_links_to_assessments(self):
         self.force_finalize(self.test1)
         self.force_finalize(self.test2)
         page = self.home()
         self.assertEqual(page.context["assessments"], [])
-        self.assertContains(page, "All marks entered")
+        self.assertContains(page, "No marks waiting")
+        self.assertContains(page, "No open assessments are waiting for your marks.")
         self.assertNotContains(page, "Nothing waiting")
         self.assertContains(page, f'href="{reverse("core:my-assessments")}"')
         self.assertContains(page, ">My assessments<")
