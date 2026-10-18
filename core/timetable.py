@@ -10,7 +10,8 @@ A slot has no stored teacher. Its teacher on a date is the holder of the
 `AssessmentTeacherAssignment` for the same offering + Section effective that
 day (ADR 0018). The holder's current account state (active, Teachers group) is
 an authorization question and plays no part here: history and planned clashes
-follow the assignment rows alone (ADR 0018 D9). Everything here works on date ranges, never on "today's teacher".
+follow the assignment rows alone (ADR 0018 D9). Everything here works on date ranges, never on
+"today's teacher".
 """
 
 from dataclasses import dataclass
