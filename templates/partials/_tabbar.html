@@ -1,8 +1,8 @@
-{# Bottom tab bar for phones. Expects `tabs` and `tabbar_label`. #}
+{# Bottom tab bar for phones. Expects `tabs` and `tabbar_label`. A tab may carry `icon` and `mobile_label`. #}
 <nav class="erp-tabbar d-lg-none" aria-label="{{ tabbar_label }}">
     <ul>
         {% for tab in tabs %}
-        <li><a href="{{ tab.url }}"{% if tab.active %} class="active" aria-current="page"{% endif %}>{{ tab.label }}</a></li>
+        <li><a href="{{ tab.url }}"{% if tab.active %} class="active" aria-current="page"{% endif %}>{% if tab.icon %}{% include "partials/_tab_icon.html" with name=tab.icon %}{% endif %}<span class="erp-tab-label">{{ tab.mobile_label|default:tab.label }}</span></a></li>
         {% endfor %}
     </ul>
 </nav>

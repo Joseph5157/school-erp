@@ -193,6 +193,15 @@ body.erp { min-height: 100vh; }
   color: var(--erp-ink-soft); text-decoration: none;
 }
 .erp-tabbar a.active { color: var(--erp-accent); font-weight: 700; box-shadow: inset 0 3px 0 var(--erp-accent); }
+/* U3.1 Teacher bottom bar: icon above a one-line label. Scoped to the Teacher
+   area (body.erp-teacher) so the guardian bar, which shares .erp-tabbar, is unchanged. */
+.erp-teacher .erp-tabbar a {
+  flex-direction: column; gap: .125rem; padding: .375rem .125rem;
+  min-width: 2.75rem; min-height: max(2.75rem, var(--erp-tabbar-h));
+  font-size: .75rem;
+}
+.erp-teacher .erp-tabbar .erp-tab-label { white-space: nowrap; }
+.erp-teacher .erp-tabbar .erp-tab-icon { flex: none; }
 @media (max-width: 991.98px) {
   body.has-tabbar .erp-content {
     padding-bottom: calc(var(--erp-tabbar-h) + 2rem + env(safe-area-inset-bottom, 0px));

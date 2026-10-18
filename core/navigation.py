@@ -12,6 +12,8 @@ class NavLink:
     label: str
     url_name: str  # namespaced, e.g. "core:student-list"
     perm: str | None = None
+    mobile_label: str | None = None  # shorter label for the phone bottom bar
+    icon: str | None = None  # key into partials/_tab_icon.html
 
 
 OFFICE_NAV = (
@@ -49,10 +51,11 @@ OFFICE_NAV = (
 )
 
 TEACHER_TABS = (
-    NavLink("My day", "core:my-home"),
-    NavLink("My students", "core:my-students"),
-    NavLink("My assessments", "core:my-assessments"),
-    NavLink("Results", "core:my-results"),
+    NavLink("My day", "core:my-home", mobile_label="Today", icon="today"),
+    NavLink("My students", "core:my-students", mobile_label="Students", icon="students"),
+    NavLink("My assessments", "core:my-assessments",
+            mobile_label="Assessments", icon="assessments"),
+    NavLink("Results", "core:my-results", mobile_label="Results", icon="results"),
 )
 
 # Teacher pages whose URL name does not start with "my-".
@@ -67,6 +70,8 @@ def _link(link, url_name, section=None, counts=None):
     short = _short(link.url_name)
     return {
         "label": link.label,
+        "mobile_label": link.mobile_label or link.label,
+        "icon": link.icon,
         "url": reverse(link.url_name),
         "active": url_name == short or section == short,
         "badge": (counts or {}).get(link.url_name, 0),
