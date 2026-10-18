@@ -2,53 +2,42 @@
 {% block title %}My day{% endblock %}
 {% block content %}
 <div class="erp-day">
+<header class="erp-day-head">
 <h1 class="h3 mb-1">My day</h1>
-<p class="text-muted mb-4">{{ today|date:"l, j F Y" }}</p>
+<p class="erp-day-greeting">{{ greeting }}</p>
+<p class="erp-day-date text-muted">{{ today|date:"l, j F Y" }}
+{% if school_day is True %}<span class="erp-pill">School day</span>{% elif school_day is False %}<span class="erp-pill">Not a school day</span>{% endif %}</p>
+</header>
 
-<section aria-labelledby="day-attendance">
-<h2 class="erp-section-title" id="day-attendance">Attendance</h2>
-{% for row in attendance %}
-<div class="erp-card erp-day-card">
-    <div class="erp-card-row">
-        <div class="erp-day-main">
-            <p class="erp-day-title">{{ row.duty.section }}</p>
-            <p class="erp-day-state">
-            {% if row.state == "NOT_INSTRUCTIONAL" %}<span class="erp-pill">Not a school day</span>
-            {% elif row.state == "NOT_TAKEN" %}<span class="erp-pill is-pending">Not taken</span>
-            {% elif row.state == "DRAFT" %}<span class="erp-pill is-draft">Draft &mdash; not yet submitted</span>
-            {% else %}<span class="erp-pill is-submitted">Submitted</span>{% endif %}
-            </p>
-        </div>
-        {% if row.state == "NOT_TAKEN" %}<a class="btn btn-primary" href="{% url 'core:my-attendance' row.duty.section.pk %}" aria-label="Take attendance for {{ row.duty.section }}">Take attendance</a>
-        {% elif row.state == "DRAFT" %}<a class="btn btn-outline-primary" href="{% url 'core:my-attendance' row.duty.section.pk %}" aria-label="Continue attendance for {{ row.duty.section }}">Continue</a>
-        {% elif row.state == "SUBMITTED" %}<a class="btn btn-outline-secondary" href="{% url 'core:my-attendance' row.duty.section.pk %}" aria-label="View attendance for {{ row.duty.section }}">View</a>{% endif %}
-    </div>
+<section aria-labelledby="day-overview">
+<h2 class="visually-hidden" id="day-overview">Today overview</h2>
+<div class="erp-tiles">
+{% include "core/_day_tile.html" with label="Attendance" tile=attendance_tile %}
+{% include "core/_day_tile.html" with label="Marks" tile=marks_tile %}
 </div>
-{% empty %}
+{% if no_duty %}
 {% include "partials/_empty.html" with title="You are not a class teacher today." text="Class and subject assignments are set by the school office. If you expected to see a class here, ask the office to check your assignment." %}
+{% endif %}
+{% if attendance_rows|length > 1 %}
+<ul class="erp-day-rows" aria-label="Attendance by Section">
+{% for row in attendance_rows %}
+<li class="erp-day-row">
+    <span class="erp-day-main">
+        <span class="erp-day-title">{{ row.duty.section }}</span>
+        <span class="erp-day-state">
+        {% if row.state == "NOT_TAKEN" %}<span class="erp-pill is-pending">Not taken</span>
+        {% elif row.state == "DRAFT" %}<span class="erp-pill is-draft">Draft &mdash; not yet submitted</span>
+        {% else %}<span class="erp-pill is-submitted">Submitted</span>{% endif %}
+        </span>
+    </span>
+    {% if row.state == "NOT_TAKEN" %}<a class="btn btn-primary" href="{% url 'core:my-attendance' row.duty.section.pk %}" aria-label="Take attendance for {{ row.duty.section }}">Take attendance</a>
+    {% elif row.state == "DRAFT" %}<a class="btn btn-outline-primary" href="{% url 'core:my-attendance' row.duty.section.pk %}" aria-label="Continue attendance for {{ row.duty.section }}">Continue</a>
+    {% else %}<a class="btn btn-outline-secondary" href="{% url 'core:my-attendance' row.duty.section.pk %}" aria-label="View attendance for {{ row.duty.section }}">View</a>{% endif %}
+</li>
 {% endfor %}
+</ul>
+{% endif %}
 <a class="btn btn-outline-secondary erp-day-secondary" href="{% url 'core:my-attendance-history' %}"><span>Attendance history for my Sections</span><span class="erp-day-chevron" aria-hidden="true">&rsaquo;</span></a>
-</section>
-
-<section aria-labelledby="day-marks">
-<h2 class="erp-section-title" id="day-marks">Marks to enter</h2>
-{% for assessment in assessments %}
-<div class="erp-card erp-day-card position-relative">
-    <div class="erp-card-row">
-        <div class="erp-day-main">
-            <p class="erp-day-title"><a class="stretched-link text-reset text-decoration-none" href="{% url 'core:assessment-marks-entry' assessment.pk %}">{{ assessment.name }}</a></p>
-            <p class="erp-card-meta">{{ assessment.subject_display }} &middot; {{ assessment.section }} &middot; {{ assessment.assessment_date|date:"j M" }}</p>
-        </div>
-        <span class="erp-pill is-pending">{{ assessment.unmarked_count }} unmarked</span>
-    </div>
-</div>
-{% empty %}
-<div class="erp-day-empty">
-    <p class="erp-day-title">No marks waiting</p>
-    <p class="erp-card-meta">No open assessments are waiting for your marks.</p>
-    <a class="erp-day-quiet" href="{% url 'core:my-assessments' %}">My assessments</a>
-</div>
-{% endfor %}
 </section>
 
 {% if remarks %}

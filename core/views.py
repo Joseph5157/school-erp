@@ -871,6 +871,72 @@ def _open_assessments_needing_marks(user, today):
     )
 
 
+def _greeting(user):
+    """Time-of-day greeting by local time (the same timezone as business_today)."""
+    hour = timezone.localtime().hour
+    part = "morning" if hour < 12 else "afternoon" if hour < 17 else "evening"
+    return f"Good {part}, {user.get_full_name() or user.get_username()}"
+
+
+_ATTENDANCE_URGENCY = ("NOT_TAKEN", "DRAFT", "SUBMITTED")
+_ATTENDANCE_LABEL = {"NOT_TAKEN": "Not taken", "DRAFT": "Draft", "SUBMITTED": "Submitted"}
+
+
+def _attendance_tile(attendance):
+    """Today-overview Attendance tile from the class-teacher rows (TDB-0).
+
+    Rows on a non-instructional day take no part in the tile. One actionable
+    Section links straight to its page; several make a non-interactive summary.
+    """
+    actionable = [row for row in attendance if row["state"] != "NOT_INSTRUCTIONAL"]
+    if not actionable:
+        return {
+            "state": "Not required",
+            "meta": "Not a school day" if attendance else "No class assigned",
+            "url": None,
+        }
+    if len(actionable) == 1:
+        row = actionable[0]
+        return {
+            "state": _ATTENDANCE_LABEL[row["state"]],
+            "meta": str(row["duty"].section),
+            "url": reverse("core:my-attendance", args=[row["duty"].section_id]),
+        }
+    submitted = sum(1 for row in actionable if row["state"] == "SUBMITTED")
+    urgent = min((row["state"] for row in actionable), key=_ATTENDANCE_URGENCY.index)
+    return {
+        "state": _ATTENDANCE_LABEL[urgent],
+        "meta": f"{submitted} of {len(actionable)} submitted",
+        "url": None,
+    }
+
+
+def _marks_tile(assessments, has_subject_duty):
+    """Today-overview Marks tile. The summed count is marks, never students."""
+    if assessments:
+        marks = sum(a.unmarked_count for a in assessments)
+        state = f"{marks} mark{'s' if marks != 1 else ''} remaining"
+        if len(assessments) == 1:
+            only = assessments[0]
+            return {
+                "state": state,
+                "meta": only.name,
+                "url": reverse("core:assessment-marks-entry", args=[only.pk]),
+            }
+        return {
+            "state": state,
+            "meta": f"across {len(assessments)} assessments",
+            "url": reverse("core:my-assessments"),
+        }
+    if has_subject_duty:
+        return {
+            "state": "Nothing waiting",
+            "meta": "No open assessments are waiting",
+            "url": reverse("core:my-assessments"),
+        }
+    return {"state": "Not required", "meta": "No subjects assigned", "url": None}
+
+
 @teacher_required
 def my_home(request):
     today = business_today()
@@ -879,6 +945,7 @@ def my_home(request):
             "academic_year", "section__class_grade"
         )
     )
+    subject_duties = list(current_teacher_assignments(request.user, today))
     registers = {
         register.section_id: register
         for register in AttendanceRegister.objects.filter(
@@ -901,6 +968,20 @@ def my_home(request):
         else:
             state = AttendanceRegister.AttendanceState.DRAFT
         attendance.append({"duty": duty, "register": register, "state": state})
+
+    # Header status (TDB-0): only when the teacher's own assignments point at
+    # exactly one Academic Year. No year, or several, means no status.
+    years = {duty.academic_year.pk: duty.academic_year for duty in duties}
+    years.update({row.offering.academic_year_id: row.offering.academic_year
+                  for row in subject_duties})
+    school_day = None
+    if len(years) == 1:
+        (year,) = years.values()
+        if year.pk not in instructional:
+            instructional[year.pk] = year.is_instructional_day(today)
+        school_day = instructional[year.pk]
+
+    assessments = _open_assessments_needing_marks(request.user, today)
 
     remarks = []
     terms = AcademicTerm.objects.filter(
@@ -933,8 +1014,14 @@ def my_home(request):
         "core/my_home.html",
         {
             "today": today,
+            "greeting": _greeting(request.user),
+            "no_duty": not duties and not subject_duties,
+            "school_day": school_day,
             "attendance": attendance,
-            "assessments": _open_assessments_needing_marks(request.user, today),
+            "attendance_tile": _attendance_tile(attendance),
+            "attendance_rows": [r for r in attendance if r["state"] != "NOT_INSTRUCTIONAL"],
+            "assessments": assessments,
+            "marks_tile": _marks_tile(assessments, bool(subject_duties)),
             "remarks": remarks,
         },
     )

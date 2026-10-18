@@ -72,7 +72,8 @@ class Phase5AcceptanceJourneyTests(Phase4Fixture, TestCase):
 
         # Teacher home shows today's work and lands after login.
         home = self.rao_c.get(reverse("core:my-home"))
-        self.assertContains(home, "Take attendance")
+        self.assertContains(home, "Not taken")
+        self.assertContains(home, reverse("core:my-attendance", args=[self.six_a.pk]))
 
         # The class teacher submits today's attendance.
         attendance = reverse("core:my-attendance", args=[self.six_a.pk])
