@@ -261,6 +261,37 @@ body.erp { min-height: 100vh; }
   outline: 2px solid var(--erp-focus-color); outline-offset: -2px;
 }
 .erp-teacher .erp-student-chevron { flex: none; color: var(--erp-ink-soft); font-size: 1.5rem; line-height: 1; }
+/* U3.1 My assessments (Gate T4). One bordered group per Subject + Section duty: a header
+   (Subject + Section dominant, year secondary, Gradebook as a secondary action) and
+   divided assessment rows. Reuses the My day link-card language for term remarks. */
+.erp-teacher .erp-assess-duty {
+  overflow: hidden; background: var(--erp-surface);
+  border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
+}
+.erp-teacher .erp-assess-head {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: .5rem .75rem; padding: 1rem;
+}
+.erp-teacher .erp-assess-headtext { flex: 1 1 12rem; min-width: 0; display: grid; gap: .25rem; }
+.erp-teacher .erp-assess-title {
+  margin: 0; font-size: 1.125rem; font-weight: 700; line-height: 1.25;
+  color: var(--erp-ink); overflow-wrap: anywhere;
+}
+.erp-teacher .erp-assess-list { margin: 0; padding: 0; }
+.erp-teacher .erp-assess-row {
+  display: flex; align-items: center; gap: .75rem; min-height: 3rem; padding: .5rem 1rem;
+  border-top: 1px solid var(--erp-rule);
+}
+.erp-teacher .erp-assess-row:hover { background: var(--erp-paper); }
+.erp-teacher .erp-assess-main { flex: 1; min-width: 0; display: grid; gap: .125rem; }
+.erp-teacher .erp-assess-name {
+  font-size: 1rem; font-weight: 600; line-height: 1.25; color: var(--erp-ink);
+  text-decoration: none; overflow-wrap: anywhere;
+}
+.erp-teacher .erp-assess-name:focus-visible { outline: none; }
+.erp-teacher .erp-assess-name:focus-visible::after {
+  outline: 2px solid var(--erp-focus-color); outline-offset: -2px;
+}
 .erp-teacher .erp-day-quiet {
   display: inline-flex; align-items: center; min-height: 2.75rem;
   color: var(--erp-accent-strong); font-size: var(--erp-text-sm);

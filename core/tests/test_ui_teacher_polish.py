@@ -502,3 +502,123 @@ class MyStudentsPolishTests(MarksFixture, TestCase):
         self.assertNotIn("<table", html)
         self.assertNotIn('type="search"', html)
         self.assertNotIn("<select", html)
+
+
+class MyAssessmentsPolishTests(MarksFixture, TestCase):
+    """U3.1 Gate T4: My assessments."""
+
+    def setUp(self):
+        super().setUp()
+        self.url = reverse("core:my-assessments")
+
+    def page(self):
+        return self.teacher.get(self.url)
+
+    def class_teacher(self):
+        return SectionClassTeacher.assign(
+            teacher=self.rao, academic_year=self.year, section=self.six_a,
+            start_date=date(2026, 6, 1),
+        )
+
+    def duty_blocks(self, page):
+        html = page.content.decode()
+        return [part.split("</section>", 1)[0]
+                for part in html.split('<section class="erp-assess-duty"')[1:]]
+
+    def test_heading_is_kept(self):
+        page = self.page()
+        self.assertContains(page, '<h1 class="h3 mb-3">My assessments</h1>')
+        self.assertContains(page, "Term remarks</h2>")
+        self.assertNotContains(page, "You enter marks for nothing yet")
+
+    def test_each_duty_is_one_group_with_subject_section_dominant(self):
+        self.assign(self.rao, self.sanskrit, self.six_b)
+        self.make_assessment(offering=self.sanskrit, section=self.six_b, name="Sanskrit Quiz",
+                             on=date(2026, 7, 20))
+        page = self.page()
+        duties = page.context["duties"]
+        self.assertEqual(len(duties), 2)
+        blocks = self.duty_blocks(page)
+        self.assertEqual(len(blocks), 2)
+        for duty in duties:
+            title = (f'<h2 class="erp-assess-title" id="duty-{duty.pk}">'
+                     f'{duty.offering.subject.name} &middot; {duty.section}</h2>')
+            block = next(b for b in blocks if title in b)
+            self.assertIn(
+                f'<p class="erp-card-meta">{duty.offering.academic_year.name}</p>', block)
+            self.assertEqual(block.count("Gradebook</a>"), 1)
+            self.assertIn(f'href="{reverse("core:my-gradebook", args=[duty.pk])}"', block)
+        by_title = {("Mathematics" in b): b for b in blocks}
+        self.assertIn("Unit Test 1", by_title[True])
+        self.assertNotIn("Sanskrit Quiz", by_title[True])
+        self.assertIn("Sanskrit Quiz", by_title[False])
+        self.assertNotIn("Unit Test 1", by_title[False])
+
+    def test_assessment_rows_have_name_date_status_and_one_entry_link(self):
+        block = self.duty_blocks(self.page())[0]
+        rows = re.findall(r'<li class="erp-assess-row[^"]*">(.*?)</li>', block, re.DOTALL)
+        self.assertEqual(len(rows), 2)
+        for assessment in (self.test1, self.test2):
+            row = next(r for r in rows if assessment.name in r)
+            self.assertEqual(row.count("<a "), 1)
+            self.assertIn(
+                f'<a class="erp-assess-name stretched-link" '
+                f'href="{self.entry_url(assessment)}">{assessment.name}</a>', row)
+            day = assessment.assessment_date
+            self.assertIn(f"{day.day} {day.strftime('%b')}", row)
+            self.assertIn('aria-hidden="true">&rsaquo;', row)
+
+    def test_rows_keep_the_views_order(self):
+        html = self.page().content.decode()
+        self.assertLess(html.index("Unit Test 2"), html.index("Unit Test 1"))
+
+    def test_draft_and_finalized_pills_are_non_interactive_status(self):
+        page = self.page()
+        self.assertContains(page, '<span class="erp-pill is-draft">Draft</span>', count=2)
+        self.force_finalize(self.test1)
+        page = self.page()
+        self.assertContains(page, '<span class="erp-pill is-submitted">Finalized</span>', count=1)
+        self.assertContains(page, '<span class="erp-pill is-draft">Draft</span>', count=1)
+        for block in self.duty_blocks(page):
+            for pill in re.findall(r'<span class="erp-pill[^"]*">[^<]+</span>', block):
+                before = block[:block.index(pill)]
+                self.assertTrue(before.rfind("</a>") > before.rfind("<a "))
+
+    def test_no_duty_shows_the_purposeful_empty_state(self):
+        iyer = self.client_class()
+        iyer.login(username="iyer", password="pass-12345")
+        page = iyer.get(self.url)
+        self.assertContains(page, "No assessments assigned")
+        self.assertContains(page, "set by the school office")
+        self.assertNotContains(page, "You enter marks for nothing yet")
+        self.assertEqual(self.duty_blocks(page), [])
+
+    def test_term_remarks_are_whole_row_links_with_the_section_query(self):
+        self.class_teacher()
+        page = self.page()
+        links = page.context["remark_links"]
+        self.assertTrue(links)
+        html = page.content.decode()
+        remarks = html.split('id="assess-remarks"', 1)[1].split("</section>", 1)[0]
+        self.assertEqual(remarks.count("<a "), len(links))
+        self.assertEqual(remarks.count("erp-day-linkcard"), len(links))
+        for term, section in links:
+            href = f'{reverse("core:term-remarks", args=[term.pk])}?section={section.pk}'
+            self.assertContains(page, f'href="{href}"')
+            self.assertIn(f"{term.academic_year.name} {term.name} &middot; {section}", remarks)
+        self.assertNotIn("<li>", remarks)
+        self.assertNotContains(page, "No Sections assigned.")
+
+    def test_no_remark_sections_shows_a_quiet_empty_state(self):
+        page = self.page()
+        self.assertEqual(page.context["remark_links"], [])
+        self.assertContains(page, "No Sections are available for term remarks.")
+        self.assertNotContains(page, "erp-day-linkcard")
+        self.assertNotContains(page, "<li>No Sections assigned.</li>")
+
+    def test_no_totals_averages_ranks_or_invented_progress(self):
+        self.class_teacher()
+        html = self.page().content.decode()
+        for word in ("Total", "Average", "Rank", "<progress", "unmarked", "%"):
+            self.assertNotIn(word, html)
+        self.assertNotIn("<table", html)

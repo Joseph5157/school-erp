@@ -1,28 +1,48 @@
 {% extends "base.html" %}
 {% block title %}My assessments{% endblock %}
 {% block content %}
+<div class="erp-day erp-assess-page">
 <h1 class="h3 mb-3">My assessments</h1>
 {% for duty in duties %}
-<div class="erp-card">
-    <div class="erp-card-row">
-        <p class="erp-card-title">{{ duty.offering.subject.name }} &middot; {{ duty.section }} <span class="erp-card-meta">({{ duty.offering.academic_year.name }})</span></p>
-        <a class="btn btn-outline-primary btn-sm" href="{% url 'core:my-gradebook' duty.pk %}">Gradebook</a>
+<section class="erp-assess-duty" aria-labelledby="duty-{{ duty.pk }}">
+    <div class="erp-assess-head">
+        <div class="erp-assess-headtext">
+            <h2 class="erp-assess-title" id="duty-{{ duty.pk }}">{{ duty.offering.subject.name }} &middot; {{ duty.section }}</h2>
+            <p class="erp-card-meta">{{ duty.offering.academic_year.name }}</p>
+        </div>
+        <a class="btn btn-outline-secondary" href="{% url 'core:my-gradebook' duty.pk %}" aria-label="Gradebook for {{ duty.offering.subject.name }}, {{ duty.section }}">Gradebook</a>
     </div>
-    <ul class="list-unstyled mb-0 mt-2">
+    <ul class="erp-assess-list list-unstyled">
         {% for assessment in assessments %}{% if assessment.offering_id == duty.offering_id and assessment.section_id == duty.section_id %}
-        <li class="d-flex justify-content-between gap-2 py-1"><a href="{% url 'core:assessment-marks-entry' assessment.pk %}">{{ assessment.name }}</a><span class="text-muted small">{{ assessment.assessment_date|date:"j M" }} &middot; <span class="erp-pill{% if assessment.is_finalized %} is-submitted{% else %} is-draft{% endif %}">{{ assessment.get_status_display }}</span></span></li>
+        <li class="erp-assess-row position-relative">
+            <span class="erp-assess-main">
+                <a class="erp-assess-name stretched-link" href="{% url 'core:assessment-marks-entry' assessment.pk %}">{{ assessment.name }}</a>
+                <span class="erp-card-meta">{{ assessment.assessment_date|date:"j M" }}</span>
+            </span>
+            <span class="erp-pill{% if assessment.is_finalized %} is-submitted{% else %} is-draft{% endif %}">{{ assessment.get_status_display }}</span>
+            <span class="erp-day-chevron" aria-hidden="true">&rsaquo;</span>
+        </li>
         {% endif %}{% endfor %}
     </ul>
-</div>
+</section>
 {% empty %}
-<p class="text-muted">You enter marks for nothing yet &mdash; ask an administrator to assign you.</p>
+<section>
+{% include "partials/_empty.html" with title="No assessments assigned" text="You are not assigned to a Subject and Section yet. Subject and Section assignments are set by the school office; once you have one, its assessments appear here." %}
+</section>
 {% endfor %}
-<h2 class="h5 mt-4">Term remarks</h2>
-<ul>
-    {% for term, section in remark_links %}
-    <li><a href="{% url 'core:term-remarks' term.pk %}?section={{ section.pk }}">{{ term.academic_year.name }} {{ term.name }} &middot; {{ section }}</a></li>
-    {% empty %}
-    <li>No Sections assigned.</li>
-    {% endfor %}
-</ul>
+
+<section aria-labelledby="assess-remarks">
+<h2 class="erp-section-title" id="assess-remarks">Term remarks</h2>
+{% for term, section in remark_links %}
+<a class="erp-card erp-day-card erp-day-linkcard" href="{% url 'core:term-remarks' term.pk %}?section={{ section.pk }}">
+    <span class="erp-card-row">
+        <span class="erp-day-title">{{ term.academic_year.name }} {{ term.name }} &middot; {{ section }}</span>
+        <span class="erp-day-chevron" aria-hidden="true">&rsaquo;</span>
+    </span>
+</a>
+{% empty %}
+<p class="erp-card-meta">No Sections are available for term remarks. Term remarks open for Sections you are class teacher of; those assignments are set by the school office.</p>
+{% endfor %}
+</section>
+</div>
 {% endblock %}
