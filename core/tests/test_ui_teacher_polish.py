@@ -269,7 +269,9 @@ class MyDayPolishTests(MarksFixture, TestCase):
 
     def test_heading_and_real_date_are_kept(self):
         page = self.home()
-        self.assertContains(page, '<h1 class="h3 mb-1">My day</h1>')
+        self.assertRegex(
+            page.content.decode(), r"<h1[^>]*>Good (morning|afternoon|evening), rao</h1>"
+        )
         self.assertContains(page, "Monday, 12 October 2026")
         self.assertEqual(page.content.decode().count("<h1"), 1)
 

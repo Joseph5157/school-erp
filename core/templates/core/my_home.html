@@ -3,8 +3,7 @@
 {% block content %}
 <div class="erp-day">
 <header class="erp-day-head">
-<h1 class="h3 mb-1">My day</h1>
-<p class="erp-day-greeting">{{ greeting }}</p>
+<h1 class="h3 mb-1 erp-day-greeting">{{ greeting }}</h1>
 <p class="erp-day-date text-muted">{{ today|date:"l, j F Y" }}
 {% if school_day is True %}<span class="erp-pill">School day</span>{% elif school_day is False %}<span class="erp-pill">Not a school day</span>{% endif %}</p>
 </header>

@@ -49,26 +49,30 @@ class DashboardFixture(TeacherHomeFixture):
 
 
 class HeaderTests(DashboardFixture, TestCase):
-    def test_single_h1_keeps_its_text(self):
+    def test_greeting_is_the_single_h1(self):
         html = self.page().content.decode()
         self.assertEqual(html.count("<h1"), 1)
-        self.assertIn('<h1 class="h3 mb-1">My day</h1>', html)
+        self.assertRegex(
+            html, r'<h1 class="h3 mb-1 erp-day-greeting">Good (morning|afternoon|evening), rao</h1>'
+        )
+        self.assertNotIn(">My day</h1>", html)
+        self.assertEqual(html.count("<title>My day</title>"), 1)
         self.assertContains(self.page(), "Monday, 12 October 2026")
 
     def test_greeting_uses_full_name_with_username_fallback(self):
         at = datetime(2026, 10, 12, 9, 0)
         with mock.patch("core.views.timezone.localtime", return_value=at):
-            self.assertContains(self.page(), "Good morning, rao")
+            self.assertContains(self.page(), ">Good morning, rao</h1>")
             self.rao.first_name, self.rao.last_name = "Rao", "Kumar"
             self.rao.save()
-            self.assertContains(self.page(), "Good morning, Rao Kumar")
+            self.assertContains(self.page(), ">Good morning, Rao Kumar</h1>")
 
     def test_greeting_follows_local_time_of_day(self):
         for hour, word in ((8, "morning"), (13, "afternoon"), (19, "evening")):
             with self.subTest(hour=hour), mock.patch(
                 "core.views.timezone.localtime", return_value=datetime(2026, 10, 12, hour)
             ):
-                self.assertContains(self.page(), f"Good {word}, rao")
+                self.assertContains(self.page(), f">Good {word}, rao</h1>")
 
     def test_school_day_shown_for_exactly_one_relevant_year(self):
         self.class_teacher(self.rao, self.six_a)
