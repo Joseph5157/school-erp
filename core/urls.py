@@ -6,6 +6,7 @@ from core import (
     import_views,
     notification_views,
     teacher_views,
+    timetable_views,
     views,
 )
 
@@ -45,6 +46,27 @@ urlpatterns = [
     path("subjects/", views.subject_list, name="subject-list"),
     path("subjects/create/", views.subject_create, name="subject-create"),
     path("subjects/<int:pk>/edit/", views.subject_update, name="subject-update"),
+    path("timetable/", timetable_views.timetable_index, name="timetable-index"),
+    path(
+        "academic-years/<int:pk>/timetable/periods/",
+        timetable_views.timetable_periods,
+        name="timetable-periods",
+    ),
+    path(
+        "academic-years/<int:pk>/timetable/periods/add/",
+        timetable_views.timetable_period_create,
+        name="timetable-period-create",
+    ),
+    path(
+        "timetable/periods/<int:pk>/edit/",
+        timetable_views.timetable_period_update,
+        name="timetable-period-update",
+    ),
+    path(
+        "timetable/periods/<int:pk>/delete/",
+        timetable_views.timetable_period_delete,
+        name="timetable-period-delete",
+    ),
     path("academic-years/<int:pk>/terms/", views.academic_year_terms, name="academic-year-terms"),
     path("academic-years/<int:pk>/terms/add/", views.term_create, name="term-create"),
     path("terms/<int:pk>/edit/", views.term_update, name="term-update"),

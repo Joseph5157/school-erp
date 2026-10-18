@@ -32,6 +32,7 @@ from core.models import (
     Student,
     StudentGuardian,
     Subject,
+    TimetablePeriod,
     business_today,
 )
 
@@ -183,6 +184,38 @@ class AcademicTermForm(forms.ModelForm):
                 clash = clash.exclude(pk=self.instance.pk)
             if clash.exists():
                 self.add_error(field, "Another Term in this Academic Year already uses this.")
+        return cleaned_data
+
+
+class TimetablePeriodForm(forms.ModelForm):
+    """Create or change a Period; the Academic Year is fixed by the URL or the record."""
+
+    class Meta:
+        model = TimetablePeriod
+        fields = ["sequence", "label"]
+        widgets = {"sequence": forms.NumberInput(attrs={"min": 1, "inputmode": "numeric"})}
+        help_texts = {
+            "sequence": "Position in the school day (1 is first). Periods are ordered by this.",
+            "label": "The name shown on timetables, for example P1.",
+        }
+
+    def __init__(self, *args, academic_year=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if academic_year is not None:
+            self.instance.academic_year = academic_year
+
+    def clean(self):
+        cleaned_data = super().clean()
+        year = self.instance.academic_year
+        for field in ("sequence", "label"):
+            value = cleaned_data.get(field)
+            if value in (None, ""):
+                continue
+            clash = TimetablePeriod.objects.filter(academic_year=year, **{field: value})
+            if self.instance.pk is not None:
+                clash = clash.exclude(pk=self.instance.pk)
+            if clash.exists():
+                self.add_error(field, "Another period in this Academic Year already uses this.")
         return cleaned_data
 
 

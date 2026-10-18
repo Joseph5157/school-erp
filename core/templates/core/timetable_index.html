@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Timetable{% endblock %}
+{% block content %}
+{% include "partials/_page_header.html" with eyebrow="School setup" title="Timetable" purpose="Choose an Academic Year to set up its teaching periods." only %}
+<table class="table">
+    <thead><tr><th scope="col">Academic Year</th><th scope="col">Periods</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+    <tbody>
+        {% for academic_year in academic_years %}
+        <tr>
+            <td>{{ academic_year.name }}<br><span class="small text-muted">{{ academic_year.start_date }} to {{ academic_year.end_date }}</span></td>
+            <td>{{ academic_year.period_count }}</td>
+            <td><a class="btn btn-outline-primary btn-sm" href="{% url 'core:timetable-periods' academic_year.pk %}">Set up periods<span class="visually-hidden"> for {{ academic_year.name }}</span></a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="3">No Academic Years yet. Create one under School setup first.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}{% if creating %}Add period{% else %}Edit period{% endif %}{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">{% if creating %}Add period{% else %}Edit period{% endif %} <small class="text-muted">{{ academic_year.name }}</small></h1>
+<form method="post" novalidate>
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">Save period</button>
+    <a class="btn btn-link" href="{% url 'core:timetable-periods' academic_year.pk %}">Cancel</a>
+</form>
+{% endblock %}
