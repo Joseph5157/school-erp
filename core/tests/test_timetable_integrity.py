@@ -4,6 +4,7 @@ import threading
 from datetime import date
 from unittest import mock, skipUnless
 
+from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
 from django.db import connection
 from django.test import TestCase, TransactionTestCase
@@ -505,6 +506,10 @@ class ConcurrentCreateTests(TimetableFixture, TransactionTestCase):
     """Two simultaneous identical creates: exactly one wins, none corrupts."""
 
     def setUp(self):
+        # A TransactionTestCase flushes the database, and another one may have run first in
+        # this worker, deleting the groups the migrations created: make sure they exist.
+        for name in ("School Administrators", "Teachers"):
+            Group.objects.get_or_create(name=name)
         self.build_timetable()
 
     def test_concurrent_overlapping_creates_leave_one_row(self):

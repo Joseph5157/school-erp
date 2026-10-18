@@ -1,11 +1,13 @@
 """TDB-5 Teacher dashboard: Today's timetable (ADR 0021 D10, TDB-0 spec section 3)."""
 
+import re
 from contextlib import ExitStack
 from datetime import date
 
 from django.db import connection
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
+from django.urls import reverse
 
 from core import authorization
 from core.models import (
@@ -368,3 +370,32 @@ class QueryCountTests(TimetableDashboardFixture, TestCase):
             self.slot(section=section, period=period, weekday=3, offering=self.science)
         self.assertEqual(self.count(), small)
         self.assertEqual(len(self.shown()), 4)
+
+
+class TeacherPagesAcceptanceTests(TimetableDashboardFixture, TestCase):
+    """TDB-6: the finished dashboard shows the timetable once and offers no office controls."""
+
+    OFFICE = ("/timetable", "/slots/", "/academic-years", "/subject-offerings", "/overview",
+              "/teachers/", "/classes/")
+
+    def test_no_teacher_page_links_to_office_timetable_or_setup_screens(self):
+        self.class_teacher(self.rao, self.six_a)
+        self.assign(self.rao, self.maths, self.six_a)
+        self.slot()
+        for name in ("my-home", "my-students", "my-assessments", "my-results"):
+            page = self.teacher.get(reverse(f"core:{name}"))
+            self.assertEqual(page.status_code, 200, name)
+            hrefs = re.findall(r'href="([^"]+)"', page.content.decode())
+            leaked = [h for h in hrefs if any(part in h for part in self.OFFICE)]
+            self.assertEqual(leaked, [], name)
+
+    def test_the_dashboard_has_one_h1_and_the_timetable_heading_once_in_order(self):
+        self.class_teacher(self.rao, self.six_a)
+        self.assign(self.rao, self.maths, self.six_a)
+        self.slot()
+        html = self.page().content.decode()
+        self.assertEqual(html.count("<h1"), 1)
+        self.assertEqual(html.count("Today's timetable"), 1)
+        headings = re.findall(r"<h2[^>]*>([^<]+)</h2>", html)
+        self.assertEqual(headings[:3],
+                         ["Today overview", "Today's timetable", "Teaching assignments"])

@@ -387,13 +387,6 @@ class PermissionAndScopeTests(IssuesFixture, TestCase):
         client.force_login(self.user_with("view_timetableperiod"))
         self.assertNotContains(client.get(reverse("core:timetable-index")), "timetable/issues")
 
-    def test_no_teacher_dashboard_timetable_yet(self):
-        self.assign_from(self.rao, self.maths, self.six_a, date(2026, 6, 1))
-        self.raw_slot()
-        client = self.client_class()
-        client.force_login(self.rao)
-        page = client.get(reverse("core:my-home")).content.decode().lower()
-        self.assertNotIn("timetable", page)
 
 
 @pinned()

@@ -717,18 +717,12 @@ class ScopeAndQueryTests(GridFixture, TestCase):
     def setUp(self):
         self.build_grid()
 
-    def test_no_report_or_dashboard_timetable_exists_yet(self):
+    def test_the_grid_gate_added_no_report_urls(self):
+        # (the Teacher dashboard timetable arrived in TDB-5 and has its own tests)
         names = {k for k in get_resolver().namespace_dict["core"][1].reverse_dict
                  if isinstance(k, str)}
         self.assertFalse([n for n in names if "timetable" in n and
                           ("conflict" in n or "missing" in n or "report" in n)])
-        client = self.client_class()
-        client.force_login(self.rao)
-        self.assign_from(self.rao, self.maths, self.six_a, date(2026, 6, 1))
-        self.make_slot()
-        page = client.get(reverse("core:my-home")).content.decode().lower()
-        self.assertNotIn("timetable", page)
-        self.assertNotIn("no periods scheduled", page)
 
     def test_grid_query_count_does_not_grow_with_populated_cells(self):
         self.assign_from(self.rao, self.maths, self.six_a, date(2026, 6, 1))

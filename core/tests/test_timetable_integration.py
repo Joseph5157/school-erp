@@ -298,12 +298,6 @@ class IntegrationHardeningTests(GridFixture, TestCase):
         self.assertEqual(access(), before)
         self.assertEqual(AssessmentTeacherAssignment.objects.count(), 1)
 
-    def test_teacher_dashboard_has_no_timetable_yet(self):
-        client = self.client_class()
-        client.force_login(self.rao)
-        page = client.get(reverse("core:my-home")).content.decode().lower()
-        self.assertNotIn("timetable", page)
-
     # --- query regressions -------------------------------------------------------
 
     def count(self, url):
