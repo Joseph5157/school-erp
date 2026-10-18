@@ -150,7 +150,7 @@ body.erp { min-height: 100vh; }
 .erp-content {
   max-width: min(75rem, 100%);
   overflow-x: clip;
-  padding-block: 1.5rem 2.5rem;
+  padding-block: 1rem 2.5rem;
   padding-inline: 1rem;
 }
 
@@ -177,7 +177,7 @@ body.erp { min-height: 100vh; }
     border-right: 1px solid var(--erp-rule); padding: .5rem;
   }
   body.has-sidebar .erp-main { margin-left: var(--erp-sidebar-w); }
-  .erp-content { padding-inline: 2rem; }
+  .erp-content { padding-block-start: 1.5rem; padding-inline: 2rem; }
 }
 
 .erp-tabbar {
