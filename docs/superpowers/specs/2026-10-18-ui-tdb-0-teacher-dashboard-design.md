@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-18
 **Baseline:** `main` at `0a3a947`
-**Status:** Proposed. Documentation only; no code, template, CSS, model or test changes.
+**Status:** Accepted / Implemented. TDB-0 itself was documentation only; TDB-1 to TDB-6 are implemented and accepted, including the Today timetable (ADR 0021, TDB-3 to TDB-5). This document keeps its TDB-0 baseline and decision history; statements written as of TDB-0 are marked as such.
 **Rules:** `docs/UI_DESIGN_RULES.md`. **Builds on:** U2 teacher daily screens and U3.1 Teacher Mobile Polish (`2026-10-18-ui-u3-1-teacher-mobile-polish-design.md`).
 **Domain sources of truth:** ADR 0011 (class teacher), ADR 0018 (effective-dated subject teacher assignments), ADR 0008 (school calendar), ADR 0012 (teacher attendance).
 
@@ -26,7 +26,7 @@ Turn the Teacher "My day" page (`core:my-home`, nav label **Today**) into a comp
 - Greeting, then today's business date (`business_today()`, formatted like today's `l, j F Y`).
 - **School day / Not a school day** pill, shown only when it can be derived truthfully (see "Header status rule").
 - Greeting name: `get_full_name`, falling back to `username`, the convention already used in `my_attendance*.html`. No first-name guessing.
-- The page `<h1>` stays "My day" (U3.1 rule: headings keep their long label while the tab says Today). The greeting is a line below it, not a second h1.
+- **Accepted in TDB-1 (supersedes the TDB-0 wording):** the greeting is the single visible page `<h1>`. The visible "My day" heading was removed. "My day" and "Today" remain only as the document title and navigation label (`core:my-home`, tab **Today**).
 
 ### 2. Today overview
 
@@ -56,7 +56,7 @@ Two compact tiles side by side on mobile (they stay two columns at 360px; conten
 | Nothing waiting | subject-teacher duty exists, no assessment waits | "No open assessments are waiting" | `core:my-assessments` |
 | Not required | no current subject assignment | "No subjects assigned" | none |
 
-### 3. Today's timetable — FUTURE GATE, not built in TDB-1/2
+### 3. Today's timetable — implemented in TDB-5 (ADR 0021)
 
 - Sits immediately after Today overview once it exists. Period-based, not time-first. Target format:
 
@@ -65,9 +65,9 @@ Two compact tiles side by side on mobile (they stay two columns at 360px; conten
   P2  Grade 7-B · Mathematics
   P3  Grade 8-A · Science
   ```
-- **The repo has no timetable or period domain model** (no Period, Slot, Timetable or Routine model; `AssessmentTeacherAssignment` states it "is not a timetable, workload, substitution or HR record"). A timetable needs proper domain design and admin setup first (gates TDB-3 and TDB-4), then integration (TDB-5).
+- **At TDB-0 the repo had no timetable or period domain model** (no Period, Slot, Timetable or Routine model; `AssessmentTeacherAssignment` states it "is not a timetable, workload, substitution or HR record"). A timetable needs proper domain design and admin setup first (gates TDB-3 and TDB-4), then integration (TDB-5). All three have since shipped.
 - **TDB-3 decision (ADR 0021, Accepted):** `TimetablePeriod` (per Academic Year; only `sequence` and `label` like P1, no clock times) and effective-dated `TimetableSlot` (period, weekday, Section, `AcademicSubjectOffering`). The teacher is **derived** from the existing ADR 0018 assignment, not stored, so the timetable never becomes a second authorization source. TDB-5 reads today's slots for the teacher's current assignments, ordered by period, on instructional days only, with no free-period or placeholder rows. When the day is instructional, a timetable exists and the teacher has no row, the section shows "No periods scheduled for you today."; with no timetable configured, or on a non-instructional day, the section is hidden. This section changes if ADR 0021 changes.
-- Until TDB-5 ships the dashboard renders **no timetable section, no placeholder rows and no "coming soon" card**. Never derive periods from assignments, class order or any heuristic. Never show fake rows.
+- Before TDB-5 the dashboard rendered no timetable section, placeholder rows or "coming soon" card; TDB-5 now renders the section as described above. Never derive periods from assignments, class order or any heuristic. Never show fake rows.
 
 ### 4. Teaching assignments (major section)
 
@@ -102,7 +102,7 @@ The Attendance tile's "Not required" state uses the same per-duty check as today
 |---|---|---|
 | `core/views.py::my_home` | Class-teacher duties, per-Section register state with `is_instructional_day` (3 states plus NOT_INSTRUCTIONAL), `_open_assessments_needing_marks` (constant queries, unmarked counts), term remarks roster logic (`term.section_rosters`), `business_today()` | A summary reduction of the attendance rows into one tile state; sums for the Marks tile; the header-status derivation; a Subjects-I-teach query (`current_teacher_assignments` already exists and is select_related-ready); greeting name |
 | `core/authorization.py` | `class_teacher_assignments`, `current_teacher_assignments`, `is_teacher`, `teacher_required` | Nothing |
-| `core/models.py` | `SectionClassTeacher`, `AssessmentTeacherAssignment`, `AcademicYear.is_instructional_day`, `TermRemark` | **Timetable / Period model: does not exist** (TDB-3) |
+| `core/models.py` | `SectionClassTeacher`, `AssessmentTeacherAssignment`, `AcademicYear.is_instructional_day`, `TermRemark` | **Timetable / Period model: did not exist at TDB-0**; added by TDB-4A under ADR 0021 |
 | `core/templates/core/my_home.html` | Wrapper `.erp-day`, `.erp-card`, `.erp-pill` states, `partials/_empty.html`, stretched-link marks cards, remarks link card | Restructure into header, two tiles, assignments groups. The large Attendance cards and "Marks to enter" list are transitioned away (see "End state") |
 | `core/navigation.py` | `teacher_tabs`, `TEACHER_TAB_PARENTS` (attendance pages map to `my-home`) | Unchanged |
 | `static/css/erp.css` | `.erp-teacher .erp-day*` rules, `.erp-pill` variants, `.erp-progress`, tokens | A two-column tile grid, header status styles, compact assignment rows; all scoped under `.erp-teacher` |
@@ -138,7 +138,7 @@ Each gate ships separately and is reviewed before the next starts. TDB-1 and TDB
 - Every interactive element at least 44x44 with visible `:focus-visible`; tiles with no action are not styled as tappable.
 - Each state has text, not only colour.
 - JS off: everything renders and works.
-- No timetable section or fake rows anywhere before TDB-5.
+- No timetable section or fake rows anywhere before TDB-5 (TDB-5 shipped the real section; fake rows remain forbidden).
 - Query count does not grow with the number of assignments (extend the existing guard).
 
 ## Review decisions (resolved)

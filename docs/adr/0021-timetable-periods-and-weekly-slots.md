@@ -2,8 +2,12 @@
 
 ## Status
 
-Accepted (2026-10-18, Teacher Dashboard gate TDB-3) — FROZEN. Design only: nothing in this ADR is
-implemented yet. Implementation is gate TDB-4 (office setup) and TDB-5 (Teacher dashboard).
+Accepted (2026-10-18, Teacher Dashboard gate TDB-3) — FROZEN. The decisions below are unchanged.
+
+Implemented on branch `ui/teacher-dashboard`: models, migrations, integrity rules and the shared
+clash helper (TDB-4A and 4B), office Period setup (4C), the Section weekly grid and slot workflow
+(4D), the Timetable issues report (4E), integration hardening (4F) and the Teacher dashboard
+"Today's timetable" section (TDB-5). TDB-6 final acceptance is complete.
 
 Extends ADR 0018 (it covers the "timetable periods" item that ADR 0018 lists as not covered) and
 builds on ADR 0008 and ADR 0011. It changes no frozen decision; the historical statements in
@@ -216,7 +220,7 @@ remain out of scope or deferred as listed in D8. `docs/PRODUCT.md`, `docs/REQUIR
 `docs/DOMAIN_MODEL.md` record this while keeping their earlier statements for the phases they
 describe.
 
-## Models (summary, not yet implemented)
+## Models (summary)
 
 ```
 TimetablePeriod(academic_year FK PROTECT, sequence uint, label char(20), timestamps)
