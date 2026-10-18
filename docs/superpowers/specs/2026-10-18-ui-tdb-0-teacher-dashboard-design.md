@@ -41,13 +41,18 @@ Two compact tiles side by side on mobile (they stay two columns at 360px; conten
 | Submitted | register submitted | Section | `core:my-attendance` |
 | Not required | no class-teacher duty today, or the date is not an instructional day for that duty's year | "Not a school day" or "No class assigned" | none (non-interactive, no pill/button affordance) |
 
-With several class-teacher Sections the tile shows the most urgent state (Not taken, then Draft, then Submitted) with real counts ("2 of 3 submitted"). Per-Section rows stay available on the page (see "Reuse"). Wording of states reuses `AttendanceRegister.AttendanceState` and today's pill text.
+**Link behaviour.**
+- Exactly one class-teacher Section: the tile is a single direct link to `core:my-attendance` for that Section.
+- Several class-teacher Sections: the tile is a **non-interactive summary** (no link, no button affordance). It shows the most urgent state (Not taken, then Draft, then Submitted) with real counts ("2 of 3 submitted"). Section-specific actions (Take attendance, Continue, View) live in **compact detail rows** directly beneath the overview, one row per Section, each linking to `core:my-attendance` for that Section.
+- Wording of states reuses `AttendanceRegister.AttendanceState` and today's pill text.
 
-**Marks tile.** Scope: current subject-teacher responsibilities across all Classes and Sections (`current_teacher_assignments(user, today)`), via the existing `_open_assessments_needing_marks` rule (DRAFT, date not after today, at least one roster Student unmarked).
+**Marks tile.** Scope: current subject-teacher responsibilities across all Classes and Sections (`current_teacher_assignments(user, today)`), via the existing `_open_assessments_needing_marks` behaviour, unchanged: Assessment status DRAFT, assessment date on or before today, at least one unmarked roster entry. Future-dated assessments are not "waiting".
+
+**Wording rule.** The sum of `unmarked_count` over assessments counts *marks*, not students: one Student can be unmarked in several assessments. The tile therefore says "N marks remaining across M assessments" (or "N marks remaining" for one assessment) and never "N students". A per-assessment "N unmarked" is acceptable because it is within one roster.
 
 | State | When | Secondary line | Link target |
 |---|---|---|---|
-| N unmarked | at least one assessment still needs marks | "N students across M assessments" if both are real sums of `unmarked_count` and the list length | `core:assessment-marks-entry` for a single assessment, otherwise `core:my-assessments` |
+| N marks remaining | at least one assessment still needs marks | "across M assessments" | `core:assessment-marks-entry` when M = 1, otherwise `core:my-assessments` |
 | Nothing waiting | subject-teacher duty exists, no assessment waits | "No open assessments are waiting" | `core:my-assessments` |
 | Not required | no current subject assignment | "No subjects assigned" | none |
 
@@ -70,13 +75,13 @@ Two clearly separated groups, both built from effective-dated rows for the busin
 - **Class teacher** — `class_teacher_assignments(user, today)` (ADR 0011). One row per Section: "Grade 6-A", with the Academic Year as secondary text. Empty text: "You are not a class teacher today."
 - **Subjects I teach** — `current_teacher_assignments(user, today)` (ADR 0018). One row per Section + Subject: "Grade 7-B · Mathematics", grouped by Section or by Subject (choose in TDB-2 against real data; no extra query per row). Empty text: "No subjects are assigned to you today."
 
-A teacher may be class teacher of one Section and subject teacher for several others; the two groups are independent and a Section may legitimately appear in both. No merging, no "primary role" inference. Rows are informational by default; link a row only to an existing page that already accepts it (for example My students for the Section) and only if one link per row stays unambiguous. Empty-state copy points to the school office, as today.
+A teacher may be class teacher of one Section and subject teacher for several others; the two groups are independent and a Section may legitimately appear in both. No merging, no "primary role" inference. **Row links.** A row is a link only where an existing URL gives an unambiguous destination for that row. Today that means: a Class teacher row may link to `core:my-attendance` for its Section (that URL is Section-specific). Subjects I teach rows are **plain text**: no existing teacher URL is specific to a Section + Subject (`core:my-students` and `core:my-assessments` take no Section parameter), and a link to them would falsely imply a Section-specific destination. A Section-specific destination for these rows would be new URL work and is out of scope for TDB-2. Empty-state copy points to the school office, as today.
 
 ### 5. Term remarks (optional, secondary)
 
 - Lowest visual priority, last on the page, compact (single-line rows, no card per row if avoidable).
-- Content is today's truthful data only: `TermRemark` written count versus the expected roster count per started Term and class-teacher Section ("12 of 32 written"), linking to `core:term-remarks`.
-- Hidden entirely when there is nothing to show. The `<progress>` bar currently used is a real-count bar and is allowed by the "truthful, earned progress" rule, but TDB-2 may drop it for plain text to keep this section quiet.
+- **TDB-2 must not change Term selection or any TermRemark domain semantics.** It keeps the existing eligible terms (every started Term for each current class-teacher Section, per the current `my_home` logic) and the existing real counts (written versus expected, e.g. "12 of 32 written"), linking to `core:term-remarks` as today. Only its visual priority is reduced (compact rows, secondary position). Any filtering of terms is a separate, later decision.
+- Hidden entirely when there is nothing to show. The `<progress>` bar is a real-count bar and is allowed by the "truthful, earned progress" rule, but TDB-2 may replace it with plain text to keep the section quiet.
 
 ## Header status rule (School day / Not a school day)
 
@@ -85,6 +90,8 @@ Truth source: `AcademicYear.is_instructional_day(date)` (weekly pattern plus `Sc
 1. Collect the distinct Academic Years of the teacher's current class-teacher rows and current subject assignments (`offering.academic_year`).
 2. Exactly one year: show "School day" or "Not a school day" from `is_instructional_day(today)`.
 3. No year (no assignments), or years that disagree: **show no status.** Do not guess, do not default to "School day", do not look up an unrelated year.
+
+This feature does **not** introduce a global or school-level "current Academic Year". The status is hidden whenever it cannot be truthfully derived from the teacher's assignment context.
 
 The Attendance tile's "Not required" state uses the same per-duty check as today's page and stays consistent with the header.
 
@@ -95,12 +102,20 @@ The Attendance tile's "Not required" state uses the same per-duty check as today
 | `core/views.py::my_home` | Class-teacher duties, per-Section register state with `is_instructional_day` (3 states plus NOT_INSTRUCTIONAL), `_open_assessments_needing_marks` (constant queries, unmarked counts), term remarks roster logic (`term.section_rosters`), `business_today()` | A summary reduction of the attendance rows into one tile state; sums for the Marks tile; the header-status derivation; a Subjects-I-teach query (`current_teacher_assignments` already exists and is select_related-ready); greeting name |
 | `core/authorization.py` | `class_teacher_assignments`, `current_teacher_assignments`, `is_teacher`, `teacher_required` | Nothing |
 | `core/models.py` | `SectionClassTeacher`, `AssessmentTeacherAssignment`, `AcademicYear.is_instructional_day`, `TermRemark` | **Timetable / Period model: does not exist** (TDB-3) |
-| `core/templates/core/my_home.html` | Wrapper `.erp-day`, `.erp-card`, `.erp-pill` states, `partials/_empty.html`, stretched-link marks cards, remarks link card | Restructure into header, two tiles, assignments groups; today's per-Section Attendance cards and "Marks to enter" list become detail rows below the overview rather than the whole page |
+| `core/templates/core/my_home.html` | Wrapper `.erp-day`, `.erp-card`, `.erp-pill` states, `partials/_empty.html`, stretched-link marks cards, remarks link card | Restructure into header, two tiles, assignments groups. The large Attendance cards and "Marks to enter" list are transitioned away (see "End state") |
 | `core/navigation.py` | `teacher_tabs`, `TEACHER_TAB_PARENTS` (attendance pages map to `my-home`) | Unchanged |
 | `static/css/erp.css` | `.erp-teacher .erp-day*` rules, `.erp-pill` variants, `.erp-progress`, tokens | A two-column tile grid, header status styles, compact assignment rows; all scoped under `.erp-teacher` |
 | Tests | `test_phase5_teacher_home.py` (state, scope, hand-over, lost status, query count `test_queries_do_not_grow_with_duties`), `test_ui_teacher_daily.py`, `test_ui_teacher_polish.py` (My day heading and date kept, section dominant) | New tests per gate for tile states, header rule (single year / none / disagreeing years), the two assignment groups, and a query-count guard |
 
 Existing tests that assert the current My day markup (card titles, "Marks to enter", "Not a class teacher today") will need deliberate updates in the gate that changes that markup. Authorization behaviour must not change.
+
+## End state: no duplicated large sections
+
+The two tiles are the dashboard's Attendance and Marks summary. The existing large "Attendance" card list and "Marks to enter" assessment list are **not** kept permanently underneath the overview.
+
+- **TDB-1 may transition them** (for example keep them temporarily, or reduce them to compact rows) so the gate stays small and reviewable.
+- **Final state (by TDB-2/TDB-6):** any needed detail is either (a) compact rows (Section-specific attendance actions when there are several Sections), or (b) left to the existing destination pages (`core:my-attendance`, `core:my-attendance-history`, `core:my-assessments`, `core:assessment-marks-entry`). No second, full-size copy of the same information below the tiles.
+- Existing tests that assert the old card markup are updated deliberately in the gate that changes it. No authorization or business-rule change.
 
 ## Proposed gates
 
@@ -125,11 +140,15 @@ Each gate ships separately and is reviewed before the next starts. TDB-1 and TDB
 - No timetable section or fake rows anywhere before TDB-5.
 - Query count does not grow with the number of assignments (extend the existing guard).
 
-## Questions / conflicts for review
+## Review decisions (resolved)
 
-1. **No global "current year".** The header status is therefore derived only from the teacher's assignments and is hidden when none or when years disagree. Confirm this is acceptable, or decide whether a school-level "current Academic Year" concept should be designed separately (out of scope here).
-2. **Tile link with several targets.** When a teacher is class teacher of several Sections, or has several assessments waiting, the tile links to a list rather than a single page. Confirm the list target (the per-Section rows remain on the page) is preferred over adding a new aggregate page.
-3. **Marks tile "Not required" versus the full assessment list.** The tile counts only DRAFT assessments dated on or before today with unmarked students, per the existing rule. Assessments scheduled for later are not "waiting". Confirm that is the intended meaning.
-4. **Term remarks scope.** The existing logic lists every started Term for each class-teacher Section, including past Terms. Confirm TDB-2 may limit it to the Term containing today (or drop the section) without changing remark rules.
-5. **Current page content.** Today's per-Section attendance cards and Marks list are fuller than the tiles. This spec keeps them as detail beneath the overview. Confirm that, rather than replacing them with tiles only, matches the intent of "compact dashboard".
-6. **Branch tracking.** The local `ui/teacher-dashboard` branch was created tracking `origin/main`. Pushing must name the remote branch explicitly.
+1. Header status is hidden when it cannot be truthfully derived from the teacher's assignment context; no global current Academic Year is introduced.
+2. Attendance tile: one Section, direct link; several Sections, non-interactive summary with compact per-Section detail rows. Marks tile: My assessments when several assessments, the marks entry page when exactly one.
+3. Marks scope is the existing `_open_assessments_needing_marks` behaviour (DRAFT, date on or before today, at least one unmarked roster entry); future assessments are not waiting. Aggregate wording counts marks, not students.
+4. TDB-2 does not change Term selection or TermRemark semantics; it only lowers the section's visual priority. Filtering terms is a later, separate decision.
+5. Old large Attendance and Marks sections are transitioned away; see "End state".
+6. Teaching-assignment rows link only where an existing URL is unambiguous; Subjects I teach rows are plain text.
+
+## Note
+
+The local `ui/teacher-dashboard` branch was created tracking `origin/main`; it now tracks `origin/ui/teacher-dashboard`. Always push with an explicit remote branch name.
