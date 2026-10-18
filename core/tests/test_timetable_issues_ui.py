@@ -443,3 +443,119 @@ class IssuesAccessibilityTests(IssuesFixture, TestCase):
         self.assertIn('class="erp-form-errors" role="alert"', html)
         self.assertIn('href="#id_date"', html)
         self.assertIn("autofocus", re.search(r'<input\b[^>]*\bid="id_date"[^>]*>', html).group(0))
+
+
+YEAR_END = date(2027, 3, 31)  # the 2026-27 fixture year
+
+
+@pinned()
+class RangeEndTests(IssuesFixture, TestCase):
+    """Explicit and null (open-ended) end dates, for slots and for assignments.
+
+    A null end runs to the end of the Academic Year and never beyond it (ADR 0021 D3,
+    ADR 0018 D1). The report must treat both kinds the same way at every boundary.
+    """
+
+    def setUp(self):
+        self.build_grid()
+
+    def clash_rows(self, on=TODAY):
+        return self.clashes(self.client.get(self.issues_url(on)))
+
+    def missing_rows(self, on=TODAY):
+        return self.missing(self.client.get(self.issues_url(on)))
+
+    # --- clashes -------------------------------------------------------------
+
+    def test_two_null_ended_slots_clash_to_the_year_end(self):
+        self.make_clash(start=date(2026, 6, 1), end=None)
+        row = self.clash_rows()[0]
+        self.assertEqual((row["start"], row["end"]), (date(2026, 6, 1), YEAR_END))
+        self.assertEqual(row["status"], "in_force")
+
+    def test_null_ended_clash_is_in_force_on_the_last_day_of_the_year(self):
+        self.make_clash(start=date(2026, 6, 1), end=None)
+        self.assertEqual(self.clash_rows(YEAR_END)[0]["status"], "in_force")
+        self.assertEqual(self.clash_rows(date(2027, 3, 30))[0]["status"], "in_force")
+
+    def test_null_ended_clash_starting_later_is_upcoming_then_in_force(self):
+        self.make_clash(start=date(2027, 1, 4), end=None)
+        self.assertEqual(self.clash_rows(date(2027, 1, 3))[0]["status"], "upcoming")
+        self.assertEqual(self.clash_rows(date(2027, 1, 4))[0]["status"], "in_force")
+
+    def test_explicit_end_is_in_force_on_its_last_day_and_ended_the_day_after(self):
+        self.make_clash(start=date(2026, 6, 1), end=date(2026, 12, 31))
+        self.assertEqual(self.clash_rows(date(2026, 12, 31))[0]["status"], "in_force")
+        row = self.clash_rows(date(2027, 1, 1))[0]
+        self.assertEqual((row["status"], row["end"]), ("ended", date(2026, 12, 31)))
+
+    def test_an_explicit_ended_slot_against_a_null_ended_one_clashes_only_until_it_ends(self):
+        self.assign_from(self.rao, self.maths, self.six_a, date(2026, 6, 1))
+        self.assign_from(self.rao, self.sanskrit, self.six_b, date(2026, 6, 1))
+        self.raw_slot(end_date=date(2026, 10, 31))
+        self.raw_slot(section=self.six_b, offering=self.sanskrit, end_date=None)
+        rows = self.clash_rows()
+        self.assertEqual([(r["start"], r["end"]) for r in rows],
+                         [(date(2026, 6, 1), date(2026, 10, 31))])
+
+    def test_a_null_ended_assignment_keeps_the_clash_alive_to_the_year_end(self):
+        # Slots run to the year end; Rao's open-ended 6A assignment and 6B assignment
+        # both run to the year end, so nothing stops the clash before then.
+        self.make_clash(start=date(2026, 6, 1), end=None)
+        self.assertEqual(self.clash_rows(YEAR_END)[0]["end"], YEAR_END)
+
+    def test_an_explicit_ended_assignment_shortens_a_null_ended_slot_clash(self):
+        self.assign_from(self.rao, self.maths, self.six_a, date(2026, 6, 1))
+        self.assign_from(self.rao, self.sanskrit, self.six_b, date(2026, 6, 1),
+                         date(2026, 11, 30))
+        self.raw_slot(end_date=None)
+        self.raw_slot(section=self.six_b, offering=self.sanskrit, end_date=None)
+        row = self.clash_rows(date(2026, 11, 30))[0]
+        self.assertEqual((row["end"], row["status"]), (date(2026, 11, 30), "in_force"))
+        self.assertEqual(self.clash_rows(date(2026, 12, 1))[0]["status"], "ended")
+
+    # --- missing teacher: slot ends ---------------------------------------------
+
+    def test_a_null_ended_slot_is_effective_through_the_last_day_of_the_year(self):
+        self.raw_slot(weekday=2)
+        self.assertEqual(len(self.missing_rows(YEAR_END)), 1)   # a Wednesday school day
+        self.assertEqual(len(self.missing_rows(date(2027, 3, 30))), 1)
+
+    def test_an_explicit_ended_slot_is_effective_on_its_end_date_but_not_after(self):
+        self.raw_slot(weekday=2, end_date=date(2026, 11, 30))
+        self.assertEqual(len(self.missing_rows(date(2026, 11, 30))), 1)
+        self.assertEqual(self.missing_rows(date(2026, 12, 1)), [])
+
+    # --- missing teacher: assignment ends ---------------------------------------
+
+    def test_a_null_ended_assignment_covers_the_slot_to_the_year_end(self):
+        self.raw_slot(weekday=2)
+        self.assign_from(self.rao, self.maths, self.six_a, date(2026, 6, 1), None)
+        self.assertEqual(self.missing_rows(YEAR_END), [])
+        self.assertEqual(self.missing_rows(date(2026, 10, 21)), [])
+
+    def test_a_null_ended_assignment_starting_later_leaves_a_gap_before_it(self):
+        self.raw_slot(weekday=2)
+        self.assign_from(self.rao, self.maths, self.six_a, date(2027, 1, 4), None)
+        self.assertEqual(len(self.missing_rows(date(2027, 1, 1))), 1)
+        self.assertEqual(self.missing_rows(date(2027, 1, 4)), [])
+
+    def test_an_explicit_ended_assignment_covers_its_last_day_not_the_next(self):
+        self.raw_slot(weekday=2)
+        self.assign_from(self.rao, self.maths, self.six_a, date(2026, 6, 1), date(2026, 12, 16))
+        self.assertEqual(self.missing_rows(date(2026, 12, 16)), [])      # Wednesday
+        self.assertEqual(len(self.missing_rows(date(2026, 12, 17))), 1)  # Thursday
+
+    def test_explicit_then_null_ended_assignments_leave_no_gap(self):
+        self.raw_slot(weekday=2)
+        self.assign_from(self.rao, self.maths, self.six_a, date(2026, 6, 1), date(2026, 12, 16))
+        self.assign_from(self.iyer, self.maths, self.six_a, date(2026, 12, 17), None)
+        for day in (date(2026, 12, 16), date(2026, 12, 17), YEAR_END):
+            self.assertEqual(self.missing_rows(day), [], day)
+
+    def test_open_ended_assignment_for_the_slot_to_end_with_the_year_is_not_a_gap(self):
+        # slot and assignment both null-ended: covered every day they are both effective
+        self.raw_slot(weekday=2, start_date=date(2026, 6, 1), end_date=None)
+        self.assign_from(self.rao, self.maths, self.six_a, date(2026, 6, 1), None)
+        for day in (date(2026, 6, 3), date(2026, 10, 21), YEAR_END):
+            self.assertEqual(self.missing_rows(day), [], day)
