@@ -37,6 +37,7 @@
         <button type="submit" name="action" value="save" class="btn btn-outline-primary">Save draft</button>
         {% if can_submit %}<button type="submit" name="action" value="submit" class="btn btn-primary">Save and submit</button>{% endif %}
     </div>
+    {% if autosave_url %}<p class="small text-danger mb-1" role="alert" data-erp-wait-message hidden>Waiting for attendance changes to save. Try again in a moment.</p>{% endif %}
     {% if autosave_url %}<p class="visually-hidden" role="status" aria-live="polite" data-erp-autosave-announce></p>{% endif %}
     {% if can_submit %}<p class="form-text">Submitting requires Present or Absent for every Student.</p>{% endif %}
 </div>

@@ -360,6 +360,8 @@ class TeacherAttendanceAutosaveTests(Phase4Fixture, TestCase):
         page = self.teacher.get(self.url)
         self.assertContains(page, f'hx-post="{self.autosave_url}"', count=2)
         self.assertContains(page, "data-erp-autosave-announce")
+        self.assertContains(page, "data-erp-wait-message")
+        self.assertContains(page, "data-erp-mark-present")
         self.assertContains(page, "htmx.org@2.0.4")
         self.assertContains(page, "Save draft")
         self.assertContains(page, "Save and submit")
@@ -368,12 +370,21 @@ class TeacherAttendanceAutosaveTests(Phase4Fixture, TestCase):
         self.both()
         self.assertNotContains(self.teacher.get(self.url), "htmx")
 
+    def test_bulk_marked_rows_save_through_the_same_endpoint(self):
+        # "Mark unanswered as present" fires each row's change event, which posts the
+        # same fields as a manual choice; there is no separate bulk endpoint.
+        for enrollment in (self.asha, self.ravi):
+            self.assertEqual(self.autosave(enrollment, "PRESENT").status_code, 200)
+        statuses = dict(self.register().entries.values_list("academic_enrollment_id", "status"))
+        self.assertEqual(statuses, {self.asha.pk: "PRESENT", self.ravi.pk: "PRESENT"})
+
     def test_admin_capture_page_is_unchanged(self):
         register = self.register()
         self.client.login(username="admin", password="pass-12345")
         page = self.client.get(reverse("core:attendance-register-detail", args=[register.pk]))
         self.assertNotContains(page, "hx-post")
         self.assertNotContains(page, "htmx")
+        self.assertNotContains(page, "data-erp-wait-message")
 
     def test_ordinary_save_and_submit_still_work_after_autosave(self):
         self.autosave(self.asha, "PRESENT")

@@ -36,6 +36,7 @@
     var tabs = roster.querySelector("[data-erp-tabs]");
     var staticCounts = roster.querySelector("[data-erp-static-counts]");
     var filter = "all";
+    var autosaveOn = false; // set once HTMX autosave is wired below
 
     function statusOf(row) {
       var checked = row.querySelector('input[type="radio"]:checked');
@@ -81,14 +82,17 @@
     }
 
     // Fills Present only for rows not yet answered and never overrides a choice.
-    // Nothing is saved until the form is submitted, so an unopened register is never present.
+    // Without autosave nothing is saved until the form is submitted.
     var markPresent = roster.querySelector("[data-erp-mark-present]");
     if (markPresent) {
       markPresent.addEventListener("click", function () {
         rows.forEach(function (row) {
           if (statusOf(row) === "unmarked") {
             var present = row.querySelector('input[type="radio"][value="PRESENT"]');
-            if (present) present.checked = true;
+            if (!present) return;
+            present.checked = true;
+            // With autosave each bulk-marked row takes the same save path as a manual change.
+            if (autosaveOn) present.dispatchEvent(new Event("change", { bubbles: true }));
           }
         });
         refresh();
@@ -142,6 +146,7 @@
         { code: "...", swap: false },
       ];
 
+      // Capture phase: must run before HTMX's own listener on the row reads _seq.
       roster.addEventListener("change", function (event) {
         var row = event.target.closest("[data-erp-row]");
         if (!row) return;
@@ -150,11 +155,12 @@
         var target = statusOfRow(row);
         if (target) target.textContent = "Saving…";
         row.classList.remove("is-unsaved");
-      });
+      }, true);
 
       // Present never carries a note: clear it with the choice, as the server would refuse it.
       roster.addEventListener("htmx:configRequest", function (event) {
         var row = event.detail.elt;
+        row._sent = row._seq; // the change this request carries
         var note = row.querySelector('input[name^="note_"]');
         var chosen = row.querySelector('input[type="radio"]:checked');
         if (note && chosen && chosen.value === "PRESENT" && note.value) {
@@ -163,11 +169,9 @@
         }
       });
 
-      roster.addEventListener("htmx:beforeRequest", function (event) {
-        event.detail.elt._sent = event.detail.elt._seq;
-      });
       roster.addEventListener("htmx:beforeSwap", function (event) {
-        swapping = event.detail.elt;
+        // detail.elt is the swap target; the row that made the request is on requestConfig.
+        swapping = event.detail.requestConfig ? event.detail.requestConfig.elt : null;
       });
       // Counts in a response only describe saved rows; skip them while other rows are in flight.
       roster.addEventListener("htmx:oobBeforeSwap", function (event) {
@@ -194,6 +198,26 @@
         }
         if (!othersDirty()) refresh();
       });
+      autosaveOn = true;
+
+      // Save draft / Save and submit wait for in-flight row saves so the two never race.
+      var form = roster.closest("form");
+      var waitMessage = roster.querySelector("[data-erp-wait-message]");
+      function anyDirty() {
+        return rows.some(function (row) { return row._dirty; });
+      }
+      if (form) {
+        form.addEventListener("submit", function (event) {
+          if (!anyDirty()) return;
+          event.preventDefault();
+          if (waitMessage) waitMessage.hidden = false;
+          if (announce) announce.textContent = "Waiting for attendance changes to save.";
+        });
+        roster.addEventListener("htmx:afterRequest", function () {
+          if (waitMessage && !anyDirty()) waitMessage.hidden = true;
+        });
+      }
+
       roster.addEventListener("click", function (event) {
         var retry = event.target.closest("[data-erp-retry]");
         if (retry) window.htmx.trigger(retry.closest("[data-erp-row]"), "change");
