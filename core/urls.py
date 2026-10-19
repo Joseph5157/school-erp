@@ -206,6 +206,11 @@ urlpatterns = [
     ),
     path("my/students/<int:pk>/", views.my_student_detail, name="my-student-detail"),
     path("my/attendance/<int:section_pk>/", views.my_attendance, name="my-attendance"),
+    path(
+        "my/attendance/<int:section_pk>/autosave/",
+        views.my_attendance_autosave,
+        name="my-attendance-autosave",
+    ),
     path("my/attendance/history/", views.my_attendance_history, name="my-attendance-history"),
     path(
         "my/attendance/history/<int:pk>/",

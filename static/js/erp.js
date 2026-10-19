@@ -35,7 +35,6 @@
     var rows = Array.prototype.slice.call(roster.querySelectorAll("[data-erp-row]"));
     var tabs = roster.querySelector("[data-erp-tabs]");
     var staticCounts = roster.querySelector("[data-erp-static-counts]");
-    var hint = roster.querySelector("[data-erp-hint]");
     var filter = "all";
 
     function statusOf(row) {
@@ -57,6 +56,8 @@
       roster.querySelectorAll(".erp-count-unmarked").forEach(function (el) {
         el.classList.toggle("is-warn", counts.unmarked > 0);
       });
+      // Looked up each time: an HTMX autosave response may have replaced the element.
+      var hint = roster.querySelector("[data-erp-hint]");
       if (hint) {
         hint.classList.toggle("is-warn", counts.unmarked > 0);
         hint.textContent = counts.unmarked
@@ -98,6 +99,106 @@
       if (event.target.type === "radio") refresh();
     });
     refresh();
+
+    // HTMX draft autosave (teacher page only). Each row saves itself on change; the form's
+    // Save draft / Save and submit buttons remain the complete fallback and the only way to
+    // submit. A row is only shown as saved once the server confirms it.
+    var announce = roster.querySelector("[data-erp-autosave-announce]");
+    var swapping = null;
+
+    function nameOf(row) {
+      var legend = row.querySelector("legend");
+      return legend ? legend.textContent.trim() : "student";
+    }
+    function statusOfRow(row) {
+      return row.querySelector("[data-erp-row-status]");
+    }
+    function showFailure(row, text) {
+      var target = statusOfRow(row);
+      target.textContent = "";
+      var message = document.createElement("span");
+      message.className = "erp-row-failed";
+      message.textContent = text + " ";
+      var retry = document.createElement("button");
+      retry.type = "button";
+      retry.className = "btn btn-sm btn-outline-secondary";
+      retry.setAttribute("data-erp-retry", "");
+      retry.textContent = "Retry";
+      target.appendChild(message);
+      target.appendChild(retry);
+    }
+    function othersDirty() {
+      return rows.some(function (row) {
+        return row._dirty && (row !== swapping || row._sent !== row._seq);
+      });
+    }
+
+    if (window.htmx && roster.querySelector("[hx-post]")) {
+      window.htmx.config.responseHandling = [
+        { code: "204", swap: false },
+        { code: "[23]..", swap: true },
+        { code: "409|422", swap: true, error: true },
+        { code: "[45]..", swap: false, error: true },
+        { code: "...", swap: false },
+      ];
+
+      roster.addEventListener("change", function (event) {
+        var row = event.target.closest("[data-erp-row]");
+        if (!row) return;
+        row._seq = (row._seq || 0) + 1;
+        row._dirty = true;
+        var target = statusOfRow(row);
+        if (target) target.textContent = "Saving…";
+        row.classList.remove("is-unsaved");
+      });
+
+      // Present never carries a note: clear it with the choice, as the server would refuse it.
+      roster.addEventListener("htmx:configRequest", function (event) {
+        var row = event.detail.elt;
+        var note = row.querySelector('input[name^="note_"]');
+        var chosen = row.querySelector('input[type="radio"]:checked');
+        if (note && chosen && chosen.value === "PRESENT" && note.value) {
+          note.value = "";
+          event.detail.parameters[note.name] = "";
+        }
+      });
+
+      roster.addEventListener("htmx:beforeRequest", function (event) {
+        event.detail.elt._sent = event.detail.elt._seq;
+      });
+      roster.addEventListener("htmx:beforeSwap", function (event) {
+        swapping = event.detail.elt;
+      });
+      // Counts in a response only describe saved rows; skip them while other rows are in flight.
+      roster.addEventListener("htmx:oobBeforeSwap", function (event) {
+        if (othersDirty()) event.preventDefault();
+      });
+      roster.addEventListener("htmx:afterSwap", function () {
+        swapping = null;
+      });
+      roster.addEventListener("htmx:afterRequest", function (event) {
+        var row = event.detail.elt;
+        if (!row.hasAttribute || !row.hasAttribute("data-erp-row")) return;
+        if (row._sent === row._seq) row._dirty = false;
+        var ok = event.detail.successful;
+        row.classList.toggle("is-unsaved", !ok);
+        if (announce) {
+          announce.textContent = ok
+            ? "Saved " + nameOf(row) + "."
+            : "Could not save " + nameOf(row) + ". Use Retry or Save draft.";
+        }
+        if (!ok) {
+          var status = event.detail.xhr ? event.detail.xhr.status : 0;
+          // 409 and 422 responses carry their own message and are already swapped in.
+          if (status !== 409 && status !== 422) showFailure(row, "Not saved.");
+        }
+        if (!othersDirty()) refresh();
+      });
+      roster.addEventListener("click", function (event) {
+        var retry = event.target.closest("[data-erp-retry]");
+        if (retry) window.htmx.trigger(retry.closest("[data-erp-row]"), "change");
+      });
+    }
   });
 
   // Marks entry: live counts and filter tabs; typing a score selects Marked;

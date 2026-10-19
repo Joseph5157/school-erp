@@ -707,7 +707,9 @@ body.has-tabbar .erp-messages {
   padding: .75rem; margin-bottom: .5rem;
 }
 .erp-roster-row[hidden] { display: none; }
-.erp-roster-row.is-invalid { border: 2px solid var(--erp-crit); }
+.erp-roster-row.is-invalid, .erp-roster-row.is-unsaved { border: 2px solid var(--erp-crit); }
+.erp-row-status { grid-column: 1 / -1; min-height: 1.25rem; font-size: .85rem; color: var(--erp-ink-soft); }
+.erp-row-status .erp-row-failed { color: var(--erp-crit); font-weight: 600; }
 .erp-roster-name { grid-column: 2; grid-row: 1; font-weight: 600; }
 .erp-initials {
   grid-column: 1; grid-row: 1; width: 2.25rem; height: 2.25rem; border-radius: 50%;
