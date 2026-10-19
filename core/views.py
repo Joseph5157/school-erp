@@ -1108,14 +1108,16 @@ def my_attendance(request, section_pk):
     elif register is not None:
         context["capture_form"] = AttendanceCaptureForm(register=register)
         context["marked_count"] = register.entries.count()
+        context["autosave_url"] = reverse("core:my-attendance-autosave", args=[section.pk])
     return render(request, "core/my_attendance.html", context)
+
+
+_SUBMITTED_MESSAGE = "Today's attendance is already submitted; ask an administrator to correct it."
 
 
 def _teacher_capture(request, register, *, submit):
     if register.is_submitted:
-        messages.error(
-            request, "Today's attendance is already submitted; ask an administrator to correct it."
-        )
+        messages.error(request, _SUBMITTED_MESSAGE)
         return
     form = AttendanceCaptureForm(request.POST, register=register)
     if not form.is_valid():
@@ -1138,6 +1140,53 @@ def _teacher_capture(request, register, *, submit):
         messages.error(request, f"Draft saved but not submitted. {error.messages[0]}")
     else:
         messages.success(request, "Attendance saved and submitted.")
+
+
+@teacher_required
+@require_POST
+def my_attendance_autosave(request, section_pk):
+    """HTMX: save one roster row of today's DRAFT register; never submits.
+
+    Same authorization, form validation and `save_draft_entry` as the full
+    form. Only the posted enrollment's fields are validated and saved.
+    """
+    if request.headers.get("HX-Request") != "true":
+        return HttpResponse("Autosave needs HTMX; use the Save draft button.", status=400)
+    section = get_object_or_404(Section, pk=section_pk)
+    today = business_today()
+    if not can_take_attendance(request.user, section, today):
+        raise PermissionDenied
+    register = get_object_or_404(AttendanceRegister, section=section, date=today)
+
+    def reply(state, enrollment, message, status):
+        context = {"state": state, "enrollment": enrollment, "message": message}
+        if state == "saved":
+            context["counts"] = AttendanceCaptureForm(register=register).counts()
+        return render(request, "core/_attendance_autosave_status.html", context, status=status)
+
+    if register.is_submitted:
+        return reply("error", None, _SUBMITTED_MESSAGE, 409)
+    roster = AttendanceCaptureForm(register=register)
+    enrollment = next(
+        (e for e in roster.enrollments if str(e.pk) == request.POST.get("enrollment")), None
+    )
+    if enrollment is None:
+        raise Http404("Not on today's roster for this Section.")
+    row_data = {
+        name: request.POST.get(name, "")
+        for name in (roster.field_name(enrollment), roster.note_name(enrollment))
+    }
+    form = AttendanceCaptureForm(row_data, register=register)
+    if not form.is_valid():
+        errors = [message for field_errors in form.errors.values() for message in field_errors]
+        return reply("error", enrollment, errors[0], 422)
+    try:
+        with transaction.atomic():
+            for row, status, note in form.statuses():
+                register.save_draft_entry(enrollment=row, status=status, absence_note=note)
+    except ValidationError as error:
+        return reply("error", enrollment, error.messages[0], 409)
+    return reply("saved", enrollment, "Saved", 200)
 
 
 # --- Phase 5 Gate 4: teacher attendance views (ADR 0012 D9) ----------------

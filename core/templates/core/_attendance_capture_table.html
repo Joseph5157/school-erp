@@ -1,19 +1,20 @@
-{# Roster for a DRAFT register. Include inside <form id="attendance-capture"> with can_submit=<bool>. #}
+{# Roster for a DRAFT register. Include inside <form id="attendance-capture"> with can_submit=<bool>.
+   With autosave_url (teacher page) each row also saves its own draft over HTMX; the form stays the full fallback. #}
 {% with counts=capture_form.counts %}
 <div class="erp-roster" data-erp-roster>
     <div class="erp-countbar">
         <p class="erp-count-line" data-erp-static-counts>{{ counts.all }} student{{ counts.all|pluralize }} &middot; {{ counts.present }} present &middot; {{ counts.absent }} absent &middot; <span class="erp-count-unmarked{% if counts.unmarked %} is-warn{% endif %}">{{ counts.unmarked }} unmarked</span></p>
         <div class="erp-count-tabs" data-erp-tabs hidden>
-            <button type="button" data-erp-filter="all" aria-pressed="true">All <span data-erp-count="all">{{ counts.all }}</span></button>
-            <button type="button" data-erp-filter="unmarked" class="erp-count-unmarked{% if counts.unmarked %} is-warn{% endif %}" aria-pressed="false">Unmarked <span data-erp-count="unmarked">{{ counts.unmarked }}</span></button>
-            <button type="button" data-erp-filter="present" aria-pressed="false">Present <span data-erp-count="present">{{ counts.present }}</span></button>
-            <button type="button" data-erp-filter="absent" aria-pressed="false">Absent <span data-erp-count="absent">{{ counts.absent }}</span></button>
+            <button type="button" data-erp-filter="all" aria-pressed="true">All <span id="erp-count-all" data-erp-count="all">{{ counts.all }}</span></button>
+            <button type="button" data-erp-filter="unmarked" class="erp-count-unmarked{% if counts.unmarked %} is-warn{% endif %}" aria-pressed="false">Unmarked <span id="erp-count-unmarked" data-erp-count="unmarked">{{ counts.unmarked }}</span></button>
+            <button type="button" data-erp-filter="present" aria-pressed="false">Present <span id="erp-count-present" data-erp-count="present">{{ counts.present }}</span></button>
+            <button type="button" data-erp-filter="absent" aria-pressed="false">Absent <span id="erp-count-absent" data-erp-count="absent">{{ counts.absent }}</span></button>
             <button type="button" class="btn btn-outline-secondary btn-sm erp-mark-present" data-erp-mark-present>Mark unanswered as present</button>
         </div>
     </div>
 
     {% for enrollment, status_field, note_field in capture_form.rows %}
-    <fieldset class="erp-roster-row" data-erp-row>
+    <fieldset class="erp-roster-row" data-erp-row{% if autosave_url %} hx-post="{{ autosave_url }}" hx-trigger="change" hx-include="this" hx-vals='{"enrollment": {{ enrollment.pk }}}' hx-target="find [data-erp-row-status]" hx-swap="innerHTML" hx-sync="this:queue last"{% endif %}>
         <legend class="visually-hidden">{{ enrollment.student.full_name }}</legend>
         <span class="erp-roster-name" aria-hidden="true">{{ enrollment.student.full_name }}</span>
         <span class="erp-initials" aria-hidden="true">{{ enrollment.student.full_name|slice:":1"|upper }}</span>
@@ -27,14 +28,17 @@
             {{ note_field }}
             {% for error in note_field.errors %}<div class="small text-danger">{{ error }}</div>{% endfor %}
         </div>
+        {% if autosave_url %}<div class="erp-row-status" data-erp-row-status></div>{% endif %}
     </fieldset>
     {% endfor %}
 
     <div class="erp-actionbar">
-        <span class="erp-actionbar-status{% if counts.unmarked %} is-warn{% endif %}" data-erp-hint aria-live="polite">{{ counts.unmarked }} unmarked</span>
+        <span id="erp-hint" class="erp-actionbar-status{% if counts.unmarked %} is-warn{% endif %}" data-erp-hint aria-live="polite">{{ counts.unmarked }} unmarked</span>
         <button type="submit" name="action" value="save" class="btn btn-outline-primary">Save draft</button>
         {% if can_submit %}<button type="submit" name="action" value="submit" class="btn btn-primary">Save and submit</button>{% endif %}
     </div>
+    {% if autosave_url %}<p class="small text-danger mb-1" role="alert" data-erp-wait-message hidden>Waiting for attendance changes to save. Try again in a moment.</p>{% endif %}
+    {% if autosave_url %}<p class="visually-hidden" role="status" aria-live="polite" data-erp-autosave-announce></p>{% endif %}
     {% if can_submit %}<p class="form-text">Submitting requires Present or Absent for every Student.</p>{% endif %}
 </div>
 {% endwith %}

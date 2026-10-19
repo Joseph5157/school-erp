@@ -212,3 +212,184 @@ class TeacherAttendanceTests(Phase4Fixture, TestCase):
         page = self.teacher.get(self.url)
         self.assertEqual([e.student for e in page.context["capture_form"].enrollments],
                          [self.asha.student])
+
+
+class TeacherAttendanceAutosaveTests(Phase4Fixture, TestCase):
+    """HTMX draft autosave: one row at a time, never submits, same rules as the form."""
+
+    def setUp(self):
+        self.build_phase4()
+        for patch in on(MONDAY):
+            patch.start()
+            self.addCleanup(patch.stop)
+        SectionClassTeacher.assign(
+            teacher=self.rao, academic_year=self.year, section=self.six_a,
+            start_date=date(2026, 6, 1),
+        )
+        _, self.asha = self.make_student("Asha")
+        _, self.ravi = self.make_student("Ravi")
+        self.teacher = self.client_class()
+        self.teacher.login(username="rao", password="pass-12345")
+        self.url = reverse("core:my-attendance", args=[self.six_a.pk])
+        self.teacher.post(self.url, {"action": "open"})
+        self.autosave_url = reverse("core:my-attendance-autosave", args=[self.six_a.pk])
+
+    def autosave(self, enrollment, status="", note=None, url=None, client=None):
+        data = {"enrollment": enrollment.pk, f"status_{enrollment.pk}": status}
+        if note is not None:
+            data[f"note_{enrollment.pk}"] = note
+        return (client or self.teacher).post(url or self.autosave_url, data, HTTP_HX_REQUEST="true")
+
+    def register(self):
+        return AttendanceRegister.objects.get(section=self.six_a, date=MONDAY)
+
+    def both(self, asha="PRESENT", ravi="ABSENT", action="submit"):
+        data = {"action": action, f"status_{self.asha.pk}": asha, f"status_{self.ravi.pk}": ravi}
+        return self.teacher.post(self.url, data, follow=True)
+
+    def entry(self, enrollment):
+        return self.register().entries.filter(academic_enrollment=enrollment).first()
+
+    # --- saving ---
+
+    def test_present_autosave_creates_draft_entry_only(self):
+        response = self.autosave(self.asha, "PRESENT")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Saved")
+        self.assertEqual(self.entry(self.asha).status, AttendanceStatus.PRESENT)
+        self.assertIsNone(self.entry(self.ravi))
+        self.assertFalse(self.register().is_submitted)
+
+    def test_absent_with_note_autosave(self):
+        self.assertEqual(self.autosave(self.ravi, "ABSENT", "Fever").status_code, 200)
+        entry = self.entry(self.ravi)
+        self.assertEqual((entry.status, entry.absence_note), ("ABSENT", "Fever"))
+        self.autosave(self.ravi, "ABSENT", "Fever and cough")
+        self.assertEqual(self.entry(self.ravi).absence_note, "Fever and cough")
+
+    def test_existing_draft_row_updates_without_duplicate_or_correction(self):
+        self.autosave(self.asha, "PRESENT")
+        self.autosave(self.asha, "ABSENT", "Late bus")
+        self.assertEqual(self.register().entries.filter(academic_enrollment=self.asha).count(), 1)
+        self.assertEqual(self.entry(self.asha).status, AttendanceStatus.ABSENT)
+        self.assertFalse(AttendanceCorrection.objects.exists())
+
+    def test_note_on_present_is_refused_and_keeps_saved_value(self):
+        self.autosave(self.ravi, "ABSENT", "Fever")
+        response = self.autosave(self.ravi, "PRESENT", "Fever")
+        self.assertEqual(response.status_code, 422)
+        self.assertContains(response, "Only an absent Student can have a note.", status_code=422)
+        self.assertEqual(self.entry(self.ravi).status, AttendanceStatus.ABSENT)
+
+    def test_unanswered_row_saves_nothing(self):
+        self.assertEqual(self.autosave(self.asha, "").status_code, 200)
+        self.assertEqual(self.register().entries.count(), 0)
+
+    # --- counts ---
+
+    def test_response_carries_saved_counts_and_hint(self):
+        self.autosave(self.asha, "PRESENT")
+        response = self.autosave(self.ravi, "ABSENT")
+        for key, value in (("present", 1), ("absent", 1), ("unmarked", 0)):
+            self.assertContains(
+                response,
+                f'id="erp-count-{key}" data-erp-count="{key}" hx-swap-oob="true">{value}<',
+            )
+        self.assertContains(response, "All students marked")
+
+    def test_hint_reports_unmarked_rows(self):
+        response = self.autosave(self.asha, "PRESENT")
+        self.assertContains(response, "Mark all students to submit (1 unmarked)")
+
+    # --- guard rails ---
+
+    def test_submitted_register_is_refused(self):
+        self.both()
+        response = self.autosave(self.asha, "ABSENT")
+        self.assertEqual(response.status_code, 409)
+        self.assertContains(response, "already submitted", status_code=409)
+        self.assertEqual(self.entry(self.asha).status, AttendanceStatus.PRESENT)
+
+    def test_autosave_never_submits(self):
+        self.autosave(self.asha, "PRESENT")
+        self.autosave(self.ravi, "PRESENT")
+        self.assertFalse(self.register().is_submitted)
+
+    def test_other_section_is_forbidden(self):
+        url = reverse("core:my-attendance-autosave", args=[self.six_b.pk])
+        self.assertEqual(self.autosave(self.asha, "PRESENT", url=url).status_code, 403)
+        self.assertEqual(self.register().entries.count(), 0)
+
+    def test_enrollment_from_another_section_is_not_found(self):
+        _, cara = self.make_student("Cara", section=self.six_b)
+        response = self.autosave(cara, "PRESENT")
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(self.register().entries.count(), 0)
+
+    def test_forged_enrollment_id_is_not_found(self):
+        data = {"enrollment": 999999, "status_999999": "PRESENT"}
+        response = self.teacher.post(self.autosave_url, data, HTTP_HX_REQUEST="true")
+        self.assertEqual(response.status_code, 404)
+
+    def test_only_the_posted_row_is_saved(self):
+        data = {
+            "enrollment": self.asha.pk,
+            f"status_{self.asha.pk}": "PRESENT",
+            f"status_{self.ravi.pk}": "ABSENT",
+        }
+        self.teacher.post(self.autosave_url, data, HTTP_HX_REQUEST="true")
+        self.assertIsNone(self.entry(self.ravi))
+
+    def test_other_teacher_and_anonymous_are_refused(self):
+        iyer = self.client_class()
+        iyer.login(username="iyer", password="pass-12345")
+        self.assertEqual(self.autosave(self.asha, "PRESENT", client=iyer).status_code, 403)
+        anonymous = self.client_class()
+        self.assertEqual(self.autosave(self.asha, "PRESENT", client=anonymous).status_code, 302)
+        self.assertEqual(self.register().entries.count(), 0)
+
+    def test_without_htmx_header_and_on_get_nothing_happens(self):
+        data = {"enrollment": self.asha.pk, f"status_{self.asha.pk}": "PRESENT"}
+        self.assertEqual(self.teacher.post(self.autosave_url, data).status_code, 400)
+        self.assertEqual(self.teacher.get(self.autosave_url).status_code, 405)
+        self.assertEqual(self.register().entries.count(), 0)
+
+    # --- the page and the non-HTMX flow ---
+
+    def test_capture_page_wires_rows_to_autosave(self):
+        page = self.teacher.get(self.url)
+        self.assertContains(page, f'hx-post="{self.autosave_url}"', count=2)
+        self.assertContains(page, "data-erp-autosave-announce")
+        self.assertContains(page, "data-erp-wait-message")
+        self.assertContains(page, "data-erp-mark-present")
+        self.assertContains(page, "htmx.org@2.0.4")
+        self.assertContains(page, "Save draft")
+        self.assertContains(page, "Save and submit")
+
+    def test_submitted_page_does_not_load_htmx(self):
+        self.both()
+        self.assertNotContains(self.teacher.get(self.url), "htmx")
+
+    def test_bulk_marked_rows_save_through_the_same_endpoint(self):
+        # "Mark unanswered as present" fires each row's change event, which posts the
+        # same fields as a manual choice; there is no separate bulk endpoint.
+        for enrollment in (self.asha, self.ravi):
+            self.assertEqual(self.autosave(enrollment, "PRESENT").status_code, 200)
+        statuses = dict(self.register().entries.values_list("academic_enrollment_id", "status"))
+        self.assertEqual(statuses, {self.asha.pk: "PRESENT", self.ravi.pk: "PRESENT"})
+
+    def test_admin_capture_page_is_unchanged(self):
+        register = self.register()
+        self.client.login(username="admin", password="pass-12345")
+        page = self.client.get(reverse("core:attendance-register-detail", args=[register.pk]))
+        self.assertNotContains(page, "hx-post")
+        self.assertNotContains(page, "htmx")
+        self.assertNotContains(page, "data-erp-wait-message")
+
+    def test_ordinary_save_and_submit_still_work_after_autosave(self):
+        self.autosave(self.asha, "PRESENT")
+        self.assertContains(self.both(ravi="", action="save"), "Draft saved.")
+        self.assertFalse(self.register().is_submitted)
+        response = self.both()
+        self.assertContains(response, "Attendance saved and submitted.")
+        self.assertTrue(self.register().is_submitted)

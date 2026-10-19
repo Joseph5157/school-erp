@@ -38,12 +38,13 @@
 {% else %}
     <p class="text-muted">Unmarked Students are <strong>not</strong> treated as absent.</p>
     {% if capture_form.enrollments %}
-    <form method="post" id="attendance-capture">
+    <form method="post" id="attendance-capture" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
         {% csrf_token %}
-        {% include "core/_attendance_capture_table.html" with can_submit=True %}
+        {% include "core/_attendance_capture_table.html" with can_submit=True autosave_url=autosave_url %}
     </form>
     {% else %}
     {% include "partials/_empty.html" with text="No Students are enrolled in this Section today." %}
     {% endif %}
 {% endif %}
 {% endblock %}
+{% block extra_js %}{% if autosave_url %}<script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.4/dist/htmx.min.js" integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+" crossorigin="anonymous" defer></script>{% endif %}{% endblock %}
