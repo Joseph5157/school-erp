@@ -2,6 +2,7 @@
 {% block title %}{{ profile.name }}{% endblock %}
 {% block content %}
 <header class="erp-child-head">
+    <a class="erp-back" href="{% url 'portal:home' %}">← Your children</a>
     <h1 class="erp-child-title">{{ profile.name }}</h1>
     {% if profile.placement %}
     <p class="erp-child-meta">{{ profile.placement.class_grade }}-{{ profile.placement.section }} &middot; {{ profile.placement.academic_year }}</p>

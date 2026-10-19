@@ -1047,3 +1047,6 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
     box-shadow: 0 4px 12px rgba(24, 33, 43, .08);
   }
 }
+
+.erp-back { display: inline-flex; align-items: center; min-height: 44px; font-size: var(--erp-text-sm); font-weight: 600; color: var(--erp-accent-strong); text-decoration: none; }
+.erp-back:hover { text-decoration: underline; }

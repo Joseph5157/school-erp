@@ -33,6 +33,12 @@ class ChildOverviewTests(PortalFixture, TestCase):
         page = self.get()
         self.assertContains(page, "No report cards published yet")
 
+    def test_back_link_to_home_above_heading(self):
+        html = self.get().content.decode()
+        back = f'<a class="erp-back" href="{reverse("portal:home")}">← Your children</a>'
+        self.assertIn(back, html)
+        self.assertLess(html.index(back), html.index('class="erp-child-title"'))
+
     def test_single_child_has_no_switcher(self):
         self.assertNotContains(self.get(), "data-erp-switcher")
 
