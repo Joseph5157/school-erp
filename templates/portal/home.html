@@ -7,38 +7,42 @@
 <div class="erp-child-grid">
     {% for s in summaries %}
     <article class="erp-child-card">
-        <h2 class="erp-child-name">{{ s.name }}</h2>
-        {% if s.placement %}
-        <p class="text-muted mb-1">{{ s.placement.academic_year }} &middot; {{ s.placement.class_grade }}-{{ s.placement.section }} &middot; {{ s.status }}</p>
-        {% else %}
-        <p class="text-muted mb-1">No current placement &middot; {{ s.status }}</p>
-        {% endif %}
-        {% if s.attendance %}
-        <p class="mb-1"><strong>{{ s.attendance.percentage }}%</strong> attendance ({{ s.attendance.present }} of {{ s.attendance.total }} recorded days)</p>
-        {% else %}
-        <p class="text-muted mb-1">No attendance recorded yet</p>
-        {% endif %}
-        <p class="mb-2">
-            {% if s.latest_report_card %}<a href="{% url 'portal:report-card' s.grant.public_id s.latest_report_card.public_id %}">Latest report card: {{ s.latest_report_card.term_label }}</a>{% else %}<span class="text-muted">No report cards published yet</span>{% endif %}
-        </p>
-        <a class="btn btn-outline-primary btn-sm" href="{% url 'portal:child' s.grant.public_id %}">Open {{ s.name }}<span class="visually-hidden"> overview</span></a>
+        <div>
+            <h2 class="erp-child-name">{{ s.name }}</h2>
+            {% if s.placement %}
+            <p class="erp-child-meta">{{ s.placement.class_grade }}-{{ s.placement.section }} &middot; {{ s.placement.academic_year }} &middot; {{ s.status }}</p>
+            {% else %}
+            <p class="erp-child-meta">No current placement &middot; {{ s.status }}</p>
+            {% endif %}
+        </div>
+        {% include "portal/_child_stats.html" %}
+        <a class="btn btn-primary erp-child-open" href="{% url 'portal:child' s.grant.public_id %}">Open overview<span class="visually-hidden"> for {{ s.name }}</span></a>
     </article>
     {% endfor %}
 </div>
 {% endif %}
-{% for item in children %}{% if not item.visible %}
-<p class="text-muted small">{{ item.student.full_name }} &mdash; access under review by the school.</p>
-{% endif %}{% endfor %}
+{% if summaries|length != children|length %}
+<section class="erp-review" aria-labelledby="review-h">
+    <h2 id="review-h" class="erp-review-title">Access under review</h2>
+    <ul class="erp-review-list">
+        {% for item in children %}{% if not item.visible %}
+        <li><strong>{{ item.student.full_name }}</strong> &mdash; access under review by the school.</li>
+        {% endif %}{% endfor %}
+    </ul>
+</section>
+{% endif %}
 {% else %}
 {% include "partials/_empty.html" with title="No students yet" text="No students are linked to your account yet. Please contact the school office." %}
 {% endif %}
 {% if notices %}
-<h2 class="h5 mt-4">Latest notices</h2>
-<div class="list-group mb-2" style="max-width: 32rem">
-    {% for notice in notices %}
-    <a class="list-group-item list-group-item-action" href="{% url 'portal:notice' notice.public_id %}">{{ notice.title }} <span class="text-muted small">&middot; {{ notice.published_at|date:"j M" }}</span></a>
-    {% endfor %}
-</div>
-<p class="mb-4"><a href="{% url 'portal:notices' %}">All notices</a></p>
+<section class="erp-notices" aria-labelledby="notices-h">
+    <h2 id="notices-h" class="erp-notices-title">Latest notices</h2>
+    <div class="list-group mb-2">
+        {% for notice in notices %}
+        <a class="list-group-item list-group-item-action" href="{% url 'portal:notice' notice.public_id %}">{{ notice.title }} <span class="text-muted small">&middot; {{ notice.published_at|date:"j M" }}</span></a>
+        {% endfor %}
+    </div>
+    <p class="mb-4"><a href="{% url 'portal:notices' %}">All notices</a></p>
+</section>
 {% endif %}
 {% endblock %}

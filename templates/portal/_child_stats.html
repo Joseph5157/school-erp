@@ -1,0 +1,23 @@
+{% comment %}Attendance + latest report card tiles for one child summary `s` (from child_summaries). Honest empties: no fake 0%, no fake report-card state. Pass link=True to show the tile links (Child Overview); Home cards use one Open button instead.{% endcomment %}
+<div class="erp-stats">
+    <div class="erp-stat erp-stat-attendance">
+        <p class="erp-stat-label">Attendance</p>
+        {% if s.attendance %}
+        <p class="erp-stat-value">{{ s.attendance.percentage }}%</p>
+        <p class="erp-stat-note">{{ s.attendance.present }} of {{ s.attendance.total }} recorded days present</p>
+        {% else %}
+        <p class="erp-stat-empty">No attendance recorded yet</p>
+        {% endif %}
+        {% if link %}<a class="erp-stat-link" href="{% url 'portal:attendance' s.grant.public_id %}">View attendance</a>{% endif %}
+    </div>
+    <div class="erp-stat erp-stat-report">
+        <p class="erp-stat-label">Latest report card</p>
+        {% if s.latest_report_card %}
+        <p class="erp-stat-value erp-stat-value-sm">{{ s.latest_report_card.term_label }}</p>
+        <a class="erp-stat-link" href="{% url 'portal:report-card' s.grant.public_id s.latest_report_card.public_id %}">Open report card<span class="visually-hidden"> for {{ s.name }}</span></a>
+        {% else %}
+        <p class="erp-stat-empty">No report cards published yet</p>
+        {% if link %}<a class="erp-stat-link" href="{% url 'portal:report-cards' s.grant.public_id %}">Report cards</a>{% endif %}
+        {% endif %}
+    </div>
+</div>

@@ -1,25 +1,28 @@
 {% extends "portal/base.html" %}
 {% block title %}{{ profile.name }}{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">{{ profile.name }}</h1>
-<dl class="row" style="max-width: 40rem">
-    {% if profile.admission_number %}
-    <dt class="col-sm-5">Admission number</dt><dd class="col-sm-7">{{ profile.admission_number }}</dd>
-    {% endif %}
+<header class="erp-child-head">
+    <h1 class="erp-child-title">{{ profile.name }}</h1>
     {% if profile.placement %}
-    <dt class="col-sm-5">Academic Year</dt><dd class="col-sm-7">{{ profile.placement.academic_year }}</dd>
-    <dt class="col-sm-5">Class/Grade</dt><dd class="col-sm-7">{{ profile.placement.class_grade }}</dd>
-    <dt class="col-sm-5">Section</dt><dd class="col-sm-7">{{ profile.placement.section }}</dd>
-    {% if profile.placement.roll_number %}
-    <dt class="col-sm-5">Roll number</dt><dd class="col-sm-7">{{ profile.placement.roll_number }}</dd>
-    {% endif %}
+    <p class="erp-child-meta">{{ profile.placement.class_grade }}-{{ profile.placement.section }} &middot; {{ profile.placement.academic_year }}</p>
     {% else %}
-    <dt class="col-sm-5">Current placement</dt><dd class="col-sm-7">None at present</dd>
+    <p class="erp-child-meta">No current placement</p>
     {% endif %}
-    <dt class="col-sm-5">Enrolment status</dt><dd class="col-sm-7">{{ profile.status }}</dd>
-</dl>
-<p>
-    <a class="btn btn-outline-primary" href="{% url 'portal:attendance' grant.public_id %}">Attendance</a>
-    <a class="btn btn-outline-primary" href="{% url 'portal:report-cards' grant.public_id %}">Report cards</a>
-</p>
+</header>
+{% if summary %}{% include "portal/_child_stats.html" with s=summary link=True %}{% endif %}
+<section class="erp-details" aria-labelledby="details-h">
+    <h2 id="details-h" class="erp-details-title">School details</h2>
+    <dl class="erp-details-list">
+        {% if profile.admission_number %}<div><dt>Admission number</dt><dd>{{ profile.admission_number }}</dd></div>{% endif %}
+        {% if profile.placement %}
+        <div><dt>Academic Year</dt><dd>{{ profile.placement.academic_year }}</dd></div>
+        <div><dt>Class/Grade</dt><dd>{{ profile.placement.class_grade }}</dd></div>
+        <div><dt>Section</dt><dd>{{ profile.placement.section }}</dd></div>
+        {% if profile.placement.roll_number %}<div><dt>Roll number</dt><dd>{{ profile.placement.roll_number }}</dd></div>{% endif %}
+        {% else %}
+        <div><dt>Current placement</dt><dd>None at present</dd></div>
+        {% endif %}
+        <div><dt>Enrolment status</dt><dd>{{ profile.status }}</dd></div>
+    </dl>
+</section>
 {% endblock %}

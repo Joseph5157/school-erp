@@ -275,7 +275,8 @@ class AttendanceCardTests(AttendanceDashboardFixture, TestCase):
             row["attendance"],
             {"present": 1, "absent": 1, "total": 2, "percentage": 50.0},
         )
-        self.assertContains(page, "50.0%</strong> attendance (1 of 2 recorded days)")
+        self.assertContains(page, "50.0%")
+        self.assertContains(page, "1 of 2 recorded days present")
 
 
 class DashboardPublicationFixture(BoundaryFixture):
@@ -339,7 +340,8 @@ class DashboardReportCardTests(DashboardPublicationFixture, TestCase):
             self.assertContains(
                 page, reverse("portal:report-card", args=[grant.public_id, card.public_id])
             )
-        self.assertContains(page, "Latest report card: Term 1")
+        self.assertContains(page, "Latest report card")
+        self.assertContains(page, "Term 1")
 
     def test_stale_publication_is_hidden_from_dashboard(self):
         card = next(p for p in self.published if p.student_id == self.asha.pk)

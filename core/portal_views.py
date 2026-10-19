@@ -30,7 +30,14 @@ def _context(request, **extra):
     grant = extra.get("grant")
     if grant is None:
         grant = next((item["grant"] for item in children if item["visible"]), None)
-    return {"children": children, "nav_grant": grant, **extra}
+    switcher = [item for item in children if item["visible"]]
+    return {
+        "children": children,
+        "nav_grant": grant,
+        # Child switcher: visible grants only, and only worth showing for 2+.
+        "switcher_children": switcher if len(switcher) > 1 else [],
+        **extra,
+    }
 
 
 @require_safe
@@ -54,10 +61,14 @@ def home(request):
 def child(request, public_id):
     grant = _visible_grant_or_404(request, public_id)
     student = grant.student_guardian.student
+    context = _context(request, grant=grant, student=student, profile=student_profile(student))
+    # Same batched, snapshot-based summary the Home cards use (never recomputed).
+    own = [item for item in context["children"] if item["grant"].pk == grant.pk]
+    summaries = child_summaries(own)
     return render(
         request,
         "portal/child.html",
-        _context(request, grant=grant, student=student, profile=student_profile(student)),
+        {**context, "summary": summaries[0] if summaries else None},
     )
 
 
