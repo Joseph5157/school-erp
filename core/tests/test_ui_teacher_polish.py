@@ -308,13 +308,10 @@ class MyDayPolishTests(MarksFixture, TestCase):
         self.assertEqual(page.context["attendance_tile"]["state"], "Not required")
         self.assertContains(page, "No class assigned")
 
-    def test_attendance_history_is_a_clear_secondary_action(self):
+    def test_dashboard_has_no_attendance_history_shortcut(self):
         page = self.home()
-        history = reverse("core:my-attendance-history")
-        self.assertContains(
-            page, f'<a class="btn btn-outline-secondary erp-day-secondary" href="{history}">')
-        self.assertContains(page, "Attendance history for my Sections")
-        self.assertNotContains(page, f'<p><a href="{history}">')
+        self.assertNotContains(page, reverse("core:my-attendance-history"))
+        self.assertNotContains(page, "Attendance history for my Sections")
 
     def test_waiting_marks_are_one_tile_not_a_list(self):
         page = self.home()

@@ -24,7 +24,7 @@ from core.models import (
 )
 from core.tests.test_phase5_teacher_home import MONDAY, SUNDAY, TeacherHomeFixture, on
 
-TILE = re.compile(r'<div class="erp-tile( is-link)?">(.*?)</div>', re.DOTALL)
+TILE = re.compile(r'<div class="erp-tile(?: is-(?:attendance|marks))?( is-link)?">(.*?)</div>', re.DOTALL)
 
 
 class DashboardFixture(TeacherHomeFixture):
@@ -80,7 +80,7 @@ class HeaderTests(DashboardFixture, TestCase):
         self.class_teacher(self.rao, self.six_a)
         page = self.page()
         self.assertIs(page.context["school_day"], True)
-        self.assertIn('<span class="erp-pill">School day</span>', self.header(page))
+        self.assertIn('<span class="erp-pill is-school-day">School day</span>', self.header(page))
 
     def test_one_year_from_a_subject_assignment_alone_is_enough(self):
         self.assign(self.rao, self.maths, self.six_a)
