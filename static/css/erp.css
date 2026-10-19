@@ -302,6 +302,12 @@ body.erp { min-height: 100vh; }
 .erp-teacher .erp-tile.is-marks .erp-tile-meta,
 .erp-teacher .erp-tile.is-attendance .erp-tile-label,
 .erp-teacher .erp-tile.is-marks .erp-tile-label { color: var(--erp-ink); }
+/* Decorative tile icon (the label text always accompanies it); the label is indented to clear it. */
+.erp-teacher .erp-tile-icon { position: absolute; top: 1rem; left: 1rem; width: 1.125rem; height: 1.125rem; }
+.erp-teacher .erp-tile.is-attendance .erp-tile-icon { color: var(--erp-accent-strong); }
+.erp-teacher .erp-tile.is-marks .erp-tile-icon { color: var(--erp-info-strong); }
+.erp-teacher .erp-tile.is-attendance .erp-tile-label,
+.erp-teacher .erp-tile.is-marks .erp-tile-label { padding-left: 1.5rem; }
 .erp-teacher .erp-day-date .erp-pill.is-school-day {
   background: var(--erp-accent-wash); color: var(--erp-accent-strong); border-color: transparent;
 }
