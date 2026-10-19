@@ -24,7 +24,8 @@ from core.models import (
 )
 from core.tests.test_phase5_teacher_home import MONDAY, SUNDAY, TeacherHomeFixture, on
 
-TILE = re.compile(r'<div class="erp-tile(?: is-(?:attendance|marks))?( is-link)?">(.*?)</div>', re.DOTALL)
+TILE = re.compile(
+    r'<div class="erp-tile(?: is-(?:attendance|marks))?( is-link)?">(.*?)</div>', re.DOTALL)
 
 
 class DashboardFixture(TeacherHomeFixture):

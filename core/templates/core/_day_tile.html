@@ -1,5 +1,6 @@
 {# TDB-1 Today-overview tile. A tile with a url is one stretched link; without one it is plain, non-interactive text. #}
 <div class="erp-tile{% if tone %} is-{{ tone }}{% endif %}{% if tile.url %} is-link{% endif %}">
+    {% if tone == "attendance" %}{% include "partials/_tab_icon.html" with name="students" icon_class="erp-tile-icon" %}{% elif tone == "marks" %}{% include "partials/_tab_icon.html" with name="assessments" icon_class="erp-tile-icon" %}{% endif %}
     <h3 class="erp-tile-label">{{ label }}</h3>
     {% if tile.url %}
     <p class="erp-tile-state"><a class="stretched-link" href="{{ tile.url }}" aria-label="{{ label }}: {{ tile.state }}, {{ tile.meta }}">{{ tile.state }}</a></p>

@@ -313,6 +313,12 @@ class MyDayPolishTests(MarksFixture, TestCase):
         self.assertNotContains(page, reverse("core:my-attendance-history"))
         self.assertNotContains(page, "Attendance history for my Sections")
 
+    def test_overview_tiles_have_decorative_icons(self):
+        html = self.home().content.decode()
+        self.assertEqual(html.count("erp-tab-icon erp-tile-icon"), 2)
+        for svg in re.findall(r'<svg class="erp-tab-icon erp-tile-icon"[^>]*>', html):
+            self.assertIn('aria-hidden="true"', svg)
+
     def test_waiting_marks_are_one_tile_not_a_list(self):
         page = self.home()
         waiting = page.context["assessments"]
