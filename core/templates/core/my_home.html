@@ -5,14 +5,14 @@
 <header class="erp-day-head">
 <h1 class="h3 mb-1 erp-day-greeting">{{ greeting }}</h1>
 <p class="erp-day-date text-muted">{{ today|date:"l, j F Y" }}
-{% if school_day is True %}<span class="erp-pill">School day</span>{% elif school_day is False %}<span class="erp-pill">Not a school day</span>{% endif %}</p>
+{% if school_day is True %}<span class="erp-pill is-school-day">School day</span>{% elif school_day is False %}<span class="erp-pill">Not a school day</span>{% endif %}</p>
 </header>
 
 <section aria-labelledby="day-overview">
 <h2 class="visually-hidden" id="day-overview">Today overview</h2>
 <div class="erp-tiles">
-{% include "core/_day_tile.html" with label="Attendance" tile=attendance_tile %}
-{% include "core/_day_tile.html" with label="Marks" tile=marks_tile %}
+{% include "core/_day_tile.html" with label="Attendance" tone="attendance" tile=attendance_tile %}
+{% include "core/_day_tile.html" with label="Marks" tone="marks" tile=marks_tile %}
 </div>
 {% if attendance_rows|length > 1 %}
 <ul class="erp-day-rows" aria-label="Attendance by Section">
@@ -33,7 +33,6 @@
 {% endfor %}
 </ul>
 {% endif %}
-<a class="btn btn-outline-secondary erp-day-secondary" href="{% url 'core:my-attendance-history' %}"><span>Attendance history for my Sections</span><span class="erp-day-chevron" aria-hidden="true">&rsaquo;</span></a>
 </section>
 
 {% if timetable_rows is not None %}
@@ -57,7 +56,7 @@
 
 <section aria-labelledby="day-assignments">
 <h2 class="erp-section-title" id="day-assignments">Teaching assignments</h2>
-<div class="erp-assign-group">
+<div class="erp-assign-group is-class">
 <h3 class="erp-assign-label" id="assign-class">Class teacher</h3>
 {% if class_rows %}
 <ul class="erp-day-rows erp-assign-rows" aria-labelledby="assign-class">
@@ -75,7 +74,7 @@
 {% include "partials/_empty.html" with title="You are not a class teacher today." text="Class and subject assignments are set by the school office. If you expected to see a class here, ask the office to check your assignment." %}
 {% endif %}
 </div>
-<div class="erp-assign-group">
+<div class="erp-assign-group is-subjects">
 <h3 class="erp-assign-label" id="assign-subjects">Subjects I teach</h3>
 {% if subject_rows %}
 <ul class="erp-day-rows erp-assign-rows" aria-labelledby="assign-subjects">

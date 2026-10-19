@@ -293,6 +293,25 @@ body.erp { min-height: 100vh; }
 }
 .erp-teacher .erp-assign-empty { margin: 0; color: var(--erp-ink-soft); }
 .erp-teacher .erp-remarks { margin-top: 2rem; }
+/* My day colour: quiet washes from existing tokens (plus one neutral lavender), no gradients or shadows.
+   Ink and soft-ink text on every wash stays above 4.5:1; focus rings are unchanged. */
+.erp-teacher .erp-day { --erp-day-remark-wash: #f1eff7; --erp-day-tint-rule: rgba(24, 33, 43, .1); }
+.erp-teacher .erp-tile.is-attendance { background: var(--erp-accent-wash); border-color: rgba(31, 107, 82, .22); }
+.erp-teacher .erp-tile.is-marks { background: var(--erp-info-wash); border-color: rgba(29, 95, 168, .22); }
+.erp-teacher .erp-tile.is-attendance .erp-tile-meta,
+.erp-teacher .erp-tile.is-marks .erp-tile-meta,
+.erp-teacher .erp-tile.is-attendance .erp-tile-label,
+.erp-teacher .erp-tile.is-marks .erp-tile-label { color: var(--erp-ink); }
+.erp-teacher .erp-day-date .erp-pill.is-school-day {
+  background: var(--erp-accent-wash); color: var(--erp-accent-strong); border-color: transparent;
+}
+.erp-teacher .erp-assign-group.is-class .erp-assign-rows { background: var(--erp-accent-wash); }
+.erp-teacher .erp-assign-group.is-subjects .erp-assign-rows { background: var(--erp-info-wash); }
+.erp-teacher .erp-remarks .erp-assign-rows { background: var(--erp-day-remark-wash); }
+.erp-teacher .erp-assign-group .erp-assign-row + .erp-assign-row,
+.erp-teacher .erp-remarks .erp-assign-row + .erp-assign-row { border-top-color: var(--erp-day-tint-rule); }
+.erp-teacher .erp-assign-group .erp-assign-row.is-link:hover,
+.erp-teacher .erp-remarks .erp-assign-row.is-link:hover { background: rgba(24, 33, 43, .05); }
 /* Neutral empty state: the page cannot prove the teacher finished anything, so no success colour or tick. */
 .erp-teacher .erp-day-empty {
   display: grid; gap: .25rem; padding: 1rem;
