@@ -208,23 +208,25 @@ def report_card_groups(entries):
     """Assessment-first read model of one publication's snapshot entries (U4-3B).
 
     Reads only the immutable TermPublicationEntry rows, never live results or
-    offerings. Entries of the same assessment (same snapshot date and label) form
-    one group. Groups run latest assessment date first, ties broken by the
-    group's earliest frozen `display_order`; entries inside a group keep the
-    frozen `display_order` (the school's curriculum order, ADR U4-3A). No totals,
+    offerings. Entries of the same assessment (same snapshot label) form one
+    group. Groups run latest assessment date first, ties broken by the group's
+    earliest frozen `display_order`; entries inside a group keep the frozen
+    `display_order` (the school's curriculum order, ADR U4-3A). No totals,
     averages, ranks or any other derived value is computed here.
+
+    Entries are grouped by the exact `assessment_label` only (no normalising or
+    fuzzy matching). Subjects of one named assessment may be held on different
+    dates; the group's date is the latest `assessment_date` among its entries.
     """
     grouped = {}
     for entry in entries:
-        grouped.setdefault((entry.assessment_date, entry.assessment_label), []).append(entry)
-    groups = [
-        {
-            "date": date,
-            "label": label,
-            "entries": sorted(rows, key=lambda row: row.display_order),
-        }
-        for (date, label), rows in grouped.items()
-    ]
+        grouped.setdefault(entry.assessment_label, []).append(entry)
+    groups = []
+    for label, rows in grouped.items():
+        rows = sorted(rows, key=lambda row: row.display_order)
+        groups.append(
+            {"date": max(row.assessment_date for row in rows), "label": label, "entries": rows}
+        )
     groups.sort(key=lambda g: (-g["date"].toordinal(), g["entries"][0].display_order))
     return groups
 

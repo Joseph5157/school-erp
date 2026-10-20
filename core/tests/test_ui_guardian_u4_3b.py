@@ -36,6 +36,33 @@ class GroupingHelperTests(SimpleTestCase):
         rows = [entry("B quiz", date(2026, 8, 1), 5), entry("A quiz", date(2026, 8, 1), 9)]
         self.assertEqual([g["label"] for g in report_card_groups(rows)], ["B quiz", "A quiz"])
 
+    def test_same_label_on_different_dates_is_one_group_with_the_latest_date(self):
+        rows = [
+            entry("Mid Term", date(2026, 9, 12), 2, "Mathematics"),
+            entry("Mid Term", date(2026, 9, 10), 0, "Telugu"),
+            entry("Mid Term", date(2026, 9, 11), 1, "English"),
+        ]
+        groups = report_card_groups(rows)
+        self.assertEqual(len(groups), 1)
+        self.assertEqual((groups[0]["label"], groups[0]["date"]), ("Mid Term", date(2026, 9, 12)))
+        self.assertEqual([r.subject_label for r in groups[0]["entries"]],
+                         ["Telugu", "English", "Mathematics"])
+
+    def test_groups_are_ordered_by_their_latest_contained_date(self):
+        rows = [
+            entry("UT1", date(2026, 7, 15), 0, "Telugu"),
+            entry("UT1", date(2026, 9, 20), 1, "English"),  # pushes UT1 after Mid Term
+            entry("Mid Term", date(2026, 9, 12), 2, "Telugu"),
+        ]
+        self.assertEqual([(g["label"], g["date"]) for g in report_card_groups(rows)],
+                         [("UT1", date(2026, 9, 20)), ("Mid Term", date(2026, 9, 12))])
+
+    def test_different_exact_labels_on_the_same_date_stay_separate(self):
+        rows = [entry("Unit Test 1", date(2026, 8, 1), 0),
+                entry("Unit test 1", date(2026, 8, 1), 1),   # not normalised
+                entry("Unit Test 1 ", date(2026, 8, 1), 2)]  # not trimmed
+        self.assertEqual(len(report_card_groups(rows)), 3)
+
     def test_groups_carry_no_derived_values(self):
         group = report_card_groups([entry("UT1", date(2026, 7, 15), 0)])[0]
         self.assertEqual(set(group), {"date", "label", "entries"})
@@ -133,6 +160,21 @@ class ReportCardDetailTests(CardFixture, TestCase):
                              ["Telugu", "English", "Mathematics"])
         html = page.content.decode()
         self.assertLess(html.index('id="rc-assessment-1"'), html.index('id="rc-assessment-2"'))
+
+    def test_one_named_assessment_held_on_different_dates_renders_as_one_block(self):
+        self.add_result(self.telugu, "Mid Term", date(2026, 9, 10))
+        self.add_result(self.english, "Mid Term", date(2026, 9, 11))
+        self.add_result(self.maths, "Mid Term", date(2026, 9, 12))
+        page = self.page()
+        groups = page.context["groups"]
+        self.assertEqual([g["label"] for g in groups], ["Mid Term", "UT2", "UT1"])
+        self.assertEqual(groups[0]["date"], date(2026, 9, 12))
+        self.assertEqual([e.subject_label for e in groups[0]["entries"]],
+                         ["Telugu", "English", "Mathematics"])
+        self.assertContains(
+            page, '<h2 id="rc-assessment-1" class="erp-rc-group-title">Mid Term</h2>')
+        self.assertContains(page, '<p class="erp-rc-group-date">12 Sep 2026</p>', count=1)
+        self.assertContains(page, ">Mid Term</h2>", count=1)
 
     def test_released_card_ignores_later_offering_order_changes(self):
         card = self.asha_card()
