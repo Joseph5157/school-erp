@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Academic Years{% endblock %}
 {% block content %}
-{% include "partials/_page_header.html" with eyebrow="School setup" title="Academic Years" purpose="Each year holds its calendar, terms, subjects and teacher assignments." only %}
-{% if perms.core.add_academicyear %}
-    <a class="btn btn-primary mb-3" href="{% url 'core:academic-year-create' %}">Create Academic Year</a>
-{% endif %}
+{% if perms.core.add_academicyear %}{% url 'core:academic-year-create' as create_url %}{% endif %}
+{% include "partials/_page_header.html" with eyebrow="School setup" title="Academic Years" purpose="Each year holds its calendar, terms, subjects and teacher assignments." primary_url=create_url primary_label="Create Academic Year" only %}
+<div class="erp-panel">
+<div class="erp-table-scroll" role="region" aria-label="Academic Years" tabindex="0">
 <table class="table">
     <thead>
         <tr>
@@ -23,7 +23,7 @@
             <td>{{ academic_year.end_date }}</td>
             <td>{{ academic_year.saturdays_instructional|yesno:"Instructional,Off" }}</td>
             <td>
-                <ul class="list-unstyled small mb-0">
+                <ul class="erp-year-links">
                     <li><strong>Calendar:</strong>
                         {% if perms.core.view_schoolcalendarday %}<a href="{% url 'core:academic-year-calendar' academic_year.pk %}">Calendar</a>{% endif %}
                         {% if perms.core.view_academicterm %}&middot; <a href="{% url 'core:academic-year-terms' academic_year.pk %}">Terms</a>{% endif %}
@@ -48,4 +48,6 @@
         {% endfor %}
     </tbody>
 </table>
+</div>
+</div>
 {% endblock %}

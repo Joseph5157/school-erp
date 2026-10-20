@@ -2,7 +2,7 @@
 {% block title %}Students{% endblock %}
 {% block content %}
 {% include "partials/_page_header.html" with eyebrow="People" title="Students" purpose="Search by name, email or phone; filter by class and status." only %}
-<form method="get" class="mb-3" role="search" aria-label="Filter students">
+<form method="get" class="erp-toolbar" role="search" aria-label="Filter students">
     {% if table.sort_param %}<input type="hidden" name="sort" value="{{ table.sort_param }}">{% endif %}
     <div class="row g-2 align-items-end">
         <div class="col-12 col-md-5 col-lg-4">
@@ -49,6 +49,7 @@
     <a href="{{ chip.url }}"{% if chip.active %} class="active" aria-current="page"{% endif %}>{{ chip.label }}</a>
     {% endfor %}
 </nav>
+<div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Students" tabindex="0">
 <table class="table">
     {% include "partials/_table_head.html" with table=table caption="Students" only %}
@@ -83,6 +84,7 @@
         {% endfor %}
     </tbody>
 </table>
+</div>
 </div>
 {% include "partials/_table_footer.html" with table=table only %}
 {% endblock %}
