@@ -1,23 +1,64 @@
 {% extends "portal/base.html" %}
 {% block title %}{{ pub.term_label }} report card &middot; {{ student.full_name }}{% endblock %}
 {% block content %}
-<h1 class="h3 mb-1">{{ pub.term_label }} report card</h1>
-<p class="text-muted"><a href="{% url 'portal:child' grant.public_id %}">{{ student.full_name }}</a> &middot; {{ pub.academic_year_label }} &middot; {{ pub.class_grade_label }}, Section {{ pub.section_label }}</p>
-<p><a class="btn btn-outline-primary btn-sm" href="{% url 'portal:report-card-pdf' grant.public_id pub.public_id %}">Download PDF</a></p>
-{% if pub.is_partial %}<div class="alert alert-secondary">Some results for this Term are not yet published.</div>{% endif %}
-<table class="table table-sm">
-    <thead><tr><th>Subject</th><th>Assessment</th><th>Date</th><th>Marks</th><th>%</th><th>Grade</th><th>Pass/Fail</th></tr></thead>
-    <tbody>
-    {% for e in entries %}
-        <tr><td>{{ e.subject_label }}</td><td>{{ e.assessment_label }}</td><td>{{ e.assessment_date|date:"j M Y" }}</td>
-            <td>{% if e.status == "MARKED" %}{{ e.score }} / {{ e.maximum_marks }}{% else %}Absent{% endif %}</td>
-            <td>{% if e.percentage is not None %}{{ e.percentage }}%{% endif %}</td>
-            <td>{{ e.grade_label|default:"Not graded" }}</td><td>{{ e.pass_fail_label|default:"" }}</td></tr>
-    {% empty %}
-        <tr><td colspan="7">No results in this report card.</td></tr>
-    {% endfor %}
-    </tbody>
-</table>
-{% if pub.remark_text %}<h2 class="h5 mt-3">Class teacher's remark</h2><p>{{ pub.remark_text|linebreaksbr }}</p>{% endif %}
-<p class="small text-muted">Each assessment is shown separately; there are no totals, weighting or ranks.</p>
+<header class="erp-child-head erp-rc-head">
+    <a class="erp-back" href="{% url 'portal:report-cards' grant.public_id %}">&larr; Report cards</a>
+    <h1 class="erp-child-title">{{ pub.term_label }} report card</h1>
+    <p class="erp-child-meta"><a href="{% url 'portal:child' grant.public_id %}">{{ student.full_name }}</a> &middot; {{ pub.class_grade_label }}, Section {{ pub.section_label }} &middot; {{ pub.academic_year_label }}</p>
+    <p class="erp-rc-actions"><a class="btn btn-outline-primary erp-rc-pdf" href="{% url 'portal:report-card-pdf' grant.public_id pub.public_id %}" aria-label="Download PDF: {{ pub.term_label }} report card for {{ student.full_name }}">Download PDF</a></p>
+</header>
+{% if pub.is_partial %}<div class="alert alert-secondary" role="note">Some results for this Term are not yet published.</div>{% endif %}
+
+{% for group in groups %}
+<section class="erp-rc-group" aria-labelledby="rc-assessment-{{ forloop.counter }}">
+    <header class="erp-rc-group-head">
+        <h2 id="rc-assessment-{{ forloop.counter }}" class="erp-rc-group-title">{{ group.label }}</h2>
+        <p class="erp-rc-group-date">{{ group.date|date:"j M Y" }}</p>
+    </header>
+
+    {# Phone and tablet (below 992px): one block per subject #}
+    <ul class="erp-rc-subjects d-lg-none">
+        {% for e in group.entries %}
+        <li class="erp-rc-subject">
+            <h3 class="erp-rc-subject-name">{{ e.subject_label }}</h3>
+            <dl class="erp-rc-values">
+                <div><dt>Marks</dt><dd>{% if e.status == "MARKED" %}{{ e.score }} / {{ e.maximum_marks }}{% else %}Absent{% endif %}</dd></div>
+                {% if e.percentage is not None %}<div><dt>Percentage</dt><dd>{{ e.percentage }}%</dd></div>{% endif %}
+                <div><dt>Grade</dt><dd>{{ e.grade_label|default:"Not graded" }}</dd></div>
+                {% if e.pass_fail_label %}<div><dt>Result</dt><dd>{{ e.pass_fail_label }}</dd></div>{% endif %}
+            </dl>
+        </li>
+        {% endfor %}
+    </ul>
+
+    {# Large screens (992px and up): one table per assessment #}
+    <table class="erp-rc-table d-none d-lg-table">
+        <caption class="visually-hidden">{{ group.label }}, {{ group.date|date:"j M Y" }}</caption>
+        <thead>
+            <tr><th scope="col">Subject</th><th scope="col">Marks</th><th scope="col"><abbr title="Percentage">%</abbr></th><th scope="col">Grade</th><th scope="col">Result</th></tr>
+        </thead>
+        <tbody>
+            {% for e in group.entries %}
+            <tr>
+                <th scope="row">{{ e.subject_label }}</th>
+                <td>{% if e.status == "MARKED" %}{{ e.score }} / {{ e.maximum_marks }}{% else %}Absent{% endif %}</td>
+                <td>{% if e.percentage is not None %}{{ e.percentage }}%{% endif %}</td>
+                <td>{{ e.grade_label|default:"Not graded" }}</td>
+                <td>{{ e.pass_fail_label|default:"" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% empty %}
+<p class="erp-rc-empty">No results in this report card.</p>
+{% endfor %}
+
+{% if pub.remark_text %}
+<section class="erp-rc-remark" aria-labelledby="rc-remark-h">
+    <h2 id="rc-remark-h" class="erp-rc-remark-title">Class teacher's remark</h2>
+    <p>{{ pub.remark_text|linebreaksbr }}</p>
+</section>
+{% endif %}
+<p class="erp-stat-note erp-rc-note">Each assessment is shown separately; there are no totals, weighting or ranks.</p>
 {% endblock %}

@@ -28,6 +28,7 @@ from core.models import (
     StudentResult,
     TermPublication,
 )
+from core.portal import report_card_groups
 from core.tests.test_phase6_access_boundary import BoundaryFixture
 from core.tests.test_phase6_portal_shell import PortalFixture
 
@@ -41,7 +42,8 @@ class ReportCardGradeFallbackTests(TestCase):
         entry = SimpleNamespace(
             subject_label="Science",
             assessment_label="Unit Test 1",
-            assessment_date=None,
+            assessment_date=date(2026, 7, 15),
+            display_order=0,
             status="MARKED",
             score=29,
             maximum_marks=50,
@@ -64,6 +66,7 @@ class ReportCardGradeFallbackTests(TestCase):
             "portal/report_card.html",
             {
                 "entries": [entry],
+                "groups": report_card_groups([entry]),
                 "pub": pub,
                 "student": student,
                 "grant": grant,

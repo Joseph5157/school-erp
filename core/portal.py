@@ -204,6 +204,31 @@ def visible_publications(student):
     return [pub for pub in publications if visible[pub.pk]]
 
 
+def report_card_groups(entries):
+    """Assessment-first read model of one publication's snapshot entries (U4-3B).
+
+    Reads only the immutable TermPublicationEntry rows, never live results or
+    offerings. Entries of the same assessment (same snapshot date and label) form
+    one group. Groups run latest assessment date first, ties broken by the
+    group's earliest frozen `display_order`; entries inside a group keep the
+    frozen `display_order` (the school's curriculum order, ADR U4-3A). No totals,
+    averages, ranks or any other derived value is computed here.
+    """
+    grouped = {}
+    for entry in entries:
+        grouped.setdefault((entry.assessment_date, entry.assessment_label), []).append(entry)
+    groups = [
+        {
+            "date": date,
+            "label": label,
+            "entries": sorted(rows, key=lambda row: row.display_order),
+        }
+        for (date, label), rows in grouped.items()
+    ]
+    groups.sort(key=lambda g: (-g["date"].toordinal(), g["entries"][0].display_order))
+    return groups
+
+
 def child_summaries(children):
     """One batched, read-only dashboard summary per visible child (G-07).
 

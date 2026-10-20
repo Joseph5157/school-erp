@@ -15,6 +15,7 @@ from core.portal import (
     child_summaries,
     parse_attendance_month,
     portal_children,
+    report_card_groups,
     student_profile,
     submitted_attendance,
     visible_publications,
@@ -125,10 +126,12 @@ def report_card(request, public_id, publication_id):
                None)
     if pub is None:
         raise Http404("No such report card.")
+    entries = list(pub.entries.all())  # frozen snapshot rows, in snapshot display_order
     return render(
         request,
         "portal/report_card.html",
-        _context(request, grant=grant, student=student, pub=pub, entries=pub.entries.all()),
+        _context(request, grant=grant, student=student, pub=pub, entries=entries,
+                 groups=report_card_groups(entries)),
     )
 
 
