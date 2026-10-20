@@ -119,17 +119,26 @@ def teacher_tabs(url_name):
 
 
 def current_area(request):
-    """Which area the current page belongs to: "guardian", "teacher", "admin" or None."""
+    """Which area the current page belongs to: "guardian", "teacher", "admin" or None.
+
+    The requested URL only chooses between areas the signed-in user is entitled to
+    (user_areas, ADR 0013). A denied page (403) therefore never borrows another area's
+    navigation: a Guardian sent to a Teacher URL stays in the "guardian" area.
+    """
     user = getattr(request, "user", None)
     if not (user and user.is_authenticated):
         return None
+    keys = [key for key, _, _ in user_areas(user)]
     match = getattr(request, "resolver_match", None)
-    if match is not None and match.namespace == "portal":
+    if match is not None and match.namespace == "portal" and "guardian" in keys:
         return "guardian"
     url_name = match.url_name if match is not None else None
-    if url_name and (url_name.startswith("my-") or url_name in _TEACHER_URL_NAMES):
+    if (
+        url_name
+        and (url_name.startswith("my-") or url_name in _TEACHER_URL_NAMES)
+        and "teacher" in keys
+    ):
         return "teacher"
-    keys = [key for key, _, _ in user_areas(user)]
     if "admin" in keys:
         return "admin"
     return keys[0] if keys else None
