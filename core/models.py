@@ -1809,6 +1809,15 @@ class AcademicSubjectOffering(models.Model):
         ClassGrade, on_delete=models.PROTECT, related_name="subject_offerings"
     )
     subject = models.ForeignKey(Subject, on_delete=models.PROTECT, related_name="offerings")
+    display_order = models.PositiveSmallIntegerField(
+        blank=True,
+        validators=[MinValueValidator(1)],
+        help_text=(
+            "Position of this Subject on report cards for the Class/Grade this year; "
+            "1 is shown first. Each Subject in a Class/Grade needs a different number. "
+            "Leave blank to place a new Subject last."
+        ),
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -1820,13 +1829,64 @@ class AcademicSubjectOffering(models.Model):
             models.UniqueConstraint(
                 fields=["academic_year", "class_grade", "subject"],
                 name="subjectoffering_unique_year_grade_subject",
-            )
+            ),
+            # Scope: the offering identity is (year, grade, subject); Section
+            # restrictions live in a link table, so the narrowest correct scope
+            # for an order slot is the whole Grade in that year.
+            models.UniqueConstraint(
+                fields=["academic_year", "class_grade", "display_order"],
+                name="subjectoffering_unique_year_grade_order",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(display_order__gte=1),
+                name="subjectoffering_display_order_positive",
+            ),
         ]
+
+    @classmethod
+    def next_display_order(cls, academic_year_id, class_grade_id):
+        """The first position after every Subject already offered to this Grade/year."""
+        last = (
+            cls.objects.filter(academic_year_id=academic_year_id, class_grade_id=class_grade_id)
+            .aggregate(last=models.Max("display_order"))["last"]
+        )
+        return (last or 0) + 1
 
     def clean(self):
         super().clean()
         if self.pk is None and self.subject_id and not self.subject.is_active:
             raise ValidationError({"subject": "An inactive Subject cannot be offered."})
+        if self.academic_year_id and self.class_grade_id:
+            if self.display_order is None:
+                self.display_order = self.next_display_order(
+                    self.academic_year_id, self.class_grade_id
+                )
+            else:
+                clash = (
+                    AcademicSubjectOffering.objects.filter(
+                        academic_year_id=self.academic_year_id,
+                        class_grade_id=self.class_grade_id,
+                        display_order=self.display_order,
+                    )
+                    .exclude(pk=self.pk)
+                    .select_related("subject")
+                    .first()
+                )
+                if clash is not None:
+                    raise ValidationError(
+                        {
+                            "display_order": (
+                                f"Position {self.display_order} is already used by "
+                                f"{clash.subject.name} in this Class/Grade; "
+                                "choose a different number."
+                            )
+                        }
+                    )
+
+    def save(self, *args, **kwargs):
+        if self.display_order is None:
+            self.display_order = self.next_display_order(self.academic_year_id, self.class_grade_id)
+        super().save(*args, **kwargs)
 
     @property
     def sections(self):

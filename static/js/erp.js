@@ -347,3 +347,22 @@
     });
   });
 })();
+
+// Child switcher: a native details element, so the links work without JS. This only adds
+// Escape / outside-tap closing and returns focus to the toggle.
+(function () {
+  var switcher = document.querySelector("[data-erp-switcher]");
+  if (!switcher) return;
+  function close() {
+    if (!switcher.open) return;
+    switcher.open = false;
+    var toggle = switcher.querySelector("summary");
+    if (toggle) toggle.focus();
+  }
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape") close();
+  });
+  document.addEventListener("click", function (event) {
+    if (!switcher.contains(event.target) || event.target === switcher) close();
+  });
+})();

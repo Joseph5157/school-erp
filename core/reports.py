@@ -152,6 +152,17 @@ def _year_calendars(start, end):
     return [_YearCalendar(year, exceptions[year.pk]) for year in years]
 
 
+def year_calendar(academic_year, start, end):
+    """Instructional-day lookup for one Academic Year over [start, end] (one query)."""
+    exceptions = {
+        day.date: day.is_instructional
+        for day in SchoolCalendarDay.objects.filter(
+            academic_year=academic_year, date__gte=start, date__lte=end
+        )
+    }
+    return _YearCalendar(academic_year, exceptions)
+
+
 def _dates(start, end):
     day = start
     while day <= end:

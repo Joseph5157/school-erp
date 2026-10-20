@@ -125,7 +125,15 @@ def release_content(student, term):
             assessment__status=Assessment.Status.FINALIZED,
         )
         .annotate(subject_order=Assessment.subject_display_expression("assessment__"))
-        .order_by("subject_order", "assessment__assessment_date", "assessment__name", "pk")
+        # The school's configured curriculum order comes first (U4-3A); it is frozen into
+        # TermPublicationEntry.display_order below. The rest is a deterministic tie-break.
+        .order_by(
+            "assessment__offering__display_order",
+            "subject_order",
+            "assessment__assessment_date",
+            "assessment__name",
+            "pk",
+        )
     )
     entries = [entry_values(result) for result in results]
     remark = TermRemark.objects.filter(term=term, student=student).first()
@@ -295,9 +303,15 @@ def plan_publication(term, section, include=()):
             row["selected"] = True
         rows.append(row)
     selected = [row for row in rows if row["selected"]]
+    # The fingerprint ignores release order on purpose (reordering offerings later must
+    # not stale released cards), so the token adds each row's result ids in release order:
+    # a reorder between preview and confirm then invalidates the preview, and the snapshot
+    # written is exactly the order that was previewed.
     token = hashlib.sha256(
         json.dumps(sorted([row["student"].pk, row["content"]["fingerprint"],
-                           len(row["pending"])] for row in selected)).encode()
+                           len(row["pending"]),
+                           [entry["result_id"] for entry in row["content"]["entries"]]]
+                          for row in selected)).encode()
     ).hexdigest()
     return {"rows": rows, "selected": selected, "token": token}
 

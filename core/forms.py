@@ -505,18 +505,35 @@ class SubjectOfferingForm(forms.Form):
         widget=forms.CheckboxSelectMultiple,
         help_text="Leave all unticked to offer the Subject to every Section of the Grade.",
     )
+    display_order = forms.IntegerField(
+        min_value=1,
+        required=False,
+        label="Report card position",
+        help_text=(
+            "Where this Subject appears on report cards for the Class/Grade: 1 is shown first "
+            "(for example first language, second language, third language, then the other "
+            "Subjects). Each Subject in a Class/Grade needs a different number. Applies to "
+            "report cards published from now on; released report cards keep their order. "
+            "Leave blank to place a new Subject last."
+        ),
+    )
 
     def __init__(self, *args, academic_year=None, offering=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.academic_year = academic_year
         self.offering = offering
         if offering is not None:
-            # Grade and Subject are fixed once offered; only the scope changes.
+            # Grade and Subject are fixed once offered; only the scope and order change.
             del self.fields["class_grade"]
             del self.fields["subject"]
             self.fields["sections"].queryset = offering.class_grade.sections.all()
+            order_field = self.fields["display_order"]
+            order_field.help_text = order_field.help_text.replace(
+                "place a new Subject last", "keep the current number"
+            )
             if not self.is_bound:
                 self.fields["sections"].initial = list(offering.sections)
+                self.fields["display_order"].initial = offering.display_order
 
     def clean(self):
         cleaned_data = super().clean()

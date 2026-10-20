@@ -1,13 +1,24 @@
 {% extends "portal/base.html" %}
 {% block title %}Report cards &middot; {{ student.full_name }}{% endblock %}
 {% block content %}
-<h1 class="h3 mb-1">Report cards</h1>
-<p class="text-muted"><a href="{% url 'portal:child' grant.public_id %}">{{ student.full_name }}</a></p>
-<ul>
+<header class="erp-child-head">
+    <h1 class="erp-child-title">Report cards</h1>
+    <p class="erp-child-meta"><a href="{% url 'portal:child' grant.public_id %}">{{ student.full_name }}</a></p>
+</header>
+{% if publications %}
+<ul class="erp-rc-list">
     {% for pub in publications %}
-    <li><a href="{% url 'portal:report-card' grant.public_id pub.public_id %}">{{ pub.academic_year_label }} &middot; {{ pub.term_label }}</a></li>
-    {% empty %}
-    <li>No report cards have been published yet.</li>
+    <li class="erp-rc-card">
+        <div class="erp-rc-card-body">
+            <h2 class="erp-rc-card-term">{{ pub.term_label }}</h2>
+            <p class="erp-rc-card-meta">{{ pub.academic_year_label }} &middot; {{ pub.class_grade_label }}, Section {{ pub.section_label }}</p>
+            <p class="erp-rc-card-meta">Published {{ pub.published_at|date:"j M Y" }}</p>
+        </div>
+        <a class="btn btn-outline-primary erp-rc-view" href="{% url 'portal:report-card' grant.public_id pub.public_id %}">View report card<span class="visually-hidden">: {{ pub.term_label }}, {{ pub.academic_year_label }}</span></a>
+    </li>
     {% endfor %}
 </ul>
+{% else %}
+<p class="erp-rc-empty">No report cards have been published yet.</p>
+{% endif %}
 {% endblock %}

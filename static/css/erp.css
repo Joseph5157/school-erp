@@ -967,3 +967,166 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 .erp-slot-subject { margin: 0; font-weight: 650; }
 .erp-slot-meta { margin: 0; color: var(--erp-ink-soft); font-size: var(--erp-text-sm); }
 .erp-slot-actions { margin-top: var(--erp-space-2); }
+
+/* ---------- U4-1: Guardian Home cards, Child Overview, child switcher ---------- */
+.erp-child-card { display: flex; flex-direction: column; gap: var(--erp-space-3); }
+.erp-child-name { font-size: 1.35rem; font-weight: 700; line-height: 1.25; margin: 0; }
+.erp-child-title { font-size: 1.6rem; font-weight: 700; line-height: 1.2; margin: 0; }
+.erp-child-meta { margin: 0; color: var(--erp-ink-soft); font-size: var(--erp-text-sm); }
+.erp-child-head { margin-bottom: var(--erp-space-4); }
+.erp-child-open { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+
+.erp-stats { display: grid; gap: var(--erp-space-3); grid-template-columns: 1fr; }
+@media (min-width: 576px) { .erp-stats { grid-template-columns: 1fr 1fr; } }
+.erp-stat {
+  background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
+  padding: var(--erp-space-3) var(--erp-space-4); display: flex; flex-direction: column; gap: .15rem;
+}
+.erp-stat-attendance { background: var(--erp-accent-wash); border-color: transparent; }
+.erp-stat-report { background: var(--erp-info-wash); border-color: transparent; }
+.erp-stat-label { margin: 0; font-size: var(--erp-text-xs); font-weight: 600; letter-spacing: .03em; text-transform: uppercase; color: var(--erp-ink-soft); }
+.erp-stat-value { margin: 0; font-size: 1.8rem; font-weight: 700; line-height: 1.2; color: var(--erp-ink); }
+.erp-stat-value-sm { font-size: 1.15rem; }
+.erp-stat-note, .erp-stat-empty { margin: 0; font-size: var(--erp-text-sm); color: var(--erp-ink-soft); }
+.erp-stat-link {
+  display: inline-flex; align-items: center; min-height: 44px; margin-top: auto;
+  font-weight: 600; font-size: var(--erp-text-sm); color: var(--erp-accent-strong);
+}
+
+.erp-details { margin-top: var(--erp-space-5); max-width: 40rem; }
+.erp-details-title { font-size: var(--erp-text-base); font-weight: 700; margin: 0 0 var(--erp-space-2); }
+.erp-details-list {
+  margin: 0; background: var(--erp-surface); border: 1px solid var(--erp-rule);
+  border-radius: var(--erp-radius); padding: 0 var(--erp-space-4);
+}
+.erp-details-list > div { display: flex; justify-content: space-between; gap: var(--erp-space-4); padding: .65rem 0; border-top: 1px solid var(--erp-rule); }
+.erp-details-list > div:first-child { border-top: 0; }
+.erp-details-list dt { font-weight: 500; color: var(--erp-ink-soft); }
+.erp-details-list dd { margin: 0; text-align: right; font-weight: 600; overflow-wrap: anywhere; }
+
+.erp-review {
+  border: 1px dashed var(--erp-rule); border-radius: var(--erp-radius); background: var(--erp-warn-wash);
+  padding: var(--erp-space-3) var(--erp-space-4); margin-bottom: var(--erp-space-4);
+}
+.erp-review-title { font-size: var(--erp-text-sm); font-weight: 700; color: var(--erp-warn); margin: 0 0 var(--erp-space-1); }
+.erp-review-list { margin: 0; padding-left: 1.1rem; font-size: var(--erp-text-sm); color: var(--erp-ink-soft); }
+.erp-notices { max-width: 32rem; margin-top: var(--erp-space-5); }
+.erp-notices-title { font-size: var(--erp-text-sm); font-weight: 700; color: var(--erp-ink-soft); text-transform: uppercase; letter-spacing: .03em; }
+
+.erp-switcher { position: relative; max-width: 28rem; }
+.erp-switcher-toggle {
+  display: flex; align-items: center; gap: var(--erp-space-2); min-height: 44px; list-style: none; cursor: pointer;
+  background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
+  padding: .4rem var(--erp-space-3);
+}
+.erp-switcher-toggle::-webkit-details-marker { display: none; }
+.erp-switcher-toggle:focus-visible, .erp-switcher-list a:focus-visible { outline: 3px solid var(--erp-info); outline-offset: 2px; }
+.erp-switcher-label { font-size: var(--erp-text-xs); color: var(--erp-ink-soft); }
+.erp-switcher-current { font-weight: 700; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.erp-switcher-action { font-size: var(--erp-text-sm); font-weight: 600; color: var(--erp-accent-strong); }
+.erp-switcher-panel {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 1060; background: var(--erp-surface);
+  border-radius: 12px 12px 0 0; padding: var(--erp-space-4) var(--erp-space-4) calc(var(--erp-space-4) + env(safe-area-inset-bottom));
+  max-height: 70vh; overflow-y: auto;
+}
+.erp-switcher[open]::before { content: ""; position: fixed; inset: 0; z-index: 1055; background: rgba(24, 33, 43, .4); }
+.erp-switcher-title { margin: 0 0 var(--erp-space-2); font-weight: 700; }
+.erp-switcher-list { list-style: none; margin: 0; padding: 0; }
+.erp-switcher-list a {
+  display: flex; align-items: center; justify-content: space-between; min-height: 48px; padding: 0 var(--erp-space-3);
+  border-radius: var(--erp-radius-sm); color: var(--erp-ink); text-decoration: none; font-weight: 600;
+}
+.erp-switcher-list a:hover { background: var(--erp-paper); }
+.erp-switcher-list a.active { background: var(--erp-accent-wash); color: var(--erp-accent-strong); }
+.erp-switcher-tick { font-size: var(--erp-text-xs); font-weight: 600; }
+@media (min-width: 768px) {
+  .erp-switcher[open]::before { background: transparent; }
+  .erp-switcher-panel {
+    position: absolute; left: 0; right: auto; bottom: auto; top: calc(100% + .35rem); width: 100%;
+    border: 1px solid var(--erp-rule); border-radius: var(--erp-radius); padding: var(--erp-space-3);
+    box-shadow: 0 4px 12px rgba(24, 33, 43, .08);
+  }
+}
+
+.erp-back { display: inline-flex; align-items: center; min-height: 44px; font-size: var(--erp-text-sm); font-weight: 600; color: var(--erp-accent-strong); text-decoration: none; }
+.erp-back:hover { text-decoration: underline; }
+
+/* ---------- U4-2: Guardian attendance calendar ---------- */
+.erp-att-years { display: flex; flex-wrap: wrap; align-items: center; gap: var(--erp-space-2); margin-bottom: var(--erp-space-4); }
+.erp-att-years label { font-size: var(--erp-text-sm); font-weight: 600; }
+.erp-att-years .form-select { width: auto; min-height: 44px; }
+.erp-att-years .btn { min-height: 44px; }
+.erp-att-summary { background: var(--erp-accent-wash); border-radius: var(--erp-radius); padding: var(--erp-space-3) var(--erp-space-4); margin-bottom: var(--erp-space-4); max-width: 32rem; }
+.erp-att-counts { display: flex; gap: var(--erp-space-5); margin: var(--erp-space-2) 0; }
+.erp-att-counts dt { font-size: var(--erp-text-xs); font-weight: 600; color: var(--erp-ink-soft); }
+.erp-att-counts dd { margin: 0; font-size: 1.25rem; font-weight: 700; }
+.erp-att-month { max-width: 32rem; }
+.erp-att-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--erp-space-2); }
+.erp-att-month-label { margin: 0; font-size: var(--erp-text-lg); font-weight: 700; }
+.erp-att-step {
+  display: inline-grid; place-items: center; min-width: 44px; min-height: 44px; border-radius: var(--erp-radius-sm);
+  font-size: 1.25rem; color: var(--erp-accent-strong); text-decoration: none; background: var(--erp-surface); border: 1px solid var(--erp-rule);
+}
+.erp-att-step:hover { background: var(--erp-paper); }
+.erp-att-step:focus-visible { outline: 3px solid var(--erp-info); outline-offset: 2px; }
+.erp-att-step.is-off { opacity: .35; }
+.erp-cal { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 3px; }
+.erp-cal th { text-align: center; font-size: var(--erp-text-xs); font-weight: 600; color: var(--erp-ink-soft); padding: var(--erp-space-1) 0; }
+.erp-cal-day {
+  position: relative; height: 3.25rem; padding: .2rem; text-align: center; vertical-align: top;
+  border-radius: var(--erp-radius-sm); background: var(--erp-surface); border: 1px solid var(--erp-rule);
+}
+.erp-cal-num { display: block; font-size: var(--erp-text-xs); color: var(--erp-ink-soft); line-height: 1.2; text-align: left; }
+.erp-cal-mark { display: block; font-weight: 700; line-height: 1.2; }
+.erp-cal-day.is-present { background: var(--erp-ok-wash); border-color: transparent; color: var(--erp-ok-strong); }
+.erp-cal-day.is-absent { background: var(--erp-bad-wash); border-color: transparent; color: var(--erp-bad); }
+.erp-cal-day.is-not_recorded { background: #eceeea; border-color: transparent; color: var(--erp-ink-soft); }
+.erp-cal-day.is-no_school, .erp-cal-day.is-outside_year, .erp-cal-day.is-not_enrolled, .erp-cal-day.is-upcoming {
+  background: transparent; border-color: transparent; opacity: .6;
+}
+.erp-cal-pad { padding: 0; }
+.erp-cal-legend { display: flex; flex-wrap: wrap; gap: var(--erp-space-3); list-style: none; padding: 0; margin: var(--erp-space-3) 0 var(--erp-space-2); font-size: var(--erp-text-sm); }
+.erp-cal-key { display: inline-grid; place-items: center; width: 1.5rem; height: 1.5rem; border-radius: var(--erp-radius-sm); font-weight: 700; }
+.erp-cal-key.is-present { background: var(--erp-ok-wash); color: var(--erp-ok-strong); }
+.erp-cal-key.is-absent { background: var(--erp-bad-wash); color: var(--erp-bad); }
+.erp-cal-key.is-not_recorded { background: #eceeea; color: var(--erp-ink-soft); }
+
+/* ---------- U4-3B: Guardian report cards ---------- */
+.erp-rc-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--erp-space-3); max-width: 40rem; }
+.erp-rc-card {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--erp-space-3);
+  background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
+  padding: var(--erp-space-3) var(--erp-space-4);
+}
+.erp-rc-card-body { min-width: 0; flex: 1 1 12rem; }
+.erp-rc-card-term { margin: 0; font-size: 1.25rem; font-weight: 700; line-height: 1.25; }
+.erp-rc-card-meta { margin: .1rem 0 0; font-size: var(--erp-text-sm); color: var(--erp-ink-soft); overflow-wrap: anywhere; }
+.erp-rc-view, .erp-rc-pdf { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+.erp-rc-empty { color: var(--erp-ink-soft); }
+.erp-rc-actions { margin: var(--erp-space-3) 0 0; }
+
+.erp-rc-group {
+  background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
+  padding: var(--erp-space-3) var(--erp-space-4); margin-bottom: var(--erp-space-4); max-width: 46rem;
+}
+.erp-rc-group-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--erp-space-2); }
+.erp-rc-group-title { margin: 0; font-size: var(--erp-text-lg); font-weight: 700; overflow-wrap: anywhere; }
+.erp-rc-group-date { margin: 0; font-size: var(--erp-text-sm); color: var(--erp-ink-soft); }
+.erp-rc-subjects { list-style: none; margin: var(--erp-space-2) 0 0; padding: 0; }
+.erp-rc-subject { padding: var(--erp-space-3) 0; border-top: 1px solid var(--erp-rule); }
+.erp-rc-subject-name { margin: 0 0 var(--erp-space-2); font-size: var(--erp-text-base); font-weight: 700; overflow-wrap: anywhere; }
+.erp-rc-values { margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: var(--erp-space-2) var(--erp-space-4); }
+.erp-rc-values dt { font-size: var(--erp-text-xs); font-weight: 600; color: var(--erp-ink-soft); }
+.erp-rc-values dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.erp-rc-table { width: 100%; border-collapse: collapse; margin-top: var(--erp-space-2); }
+.erp-rc-table th, .erp-rc-table td { padding: .6rem .75rem; text-align: left; border-top: 1px solid var(--erp-rule); }
+.erp-rc-table thead th { border-top: 0; font-size: var(--erp-text-xs); font-weight: 600; letter-spacing: .03em; text-transform: uppercase; color: var(--erp-ink-soft); }
+.erp-rc-table tbody th { font-weight: 700; }
+.erp-rc-table tbody tr:nth-child(even) { background: var(--erp-paper); }
+.erp-rc-remark { max-width: 46rem; margin: var(--erp-space-5) 0 var(--erp-space-3); background: var(--erp-accent-wash); border-radius: var(--erp-radius); padding: var(--erp-space-3) var(--erp-space-4); }
+.erp-rc-remark-title { margin: 0 0 var(--erp-space-1); font-size: var(--erp-text-base); font-weight: 700; }
+.erp-rc-remark p { margin: 0; overflow-wrap: anywhere; }
+.erp-rc-note { max-width: 46rem; }
+.erp-rc-table { table-layout: fixed; }
+.erp-rc-table th:first-child { width: 38%; overflow-wrap: anywhere; }
+.erp-rc-head ~ .alert { max-width: 46rem; }

@@ -437,7 +437,7 @@ def academic_year_offerings(request, pk):
         AcademicSubjectOffering.objects.filter(academic_year=academic_year)
         .select_related("class_grade", "subject")
         .prefetch_related("section_links__section")
-        .order_by("class_grade__name", "subject__name")
+        .order_by("class_grade__name", "display_order", "subject__name")
     )
     lookup = OfferedSubjectsLookupForm(request.GET or None, academic_year=academic_year)
     offered = None
@@ -471,6 +471,7 @@ def offering_create(request, pk):
             academic_year=academic_year,
             class_grade=form.cleaned_data["class_grade"],
             subject=form.cleaned_data["subject"],
+            display_order=form.cleaned_data.get("display_order"),
         )
         try:
             with transaction.atomic():
@@ -502,11 +503,18 @@ def offering_update(request, pk):
     )
     if request.method == "POST" and form.is_valid():
         try:
-            offering.set_sections(form.cleaned_data["sections"])
+            with transaction.atomic():
+                order = form.cleaned_data.get("display_order")
+                if order is not None and order != offering.display_order:
+                    offering.display_order = order
+                    offering.full_clean()
+                    offering.save(update_fields=["display_order", "updated_at"])
+                offering.set_sections(form.cleaned_data["sections"])
         except ValidationError as error:
+            offering.refresh_from_db(fields=["display_order"])
             form.add_error(None, error)
         else:
-            messages.success(request, "Section scope updated.")
+            messages.success(request, "Subject offering updated.")
             return redirect("core:academic-year-offerings", pk=offering.academic_year_id)
     return render(
         request,

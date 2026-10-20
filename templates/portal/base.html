@@ -18,13 +18,7 @@
     </header>
     <main id="main" class="erp-main">
         <div class="erp-content">
-            {% if children|length > 1 %}
-            <nav class="erp-chips mb-3" aria-label="Your students">
-                {% for item in children %}{% if item.visible %}
-                <a href="{% url 'portal:child' item.grant.public_id %}"{% if student and item.student.pk == student.pk %} class="active" aria-current="page"{% endif %}>{{ item.student.full_name }}</a>
-                {% endif %}{% endfor %}
-            </nav>
-            {% endif %}
+            {% if switcher_children and student %}{% include "portal/_child_switcher.html" %}{% endif %}
             {% block content %}{% endblock %}
         </div>
     </main>
