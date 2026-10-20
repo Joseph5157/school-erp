@@ -34,7 +34,7 @@
         {% if month.next %}<a class="erp-att-step" rel="next" href="?year={{ year.start_date|date:'Y-m-d' }}&amp;month={{ month.next }}"><span aria-hidden="true">&rarr;</span><span class="visually-hidden">Next month</span></a>
         {% else %}<span class="erp-att-step is-off" aria-hidden="true">&rarr;</span>{% endif %}
     </nav>
-    <table class="erp-cal">
+    <table class="erp-cal erp-keep">
         <caption class="visually-hidden">Attendance for {{ month.label }}</caption>
         <thead>
             <tr>

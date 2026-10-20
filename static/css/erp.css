@@ -1070,7 +1070,10 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 .erp-att-step:hover { background: var(--erp-paper); }
 .erp-att-step:focus-visible { outline: 3px solid var(--erp-info); outline-offset: 2px; }
 .erp-att-step.is-off { opacity: .35; }
-.erp-cal { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 3px; }
+/* The 3px border-spacing would inset the grid from the month heading and arrows; pull it
+   out by the same amount so the cells line up with the card edges. `erp-keep` (on the
+   table) opts out of the generic phone rule that turns tables into scroll boxes. */
+.erp-cal { width: calc(100% + 6px); margin: -3px; table-layout: fixed; border-collapse: separate; border-spacing: 3px; }
 .erp-cal th { text-align: center; font-size: var(--erp-text-xs); font-weight: 600; color: var(--erp-ink-soft); padding: var(--erp-space-1) 0; }
 .erp-cal-day {
   position: relative; height: 3.25rem; padding: .2rem; text-align: center; vertical-align: top;
@@ -1130,3 +1133,8 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 .erp-rc-table { table-layout: fixed; }
 .erp-rc-table th:first-child { width: 38%; overflow-wrap: anywhere; }
 .erp-rc-head ~ .alert { max-width: 46rem; }
+/* Attendance calendar on phones: a little taller cells now that the grid fills the width. */
+@media (max-width: 575.98px) {
+  .erp-cal-day { height: 3.6rem; }
+  .erp-cal-num { font-size: var(--erp-text-sm); }
+}
