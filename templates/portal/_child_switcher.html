@@ -1,4 +1,4 @@
-{% comment %}Child switcher (U4-1). A native <details>: plain links work with JS off; erp.js only adds Escape / outside-tap closing. Lists visible grants only (switcher_children). Switching lands on that child's Overview.{% endcomment %}
+{% comment %}Child switcher (U4-1). A native <details>: plain links work with JS off; erp.js only adds Escape / outside-tap closing. Lists visible grants only (switcher_children). Each item's `url` keeps the guardian on the same task for the other child: Overview, Attendance or the Report cards list (set per view in portal_views._context).{% endcomment %}
 <details class="erp-switcher mb-3" data-erp-switcher>
     <summary class="erp-switcher-toggle" aria-label="Switch student. Viewing {{ student.full_name }}">
         <span class="erp-switcher-label">Viewing</span>
@@ -9,7 +9,7 @@
         <p class="erp-switcher-title">Switch student</p>
         <ul class="erp-switcher-list">
             {% for item in switcher_children %}
-            <li><a href="{% url 'portal:child' item.grant.public_id %}"{% if item.student.pk == student.pk %} class="active" aria-current="true"{% endif %}>{{ item.student.full_name }}{% if item.student.pk == student.pk %}<span class="erp-switcher-tick">Current</span>{% endif %}</a></li>
+            <li><a href="{{ item.url }}"{% if item.student.pk == student.pk %} class="active" aria-current="true"{% endif %}>{{ item.student.full_name }}{% if item.student.pk == student.pk %}<span class="erp-switcher-tick">Current</span>{% endif %}</a></li>
             {% endfor %}
         </ul>
     </div>

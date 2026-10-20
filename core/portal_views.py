@@ -2,6 +2,7 @@
 
 from django.http import Http404
 from django.shortcuts import render
+from django.urls import reverse
 from django.views.decorators.http import require_safe
 
 from core import reports
@@ -29,17 +30,26 @@ def _visible_grant_or_404(request, public_id):
     return grant
 
 
-def _context(request, **extra):
+def _context(request, switch_route="portal:child", **extra):
+    """Shared portal context.
+
+    `switch_route` is the child-scoped route the switcher keeps the guardian on
+    ("same task, different child"); it only ever takes a grant id, so no
+    publication or other per-child id is carried across children.
+    """
     children = portal_children(request.user)
     grant = extra.get("grant")
     if grant is None:
         grant = next((item["grant"] for item in children if item["visible"]), None)
-    switcher = [item for item in children if item["visible"]]
+    visible = [item for item in children if item["visible"]]
     return {
         "children": children,
         "nav_grant": grant,
         # Child switcher: visible grants only, and only worth showing for 2+.
-        "switcher_children": switcher if len(switcher) > 1 else [],
+        "switcher_children": [
+            {**item, "url": reverse(switch_route, args=[item["grant"].public_id])}
+            for item in visible
+        ] if len(visible) > 1 else [],
         **extra,
     }
 
@@ -98,8 +108,8 @@ def attendance(request, public_id):
     return render(
         request,
         "portal/attendance.html",
-        _context(request, grant=grant, student=student, years=years, year=chosen, month=month,
-                 **data),
+        _context(request, switch_route="portal:attendance", grant=grant, student=student,
+                 years=years, year=chosen, month=month, **data),
     )
 
 
@@ -111,7 +121,7 @@ def report_cards(request, public_id):
     return render(
         request,
         "portal/report_cards.html",
-        _context(request, grant=grant, student=student,
+        _context(request, switch_route="portal:report-cards", grant=grant, student=student,
                  publications=visible_publications(student)),
     )
 
@@ -130,8 +140,9 @@ def report_card(request, public_id, publication_id):
     return render(
         request,
         "portal/report_card.html",
-        _context(request, grant=grant, student=student, pub=pub, entries=entries,
-                 groups=report_card_groups(entries)),
+        # A publication belongs to one child: switching lands on the other child's list.
+        _context(request, switch_route="portal:report-cards", grant=grant, student=student,
+                 pub=pub, entries=entries, groups=report_card_groups(entries)),
     )
 
 
