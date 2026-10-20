@@ -12,6 +12,8 @@ The admin desktop shell is a shared visual foundation. Create and review a minim
 
 ## UI-D0 — Desktop shell visual spike (active)
 
+**Preferred visual reference:** `docs/ADMIN_DESKTOP_TABLER_REFERENCE.md` (Tabler live preview, concrete five-screen pattern mapping and non-adoption guardrails). Read it before making UI-D0 changes; capture before/after screenshots against the reference.
+
 **Outcome:** prove a usable, accessible desktop admin workspace at >=992px while maintaining existing mobile/teacher/guardian behaviour.
 
 1. **Read-only audit before code:** inspect `templates/base.html`, `partials/_sidebar.html`, existing topbar and breadcrumbs, `static/css/erp.css`, `static/js/erp.js`, `core/navigation.py`, `core/context_processors.py`, and representative existing admin screens. Identify existing reusable patterns and any collisions.
