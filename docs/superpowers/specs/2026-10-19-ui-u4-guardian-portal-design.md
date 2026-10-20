@@ -132,14 +132,19 @@ Header:
 - Partial-publication notice when applicable.
 
 Content:
-- Group entries by Subject.
-- Each assessment shows:
-  - Assessment name.
-  - Date.
+- Present mobile results assessment-first, not as one subject group spanning the whole report.
+- Show the latest assessment first.
+- Within each assessment, show subjects in the school's fixed academic order:
+  - first language;
+  - second language;
+  - third language;
+  - remaining subjects in the existing fixed school order.
+- Each subject row/block shows only values already present in the published snapshot:
   - Marks.
   - Percentage when present in snapshot.
   - Grade with existing "Not graded" fallback.
   - Pass/Fail when present in snapshot.
+- Do not recalculate or derive totals, weighting, averages, ranks or comparisons.
 
 Bottom:
 - Class teacher remark when present.
