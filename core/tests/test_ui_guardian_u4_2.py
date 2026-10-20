@@ -3,6 +3,7 @@
 from datetime import date
 from unittest import mock
 
+from django.conf import settings
 from django.test import TestCase
 from django.urls import reverse
 
@@ -115,6 +116,20 @@ class MonthCellTests(CalendarFixture, TestCase):
         page = self.page(month="2026-06")
         self.assertEqual(page.context["month"]["label"], "June 2026")
         self.assertEqual(self.cell(page, date(2026, 6, 10))["state"], "outside_year")
+
+
+class CalendarPhoneLayoutTests(CalendarFixture, TestCase):
+    """Below 576px erp.css turns every `.erp-content table:not(.erp-keep)` into a scroll box
+    (`display: block`), which shrink-wraps the calendar columns to ~22px instead of filling
+    the card. The calendar must keep opting out with `erp-keep`."""
+
+    def test_calendar_table_opts_out_of_the_phone_block_rule(self):
+        self.register(MON, AttendanceStatus.PRESENT)
+        self.assertContains(self.page(), '<table class="erp-cal erp-keep">')
+
+    def test_the_generic_phone_rule_still_exists_under_that_opt_out_name(self):
+        css = (settings.BASE_DIR / "static" / "css" / "erp.css").read_text(encoding="utf-8")
+        self.assertIn(".erp-content table:not(.erp-keep)", css)
 
 
 class SummaryAndEmptyStateTests(CalendarFixture, TestCase):
