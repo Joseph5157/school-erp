@@ -1,6 +1,6 @@
 # U4 Guardian Portal — Design Freeze
 
-**Status:** Approved design direction; implementation not started.
+**Status:** Approved design direction; implemented in U4-1 to U4-4 (see "Implementation record" at the end).
 
 **Baseline:** `main` at 2d383c91eba7ced2d2b1b9c2a840a82292a5e6c2
 
@@ -75,6 +75,13 @@ For guardians with multiple visible children:
 - Switching changes Overview / Attendance / Reports to the selected child.
 
 Do not create new permissions or access behavior.
+
+Switching keeps the guardian on the same task for the other child (approved in U4-4):
+- From Overview: the other child's Overview.
+- From Attendance: the other child's Attendance.
+- From the Report cards list: the other child's Report cards list.
+- From an individual report card: the other child's Report cards list. A publication belongs to one child, so it is never matched across children.
+- Plain links in a native `<details>` so it works with JavaScript off; only visible (not under-review) children are listed.
 
 ## 4. Attendance
 
@@ -163,6 +170,15 @@ Use a clean table:
 
 Improve spacing/typography but do not change result calculations or publication semantics.
 
+### Grouping and ordering rules (settled in U4-3A/U4-3B)
+
+- A report card renders only from its immutable publication snapshot.
+- Entries are grouped by the exact `assessment_label` (no normalising or fuzzy matching). Subjects of one named assessment may be held on different dates; the group's date is the latest `assessment_date` among its entries.
+- Groups run latest date first; ties break on the group's earliest frozen `display_order`.
+- Subjects inside a group follow the frozen `TermPublicationEntry.display_order`, which is the school's configured `AcademicSubjectOffering.display_order` at the moment of publication. Already published cards are never reordered or rewritten when the configuration changes later.
+- Desktop shows one table per assessment with the columns Subject, Marks, %, Grade and Result. The assessment name and date are carried by the table's heading and caption instead of being repeated on every row.
+- The preview confirmation token includes the release order, so reordering offerings between preview and confirm invalidates the preview; the publication fingerprint deliberately ignores order.
+
 ## 7. Navigation
 
 Keep Guardian mobile destinations:
@@ -213,9 +229,22 @@ Do not add extra tabs during U4.
 - New document types.
 - New Guardian write actions.
 - New permissions.
-- New models/migrations unless an implementation blocker is discovered and separately approved.
+- New models/migrations unless an implementation blocker is discovered and separately approved. One such exception was approved: U4-3A added `AcademicSubjectOffering.display_order` (migrations 0081 to 0083), because the repository had no school-defined subject order.
 - Any new frontend framework.
 
 ## Approval
 
 This document freezes the approved U4 visual/interaction direction. Implementation should not expand beyond it without explicit review.
+
+## Implementation record
+
+| Gate | Scope | Commit |
+|---|---|---|
+| U4-1 | Home, Child Overview, child switcher | `d1dfa0b` |
+| U4-2 | Attendance calendar | `382c8e2` |
+| U4-3A | Subject-order prerequisite (approved migration exception) | `484730d` |
+| U4-3B | Report-card list and assessment-first report card | `e5a2e43`, `57471ea` |
+| U4-3C | Report-card acceptance and regression tests | `38c8e0b` |
+| U4-4 | Final hardening, switcher keeps the current task | `80b3b19` |
+
+Pre-PR fix: the publication preview token became order-sensitive (see "Grouping and ordering rules").

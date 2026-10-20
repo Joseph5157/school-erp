@@ -19,6 +19,7 @@ from core.models import (
     ResultStatus,
     StudentResult,
     Subject,
+    TermPublication,
 )
 from core.tests.test_phase6_publication import PublicationFixture
 
@@ -248,6 +249,35 @@ class PublicationSnapshotTests(OrderFixture, TestCase):
                          ["Mathematics", "English", "Telugu"])
         self.assertEqual([label for label, _ in self.entries(old)],
                          ["Telugu", "English", "Mathematics"])
+
+    def test_reordering_between_preview_and_confirm_invalidates_the_preview(self):
+        """Publish exactly the previewed selection (and order), or nothing."""
+        plan = self.plan()
+        self.order({"Mathematics": 1, "English": 2, "Telugu": 3})  # after the preview
+        with self.assertRaises(ValidationError):
+            publication.confirm_publication(term=self.term1, section=self.six_a, include=(),
+                                            token=plan["token"], actor=self.admin)
+        self.assertFalse(TermPublication.objects.exists())
+        fresh = self.plan()
+        self.assertNotEqual(fresh["token"], plan["token"])
+        created = publication.confirm_publication(
+            term=self.term1, section=self.six_a, include=(), token=fresh["token"],
+            actor=self.admin)
+        self.assertEqual([label for label, _ in self.entries(self.asha_card(created))],
+                         ["Mathematics", "English", "Telugu"])
+
+    def test_token_is_stable_while_nothing_changes(self):
+        self.assertEqual(self.plan()["token"], self.plan()["token"])
+
+    def test_order_is_in_the_token_but_not_in_the_fingerprint(self):
+        """The two requirements: previews are order-sensitive, released cards are not."""
+        before = self.plan()
+        fingerprint = publication.release_content(self.asha, self.term1)["fingerprint"]
+        self.order({"Mathematics": 1, "English": 2, "Telugu": 3})
+        after = self.plan()
+        self.assertNotEqual(before["token"], after["token"])
+        self.assertEqual(
+            publication.release_content(self.asha, self.term1)["fingerprint"], fingerprint)
 
     def test_marks_percentages_and_grades_are_not_affected(self):
         card = self.asha_card(self.publish())
