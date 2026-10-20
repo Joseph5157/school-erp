@@ -125,7 +125,15 @@ def release_content(student, term):
             assessment__status=Assessment.Status.FINALIZED,
         )
         .annotate(subject_order=Assessment.subject_display_expression("assessment__"))
-        .order_by("subject_order", "assessment__assessment_date", "assessment__name", "pk")
+        # The school's configured curriculum order comes first (U4-3A); it is frozen into
+        # TermPublicationEntry.display_order below. The rest is a deterministic tie-break.
+        .order_by(
+            "assessment__offering__display_order",
+            "subject_order",
+            "assessment__assessment_date",
+            "assessment__name",
+            "pk",
+        )
     )
     entries = [entry_values(result) for result in results]
     remark = TermRemark.objects.filter(term=term, student=student).first()

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{% if offering %}Edit Sections{% else %}Offer a Subject{% endif %}{% endblock %}
+{% block title %}{% if offering %}Edit order and Sections{% else %}Offer a Subject{% endif %}{% endblock %}
 {% block content %}
 <h1 class="h3 mb-3">
     {% if offering %}{{ offering.subject.name }} for {{ offering.class_grade }}{% else %}Offer a Subject{% endif %}

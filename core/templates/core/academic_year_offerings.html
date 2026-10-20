@@ -6,19 +6,20 @@
     <a class="btn btn-primary mb-3" href="{% url 'core:offering-create' academic_year.pk %}">Offer a Subject</a>
 {% endif %}
 <table class="table">
-    <thead><tr><th>Class/Grade</th><th>Subject</th><th>Sections</th><th></th></tr></thead>
+    <thead><tr><th>Class/Grade</th><th>Report card position</th><th>Subject</th><th>Sections</th><th></th></tr></thead>
     <tbody>
         {% for offering in offerings %}
         <tr>
             <td>{{ offering.class_grade }}</td>
+            <td>{{ offering.display_order }}</td>
             <td>{{ offering.subject }}</td>
             <td>
                 {% for link in offering.section_links.all %}{{ link.section.name }}{% if not forloop.last %}, {% endif %}{% empty %}All Sections{% endfor %}
             </td>
-            <td>{% if perms.core.change_academicsubjectoffering %}<a href="{% url 'core:offering-update' offering.pk %}">Edit Sections</a>{% endif %}</td>
+            <td>{% if perms.core.change_academicsubjectoffering %}<a href="{% url 'core:offering-update' offering.pk %}">Edit order and Sections</a>{% endif %}</td>
         </tr>
         {% empty %}
-        <tr><td colspan="4">No Subjects offered in this Academic Year yet.</td></tr>
+        <tr><td colspan="5">No Subjects offered in this Academic Year yet.</td></tr>
         {% endfor %}
     </tbody>
 </table>
