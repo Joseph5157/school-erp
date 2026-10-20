@@ -1050,3 +1050,43 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 
 .erp-back { display: inline-flex; align-items: center; min-height: 44px; font-size: var(--erp-text-sm); font-weight: 600; color: var(--erp-accent-strong); text-decoration: none; }
 .erp-back:hover { text-decoration: underline; }
+
+/* ---------- U4-2: Guardian attendance calendar ---------- */
+.erp-att-years { display: flex; flex-wrap: wrap; align-items: center; gap: var(--erp-space-2); margin-bottom: var(--erp-space-4); }
+.erp-att-years label { font-size: var(--erp-text-sm); font-weight: 600; }
+.erp-att-years .form-select { width: auto; min-height: 44px; }
+.erp-att-years .btn { min-height: 44px; }
+.erp-att-summary { background: var(--erp-accent-wash); border-radius: var(--erp-radius); padding: var(--erp-space-3) var(--erp-space-4); margin-bottom: var(--erp-space-4); max-width: 32rem; }
+.erp-att-counts { display: flex; gap: var(--erp-space-5); margin: var(--erp-space-2) 0; }
+.erp-att-counts dt { font-size: var(--erp-text-xs); font-weight: 600; color: var(--erp-ink-soft); }
+.erp-att-counts dd { margin: 0; font-size: 1.25rem; font-weight: 700; }
+.erp-att-month { max-width: 32rem; }
+.erp-att-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--erp-space-2); }
+.erp-att-month-label { margin: 0; font-size: var(--erp-text-lg); font-weight: 700; }
+.erp-att-step {
+  display: inline-grid; place-items: center; min-width: 44px; min-height: 44px; border-radius: var(--erp-radius-sm);
+  font-size: 1.25rem; color: var(--erp-accent-strong); text-decoration: none; background: var(--erp-surface); border: 1px solid var(--erp-rule);
+}
+.erp-att-step:hover { background: var(--erp-paper); }
+.erp-att-step:focus-visible { outline: 3px solid var(--erp-info); outline-offset: 2px; }
+.erp-att-step.is-off { opacity: .35; }
+.erp-cal { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 3px; }
+.erp-cal th { text-align: center; font-size: var(--erp-text-xs); font-weight: 600; color: var(--erp-ink-soft); padding: var(--erp-space-1) 0; }
+.erp-cal-day {
+  position: relative; height: 3.25rem; padding: .2rem; text-align: center; vertical-align: top;
+  border-radius: var(--erp-radius-sm); background: var(--erp-surface); border: 1px solid var(--erp-rule);
+}
+.erp-cal-num { display: block; font-size: var(--erp-text-xs); color: var(--erp-ink-soft); line-height: 1.2; text-align: left; }
+.erp-cal-mark { display: block; font-weight: 700; line-height: 1.2; }
+.erp-cal-day.is-present { background: var(--erp-ok-wash); border-color: transparent; color: var(--erp-ok-strong); }
+.erp-cal-day.is-absent { background: var(--erp-bad-wash); border-color: transparent; color: var(--erp-bad); }
+.erp-cal-day.is-not_recorded { background: #eceeea; border-color: transparent; color: var(--erp-ink-soft); }
+.erp-cal-day.is-no_school, .erp-cal-day.is-outside_year, .erp-cal-day.is-not_enrolled, .erp-cal-day.is-upcoming {
+  background: transparent; border-color: transparent; opacity: .6;
+}
+.erp-cal-pad { padding: 0; }
+.erp-cal-legend { display: flex; flex-wrap: wrap; gap: var(--erp-space-3); list-style: none; padding: 0; margin: var(--erp-space-3) 0 var(--erp-space-2); font-size: var(--erp-text-sm); }
+.erp-cal-key { display: inline-grid; place-items: center; width: 1.5rem; height: 1.5rem; border-radius: var(--erp-radius-sm); font-weight: 700; }
+.erp-cal-key.is-present { background: var(--erp-ok-wash); color: var(--erp-ok-strong); }
+.erp-cal-key.is-absent { background: var(--erp-bad-wash); color: var(--erp-bad); }
+.erp-cal-key.is-not_recorded { background: #eceeea; color: var(--erp-ink-soft); }

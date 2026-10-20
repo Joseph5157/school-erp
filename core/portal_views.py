@@ -4,13 +4,16 @@ from django.http import Http404
 from django.shortcuts import render
 from django.views.decorators.http import require_safe
 
+from core import reports
 from core.announcements import visible_announcements
 from core.authorization import guardian_required, guardian_visible_grant
 from core.documents import report_card as report_card_documents
 from core.documents import service
 from core.portal import (
+    attendance_month,
     attendance_years,
     child_summaries,
+    parse_attendance_month,
     portal_children,
     student_profile,
     submitted_attendance,
@@ -85,10 +88,17 @@ def attendance(request, public_id):
         if year.start_date.isoformat() == requested:
             chosen = year
     data = submitted_attendance(student, chosen) if chosen else {"days": [], "summary": None}
+    month = None
+    if chosen:
+        selected = parse_attendance_month(
+            chosen, request.GET.get("month", ""), reports.business_today()
+        )
+        month = attendance_month(student, chosen, *selected)
     return render(
         request,
         "portal/attendance.html",
-        _context(request, grant=grant, student=student, years=years, year=chosen, **data),
+        _context(request, grant=grant, student=student, years=years, year=chosen, month=month,
+                 **data),
     )
 
 

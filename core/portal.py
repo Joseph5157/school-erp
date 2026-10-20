@@ -4,6 +4,11 @@ Portal views never reuse administrative or teacher pages. They build their
 own, minimal context from the guardian's active grants.
 """
 
+import calendar
+import datetime
+
+from django.db.models import Q
+
 from core import guardian_access
 from core.authorization import guardian_grants
 
@@ -89,6 +94,98 @@ def submitted_attendance(student, academic_year):
         )
     ]
     return {"days": days, "summary": reports.counts(entries)}
+
+
+def default_attendance_month(academic_year, today):
+    """The month shown first: this month while the year runs, else its nearest end."""
+    anchor = min(max(today, academic_year.start_date), academic_year.end_date)
+    return anchor.year, anchor.month
+
+
+def parse_attendance_month(academic_year, raw, today):
+    """`YYYY-MM` within the Academic Year, else the default month."""
+    try:
+        year, month = (int(part) for part in raw.split("-"))
+        first = datetime.date(year, month, 1)
+    except (ValueError, AttributeError):
+        return default_attendance_month(academic_year, today)
+    start, end = academic_year.start_date, academic_year.end_date
+    if (start.year, start.month) <= (year, month) <= (end.year, end.month):
+        return first.year, first.month
+    return default_attendance_month(academic_year, today)
+
+
+def attendance_month(student, academic_year, year, month):
+    """One calendar month of the Student's attendance for the Academic Year.
+
+    Each day cell is exactly one of: present / absent (a reportable entry, see
+    reports.reportable_entries), not_recorded (an instructional, already-past
+    day inside the Student's enrolment with no reportable entry), or a neutral
+    state with no attendance meaning (no_school, outside_year, not_enrolled,
+    upcoming). Absence is never inferred from a missing entry (ADR 0014, P8).
+    """
+    from core import reports
+    from core.models import AcademicEnrollment, AttendanceEntry
+
+    first, last = reports.month_bounds(year, month)
+    statuses = dict(
+        reports.reportable_entries(
+            AttendanceEntry.objects.filter(
+                academic_enrollment__student=student,
+                register__academic_year=academic_year,
+                register__date__gte=first,
+                register__date__lte=last,
+            )
+        ).values_list("register__date", "status")
+    )
+    spans = list(
+        AcademicEnrollment.objects.filter(
+            student=student, academic_year=academic_year, start_date__lte=last
+        )
+        .filter(Q(end_date__isnull=True) | Q(end_date__gte=first))
+        .values_list("start_date", "end_date")
+    )
+    calendar_days = reports.year_calendar(academic_year, first, last)
+    today = reports.business_today()
+
+    def classify(on_date):
+        if on_date in statuses:
+            return statuses[on_date].lower(), statuses[on_date].title()
+        if not academic_year.contains(on_date):
+            return "outside_year", "Outside the school year"
+        if not calendar_days.is_instructional(on_date):
+            return "no_school", "No school"
+        if not any(s <= on_date and (e is None or on_date <= e) for s, e in spans):
+            return "not_enrolled", "Not enrolled"
+        if on_date > today:
+            return "upcoming", "Upcoming"
+        return "not_recorded", "Not recorded"
+
+    weeks = []
+    for week in calendar.Calendar(firstweekday=0).monthdatescalendar(year, month):
+        cells = []
+        for on_date in week:
+            if on_date.month != month:
+                cells.append(None)
+                continue
+            state, label = classify(on_date)
+            cells.append({"date": on_date, "day": on_date.day, "state": state, "label": label})
+        weeks.append(cells)
+
+    def month_link(candidate):
+        start, end = academic_year.start_date, academic_year.end_date
+        if (start.year, start.month) <= candidate <= (end.year, end.month):
+            return f"{candidate[0]:04d}-{candidate[1]:02d}"
+        return None
+
+    previous = (year, month - 1) if month > 1 else (year - 1, 12)
+    following = (year, month + 1) if month < 12 else (year + 1, 1)
+    return {
+        "label": first.strftime("%B %Y"),
+        "weeks": weeks,
+        "prev": month_link(previous),
+        "next": month_link(following),
+    }
 
 
 def visible_publications(student):

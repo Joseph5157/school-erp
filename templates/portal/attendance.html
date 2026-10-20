@@ -1,32 +1,76 @@
 {% extends "portal/base.html" %}
 {% block title %}Attendance &middot; {{ student.full_name }}{% endblock %}
 {% block content %}
-<h1 class="h3 mb-1">Attendance</h1>
-<p class="text-muted"><a href="{% url 'portal:child' grant.public_id %}">{{ student.full_name }}</a>{% if year %} &middot; {{ year.name }}{% endif %}</p>
+<header class="erp-child-head">
+    <h1 class="erp-child-title">Attendance</h1>
+    <p class="erp-child-meta"><a href="{% url 'portal:child' grant.public_id %}">{{ student.full_name }}</a>{% if year %} &middot; {{ year.name }}{% endif %}</p>
+</header>
 {% if years|length > 1 %}
-<form method="get" class="mb-3">
-    <label>Academic Year
-        <select name="year" onchange="this.form.submit()">
-            {% for y in years %}<option value="{{ y.start_date|date:'Y-m-d' }}"{% if y == year %} selected{% endif %}>{{ y.name }}</option>{% endfor %}
-        </select>
-    </label>
-    <noscript><button type="submit">Show</button></noscript>
+<form method="get" class="erp-att-years">
+    <label for="att-year">Academic Year</label>
+    <select id="att-year" name="year" class="form-select">
+        {% for y in years %}<option value="{{ y.start_date|date:'Y-m-d' }}"{% if y == year %} selected{% endif %}>{{ y.name }}</option>{% endfor %}
+    </select>
+    <button type="submit" class="btn btn-outline-secondary">Show</button>
 </form>
 {% endif %}
-{% if summary %}
-<p>Present on {{ summary.present }} of {{ summary.total }} recorded school days{% if summary.percentage is not None %} ({{ summary.percentage }}%){% endif %}.
-   <span class="text-muted small">Only attendance the school has officially recorded is shown.</span></p>
-<table class="table table-sm" style="max-width: 28rem">
-    <thead><tr><th>Date</th><th>Attendance</th></tr></thead>
-    <tbody>
-    {% for day in days %}
-        <tr><td>{{ day.date|date:"D, j M Y" }}</td><td>{% if day.status == "PRESENT" %}Present{% else %}Absent{% endif %}</td></tr>
-    {% empty %}
-        <tr><td colspan="2">No recorded attendance yet for this year.</td></tr>
-    {% endfor %}
-    </tbody>
-</table>
+{% if summary and summary.total %}
+<section class="erp-att-summary" aria-label="Attendance summary">
+    <p class="erp-stat-label">Attendance{% if year %} &middot; {{ year.name }}{% endif %}</p>
+    {% if summary.percentage is not None %}<p class="erp-stat-value">{{ summary.percentage }}%</p>{% endif %}
+    <dl class="erp-att-counts">
+        <div><dt>Present</dt><dd>{{ summary.present }}</dd></div>
+        <div><dt>Absent</dt><dd>{{ summary.absent }}</dd></div>
+        <div><dt>Recorded days</dt><dd>{{ summary.total }}</dd></div>
+    </dl>
+    <p class="erp-stat-note">Only attendance the school has officially recorded is shown.</p>
+</section>
+
+<section class="erp-att-month" aria-labelledby="att-month-h">
+    <nav class="erp-att-nav" aria-label="Month">
+        {% if month.prev %}<a class="erp-att-step" rel="prev" href="?year={{ year.start_date|date:'Y-m-d' }}&amp;month={{ month.prev }}"><span aria-hidden="true">&larr;</span><span class="visually-hidden">Previous month</span></a>
+        {% else %}<span class="erp-att-step is-off" aria-hidden="true">&larr;</span>{% endif %}
+        <h2 id="att-month-h" class="erp-att-month-label">{{ month.label }}</h2>
+        {% if month.next %}<a class="erp-att-step" rel="next" href="?year={{ year.start_date|date:'Y-m-d' }}&amp;month={{ month.next }}"><span aria-hidden="true">&rarr;</span><span class="visually-hidden">Next month</span></a>
+        {% else %}<span class="erp-att-step is-off" aria-hidden="true">&rarr;</span>{% endif %}
+    </nav>
+    <table class="erp-cal">
+        <caption class="visually-hidden">Attendance for {{ month.label }}</caption>
+        <thead>
+            <tr>
+                <th scope="col" abbr="Monday">Mon</th><th scope="col" abbr="Tuesday">Tue</th><th scope="col" abbr="Wednesday">Wed</th><th scope="col" abbr="Thursday">Thu</th><th scope="col" abbr="Friday">Fri</th><th scope="col" abbr="Saturday">Sat</th><th scope="col" abbr="Sunday">Sun</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for week in month.weeks %}
+            <tr>
+            {% for cell in week %}
+                {% if cell %}
+                <td class="erp-cal-day is-{{ cell.state }}">
+                    <span class="erp-cal-num">{{ cell.day }}</span>
+                    {% if cell.state == "present" %}<span class="erp-cal-mark" aria-hidden="true">&#10003;</span>
+                    {% elif cell.state == "absent" %}<span class="erp-cal-mark" aria-hidden="true">&#10005;</span>
+                    {% elif cell.state == "not_recorded" %}<span class="erp-cal-mark" aria-hidden="true">&ndash;</span>{% endif %}
+                    <span class="erp-cal-text visually-hidden">{{ cell.label }}</span>
+                </td>
+                {% else %}<td class="erp-cal-pad"></td>{% endif %}
+            {% endfor %}
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    <ul class="erp-cal-legend" aria-label="Legend">
+        <li><span class="erp-cal-key is-present" aria-hidden="true">&#10003;</span> Present</li>
+        <li><span class="erp-cal-key is-absent" aria-hidden="true">&#10005;</span> Absent</li>
+        <li><span class="erp-cal-key is-not_recorded" aria-hidden="true">&ndash;</span> Not recorded</li>
+    </ul>
+    <p class="erp-stat-note">&ldquo;Not recorded&rdquo; means the school has not recorded attendance for that school day. It does not mean your child was absent. Days without a mark are not school days for your child, or have not happened yet.</p>
+</section>
 {% else %}
-<p>No attendance has been recorded yet.</p>
+<section class="erp-att-summary" aria-label="Attendance summary">
+    <p class="erp-stat-label">Attendance</p>
+    <p class="erp-stat-empty">No attendance has been recorded yet{% if year %} for {{ year.name }}{% endif %}.</p>
+    <p class="erp-stat-note">Only attendance the school has officially recorded is shown.</p>
+</section>
 {% endif %}
 {% endblock %}
