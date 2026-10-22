@@ -1,10 +1,14 @@
 {% extends "base.html" %}
 {% block title %}Guardian access reviews{% endblock %}
 {% block content %}
-<h1 class="h3 mb-1">Guardian access reviews</h1>
-<p class="text-muted">These Students have no current enrollment (for example after their Academic Year ended). Until you decide, their guardians see no information about them in the portal. Nothing is decided automatically.</p>
-<table class="table">
-    <thead><tr><th>Student</th><th>Guardian</th><th>Last placement</th><th>Decision</th></tr></thead>
+{% include "partials/_page_header.html" with eyebrow="People" title="Guardian access reviews" purpose="These Students have no current enrollment (for example after their Academic Year ended). Until you decide, their guardians see no information about them in the portal. Nothing is decided automatically." only %}
+
+<section class="erp-panel mb-4" aria-labelledby="pending-reviews-heading">
+<div class="p-3 p-md-4 pb-0"><h2 class="h5" id="pending-reviews-heading">Pending reviews</h2></div>
+<div class="erp-table-scroll mt-3" role="region" aria-label="Pending access reviews" tabindex="0">
+<table class="table mb-0">
+    <caption class="visually-hidden">Pending access reviews</caption>
+    <thead><tr><th scope="col">Student</th><th scope="col">Guardian</th><th scope="col">Last placement</th><th scope="col">Decision</th></tr></thead>
     <tbody>
     {% for row in rows %}
         <tr>
@@ -13,13 +17,13 @@
             <td>{% if row.placement %}{{ row.placement.academic_year.name }} &middot; {{ row.placement.section }}{% else %}<span class="text-muted">No enrollment</span>{% endif %}</td>
             <td>
                 {% if perms.core.add_guardianaccessreview %}
-                <form method="post" action="{% url 'core:guardian-access-review-decide' row.grant.pk %}" class="d-flex gap-2">
+                <form method="post" action="{% url 'core:guardian-access-review-decide' row.grant.pk %}" class="d-flex flex-wrap gap-2">
                     {% csrf_token %}
-                    <select name="decision" class="form-select form-select-sm" required>
+                    <select name="decision" class="form-select form-select-sm w-auto" style="min-width: 9rem;" aria-label="Decision for {{ row.grant.student_guardian.student.full_name }} and guardian {{ row.grant.student_guardian.guardian.full_name }}" required>
                         <option value="">Choose…</option>
                         {% for value, label in decisions %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
                     </select>
-                    <input type="text" name="note" maxlength="200" placeholder="Note (optional)" class="form-control form-control-sm">
+                    <input type="text" name="note" maxlength="200" placeholder="Note (optional)" aria-label="Note for {{ row.grant.student_guardian.student.full_name }} and guardian {{ row.grant.student_guardian.guardian.full_name }}" class="form-control form-control-sm w-auto" style="min-width: 12rem;">
                     <button type="submit" class="btn btn-primary btn-sm">Record</button>
                 </form>
                 {% endif %}
@@ -30,8 +34,13 @@
     {% endfor %}
     </tbody>
 </table>
-<h2 class="h5 mt-4">Recent decisions</h2>
-<ul class="small">
+</div>
+</section>
+
+<section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="recent-decisions-heading">
+<h2 class="h5 mb-3" id="recent-decisions-heading">Recent decisions</h2>
+<ul class="small mb-0">
     {% for review in recent %}<li>{{ review.decided_at|date:"j M Y, H:i" }} &middot; {{ review.grant.student_guardian.student.full_name }} / {{ review.grant.student_guardian.guardian.full_name }} &middot; {{ review.get_trigger_display }}: <strong>{{ review.get_decision_display }}</strong> by {{ review.decided_by }}{% if review.note %} ({{ review.note }}){% endif %}</li>{% empty %}<li class="text-muted">None yet.</li>{% endfor %}
 </ul>
+</section>
 {% endblock %}
