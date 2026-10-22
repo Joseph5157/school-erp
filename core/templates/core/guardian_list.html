@@ -1,24 +1,25 @@
 {% extends "base.html" %}
 {% block title %}Guardians{% endblock %}
 {% block content %}
-{% include "partials/_page_header.html" with eyebrow="People" title="Guardians" purpose="Parents and carers linked to students, and their portal access." only %}
+{% if perms.core.add_guardian %}{% url 'core:guardian-create' as guardian_create_url %}{% endif %}
+{% include "partials/_page_header.html" with eyebrow="People" title="Guardians" purpose="Parents and carers linked to students, and their portal access." primary_url=guardian_create_url primary_label="Create Guardian" only %}
 {% if perms.core.view_guardianaccessreview %}<p class="small"><a href="{% url 'core:guardian-access-reviews' %}">Guardian access reviews</a>{% if perms.accounts.clear_login_lockout %} &middot; <a href="{% url 'core:login-lockouts' %}">Sign-in lockouts</a>{% endif %}</p>{% endif %}
-{% if perms.core.add_guardian %}
-    <a class="btn btn-primary mb-3" href="{% url 'core:guardian-create' %}">Create Guardian</a>
-{% endif %}
+<div class="erp-panel">
+<div class="erp-table-scroll" role="region" aria-label="Guardians" tabindex="0">
 <table class="table">
+    <caption class="visually-hidden">Guardians</caption>
     <thead>
         <tr>
-            <th>Name</th>
-            <th>Phone</th>
-            <th>Email</th>
+            <th scope="col">Name</th>
+            <th scope="col">Phone</th>
+            <th scope="col">Email</th>
         </tr>
     </thead>
     <tbody>
         {% for guardian in guardians %}
         <tr>
             <td><a href="{% url 'core:guardian-detail' guardian.pk %}">{{ guardian.full_name }}</a></td>
-            <td>{{ guardian.phone|default:"-" }}</td>
+            <td class="text-nowrap">{{ guardian.phone|default:"-" }}</td>
             <td>{{ guardian.email|default:"-" }}</td>
         </tr>
         {% empty %}
@@ -28,4 +29,6 @@
         {% endfor %}
     </tbody>
 </table>
+</div>
+</div>
 {% endblock %}

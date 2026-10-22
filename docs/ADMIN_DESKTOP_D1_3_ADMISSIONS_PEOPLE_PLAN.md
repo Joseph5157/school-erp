@@ -1,6 +1,6 @@
 # UI-D1-3 — Admissions and People (implementation specification and gate plan)
 
-Status: **PLAN REVIEWED AND ACCEPTED — D1-3A approved as next implementation gate; no application code started** (22 October 2026).
+Status: **PLAN REVIEWED AND ACCEPTED — D1-3A implemented on branch `ui/admin-desktop-d1-3a-people-lists` as a draft PR, awaiting design review (not merged, not deployed); D1-3B–D1-3D not started** (22 October 2026).
 Planning branch: `ui/admin-desktop-d1-admissions-people` (from `main` `9a77ef3`, after D1-2B merge `e43d477`).
 Parent decisions: `docs/ADMIN_DESKTOP_D1_PLAN.md` (D1-3 line), `docs/ADMIN_DESKTOP_TABLER_REFERENCE.md`, `docs/UI_DESIGN_RULES.md`, accepted gates D0 (#92), D1-1 (#93), D1-2A (#94), D1-2B (#95).
 
