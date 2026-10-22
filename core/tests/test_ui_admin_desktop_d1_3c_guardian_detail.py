@@ -75,6 +75,12 @@ class GuardianDetailD13CBase:
         self.assertEqual(response.status_code, 200)
         return normalise(response.content.decode())
 
+    def get_response(self, client=None, guardian=None):
+        guardian = guardian or self.guardian
+        response = (client or self.client).get(self.url("guardian-detail", guardian.pk))
+        self.assertEqual(response.status_code, 200)
+        return response
+
     def main(self, content):
         return content[content.index("<main"):]
 
@@ -104,14 +110,23 @@ class HeaderAndStructureTests(GuardianDetailD13CBase, TestCase):
         guardian = Guardian.objects.create(full_name=LONG_NAME)
         self.assertIn(LONG_NAME, self.get(guardian=guardian))
 
+    def test_long_name_and_email_can_wrap(self):
+        guardian = Guardian.objects.create(
+            full_name=LONG_NAME, email="venkataraghavan.subramaniam.ramachandran@example.test"
+        )
+        content = self.get(guardian=guardian)
+        # Title is wrapped at template level (the shared header partial is untouched).
+        self.assertRegex(content, r'<div class="text-break"> ?<header class="erp-page-header">')
+        self.assertRegex(content, r'<dd class="col-sm-9 text-break">venkataraghavan\.subramaniam')
+
     def test_contact_details_definition_list_and_defaults(self):
         content = self.get()
         self.assertIn('<dt class="col-sm-3">Phone</dt>', content)
-        self.assertIn('<dd class="col-sm-9">98450-12345</dd>', content)
-        self.assertIn('<dd class="col-sm-9">meena@example.test</dd>', content)
+        self.assertIn('<dd class="col-sm-9 text-break">98450-12345</dd>', content)
+        self.assertIn('<dd class="col-sm-9 text-break">meena@example.test</dd>', content)
         bare = Guardian.objects.create(full_name="Bare Guardian")
         page = self.get(guardian=bare)
-        self.assertEqual(page.count('<dd class="col-sm-9">-</dd>'), 2)
+        self.assertEqual(page.count('<dd class="col-sm-9 text-break">-</dd>'), 2)
 
     def test_contact_details_in_labelled_panel(self):
         content = self.get()
@@ -161,7 +176,7 @@ class HeaderAndStructureTests(GuardianDetailD13CBase, TestCase):
             self.assertIn(f'<th scope="col">{heading}</th>', content)
         self.assertIn('<th scope="col"><span class="visually-hidden">Actions</span></th>', content)
 
-    def test_no_page_text_in_attributes_only_dropped(self):
+    def test_relationship_explainer_text_is_visible(self):
         # explanatory sentence about relationships not granting access is kept as visible text
         self.assertIn(
             "Access is granted explicitly for each relationship. The relationship type never grants access by itself.",
@@ -205,6 +220,14 @@ class PortalAccountTests(GuardianDetailD13CBase, TestCase):
         self.assertIn(f'href="{create}">Create portal account</a>', section)
         self.assertIn(f'href="{link}">Link an existing login</a>', section)
         self.assertNotIn("Reset password", section)
+
+    def test_add_guardianaccount_alone_shows_create_and_link_actions(self):
+        client = self.client_with("view_guardian", "view_guardianaccount", "add_guardianaccount")
+        section = self.portal(self.get(client))
+        self.assertIn(f'href="{self.url("guardian-account-create", self.guardian.pk)}">Create portal account</a>', section)
+        self.assertIn(f'href="{self.url("guardian-account-link", self.guardian.pk)}">Link an existing login</a>', section)
+        self.assertNotIn("Reset password", section)
+        self.assertNotIn("Revoke account link", section)
 
     def test_no_account_actions_need_add_guardianaccount(self):
         client = self.client_with("view_guardian", "view_guardianaccount")
@@ -300,6 +323,8 @@ class StudentAccessTests(GuardianDetailD13CBase, TestCase):
         self.assertEqual(section.count("csrfmiddlewaretoken"), 2)
         self.assertEqual(section.count('type="submit"'), 2)
         self.assertEqual(section.count(">Grant access</button>"), 2)
+        for button in re.findall(r'<button type="submit"[^>]*>Grant access</button>', section):
+            self.assertRegex(button, r'class="[^"]*\btext-nowrap\b')
         self.assertNotIn("Revoke", section)
 
     def test_grant_button_accessible_name_includes_student(self):
@@ -320,6 +345,8 @@ class StudentAccessTests(GuardianDetailD13CBase, TestCase):
         revoke = self.url("guardian-access-revoke", grant.pk)
         self.assertRegex(section, rf'href="{revoke}"[^>]*>Revoke</a>')
         self.assertIn('aria-label="Revoke access for Asha Rao"', section)
+        self.assertRegex(section, rf'<a class="[^"]*\btext-nowrap\b[^"]*" href="{revoke}"')
+        self.assertIn('<td class="text-end text-nowrap">', section)
         grant_url = self.url("guardian-access-grant", self.asha_link.pk)
         self.assertNotIn(grant_url, section)
         self.assertIn(self.url("guardian-access-grant", self.ravi_link.pk), section)
@@ -367,6 +394,15 @@ class StudentAccessTests(GuardianDetailD13CBase, TestCase):
         self.assertNotIn("<form", view_only)
         self.assertNotIn("Grant access", view_only)
 
+    def test_student_rows_render_in_view_order(self):
+        self.grant(self.asha_link)
+        response = self.get_response()
+        names = [row["link"].student.full_name for row in response.context["relationships"]]
+        self.assertEqual(sorted(names), ["Asha Rao", "Ravi Rao"])
+        section = self.access(normalise(response.content.decode()))
+        positions = [section.index(f"<td>{name}</td>") for name in names]
+        self.assertEqual(positions, sorted(positions))
+
     def test_relationship_labels_and_empty_state(self):
         self.assertIn("Mother", self.access())
         lonely = Guardian.objects.create(full_name="Lonely Guardian")
@@ -378,6 +414,7 @@ class StudentAccessTests(GuardianDetailD13CBase, TestCase):
         self.assertNotIn('id="student-access"', content)
         self.assertNotIn("Student access", content)
         self.assertNotIn("csrfmiddlewaretoken", self.main(content))
+        self.assertNotIn(self.url("guardian-access-grant", self.asha_link.pk), content)
 
 
 class HistoryAndConsentTests(GuardianDetailD13CBase, TestCase):
@@ -397,6 +434,14 @@ class HistoryAndConsentTests(GuardianDetailD13CBase, TestCase):
             guardian_id_ref=self.guardian.pk, event_class=SecurityEvent.EventClass.HISTORY
         )
         self.assertEqual(section.count("<li"), events.count())
+        # Rendered order follows the view's (context) event order.
+        response = self.get_response()
+        labels = [event.get_event_type_display() for event in response.context["events"]]
+        self.assertGreaterEqual(len(labels), 2)
+        cursor = 0
+        for label in labels:
+            at = section.index(label, cursor)
+            cursor = at + len(label)
 
     def test_history_hidden_without_view_securityevent(self):
         content = self.get(self.client_with("view_guardian"))
@@ -409,7 +454,7 @@ class HistoryAndConsentTests(GuardianDetailD13CBase, TestCase):
         User.objects.filter(username="limited").delete()
         content = self.get(self.client_with("view_guardian", "view_guardiancontactconsent"))
         self.assertIn("WhatsApp messages", content)
-        self.assertNotIn("guardian-consent-record", content)
+        self.assertNotIn(self.url("guardian-consent-record", self.guardian.pk), content)
         self.assertIn("WhatsApp messages", self.get())
         self.assertIn(self.url("guardian-consent-record", self.guardian.pk), self.get())
         self.assertEqual(GuardianContactConsent.objects.count(), 0)

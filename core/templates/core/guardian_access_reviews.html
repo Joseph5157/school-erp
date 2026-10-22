@@ -14,16 +14,16 @@
         <tr>
             <td>{{ row.grant.student_guardian.student.full_name }}</td>
             <td><a href="{% url 'core:guardian-detail' row.grant.student_guardian.guardian_id %}">{{ row.grant.student_guardian.guardian.full_name }}</a></td>
-            <td>{% if row.placement %}{{ row.placement.academic_year.name }} &middot; {{ row.placement.section }}{% else %}<span class="text-muted">No enrollment</span>{% endif %}</td>
+            <td>{% if row.placement %}<span class="text-nowrap">{{ row.placement.academic_year.name }}</span> &middot; {{ row.placement.section }}{% else %}<span class="text-muted">No enrollment</span>{% endif %}</td>
             <td>
                 {% if perms.core.add_guardianaccessreview %}
                 <form method="post" action="{% url 'core:guardian-access-review-decide' row.grant.pk %}" class="d-flex flex-wrap gap-2">
                     {% csrf_token %}
-                    <select name="decision" class="form-select form-select-sm w-auto" style="min-width: 9rem;" aria-label="Decision for {{ row.grant.student_guardian.student.full_name }} and guardian {{ row.grant.student_guardian.guardian.full_name }}" required>
+                    <select name="decision" class="form-select form-select-sm w-auto erp-review-control" aria-label="Decision for {{ row.grant.student_guardian.student.full_name }} and guardian {{ row.grant.student_guardian.guardian.full_name }}" required>
                         <option value="">Choose…</option>
                         {% for value, label in decisions %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
                     </select>
-                    <input type="text" name="note" maxlength="200" placeholder="Note (optional)" aria-label="Note for {{ row.grant.student_guardian.student.full_name }} and guardian {{ row.grant.student_guardian.guardian.full_name }}" class="form-control form-control-sm w-auto" style="min-width: 12rem;">
+                    <input type="text" name="note" maxlength="200" placeholder="Note (optional)" aria-label="Note for {{ row.grant.student_guardian.student.full_name }} and guardian {{ row.grant.student_guardian.guardian.full_name }}" class="form-control form-control-sm w-auto erp-review-control erp-review-note">
                     <button type="submit" class="btn btn-primary btn-sm">Record</button>
                 </form>
                 {% endif %}

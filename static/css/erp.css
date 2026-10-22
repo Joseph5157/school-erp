@@ -1240,3 +1240,8 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
    table inside its labelled region instead of breaking names into one-letter lines. */
 .erp-offerings-table td:nth-child(1) { min-width: 9rem; }
 .erp-offerings-table td:nth-child(3) { min-width: 14rem; }
+
+/* ---------- UI-D1-3C: Guardian access review decision controls ---------- */
+/* Keep a floor width so the decision select and note stay usable inside the queue's scroll region. */
+.erp-review-control { min-width: 9rem; }
+.erp-review-control.erp-review-note { min-width: 12rem; }

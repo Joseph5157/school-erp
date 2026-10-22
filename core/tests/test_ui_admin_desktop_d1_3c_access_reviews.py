@@ -5,6 +5,7 @@ and the Recent decisions history are unchanged. All names are synthetic.
 """
 
 import re
+from datetime import date
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
@@ -14,11 +15,14 @@ from django.urls import reverse
 from core import guardian_access
 from core import guardian_accounts as ga
 from core.models import (
+    AcademicYear,
     Applicant,
+    ClassGrade,
     Guardian,
     GuardianAccessReview,
     GuardianAccount,
     GuardianStudentAccess,
+    Section,
     Student,
     StudentGuardian,
 )
@@ -118,6 +122,19 @@ class HeaderAndTableTests(AccessReviewsD13CBase, TestCase):
         self.assertLess(content.index("Abe Rao"), content.index("Zed Rao"))
         self.assertEqual(content.count("No enrollment"), 2)
 
+    def test_placement_year_name_does_not_break(self):
+        grant = self.pending("Asha Rao", "Meena Rao")
+        year = AcademicYear.objects.create(
+            name="2025-26", start_date=date(2025, 6, 1), end_date=date(2026, 3, 31)
+        )
+        grade = ClassGrade.objects.create(name="Grade 5")
+        section = Section.objects.create(class_grade=grade, name="A")
+        grant.student_guardian.student.enroll(
+            academic_year=year, class_grade=grade, section=section, start_date=date(2025, 6, 1)
+        )
+        _, content = self.get()
+        self.assertIn('<span class="text-nowrap">2025-26</span>', content)
+
     def test_empty_queue_message(self):
         _, content = self.get()
         self.assertIn("No pending access reviews.", content)
@@ -129,9 +146,14 @@ class DecisionFormTests(AccessReviewsD13CBase, TestCase):
         grant = self.pending("Asha Rao", "Meena Rao")
         response, content = self.get()
         action = reverse("core:guardian-access-review-decide", args=[grant.pk])
-        form = re.search(rf'<form method="post" action="{re.escape(action)}"[^>]*>(.*?)</form>', content)
-        self.assertIsNotNone(form)
-        body = form.group(1)
+        forms = [
+            (attrs, inner)
+            for attrs, inner in re.findall(r"<form\b([^>]*)>(.*?)</form>", content)
+            if re.search(rf'\baction="{re.escape(action)}"', attrs)
+        ]
+        self.assertEqual(len(forms), 1)
+        attrs, body = forms[0]
+        self.assertRegex(attrs, r'\bmethod="post"')
         self.assertIn('name="csrfmiddlewaretoken"', body)
         select = re.search(r'<select[^>]*name="decision"[^>]*>(.*?)</select>', body)
         self.assertIsNotNone(select)
@@ -146,6 +168,17 @@ class DecisionFormTests(AccessReviewsD13CBase, TestCase):
         self.assertNotIn(" required", note)
         self.assertRegex(body, r'<button type="submit"[^>]*>Record</button>')
         self.assertEqual(content.count("<form"), content.count("</form>"))
+
+    def test_controls_use_scoped_class_not_inline_style(self):
+        self.pending("Asha Rao", "Meena Rao")
+        _, content = self.get()
+        select = re.search(r'<select[^>]*name="decision"[^>]*>', content).group(0)
+        note = re.search(r"<input[^>]*name=\"note\"[^>]*>", content).group(0)
+        self.assertRegex(select, r'class="[^"]*\berp-review-control\b')
+        self.assertRegex(note, r'class="[^"]*\berp-review-control\b')
+        self.assertRegex(note, r'class="[^"]*\berp-review-note\b')
+        self.assertNotIn("style=", select)
+        self.assertNotIn("style=", note)
 
     def test_controls_have_row_context_accessible_names(self):
         self.pending("Asha Rao", "Meena Rao")
@@ -214,4 +247,6 @@ class RecentDecisionsTests(AccessReviewsD13CBase, TestCase):
             positions.append(panel.index(pair))
         self.assertEqual(positions, sorted(positions))
         self.assertIn("(Still enrolled elsewhere)", panel)
-        self.assertEqual(panel.count("(") , 1)  # only the one note is shown
+        self.assertEqual(panel.count("<li>"), 2)
+        self.assertEqual(panel.count("(Still enrolled elsewhere)"), 1)
+        self.assertEqual(panel.count("<strong>"), 2)
