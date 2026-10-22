@@ -195,6 +195,12 @@ class DecisionFormTests(AccessReviewsD13CBase, TestCase):
             re.search(r'aria-label="([^"]+)"', note).group(1),
         )
 
+    def test_record_button_has_row_context_accessible_name(self):
+        self.pending("Asha Rao", "Meena Rao")
+        _, content = self.get()
+        button = re.search(r'<button type="submit"[^>]*>Record</button>', content).group(0)
+        self.assertIn('aria-label="Record decision for Asha Rao and guardian Meena Rao"', button)
+
     def test_without_add_permission_no_form(self):
         self.pending("Asha Rao", "Meena Rao")
         client = self.client_with("view_guardianaccessreview")

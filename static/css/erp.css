@@ -1242,6 +1242,9 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 .erp-offerings-table td:nth-child(3) { min-width: 14rem; }
 
 /* ---------- UI-D1-3C: Guardian access review decision controls ---------- */
-/* Keep a floor width so the decision select and note stay usable inside the queue's scroll region. */
-.erp-review-control { min-width: 9rem; }
-.erp-review-control.erp-review-note { min-width: 12rem; }
+/* The Decision column keeps a floor width and its controls flex within it (min-width:0), so the
+   select, note and button wrap inside the cell instead of clipping at the panel edge; a narrow
+   container scrolls the table inside its labelled region. */
+.erp-review-form { min-width: 15rem; }
+.erp-review-control { flex: 1 1 7rem; min-width: 0; width: auto; }
+.erp-review-control.erp-review-note { flex-basis: 100%; }

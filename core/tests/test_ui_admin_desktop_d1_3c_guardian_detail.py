@@ -334,7 +334,9 @@ class StudentAccessTests(GuardianDetailD13CBase, TestCase):
 
     def test_get_to_grant_url_does_not_mutate(self):
         response = self.client.get(self.url("guardian-access-grant", self.asha_link.pk))
-        self.assertIn(response.status_code, (302, 405))
+        self.assertRedirects(
+            response, self.url("guardian-detail", self.asha_link.guardian_id), fetch_redirect_response=False
+        )
         self.assertFalse(GuardianStudentAccess.objects.exists())
 
     def test_active_grant_shows_revoke_link_and_no_grant_form(self):

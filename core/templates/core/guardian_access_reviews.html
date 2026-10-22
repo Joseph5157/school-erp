@@ -5,7 +5,7 @@
 
 <section class="erp-panel mb-4" aria-labelledby="pending-reviews-heading">
 <div class="p-3 p-md-4 pb-0"><h2 class="h5" id="pending-reviews-heading">Pending reviews</h2></div>
-<div class="erp-table-scroll mt-3" role="region" aria-label="Pending access reviews" tabindex="0">
+<div class="erp-table-scroll mt-2" role="region" aria-label="Pending access reviews" tabindex="0">
 <table class="table mb-0">
     <caption class="visually-hidden">Pending access reviews</caption>
     <thead><tr><th scope="col">Student</th><th scope="col">Guardian</th><th scope="col">Last placement</th><th scope="col">Decision</th></tr></thead>
@@ -17,14 +17,14 @@
             <td>{% if row.placement %}<span class="text-nowrap">{{ row.placement.academic_year.name }}</span> &middot; {{ row.placement.section }}{% else %}<span class="text-muted">No enrollment</span>{% endif %}</td>
             <td>
                 {% if perms.core.add_guardianaccessreview %}
-                <form method="post" action="{% url 'core:guardian-access-review-decide' row.grant.pk %}" class="d-flex flex-wrap gap-2">
+                <form method="post" action="{% url 'core:guardian-access-review-decide' row.grant.pk %}" class="d-flex flex-wrap gap-2 erp-review-form">
                     {% csrf_token %}
-                    <select name="decision" class="form-select form-select-sm w-auto erp-review-control" aria-label="Decision for {{ row.grant.student_guardian.student.full_name }} and guardian {{ row.grant.student_guardian.guardian.full_name }}" required>
+                    <select name="decision" class="form-select form-select-sm erp-review-control" aria-label="Decision for {{ row.grant.student_guardian.student.full_name }} and guardian {{ row.grant.student_guardian.guardian.full_name }}" required>
                         <option value="">Choose…</option>
                         {% for value, label in decisions %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
                     </select>
-                    <input type="text" name="note" maxlength="200" placeholder="Note (optional)" aria-label="Note for {{ row.grant.student_guardian.student.full_name }} and guardian {{ row.grant.student_guardian.guardian.full_name }}" class="form-control form-control-sm w-auto erp-review-control erp-review-note">
-                    <button type="submit" class="btn btn-primary btn-sm">Record</button>
+                    <input type="text" name="note" maxlength="200" placeholder="Note (optional)" aria-label="Note for {{ row.grant.student_guardian.student.full_name }} and guardian {{ row.grant.student_guardian.guardian.full_name }}" class="form-control form-control-sm erp-review-control erp-review-note">
+                    <button type="submit" class="btn btn-primary btn-sm" aria-label="Record decision for {{ row.grant.student_guardian.student.full_name }} and guardian {{ row.grant.student_guardian.guardian.full_name }}">Record</button>
                 </form>
                 {% endif %}
             </td>
