@@ -1,6 +1,6 @@
 # UI-D1 — Admin Desktop Page-by-Page Adoption
 
-Status: **D1-1 ACCEPTED and MERGED** (PR #93, merge `45b0088`, 2026-10-22). **D1-2A planned** on `ui/admin-desktop-d1-school-configuration`, not implemented. D0 foundation merged in PR #92 (`dd6e9daa`). This document is a narrow follow-up plan; **do not** implement all items in this plan together.
+Status: **D1-1 ACCEPTED and MERGED** (PR #93, merge `45b0088`, 2026-10-22). **D1-2A ACCEPTED and MERGED** (PR #94, merge `19fd57b`, 2026-10-22). D1-2B not started. D0 foundation merged in PR #92 (`dd6e9daa`). This document is a narrow follow-up plan; **do not** implement all items in this plan together.
 
 ## Baseline / binding design rules
 
@@ -44,11 +44,11 @@ Not allowed: `core/models.py`, views, forms, URLs, authorization, migrations, da
 6. **Verification:** `python manage.py check`, relevant authorization and teacher-assignment tests, newly added UI tests, and full PostgreSQL suite when supported. State exact result and any constraints. Screenshots are seeded demo data; say so.
 7. **Stop:** publish a draft PR with before/after, tests, diff scope, and known limits. No merge/deploy until accepted.
 
-## D1-2+ — Candidate adoption sequence (D1-2A PLANNED)
+## D1-2+ — Candidate adoption sequence (D1-2A MERGED)
 
 Each is a separate scoped PR only after the previous gate is reviewed:
 
-- **D1-2A School configuration (planned):** four existing class/subject/term/offering list pages; exact scope and acceptance in `docs/ADMIN_DESKTOP_D1_2_SCHOOL_CONFIGURATION_PLAN.md`. **D1-2B (deferred):** class teacher mapping and assignment overview after D1-2A review; separate PR.
+- **D1-2A School configuration (accepted/merged, PR #94):** four existing class/subject/term/offering list pages; exact scope and acceptance in `docs/ADMIN_DESKTOP_D1_2_SCHOOL_CONFIGURATION_PLAN.md`. **D1-2B (deferred):** class teacher mapping and assignment overview after D1-2A review; separate PR.
 - **D1-3 Admissions and people:** applicants, guardians, teacher accounts and profile/admin forms. Keep existing audits, saved query state and permissions. Do not duplicate UI-D0 Students work.
 - **D1-4 Attendance administration:** register list, detail and reports, corrections. Preserve Draft/Submitted and reportable-attendance rules.
 - **D1-5 Assessments/results:** list/planning, publication, result review, report/export pages. Preserve release-order, finalized-result, and guardian publication semantics.

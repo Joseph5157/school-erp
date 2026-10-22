@@ -1,6 +1,6 @@
 # UI-D1-2 — School Configuration Desktop Adoption
 
-Status: **PLANNED / ready for D1-2A implementation, no application code written** (22 October 2026).
+Status: **D1-2A ACCEPTED and MERGED** (PR #94, merge `19fd57b`, 22 October 2026). **D1-2B deferred**, not started.
 Implementation branch: `ui/admin-desktop-d1-school-configuration`.
 Base: `main` at merge commit `45b00883b095a7cb04f3c0a8c25afd8450aabeea` (PR #93, D1-1).
 Design sources: `docs/ADMIN_DESKTOP_D1_PLAN.md`, `docs/ADMIN_DESKTOP_TABLER_REFERENCE.md`, `docs/UI_DESIGN_RULES.md`, `docs/UI_REFERENCES.md`.
@@ -12,7 +12,9 @@ Apply the approved Tabler-inspired School ERP desktop components from D0 to exis
 
 One tightly bounded implementation PR for **D1-2A** below, then stop. **D1-2B** is an explicitly deferred follow-up requiring separate acceptance and implementation work, even if it shares the same UI-D1-2 theme.
 
-## D1-2A — Class, Subject, Term and Offering lists (ACTIVE TARGET)
+## D1-2A — Class, Subject, Term and Offering lists (ACCEPTED / MERGED)
+
+**Outcome (PR #94, approved at `f4f4306`, merged `19fd57b`):** presentation-only; four templates plus a 6-line `.erp-offerings-table` rule in `erp.css`. Full PostgreSQL suite 2,292 passing. Accepted decisions: Section + Term lookup stays below the table and now shows its validation errors; table-local horizontal scroll for Subject Offerings on phones and stacked Term actions at 1024px are accepted trade-offs. Screenshots (seeded throwaway data): `docs/ui-reviews/ui-d1-2a/`.
 
 ### Exactly four existing pages in scope
 
