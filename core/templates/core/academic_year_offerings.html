@@ -1,34 +1,43 @@
 {% extends "base.html" %}
 {% block title %}Subjects offered - {{ academic_year.name }}{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">Subjects offered: {{ academic_year.name }}</h1>
-{% if perms.core.add_academicsubjectoffering %}
-    <a class="btn btn-primary mb-3" href="{% url 'core:offering-create' academic_year.pk %}">Offer a Subject</a>
-{% endif %}
-<table class="table">
-    <thead><tr><th>Class/Grade</th><th>Report card position</th><th>Subject</th><th>Sections</th><th></th></tr></thead>
+{% if perms.core.add_academicsubjectoffering %}{% url 'core:offering-create' academic_year.pk as create_url %}{% endif %}
+{% include "partials/_page_header.html" with eyebrow="School setup" title="Subjects offered" purpose=academic_year.name primary_url=create_url primary_label="Offer a Subject" only %}
+<div class="erp-panel">
+<div class="erp-table-scroll" role="region" aria-label="Subjects offered" tabindex="0">
+<table class="table erp-keep erp-offerings-table">
+    <thead>
+        <tr>
+            <th scope="col">Class/Grade</th>
+            <th scope="col">Report card position</th>
+            <th scope="col">Subject</th>
+            <th scope="col">Sections</th>
+            <th scope="col"><span class="visually-hidden">Actions</span></th>
+        </tr>
+    </thead>
     <tbody>
         {% for offering in offerings %}
         <tr>
-            <td>{{ offering.class_grade }}</td>
-            <td>{{ offering.display_order }}</td>
+            <td class="fw-semibold">{{ offering.class_grade }}</td>
+            <td class="text-nowrap">{{ offering.display_order }}</td>
             <td>{{ offering.subject }}</td>
-            <td>
-                {% for link in offering.section_links.all %}{{ link.section.name }}{% if not forloop.last %}, {% endif %}{% empty %}All Sections{% endfor %}
-            </td>
-            <td>{% if perms.core.change_academicsubjectoffering %}<a href="{% url 'core:offering-update' offering.pk %}">Edit order and Sections</a>{% endif %}</td>
+            <td>{% for link in offering.section_links.all %}<span class="text-nowrap">{{ link.section.name }}</span>{% if not forloop.last %}, {% endif %}{% empty %}<span class="text-nowrap">All Sections</span>{% endfor %}</td>
+            <td class="text-end text-nowrap">{% if perms.core.change_academicsubjectoffering %}<a href="{% url 'core:offering-update' offering.pk %}">Edit order and Sections<span class="visually-hidden">: {{ offering.class_grade }}, {{ offering.subject }}</span></a>{% endif %}</td>
         </tr>
         {% empty %}
         <tr><td colspan="5">No Subjects offered in this Academic Year yet.</td></tr>
         {% endfor %}
     </tbody>
 </table>
+</div>
+</div>
 
-<h2 class="h5 mt-4">Which Subjects does a Section take?</h2>
-<form method="get" class="row g-2 align-items-end mb-3">
-    <div class="col-auto">{{ lookup.section.label_tag }} {{ lookup.section }}</div>
-    <div class="col-auto">{{ lookup.term.label_tag }} {{ lookup.term }}</div>
-    <div class="col-auto"><button type="submit" class="btn btn-outline-secondary">Show</button></div>
+<h2 class="h5 mt-4" id="offered-lookup-title">Which Subjects does a Section take?</h2>
+<p class="erp-note-text">A read-only lookup. It does not change the table above.</p>
+<form method="get" class="erp-toolbar erp-toolbar--inline" aria-labelledby="offered-lookup-title">
+    <div class="erp-field">{{ lookup.section.label_tag }}{{ lookup.section }}{% for error in lookup.section.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>
+    <div class="erp-field">{{ lookup.term.label_tag }}{{ lookup.term }}{% for error in lookup.term.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>
+    <div><button type="submit" class="btn btn-outline-secondary">Show</button></div>
 </form>
 {% if offered is not None %}
 <ul>

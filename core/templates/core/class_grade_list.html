@@ -1,22 +1,22 @@
 {% extends "base.html" %}
 {% block title %}Classes/Grades{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">Classes/Grades</h1>
-{% if perms.core.add_classgrade %}
-    <a class="btn btn-primary mb-3" href="{% url 'core:class-grade-create' %}">Create Class/Grade</a>
-{% endif %}
-<table class="table">
+{% if perms.core.add_classgrade %}{% url 'core:class-grade-create' as create_url %}{% endif %}
+{% include "partials/_page_header.html" with eyebrow="School setup" title="Classes/Grades" purpose="Each Class/Grade holds its Sections. Open one to see them." primary_url=create_url primary_label="Create Class/Grade" only %}
+<div class="erp-panel">
+<div class="erp-table-scroll" role="region" aria-label="Classes/Grades" tabindex="0">
+<table class="table erp-keep">
     <thead>
         <tr>
-            <th>Name</th>
-            <th>Sections</th>
+            <th scope="col">Name</th>
+            <th scope="col">Sections</th>
         </tr>
     </thead>
     <tbody>
         {% for class_grade in class_grades %}
         <tr>
-            <td><a href="{% url 'core:class-grade-detail' class_grade.pk %}">{{ class_grade.name }}</a></td>
-            <td>{{ class_grade.sections.count }}</td>
+            <td class="fw-semibold"><a href="{% url 'core:class-grade-detail' class_grade.pk %}">{{ class_grade.name }}</a></td>
+            <td class="text-nowrap">{{ class_grade.sections.count }}</td>
         </tr>
         {% empty %}
         <tr>
@@ -25,4 +25,6 @@
         {% endfor %}
     </tbody>
 </table>
+</div>
+</div>
 {% endblock %}

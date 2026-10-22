@@ -1229,3 +1229,9 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 .erp-assignment-actions .btn-link { font-size: inherit; vertical-align: baseline; }
 /* Phones size the table to its content (it scrolls in its own box); cap entries so names wrap. */
 @media (max-width: 575.98px) { .erp-assignment-history { max-width: 18rem; } }
+
+/* ---------- UI-D1-2A: school configuration lists ---------- */
+/* Subjects offered: Class/Grade and Subject keep a floor width so a narrow container scrolls the
+   table inside its labelled region instead of breaking names into one-letter lines. */
+.erp-offerings-table td:nth-child(1) { min-width: 9rem; }
+.erp-offerings-table td:nth-child(3) { min-width: 14rem; }
