@@ -167,6 +167,15 @@ class HeaderAndStructureTests(GuardianDetailD13CBase, TestCase):
                 rf'<div class="erp-table-scroll[^"]*" role="region" aria-label="{label}" tabindex="0">',
             )
 
+    def test_panel_heading_block_and_name_cells_use_scoped_classes(self):
+        self.grant(self.asha_link)
+        content = self.get()
+        for target in ("applicants", "student-access"):
+            section = self.section(content, target)
+            self.assertRegex(section, r'<div class="[^"]*\bpb-md-0\b[^"]*\berp-panel-head\b')
+            self.assertIn("erp-name-table", section)
+        self.assertIn('<td class="text-break">Asha', self.section(content, "student-access"))
+
     def test_table_headers_have_scope_col(self):
         self.grant(self.asha_link)
         content = self.get()
@@ -196,8 +205,8 @@ class ApplicantsSectionTests(GuardianDetailD13CBase, TestCase):
         ApplicantGuardian.objects.create(applicant=second, guardian=self.guardian, relationship_type="MOTHER")
         content = self.get()
         self.assertNotIn("Not associated with any Applicant.", content)
-        self.assertIn(f'<a href="{self.url("applicant-detail", first.pk)}">Zed Applicant</a>', content)
-        self.assertIn(f'<a href="{self.url("applicant-detail", second.pk)}">Amy Applicant</a>', content)
+        self.assertIn(f'<a class="text-break" href="{self.url("applicant-detail", first.pk)}">Zed Applicant</a>', content)
+        self.assertIn(f'<a class="text-break" href="{self.url("applicant-detail", second.pk)}">Amy Applicant</a>', content)
         expected = [
             link.applicant.full_name
             for link in self.guardian.applicant_links.select_related("applicant")
@@ -402,7 +411,7 @@ class StudentAccessTests(GuardianDetailD13CBase, TestCase):
         names = [row["link"].student.full_name for row in response.context["relationships"]]
         self.assertEqual(sorted(names), ["Asha Rao", "Ravi Rao"])
         section = self.access(normalise(response.content.decode()))
-        positions = [section.index(f"<td>{name}</td>") for name in names]
+        positions = [section.index(f"<td class=\"text-break\">{name}</td>") for name in names]
         self.assertEqual(positions, sorted(positions))
 
     def test_relationship_labels_and_empty_state(self):

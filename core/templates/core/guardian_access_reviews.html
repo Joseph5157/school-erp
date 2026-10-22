@@ -4,16 +4,16 @@
 {% include "partials/_page_header.html" with eyebrow="People" title="Guardian access reviews" purpose="These Students have no current enrollment (for example after their Academic Year ended). Until you decide, their guardians see no information about them in the portal. Nothing is decided automatically." only %}
 
 <section class="erp-panel mb-4" aria-labelledby="pending-reviews-heading">
-<div class="p-3 p-md-4 pb-0"><h2 class="h5" id="pending-reviews-heading">Pending reviews</h2></div>
-<div class="erp-table-scroll mt-2" role="region" aria-label="Pending access reviews" tabindex="0">
-<table class="table mb-0">
+<div class="p-3 p-md-4 pb-0 pb-md-0 erp-panel-head"><h2 class="h5" id="pending-reviews-heading">Pending reviews</h2></div>
+<div class="erp-table-scroll mt-3" role="region" aria-label="Pending access reviews" tabindex="0">
+<table class="table mb-0 erp-review-table">
     <caption class="visually-hidden">Pending access reviews</caption>
     <thead><tr><th scope="col">Student</th><th scope="col">Guardian</th><th scope="col">Last placement</th><th scope="col">Decision</th></tr></thead>
     <tbody>
     {% for row in rows %}
         <tr>
-            <td>{{ row.grant.student_guardian.student.full_name }}</td>
-            <td><a href="{% url 'core:guardian-detail' row.grant.student_guardian.guardian_id %}">{{ row.grant.student_guardian.guardian.full_name }}</a></td>
+            <td class="text-break">{{ row.grant.student_guardian.student.full_name }}</td>
+            <td class="text-break"><a class="text-break" href="{% url 'core:guardian-detail' row.grant.student_guardian.guardian_id %}">{{ row.grant.student_guardian.guardian.full_name }}</a></td>
             <td>{% if row.placement %}<span class="text-nowrap">{{ row.placement.academic_year.name }}</span> &middot; {{ row.placement.section }}{% else %}<span class="text-muted">No enrollment</span>{% endif %}</td>
             <td>
                 {% if perms.core.add_guardianaccessreview %}

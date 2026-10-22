@@ -1248,3 +1248,12 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 .erp-review-form { min-width: 15rem; }
 .erp-review-control { flex: 1 1 7rem; min-width: 0; width: auto; }
 .erp-review-control.erp-review-note { flex-basis: 100%; }
+
+/* UI-D1-3C: panel heading block sits ~16px above its table (no stacked heading margin). */
+.erp-panel-head > :last-child { margin-bottom: 0; }
+/* Phones size the table to its content; cap the name columns so long names wrap and the
+   region stays a few screens wide instead of thousands of pixels. */
+@media (max-width: 575.98px) { .erp-review-table td.text-break, .erp-name-table td.text-break { max-width: 14rem; min-width: 10rem; } }
+/* On phones the table is max-content wide, so pin the form to its floor width: the whole Decision
+   cell then fits inside the 356px region and scrolls into view complete, not cut on one side. */
+@media (max-width: 575.98px) { .erp-review-form { width: 15rem; } }

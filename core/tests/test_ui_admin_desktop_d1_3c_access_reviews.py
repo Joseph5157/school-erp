@@ -116,7 +116,7 @@ class HeaderAndTableTests(AccessReviewsD13CBase, TestCase):
         for grant in (abe, zed):
             guardian = grant.student_guardian.guardian
             self.assertIn(
-                f'<a href="{reverse("core:guardian-detail", args=[guardian.pk])}">{guardian.full_name}</a>',
+                f'<a class="text-break" href="{reverse("core:guardian-detail", args=[guardian.pk])}">{guardian.full_name}</a>',
                 content,
             )
         self.assertLess(content.index("Abe Rao"), content.index("Zed Rao"))
@@ -179,6 +179,14 @@ class DecisionFormTests(AccessReviewsD13CBase, TestCase):
         self.assertRegex(note, r'class="[^"]*\berp-review-note\b')
         self.assertNotIn("style=", select)
         self.assertNotIn("style=", note)
+
+    def test_long_names_wrap_and_heading_block_is_tight(self):
+        self.pending("Asha Rao", "Meena Rao")
+        _, content = self.get()
+        self.assertRegex(content, r'<div class="[^"]*\bpb-md-0\b[^"]*\berp-panel-head\b[^"]*"><h2 class="h5" id="pending-reviews-heading">')
+        self.assertIn("erp-review-table", content)
+        self.assertIn('<td class="text-break">Asha Rao</td>', content)
+        self.assertRegex(content, r'<td class="text-break"><a class="text-break" href="[^"]+">Meena Rao</a></td>')
 
     def test_controls_have_row_context_accessible_names(self):
         self.pending("Asha Rao", "Meena Rao")

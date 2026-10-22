@@ -15,9 +15,9 @@
 </section>
 
 <section id="applicants" aria-labelledby="applicants-heading" class="erp-panel mb-4">
-<div class="p-3 p-md-4 pb-0"><h2 class="h5" id="applicants-heading">Associated Applicants</h2></div>
-<div class="erp-table-scroll mt-2" role="region" aria-label="Associated Applicants" tabindex="0">
-<table class="table mb-0">
+<div class="p-3 p-md-4 pb-0 pb-md-0 erp-panel-head"><h2 class="h5" id="applicants-heading">Associated Applicants</h2></div>
+<div class="erp-table-scroll mt-3" role="region" aria-label="Associated Applicants" tabindex="0">
+<table class="table mb-0 erp-name-table">
     <caption class="visually-hidden">Associated Applicants</caption>
     <thead>
         <tr>
@@ -28,7 +28,7 @@
     <tbody>
         {% for link in applicant_links %}
         <tr>
-            <td><a href="{% url 'core:applicant-detail' link.applicant.pk %}">{{ link.applicant.full_name }}</a></td>
+            <td class="text-break"><a class="text-break" href="{% url 'core:applicant-detail' link.applicant.pk %}">{{ link.applicant.full_name }}</a></td>
             <td>{{ link.get_relationship_type_display }}</td>
         </tr>
         {% empty %}
@@ -72,18 +72,18 @@
 
 {% if "student-access" in profile_section_ids %}
 <section id="student-access" aria-labelledby="student-access-heading" class="erp-panel mb-4">
-<div class="p-3 p-md-4 pb-0">
+<div class="p-3 p-md-4 pb-0 pb-md-0 erp-panel-head">
 <h2 class="h5" id="student-access-heading">Student access</h2>
 <p class="text-muted small mb-0">Access is granted explicitly for each relationship. The relationship type never grants access by itself.</p>
 </div>
-<div class="erp-table-scroll mt-2" role="region" aria-label="Student access" tabindex="0">
-<table class="table mb-0">
+<div class="erp-table-scroll mt-3" role="region" aria-label="Student access" tabindex="0">
+<table class="table mb-0 erp-name-table">
     <caption class="visually-hidden">Student access</caption>
     <thead><tr><th scope="col">Student</th><th scope="col">Relationship</th><th scope="col">Portal access</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
     <tbody>
     {% for row in relationships %}
         <tr>
-            <td>{{ row.link.student.full_name }}</td>
+            <td class="text-break">{{ row.link.student.full_name }}</td>
             <td>{{ row.link.get_relationship_type_display }}</td>
             <td>
                 {% if row.active_grant %}Granted {{ row.active_grant.granted_at|date:"j M Y" }} by {{ row.active_grant.granted_by }}{% if row.under_review %} <a class="badge bg-warning text-dark" href="{% url 'core:guardian-access-reviews' %}">under review &mdash; no data shown</a>{% endif %}{% else %}<span class="text-muted">Not granted</span>{% endif %}
