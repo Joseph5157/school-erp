@@ -1,6 +1,6 @@
 # UI-D1-3 — Admissions and People (implementation specification and gate plan)
 
-Status: **PLANNED — awaiting review; no application code started** (22 October 2026).
+Status: **PLAN REVIEWED AND ACCEPTED — D1-3A approved as next implementation gate; no application code started** (22 October 2026).
 Planning branch: `ui/admin-desktop-d1-admissions-people` (from `main` `9a77ef3`, after D1-2B merge `e43d477`).
 Parent decisions: `docs/ADMIN_DESKTOP_D1_PLAN.md` (D1-3 line), `docs/ADMIN_DESKTOP_TABLER_REFERENCE.md`, `docs/UI_DESIGN_RULES.md`, accepted gates D0 (#92), D1-1 (#93), D1-2A (#94), D1-2B (#95).
 
@@ -83,3 +83,11 @@ Acceptance: fixtures with and without active account, inactive login, must-chang
 - **Sequencing:** recommend A (lists) → B (applicant/teacher detail) → C (guardian detail/access reviews).
 - **Seed data:** screenshots must use synthetic names/phones/emails only; never real student or guardian data.
 - Academic Year Rollover remains separate and starts with its Rollover 0 ADR freeze.
+
+## Review decisions (22 October 2026)
+
+- **D1-3A approved for implementation as a standalone gate only**, after normal branch hygiene; D1-3B, D1-3C, D1-3D remain unapproved for implementation. Each requires its own review and acceptance. The implementation PR must remain draft until accepted.
+- **Guardian list search/sort/pagination:** DEFER to a separate **functional** design/implementation gate. Existing unpaginated row order and exact data scope must not change in D1-3A. Do not add decorative/nonfunctional search or fake pagination. Record this as a known scalability/usability gap, not a D1-3A acceptance failure.
+- **Existing permission gates are binding:** the Guardian Access Reviews and nested Login Lockouts links must keep their exact current predicates; the Teacher Create action must not be changed silently to a new permission predicate. Verify actual current route-level authorization and rendered behavior in the test matrix.
+- **Public-repository artifact hygiene:** use entirely synthetic fixtures for screenshots and tests. The earlier accidental Guardian retest images/HTML were removed from the current tree, but remain in Git history of this public repository. A separate privacy triage should assess whether those historic artifacts show real identifiable people, contact details, session material, or school records. Do not copy them forward, do not assume a keyword scan of HTML can inspect screenshot pixels, and do not rewrite shared history without a reviewed remediation plan.
+- **Branch sequencing:** create a fresh implementation branch from this accepted planning branch (which is one documentation commit ahead of `main`); keep the sub-gate changes and evidence in a draft PR targeting `main`. Do not use a stale or unrelated local working tree. After D1-3A merge, start D1-3B from updated `main`.
