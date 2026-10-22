@@ -217,6 +217,32 @@ class DecisionFormTests(AccessReviewsD13CBase, TestCase):
         self.assertNotIn("<form", self.panel(content, "pending-reviews-heading"))
         self.assertNotIn('name="decision"', content)
 
+    def test_row_context_labels_in_decision_cell_per_row(self):
+        self.pending("Asha Rao", "Meena Rao")
+        self.pending("Ravi Nair", "Sunil Nair")
+        _, content = self.get()
+        panel = self.panel(content, "pending-reviews-heading")
+        cells = re.findall(r"<td>\s*<span class=\"erp-row-context[^>]*>.*?</td>", panel)
+        self.assertEqual(len(cells), 2)
+        for cell, (student, guardian) in zip(sorted(cells), sorted([("Asha Rao", "Meena Rao"), ("Ravi Nair", "Sunil Nair")])):
+            self.assertRegex(cell, r'<span class="erp-row-context text-break">Student: %s</span>' % student)
+            self.assertRegex(cell, r'<span class="erp-row-context text-break">Guardian: %s</span>' % guardian)
+            # label sits above the form, outside it
+            self.assertLess(cell.index("Guardian: "), cell.index("<form"))
+        self.assertNotIn("aria-label=\"Student:", content)
+
+    def test_row_context_label_absent_without_add_permission(self):
+        self.pending("Asha Rao", "Meena Rao")
+        _, content = self.get(self.client_with("view_guardianaccessreview"))
+        self.assertNotIn("erp-row-context", self.panel(content, "pending-reviews-heading"))
+
+    def test_form_post_csrf_unchanged_with_label(self):
+        grant = self.pending("Asha Rao", "Meena Rao")
+        _, content = self.get()
+        action = reverse("core:guardian-access-review-decide", args=[grant.pk])
+        self.assertRegex(content, rf'<form method="post" action="{action}"[^>]*>\s*<input type="hidden" name="csrfmiddlewaretoken"')
+        self.assertEqual(self.panel(content, "pending-reviews-heading").count("csrfmiddlewaretoken"), 1)
+
     def test_get_does_not_decide(self):
         self.pending("Asha Rao", "Meena Rao")
         self.get()

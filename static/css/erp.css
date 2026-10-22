@@ -827,6 +827,22 @@ body.has-tabbar .erp-messages {
   }
 }
 
+/* Row context for action cells: the Student/Guardian name beside a control, shown only where the
+   table scrolls locally (phones) and the name column is out of view. */
+.erp-row-context { display: none; }
+@media (max-width: 575.98px) {
+  .erp-row-context {
+    display: block;
+    max-width: 14rem;
+    margin-bottom: var(--erp-space-1, .25rem);
+    color: var(--erp-ink-soft);
+    font-size: .8rem;
+    font-weight: 400;
+    text-align: start;
+    white-space: normal;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }

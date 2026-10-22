@@ -20,3 +20,17 @@ class TableScrollFocusRuleTests(SimpleTestCase):
     def test_ring_is_drawn_inside_the_clipped_region(self):
         # contain: paint / overflow clip anything outside the box, so the offset must be negative.
         self.assertRegex(self.rule, r"outline-offset:\s*-\d")
+
+
+class RowContextRuleTests(SimpleTestCase):
+    def setUp(self):
+        self.css = (Path(settings.BASE_DIR) / "static" / "css" / "erp.css").read_text(encoding="utf-8")
+
+    def test_hidden_by_default(self):
+        self.assertRegex(self.css, r"(?m)^\.erp-row-context\s*\{\s*display:\s*none;\s*\}")
+
+    def test_shown_only_in_phone_media_query_and_wraps(self):
+        match = re.search(r"@media \(max-width: 575\.98px\)\s*\{\s*\.erp-row-context\s*\{([^}]*)\}", self.css)
+        self.assertIsNotNone(match, "missing phone .erp-row-context rule")
+        self.assertRegex(match.group(1), r"display:\s*block")
+        self.assertRegex(match.group(1), r"white-space:\s*normal")

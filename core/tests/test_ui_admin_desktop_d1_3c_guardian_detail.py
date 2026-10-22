@@ -405,6 +405,33 @@ class StudentAccessTests(GuardianDetailD13CBase, TestCase):
         self.assertNotIn("<form", view_only)
         self.assertNotIn("Grant access", view_only)
 
+    def test_row_context_label_per_row_in_action_cell(self):
+        grant = self.grant(self.asha_link)
+        section = self.access()
+        revoke = self.url("guardian-access-revoke", grant.pk)
+        rows = re.findall(r"<tr>.*?</tr>", section)
+        asha = next(r for r in rows if "Asha Rao</td>" in r)
+        ravi = next(r for r in rows if "Ravi Rao</td>" in r)
+        label = r'<span class="erp-row-context text-break">Student: %s</span>'
+        self.assertRegex(asha, label % "Asha Rao" + r"<a [^>]*" + re.escape(revoke))
+        self.assertNotIn("Ravi Rao</span>", asha)
+        self.assertRegex(ravi, r"<td class=\"text-end text-nowrap\">\s*" + label % "Ravi Rao" + r"\s*<form ")
+        self.assertEqual(section.count("erp-row-context"), 2)
+        self.assertNotIn('aria-label="Student:', section)
+
+    def test_row_context_label_only_when_a_control_renders(self):
+        self.grant(self.asha_link)
+        view_only = self.access(self.get(self.client_with("view_guardian", "view_guardianstudentaccess")))
+        self.assertNotIn("erp-row-context", view_only)
+        User.objects.filter(username="limited").delete()
+        only_change = self.access(self.get(self.client_with("view_guardian", "view_guardianstudentaccess", "change_guardianstudentaccess")))
+        self.assertEqual(only_change.count("erp-row-context"), 1)  # Asha (granted) only
+        User.objects.filter(username="limited").delete()
+        only_add = self.access(self.get(self.client_with("view_guardian", "view_guardianstudentaccess", "add_guardianstudentaccess")))
+        self.assertEqual(only_add.count("erp-row-context"), 1)  # Ravi (not granted) only
+        self.assertIn("Student: Ravi Rao", only_add)
+        self.assertNotIn("Student: Asha Rao", only_add)
+
     def test_student_rows_render_in_view_order(self):
         self.grant(self.asha_link)
         response = self.get_response()

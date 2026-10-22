@@ -17,6 +17,8 @@
             <td>{% if row.placement %}<span class="text-nowrap">{{ row.placement.academic_year.name }}</span> &middot; {{ row.placement.section }}{% else %}<span class="text-muted">No enrollment</span>{% endif %}</td>
             <td>
                 {% if perms.core.add_guardianaccessreview %}
+                <span class="erp-row-context text-break">Student: {{ row.grant.student_guardian.student.full_name }}</span>
+                <span class="erp-row-context text-break">Guardian: {{ row.grant.student_guardian.guardian.full_name }}</span>
                 <form method="post" action="{% url 'core:guardian-access-review-decide' row.grant.pk %}" class="d-flex flex-wrap gap-2 erp-review-form">
                     {% csrf_token %}
                     <select name="decision" class="form-select form-select-sm erp-review-control" aria-label="Decision for {{ row.grant.student_guardian.student.full_name }} and guardian {{ row.grant.student_guardian.guardian.full_name }}" required>
