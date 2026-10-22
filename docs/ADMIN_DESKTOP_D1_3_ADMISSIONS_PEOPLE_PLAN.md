@@ -1,6 +1,6 @@
 # UI-D1-3 — Admissions and People (implementation specification and gate plan)
 
-Status: **D1-3A COMPLETE — design accepted and merged (PR #96, merge `1fedaae`, implementation `5c8f0a8`, 22 October 2026); D1-3B COMPLETE — merged (PR #97, merge `12c3e10`, 22 October 2026); D1-3C–D1-3D deferred**.
+Status: **D1-3A COMPLETE — design accepted and merged (PR #96, merge `1fedaae`, implementation `5c8f0a8`, 22 October 2026); D1-3B COMPLETE — merged (PR #97, merge `12c3e10`, 22 October 2026); D1-3C authorized on a dedicated branch (planning only so far); D1-3D deferred**.
 Planning branch: `ui/admin-desktop-d1-admissions-people` (from `main` `9a77ef3`, after D1-2B merge `e43d477`).
 Parent decisions: `docs/ADMIN_DESKTOP_D1_PLAN.md` (D1-3 line), `docs/ADMIN_DESKTOP_TABLER_REFERENCE.md`, `docs/UI_DESIGN_RULES.md`, accepted gates D0 (#92), D1-1 (#93), D1-2A (#94), D1-2B (#95).
 
@@ -52,6 +52,8 @@ Outcome: summary as a panel (`erp-panel` with the existing `<dl>` fields in a ti
 Acceptance: every conditional block verified with a fixture (pending/accepted/rejected applicant, with and without Student record; active/inactive teacher), long-name stress, permission parity, no sensitive data added to the page.
 
 ### D1-3C — Guardian detail and access reviews
+
+**Implementation authority (22 October 2026):** D1-3C only, from cleaned main `daeab47`, on `ui/admin-desktop-d1-3c-guardian-access`. Follow the [binding D1-3C specification](ADMIN_DESKTOP_D1_3C_GUARDIAN_ACCESS_PLAN.md); preserve every permission, POST+CSRF, and guardian data-access rule. D1-3D/D1-4 remain unauthorized.
 
 Templates: `guardian_detail.html`, `guardian_access_reviews.html`.
 
@@ -106,4 +108,4 @@ Acceptance: fixtures with and without active account, inactive login, must-chang
 2. **Teacher "Add teacher" button visibility.** The header action is unconditional in `teacher_list.html`; the page and `teacher-create` route both require `accounts.manage_teacher_accounts`, so behavior is equivalent today. Review explicit permission-gated visibility separately, without silently changing the predicate.
 3. **Guardian list search, sort and pagination.** Functional gate: the list remains unpaginated and unsorted. Needs its own design and implementation gate.
 
-Next: D1-3B is complete and merged (PR #97, merge `12c3e10`; see `docs/ADMIN_DESKTOP_D1_3B_APPLICANT_TEACHER_DETAIL_PLAN.md`). D1-3C not started.
+Next: D1-3B is complete and merged (PR #97, merge `12c3e10`). D1-3C has a fresh implementation branch and accepted scoped specification; no application code started. Implement only D1-3C, open draft PR, stop for separate design acceptance.
