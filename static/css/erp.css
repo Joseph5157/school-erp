@@ -1213,3 +1213,19 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
   }
   .erp-stat-grid { grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }
 }
+
+/* ---------- UI-D1-1: teacher assignment history ---------- */
+/* Each history entry stacks status + teacher, then the date range, then its permitted actions.
+   The History column keeps a floor width so a narrow container scrolls the table (inside its
+   labelled region) instead of breaking names and dates into tall letter-by-letter rows. */
+.erp-panel .erp-assignments-table > tbody td { vertical-align: top; }
+.erp-assignments-table .erp-assignment-history-cell { min-width: 17rem; }
+.erp-assignment-history { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--erp-space-2); }
+.erp-assignment-entry + .erp-assignment-entry { padding-top: var(--erp-space-2); border-top: 1px dashed var(--erp-rule); }
+.erp-assignment-who { display: flex; flex-wrap: wrap; align-items: baseline; gap: .15rem .5rem; }
+.erp-assignment-teacher { font-weight: 600; }
+.erp-assignment-dates { font-size: var(--erp-text-sm); color: var(--erp-ink-soft); }
+.erp-assignment-actions { display: flex; flex-wrap: wrap; align-items: baseline; gap: .15rem var(--erp-space-3); font-size: var(--erp-text-sm); }
+.erp-assignment-actions .btn-link { font-size: inherit; vertical-align: baseline; }
+/* Phones size the table to its content (it scrolls in its own box); cap entries so names wrap. */
+@media (max-width: 575.98px) { .erp-assignment-history { max-width: 18rem; } }

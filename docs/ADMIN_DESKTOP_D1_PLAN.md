@@ -1,6 +1,6 @@
 # UI-D1 — Admin Desktop Page-by-Page Adoption
 
-Status: **D1-1 ready for implementation**. D0 visual foundation accepted and merged in PR #92, merge commit `dd6e9daa` (2026-10-22). This document is a narrow follow-up plan; **do not** implement all items in this plan together.
+Status: **D1-1 implemented in a draft PR, awaiting review** (branch `ui/admin-desktop-d1-teacher-history`). D0 visual foundation accepted and merged in PR #92, merge commit `dd6e9daa` (2026-10-22). This document is a narrow follow-up plan; **do not** implement all items in this plan together.
 
 ## Baseline / binding design rules
 
@@ -14,6 +14,8 @@ Status: **D1-1 ready for implementation**. D0 visual foundation accepted and mer
 - Revisit status after each PR: merge only after review and credible tests.
 
 ## D1-1 — Teacher assignment history readability (ACTIVE TARGET)
+
+**Implementation (2026-10-22, draft PR, not merged):** each History entry is a list item with status + teacher, then the date range (each date `text-nowrap`), then its permitted End/Delete planned actions. The History cell has a `17rem` floor, so at 768–1024px the table scrolls inside its labelled region instead of squeezing; at 1280/1440px it fits without scrolling. Headers have `scope="col"` and the action column has a visually hidden "Actions" label. Screenshots: `docs/ui-reviews/ui-d1/` (seeded demo data). Template and `erp-assignment-*` CSS only; no view, permission or POST changes.
 
 Source: PR #92 design review. At width **992px** the `History` column of `core/templates/core/teacher_assignments.html` collapses excessively; the teacher name/dates wrap into many short lines, producing unusually tall rows. This is a known nonblocking D0 issue and now the first D1 fix.
 

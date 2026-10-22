@@ -13,8 +13,8 @@
 </p>
 <div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Teacher assignments" tabindex="0">
-<table class="table">
-    <thead><tr><th>Class/Grade</th><th>Subject</th><th>Section</th><th>Current teacher</th><th>History</th><th></th></tr></thead>
+<table class="table erp-assignments-table">
+    <thead><tr><th scope="col">Class/Grade</th><th scope="col">Subject</th><th scope="col">Section</th><th scope="col">Current teacher</th><th scope="col">History</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
     <tbody>
         {% for slot in slots %}
         <tr{% if slot.inactive or not slot.current %} class="table-warning"{% endif %}>
@@ -26,25 +26,33 @@
                     {% if slot.inactive %}<br><small class="text-danger">Login inactive or not a teacher &mdash; reassign.</small>{% endif %}
                 {% else %}<span class="text-muted">No current teacher</span>{% endif %}
             </td>
-            <td>
+            <td class="erp-assignment-history-cell">
+                <ol class="erp-assignment-history">
                 {% for item in slot.history %}
-                <div>
-                    <span class="badge text-bg-{% if item.status == 'Current' %}success{% elif item.status == 'Past' %}secondary{% else %}info{% endif %}">{{ item.status }}</span>
-                    {{ item.row.teacher.get_full_name|default:item.row.teacher.username }}:
-                    {{ item.row.start_date }} &ndash; {% if item.row.end_date %}{{ item.row.end_date }}{% else %}open-ended{% endif %}
-                    {% if item.can_end and perms.core.change_assessmentteacherassignment %}
-                        <a class="ms-1" href="{% url 'core:teacher-assignment-end' item.row.pk %}">End</a>
+                <li class="erp-assignment-entry">
+                    <div class="erp-assignment-who">
+                        <span class="badge text-bg-{% if item.status == 'Current' %}success{% elif item.status == 'Past' %}secondary{% else %}info{% endif %}">{{ item.status }}</span>
+                        <span class="erp-assignment-teacher">{{ item.row.teacher.get_full_name|default:item.row.teacher.username }}</span>
+                    </div>
+                    <div class="erp-assignment-dates"><span class="text-nowrap">{{ item.row.start_date }}</span> &ndash; <span class="text-nowrap">{% if item.row.end_date %}{{ item.row.end_date }}{% else %}open-ended{% endif %}</span></div>
+                    {% if item.can_end and perms.core.change_assessmentteacherassignment or item.can_delete and perms.core.delete_assessmentteacherassignment %}
+                    <div class="erp-assignment-actions">
+                        {% if item.can_end and perms.core.change_assessmentteacherassignment %}
+                        <a href="{% url 'core:teacher-assignment-end' item.row.pk %}">End</a>
+                        {% endif %}
+                        {% if item.can_delete and perms.core.delete_assessmentteacherassignment %}
+                        <form method="post" action="{% url 'core:teacher-assignment-delete' item.row.pk %}" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-link btn-sm text-danger p-0">Delete planned</button>
+                        </form>
+                        {% endif %}
+                    </div>
                     {% endif %}
-                    {% if item.can_delete and perms.core.delete_assessmentteacherassignment %}
-                    <form method="post" action="{% url 'core:teacher-assignment-delete' item.row.pk %}" class="d-inline">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-link btn-sm text-danger p-0 ms-1">Delete planned</button>
-                    </form>
-                    {% endif %}
-                </div>
+                </li>
                 {% endfor %}
+                </ol>
             </td>
-            <td class="text-end">
+            <td class="text-end text-nowrap">
                 {% if perms.core.add_assessmentteacherassignment %}
                 <a class="btn btn-outline-primary btn-sm" href="{% url 'core:teacher-assignment-create' academic_year.pk %}?offering={{ slot.offering.pk }}&amp;section={{ slot.section.pk }}">Reassign</a>
                 {% endif %}
