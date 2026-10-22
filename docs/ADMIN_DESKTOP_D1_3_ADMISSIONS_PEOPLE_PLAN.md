@@ -1,6 +1,6 @@
 # UI-D1-3 — Admissions and People (implementation specification and gate plan)
 
-Status: **PLAN REVIEWED AND ACCEPTED — D1-3A implemented on branch `ui/admin-desktop-d1-3a-people-lists` as a draft PR, awaiting design review (not merged, not deployed); D1-3B–D1-3D not started** (22 October 2026).
+Status: **D1-3A COMPLETE — design accepted and merged (PR #96, merge `1fedaae`, implementation `5c8f0a8`, 22 October 2026); D1-3B–D1-3D not started and not yet authorized**.
 Planning branch: `ui/admin-desktop-d1-admissions-people` (from `main` `9a77ef3`, after D1-2B merge `e43d477`).
 Parent decisions: `docs/ADMIN_DESKTOP_D1_PLAN.md` (D1-3 line), `docs/ADMIN_DESKTOP_TABLER_REFERENCE.md`, `docs/UI_DESIGN_RULES.md`, accepted gates D0 (#92), D1-1 (#93), D1-2A (#94), D1-2B (#95).
 
@@ -91,3 +91,17 @@ Acceptance: fixtures with and without active account, inactive login, must-chang
 - **Existing permission gates are binding:** the Guardian Access Reviews and nested Login Lockouts links must keep their exact current predicates; the Teacher Create action must not be changed silently to a new permission predicate. Verify actual current route-level authorization and rendered behavior in the test matrix.
 - **Public-repository artifact hygiene:** use entirely synthetic fixtures for screenshots and tests. The earlier accidental Guardian retest images/HTML were removed from the current tree, but remain in Git history of this public repository. A separate privacy triage should assess whether those historic artifacts show real identifiable people, contact details, session material, or school records. Do not copy them forward, do not assume a keyword scan of HTML can inspect screenshot pixels, and do not rewrite shared history without a reviewed remediation plan.
 - **Branch sequencing:** create a fresh implementation branch from this accepted planning branch (which is one documentation commit ahead of `main`); keep the sub-gate changes and evidence in a draft PR targeting `main`. Do not use a stale or unrelated local working tree. After D1-3A merge, start D1-3B from updated `main`.
+
+## D1-3A completion record (22 October 2026)
+
+- **Delivered:** Applicants, Guardians and Teachers lists on `erp-panel` / `erp-toolbar` / labelled `erp-table-scroll`; Guardian "Create Guardian" in the page header under the existing `add_guardian` gate; access-reviews and lockouts links keep their exact predicates. No view, form, model, URL, permission, query or CSS change.
+- **Review and merge:** draft PR #96 design-accepted at `5c8f0a8`; merged with a merge commit as `1fedaae`. Not deployed.
+- **Verification (local PostgreSQL 18, no CI exists):** `manage.py check` clean; full suite `--parallel 4` 2323 tests OK; 93 focused tests OK (20 new in `core/tests/test_ui_admin_desktop_d1_3a.py`). Synthetic before/after screenshots in `docs/ui-reviews/ui-d1-3a/`; page-level overflow 0 at 390/768/992/1024/1280/1440. Seeded captures are not staging verification.
+
+### Deferred follow-ups (none started)
+
+1. **Filtered-empty copy correction (small task).** Filtered results on Applicants and Teachers still read "No Applicants yet." / "No teachers yet." Change to wording such as "No applicants match these filters" (Students already does this) and update the pinned assertions in `test_ui_admin_phase3a.py` and `test_ui_admin_phase3e.py` in the same change.
+2. **Teacher "Add teacher" button visibility.** The header action is unconditional in `teacher_list.html`; the page and `teacher-create` route both require `accounts.manage_teacher_accounts`, so behavior is equivalent today. Review explicit permission-gated visibility separately, without silently changing the predicate.
+3. **Guardian list search, sort and pagination.** Functional gate: the list remains unpaginated and unsorted. Needs its own design and implementation gate.
+
+Next: D1-3B (Applicant and Teacher detail pages) starts from updated `main` on a fresh branch, only after its own go-ahead.
