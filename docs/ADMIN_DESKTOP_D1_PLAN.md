@@ -49,7 +49,7 @@ Not allowed: `core/models.py`, views, forms, URLs, authorization, migrations, da
 Each is a separate scoped PR only after the previous gate is reviewed:
 
 - **D1-2A School configuration (accepted/merged, PR #94):** four existing class/subject/term/offering list pages; exact scope and acceptance in `docs/ADMIN_DESKTOP_D1_2_SCHOOL_CONFIGURATION_PLAN.md`. **D1-2B (accepted/merged, PR #95):** class teacher mapping and assignment overview; scope and acceptance in `docs/ADMIN_DESKTOP_D1_2B_CLASS_TEACHER_MAPPING_PLAN.md`. Full PostgreSQL suite 2,303 passing.
-- **D1-3 Admissions and people:** applicants, guardians, teacher accounts and profile/admin forms. Keep existing audits, saved query state and permissions. Do not duplicate UI-D0 Students work.
+- **D1-3 Admissions and people (PLANNED, awaiting review):** applicants, guardians, teacher accounts and profile/admin forms; sub-gates D1-3A lists, D1-3B applicant/teacher detail, D1-3C guardian detail + access reviews in `docs/ADMIN_DESKTOP_D1_3_ADMISSIONS_PEOPLE_PLAN.md`. Keep existing audits, saved query state and permissions. Do not duplicate UI-D0 Students work.
 - **D1-4 Attendance administration:** register list, detail and reports, corrections. Preserve Draft/Submitted and reportable-attendance rules.
 - **D1-5 Assessments/results:** list/planning, publication, result review, report/export pages. Preserve release-order, finalized-result, and guardian publication semantics.
 - **D1-6 Communication and operations:** announcements, notification queues, documents, import, access reviews, lockouts and reporting. Restrict sensitive actions to their established views.
