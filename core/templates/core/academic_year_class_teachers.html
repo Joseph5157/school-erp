@@ -1,44 +1,62 @@
 {% extends "base.html" %}
 {% block title %}Class teachers - {{ academic_year.name }}{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">Class teachers: {{ academic_year.name }}</h1>
-<p class="text-muted">
+{% include "partials/_page_header.html" with eyebrow="School setup" title="Class teachers" purpose=academic_year.name only %}
+<p class="erp-note-text">
     Each Section has at most one class teacher on any date. Changing the class teacher
     ends the current assignment and starts a new one; assignments that have taken effect
     are ended, never deleted.
     {% if year_is_current %}"Current" means effective today ({{ today }}).{% endif %}
 </p>
-<table class="table">
-    <thead><tr><th>Class/Grade</th><th>Section</th><th>Current class teacher</th><th>History</th><th></th></tr></thead>
+<div class="erp-panel">
+<div class="erp-table-scroll" role="region" aria-label="Class teachers" tabindex="0">
+<table class="table erp-assignments-table">
+    <thead>
+        <tr>
+            <th scope="col">Class/Grade</th>
+            <th scope="col">Section</th>
+            <th scope="col">Current class teacher</th>
+            <th scope="col">History</th>
+            <th scope="col"><span class="visually-hidden">Actions</span></th>
+        </tr>
+    </thead>
     <tbody>
         {% for row in sections %}
         <tr>
             <td>{{ row.section.class_grade }}</td>
-            <td>{{ row.section.name }}</td>
+            <td class="fw-semibold">{{ row.section.name }}</td>
             <td>
-                {% if row.current %}{{ row.current.teacher.get_full_name|default:row.current.teacher.username }}
+                {% if row.current %}<span class="erp-assignment-teacher">{{ row.current.teacher.get_full_name|default:row.current.teacher.username }}</span>
                 {% else %}<span class="text-muted">None</span>{% endif %}
             </td>
-            <td>
+            <td class="erp-assignment-history-cell">
+                {% if row.history %}
+                <ol class="erp-assignment-history">
                 {% for assignment in row.history %}
-                <div>
-                    {{ assignment.teacher.get_full_name|default:assignment.teacher.username }}:
-                    {{ assignment.start_date }} &ndash; {{ assignment.end_date|default:"open" }}
-                    {% if perms.core.change_sectionclassteacher %}
-                        <a class="ms-1" href="{% url 'core:class-teacher-end' assignment.pk %}">End</a>
+                <li class="erp-assignment-entry">
+                    <div class="erp-assignment-who"><span class="erp-assignment-teacher">{{ assignment.teacher.get_full_name|default:assignment.teacher.username }}</span></div>
+                    <div class="erp-assignment-dates"><span class="text-nowrap">{{ assignment.start_date }}</span> &ndash; <span class="text-nowrap">{{ assignment.end_date|default:"open" }}</span></div>
+                    {% if perms.core.change_sectionclassteacher or perms.core.delete_sectionclassteacher and not assignment.is_historically_relevant %}
+                    <div class="erp-assignment-actions">
+                        {% if perms.core.change_sectionclassteacher %}
+                        <a href="{% url 'core:class-teacher-end' assignment.pk %}">End<span class="visually-hidden"> assignment of {{ assignment.teacher.get_full_name|default:assignment.teacher.username }} from {{ assignment.start_date }}</span></a>
+                        {% endif %}
+                        {% if perms.core.delete_sectionclassteacher and not assignment.is_historically_relevant %}
+                        <form method="post" action="{% url 'core:class-teacher-delete' assignment.pk %}" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-link btn-sm text-danger p-0">Delete planned<span class="visually-hidden"> assignment of {{ assignment.teacher.get_full_name|default:assignment.teacher.username }} from {{ assignment.start_date }}</span></button>
+                        </form>
+                        {% endif %}
+                    </div>
                     {% endif %}
-                    {% if perms.core.delete_sectionclassteacher and not assignment.is_historically_relevant %}
-                    <form method="post" action="{% url 'core:class-teacher-delete' assignment.pk %}" class="d-inline">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-link btn-sm text-danger p-0 ms-1">Delete planned</button>
-                    </form>
-                    {% endif %}
-                </div>
-                {% empty %}<span class="text-muted">None</span>{% endfor %}
+                </li>
+                {% endfor %}
+                </ol>
+                {% else %}<span class="text-muted">None</span>{% endif %}
             </td>
-            <td class="text-end">
+            <td class="text-end text-nowrap">
                 {% if perms.core.add_sectionclassteacher %}
-                <a class="btn btn-outline-primary btn-sm" href="{% url 'core:class-teacher-assign' academic_year.pk %}?section={{ row.section.pk }}">{% if row.current %}Replace{% else %}Assign{% endif %}</a>
+                <a class="btn btn-outline-primary btn-sm" href="{% url 'core:class-teacher-assign' academic_year.pk %}?section={{ row.section.pk }}">{% if row.current %}Replace{% else %}Assign{% endif %}<span class="visually-hidden"> class teacher for {{ row.section.class_grade }} {{ row.section.name }}</span></a>
                 {% endif %}
             </td>
         </tr>
@@ -47,4 +65,6 @@
         {% endfor %}
     </tbody>
 </table>
+</div>
+</div>
 {% endblock %}

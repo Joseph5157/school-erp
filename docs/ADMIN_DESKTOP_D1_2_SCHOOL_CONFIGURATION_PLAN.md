@@ -1,6 +1,6 @@
 # UI-D1-2 — School Configuration Desktop Adoption
 
-Status: **D1-2A ACCEPTED and MERGED** (PR #94, merge `19fd57b`, 22 October 2026). **D1-2B deferred**, not started.
+Status: **D1-2A ACCEPTED and MERGED** (PR #94, merge `19fd57b`, 22 October 2026). **D1-2B planning opened**, no application code started; see `docs/ADMIN_DESKTOP_D1_2B_CLASS_TEACHER_MAPPING_PLAN.md`.
 Implementation branch: `ui/admin-desktop-d1-school-configuration`.
 Base: `main` at merge commit `45b00883b095a7cb04f3c0a8c25afd8450aabeea` (PR #93, D1-1).
 Design sources: `docs/ADMIN_DESKTOP_D1_PLAN.md`, `docs/ADMIN_DESKTOP_TABLER_REFERENCE.md`, `docs/UI_DESIGN_RULES.md`, `docs/UI_REFERENCES.md`.
@@ -45,7 +45,7 @@ One tightly bounded implementation PR for **D1-2A** below, then stop. **D1-2B** 
 7. **Test evidence:** run `python manage.py check`, targeted school configuration, assessment/offering and authorization tests, new focused template tests, and full PostgreSQL suite if available. Report real totals and failures; do not claim tests were run if skipped. Browser screenshots use a throwaway demo DB, not staging.
 8. **Stop:** commit D1-2A changes to this branch and open a **draft PR**, with file list, before/after images, regressions, tests and limitations. No merge, no deployment, no D1-2B or D1-3 work.
 
-## D1-2B — Teacher-mapping adjacent screens (DEFERRED)
+## D1-2B — Teacher-mapping adjacent screens (PLANNED; not implemented)
 
 After **D1-2A review/merge**, open a fresh branch for class teacher mapping and assignment overview, scoped to:
 - `core/templates/core/academic_year_class_teachers.html`
