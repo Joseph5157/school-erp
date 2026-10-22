@@ -1,6 +1,6 @@
 # UI-D1-3 — Admissions and People (implementation specification and gate plan)
 
-Status: **D1-3A COMPLETE — design accepted and merged (PR #96, merge `1fedaae`, implementation `5c8f0a8`, 22 October 2026); D1-3B–D1-3D not started and not yet authorized**.
+Status: **D1-3A COMPLETE — design accepted and merged (PR #96, merge `1fedaae`, implementation `5c8f0a8`, 22 October 2026); D1-3B authorized on its dedicated branch, no code started; D1-3C–D1-3D deferred**.
 Planning branch: `ui/admin-desktop-d1-admissions-people` (from `main` `9a77ef3`, after D1-2B merge `e43d477`).
 Parent decisions: `docs/ADMIN_DESKTOP_D1_PLAN.md` (D1-3 line), `docs/ADMIN_DESKTOP_TABLER_REFERENCE.md`, `docs/UI_DESIGN_RULES.md`, accepted gates D0 (#92), D1-1 (#93), D1-2A (#94), D1-2B (#95).
 
@@ -42,6 +42,8 @@ Outcome:
 Acceptance: authorization parity (add/register/create links only under today's permissions; `manage_teacher_accounts` empty-state link), filter query state kept through sort and pagination, empty and filtered-empty states, one `h1`, labelled regions, no page-level overflow at 390/768/992/1024/1280/1440.
 
 ### D1-3B — Record detail pages (Applicant, Teacher)
+
+**Implementation authority (22 October 2026):** D1-3B only; follow the binding [D1-3B gate specification](ADMIN_DESKTOP_D1_3B_APPLICANT_TEACHER_DETAIL_PLAN.md) on `ui/admin-desktop-d1-3b-record-details`. D1-3C and D1-3D remain unauthorized. The shared stop rules still apply.
 
 Templates: `applicant_detail.html`, `teacher_detail.html`.
 
@@ -104,4 +106,4 @@ Acceptance: fixtures with and without active account, inactive login, must-chang
 2. **Teacher "Add teacher" button visibility.** The header action is unconditional in `teacher_list.html`; the page and `teacher-create` route both require `accounts.manage_teacher_accounts`, so behavior is equivalent today. Review explicit permission-gated visibility separately, without silently changing the predicate.
 3. **Guardian list search, sort and pagination.** Functional gate: the list remains unpaginated and unsorted. Needs its own design and implementation gate.
 
-Next: D1-3B (Applicant and Teacher detail pages) starts from updated `main` on a fresh branch, only after its own go-ahead.
+Next: D1-3B approved on `ui/admin-desktop-d1-3b-record-details` from `main` at `51f2f0a`; implementation draft PR and review required before merge. D1-3C not started.
