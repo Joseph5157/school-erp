@@ -1,15 +1,24 @@
 {% extends "base.html" %}
 {% block title %}{{ teacher.get_full_name|default:teacher.username }}{% endblock %}
 {% block content %}
-{% include "partials/_page_header.html" with eyebrow="Teacher login" title=teacher.get_full_name|default:teacher.username purpose=teacher.username only %}
-<p>{% if teacher.is_active %}{% include "partials/_status_badge.html" with label="Active" tone="active" only %}{% else %}{% include "partials/_status_badge.html" with label="Inactive" tone="inactive" only %}{% endif %}</p>
-<dl class="row">
-    <dt class="col-sm-3">Username</dt><dd class="col-sm-9">{{ teacher.username }}</dd>
-    <dt class="col-sm-3">Email</dt><dd class="col-sm-9">{{ teacher.email|default:"-" }}</dd>
-    <dt class="col-sm-3">Last sign-in</dt><dd class="col-sm-9">{{ teacher.last_login|date:"j M Y, H:i"|default:"Never" }}</dd>
-    <dt class="col-sm-3">Must change password</dt><dd class="col-sm-9">{% if teacher.must_change_password %}Yes{% else %}No{% endif %}</dd>
+{% include "partials/_page_header.html" with eyebrow="Teacher login" title=teacher.get_full_name|default:teacher.username purpose=teacher.username status_label=teacher.is_active|yesno:"Active,Inactive" status_tone=teacher.is_active|yesno:"active,inactive" only %}
+<section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="teacher-account-heading">
+<h2 class="h5 mb-3" id="teacher-account-heading">Account</h2>
+<dl class="row mb-0">
+    <dt class="col-sm-3">Username</dt>
+    <dd class="col-sm-9">{{ teacher.username }}</dd>
+    <dt class="col-sm-3">Email</dt>
+    <dd class="col-sm-9">{{ teacher.email|default:"-" }}</dd>
+    <dt class="col-sm-3">Last sign-in</dt>
+    <dd class="col-sm-9">{{ teacher.last_login|date:"j M Y, H:i"|default:"Never" }}</dd>
+    <dt class="col-sm-3">Must change password</dt>
+    <dd class="col-sm-9">{% if teacher.must_change_password %}Yes{% else %}No{% endif %}</dd>
 </dl>
-<div class="erp-form-actions mb-4">
+</section>
+
+<section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="teacher-actions-heading">
+<h2 class="h5" id="teacher-actions-heading">Account actions</h2>
+<div class="d-flex flex-wrap gap-2">
     <a class="btn btn-outline-secondary" href="{% url 'core:teacher-reset-password' teacher.pk %}">Reset password</a>
     <a class="btn btn-outline-secondary" href="{% url 'core:teacher-username' teacher.pk %}">Change username</a>
     {% if teacher.is_active %}
@@ -18,19 +27,25 @@
     <a class="btn btn-primary" href="{% url 'core:teacher-reactivate' teacher.pk %}">Reactivate</a>
     {% endif %}
 </div>
-<h2 class="h5">Assignments</h2>
-<p class="mb-1"><strong>Subjects</strong></p>
+</section>
+
+<section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="teacher-assignments-heading">
+<h2 class="h5 mb-3" id="teacher-assignments-heading">Assignments</h2>
+<h3 class="h6">Subjects</h3>
 <ul>
     {% for row in subject_assignments %}<li>{{ row.offering.academic_year.name }}: {{ row.offering.subject.name }} &middot; {{ row.section }}</li>{% empty %}<li class="text-muted">None</li>{% endfor %}
 </ul>
-<p class="mb-1"><strong>Class teacher</strong></p>
-<ul>
+<h3 class="h6">Class teacher</h3>
+<ul{% if not perms.core.view_sectionclassteacher %} class="mb-0"{% endif %}>
     {% for row in class_assignments %}<li>{{ row.academic_year.name }}: {{ row.section }}: {{ row.start_date }} &ndash; {{ row.end_date|default:"open" }}</li>{% empty %}<li class="text-muted">None</li>{% endfor %}
 </ul>
-{% if perms.core.view_sectionclassteacher %}<p><a href="{% url 'core:teacher-load' teacher.pk %}">View full workload</a></p>{% endif %}
-<h2 class="h5 mt-4">Recent security events</h2>
-<div class="erp-table-scroll" role="region" aria-label="Recent security events" tabindex="0">
-<table class="table">
+{% if perms.core.view_sectionclassteacher %}<p class="mb-0"><a href="{% url 'core:teacher-load' teacher.pk %}">View full workload</a></p>{% endif %}
+</section>
+
+<section class="erp-panel mb-4" aria-labelledby="teacher-events-heading">
+<h2 class="h5 p-3 p-md-4 pb-0 mb-0" id="teacher-events-heading">Recent security events</h2>
+<div class="erp-table-scroll mt-3" role="region" aria-label="Recent security events" tabindex="0">
+<table class="table mb-0">
     <caption class="visually-hidden">Recent security events</caption>
     <thead><tr><th scope="col">Event</th><th scope="col">When</th><th scope="col">By</th></tr></thead>
     <tbody>
@@ -42,4 +57,5 @@
     </tbody>
 </table>
 </div>
+</section>
 {% endblock %}

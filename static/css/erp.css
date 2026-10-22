@@ -662,6 +662,11 @@ body.has-tabbar .erp-messages {
   scrollbar-gutter: stable;
 }
 .erp-table-scroll > table { min-width: 100%; margin-bottom: 0; }
+/* The region is focusable (tabindex="0") and clips its own paint, so draw the ring inside it. */
+.erp-table-scroll:focus-visible {
+  outline: 3px solid var(--erp-focus-color);
+  outline-offset: -3px;
+}
 
 @media (max-width: 767.98px) {
   .erp-page-header { display: grid; gap: var(--erp-space-3); }
