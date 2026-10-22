@@ -1,6 +1,6 @@
 # UI-D1-3C — Guardian Detail and Access Reviews
 
-Status: **AUTHORIZED FOR IMPLEMENTATION — no application code started** (22 October 2026).
+Status: **IMPLEMENTED — draft PR awaiting design/security review; not merged** (22 October 2026). Evidence: `docs/ui-reviews/ui-d1-3c/` (synthetic data, local only — not staging verification). Known limits: on phones the tables scroll locally and row context scrolls out of view with the Decision/Actions column; no scroll hint; the pre-existing `_guardian_consent.html` include is unstyled (out of scope).
 Implementation branch: `ui/admin-desktop-d1-3c-guardian-access`, created from `main` at `daeab47b8ddfb405c5b4080257236f568400b0ee` (D1-3B PR #97 merged `12c3e10`, documentation closeout `daeab47`).
 Parent: `docs/ADMIN_DESKTOP_D1_3_ADMISSIONS_PEOPLE_PLAN.md`; use the established D0/D1-3A/B visual system, `docs/ADMIN_DESKTOP_TABLER_REFERENCE.md` and `docs/UI_DESIGN_RULES.md`.
 
