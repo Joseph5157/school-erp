@@ -2,7 +2,7 @@
 {% block title %}{{ section }} timetable - {{ academic_year.name }}{% endblock %}
 {% block content %}
 {% include "partials/_page_header.html" with eyebrow="Timetable" title=section purpose=academic_year.name only %}
-<form method="get" class="erp-form erp-schedule-date">
+<form method="get" class="erp-form erp-schedule-date erp-toolbar erp-toolbar--inline">
     {% include "partials/_form_error_summary.html" with form=date_form action_text="showing the timetable" %}
     {% include "partials/_form_field.html" with field=date_form.date only %}
     <div class="erp-form-actions">
@@ -11,6 +11,7 @@
 </form>
 <p class="text-muted">Showing the timetable in force on <strong>{{ schedule_date|date:"l j M Y" }}</strong>. A change you make applies from the date you choose; earlier dates keep their history.</p>
 {% if rows %}
+<div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Weekly timetable for {{ section }} on {{ schedule_date|date:'j M Y' }}" tabindex="0">
 <table class="table erp-timetable">
     <thead>
@@ -49,6 +50,7 @@
         {% endfor %}
     </tbody>
 </table>
+</div>
 </div>
 {% else %}
 {% include "partials/_empty.html" with title="No periods yet" text="This Academic Year has no periods, so there is nothing to schedule. Set up its periods first." %}

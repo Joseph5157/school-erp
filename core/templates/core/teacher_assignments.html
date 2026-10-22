@@ -1,8 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Teacher assignments - {{ academic_year.name }}{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">Teacher assignments: {{ academic_year.name }}</h1>
-<p class="text-muted">
+{% if perms.core.add_assessmentteacherassignment %}{% url 'core:teacher-assignment-create' academic_year.pk as assign_url %}{% endif %}
+{% include "partials/_page_header.html" with eyebrow="School setup" title="Teacher assignments" purpose=academic_year.name primary_url=assign_url primary_label="Assign a teacher" only %}
+<p class="erp-note-text">
     Each Subject offering and Section has one teacher at a time, who enters its marks.
     Changing the teacher ends the current assignment the day before the new one starts;
     assignments that have started are ended, never deleted, so past results stay with
@@ -10,9 +11,8 @@
     A teacher is a login in the <strong>Teachers</strong> group ({{ teacher_count }} active);
     {% if perms.accounts.manage_teacher_accounts %}add teachers on the <a href="{% url 'core:teacher-list' %}">Teachers page</a>.{% else %}ask a school administrator to add teachers.{% endif %}
 </p>
-{% if perms.core.add_assessmentteacherassignment %}
-    <a class="btn btn-primary mb-3" href="{% url 'core:teacher-assignment-create' academic_year.pk %}">Assign a teacher</a>
-{% endif %}
+<div class="erp-panel">
+<div class="erp-table-scroll" role="region" aria-label="Teacher assignments" tabindex="0">
 <table class="table">
     <thead><tr><th>Class/Grade</th><th>Subject</th><th>Section</th><th>Current teacher</th><th>History</th><th></th></tr></thead>
     <tbody>
@@ -55,4 +55,6 @@
         {% endfor %}
     </tbody>
 </table>
+</div>
+</div>
 {% endblock %}

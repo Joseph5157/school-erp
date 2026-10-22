@@ -1138,3 +1138,78 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
   .erp-cal-day { height: 3.6rem; }
   .erp-cal-num { font-size: var(--erp-text-sm); }
 }
+
+/* ---------- UI-D0: admin desktop workspace (Tabler-inspired, project-owned) ---------- */
+/* Reference: docs/ADMIN_DESKTOP_TABLER_REFERENCE.md. Tokens and the 992px breakpoint are unchanged.
+   Breakpoint scope: the panel, toolbar and data-table patterns below apply at every width on
+   purpose, so a page looks the same family on a phone (tables still scroll inside their own
+   box). Only the workspace width, page-header spacing, topbar padding, sidebar marker and stat
+   grid are desktop-only, in the min-width: 992px block at the end. */
+
+/* Panel: one quiet surface for a table, list or form section. */
+.erp-panel {
+  background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
+  overflow: hidden;
+}
+.erp-panel + .erp-panel, .erp-toolbar + .erp-panel, .erp-panel + .erp-table-footer { margin-top: var(--erp-space-4); }
+/* No reserved scrollbar gutter inside a panel: it left an unpainted strip at the header's right edge. */
+.erp-panel > .erp-table-scroll { border-radius: 0; scrollbar-gutter: auto; }
+
+/* Toolbar: filter strip above a data table. */
+.erp-toolbar {
+  margin-bottom: var(--erp-space-3); padding: var(--erp-space-3) var(--erp-space-4);
+  background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
+}
+.erp-toolbar .form-label { margin-bottom: var(--erp-space-1); font-size: var(--erp-text-xs); font-weight: 600; color: var(--erp-ink-soft); }
+
+.erp-toolbar--inline { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--erp-space-3) var(--erp-space-4); max-width: none; }
+.erp-toolbar--inline > .erp-field { margin-bottom: 0; flex: 0 1 18rem; }
+.erp-toolbar--inline > .erp-form-actions { margin: 0; padding: 0; border-top: 0; }
+.erp-toolbar--inline > .erp-form-errors { flex: 1 1 100%; margin-bottom: 0; }
+@media (max-width: 575.98px) { .erp-toolbar--inline > .erp-field { flex-basis: 100%; } }
+
+/* Data table: scannable header, row hover, no outer rules (the panel draws them). */
+.erp-panel .table { margin-bottom: 0; --bs-table-bg: transparent; }
+.erp-panel .table > thead th {
+  padding: .7rem var(--erp-space-4); background: var(--erp-paper); border-bottom: 1px solid var(--erp-rule);
+  font-size: var(--erp-text-xs); font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--erp-ink-soft); white-space: nowrap;
+}
+.erp-panel .table > tbody td, .erp-panel .table > tbody th { padding: .75rem var(--erp-space-4); vertical-align: middle; border-color: var(--erp-rule); }
+.erp-panel .table > tbody > tr:last-child > * { border-bottom: 0; }
+/* Hover only where a pointer can hover; on touch a tapped row would stay tinted. */
+@media (hover: hover) { .erp-panel .table > tbody > tr:hover > * { background: var(--erp-paper); } }
+.erp-panel .table > tbody > tr.table-warning > * { background: var(--erp-warn-wash); }
+.erp-panel .erp-sort-link { min-height: 0; }
+.erp-panel .erp-timetable thead th:first-child,
+.erp-panel .erp-timetable tbody th[scope="row"] { background: var(--erp-paper); }
+/* Academic Years: name, dates and Saturdays never break mid-value; the year-pages column takes
+   the remaining width. Labels sit above their links until there is room beside them (>=1200px),
+   and the list keeps a floor width so a narrow container scrolls the table, not the words. */
+.erp-years-table td.text-nowrap { width: 1%; padding-inline-end: var(--erp-space-5); }
+.erp-year-links { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--erp-space-2); min-width: 12rem; font-size: var(--erp-text-sm); }
+.erp-year-links strong { display: block; color: var(--erp-ink-soft); font-weight: 600; }
+/* Links wrap as whole units, separated by space rather than a dot that could start a line. */
+.erp-year-links-group { display: flex; flex-wrap: wrap; gap: .1rem var(--erp-space-3); }
+.erp-year-links a { white-space: nowrap; }
+/* Phones size the table to its content (it scrolls in its own box); cap the links so they wrap. */
+@media (max-width: 575.98px) { .erp-year-links { max-width: 16rem; } }
+@media (min-width: 1200px) {
+  .erp-year-links { gap: var(--erp-space-1); }
+  .erp-year-links li { display: grid; grid-template-columns: 6rem minmax(0, 1fr); column-gap: var(--erp-space-2); }
+}
+.erp-note-text { max-width: var(--erp-reading-width); color: var(--erp-ink-soft); }
+
+@media (min-width: 992px) {
+  /* Fluid working area for heavy tables; long-form pages keep their own reading widths. */
+  .erp-content { max-width: 96rem; }
+  .erp-page-header { margin-bottom: var(--erp-space-4); border-bottom-color: transparent; padding-bottom: 0; }
+  .erp-page-title { font-size: 1.75rem; }
+  .erp-topbar { padding-inline: var(--erp-space-5); }
+  .erp-sidebar .nav-link { position: relative; }
+  .erp-sidebar .nav-link.active::before {
+    content: ""; position: absolute; left: -.5rem; top: .35rem; bottom: .35rem; width: 3px;
+    border-radius: 0 3px 3px 0; background: var(--erp-accent);
+  }
+  .erp-stat-grid { grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }
+}
