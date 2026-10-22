@@ -1,6 +1,6 @@
 # UI-D1-3B — Applicant and Teacher Record Details
 
-Status: **AUTHORIZED for implementation; no application code started** (22 October 2026).
+Status: **D1-3B COMPLETE — merged (PR #97, merge `12c3e10`, head `1fe47a1`, 22 October 2026); D1-3C not started**. See the completion record at the end of this file.
 Branch: `ui/admin-desktop-d1-3b-record-details`.
 Base: `main` at `51f2f0a2a4e44dc10c638d2b5951de631cc05936`, after D1-3A PR #96 merge `1fedaae` and docs closeout `51f2f0a`.
 Parent: `docs/ADMIN_DESKTOP_D1_3_ADMISSIONS_PEOPLE_PLAN.md`, `docs/ADMIN_DESKTOP_TABLER_REFERENCE.md`, `docs/UI_DESIGN_RULES.md`, `docs/UI_REFERENCES.md`.
@@ -44,3 +44,19 @@ Presentation-only, Tabler-inspired **project-owned** styling with existing Djang
 - Filtered-empty copy for Applicants/Teachers lists, Teacher list Add button visibility and Guardian list search/sort/pagination remain independently tracked in the parent D1-3 plan.
 - Guardian detail/access reviews are D1-3C: **not authorized in this gate**.
 - Password flows and credential slips are excluded; audit them separately.
+
+## D1-3B completion record (22 October 2026)
+
+- **Delivered:** `applicant_detail.html` and `teacher_detail.html` on `erp-panel`, semantic `<dl>` and labelled `erp-table-scroll` regions (`scope="col"`). Every permission gate, link target, the progression POST with CSRF, the reconciliation warning, Deactivate/Reactivate and the assignment and event data were verified identical to the original templates. No view, form, service, model, URL, permission or query change.
+- **Focus-ring fix (`f55a62f`):** reviewer-identified clipping of the focus ring on focusable scroll regions fixed with one scoped rule, `.erp-table-scroll:focus-visible { outline: 3px solid var(--erp-focus-color); outline-offset: -3px; }`. It applies to every `.erp-table-scroll` region site-wide. Verified by keyboard Tab at 1280 and 390 on Applicant detail, Teacher detail and the Applicants, Guardians, Teachers and Students lists (ring visible and inside its panel in all 12); evidence in `docs/ui-reviews/ui-d1-3b-focus/`.
+- **Review and merge:** draft PR #97 (head `1fe47a1`) merged with a merge commit as `12c3e10`. Per-task spec/quality reviews and a final whole-branch review found no Critical or Important issues. Not deployed.
+- **Verification (local PostgreSQL 18, no CI exists):** `manage.py check` clean; full suite `--parallel 4` 2353 tests OK (18 applicant, 13 teacher and 2 focus-rule tests new). Synthetic before/after screenshots in `docs/ui-reviews/ui-d1-3b/`; page-level overflow 0 in all after shots. Seeded captures are not staging verification.
+
+### Known minor limits (none started)
+
+- Loose heading-to-table gap in the Guardians and Recent security events panels; "Back to Applicants" sits about 12px inside the panel edge.
+- Long unbreakable guardian names scroll inside their region with no scroll hint.
+- Some tests are loose: guardian row order, `aria-labelledby` pairs, a brittle panel-count assertion, and the workload link's positive case only via admin.
+- Focus-ring screenshots cover the pages listed above, not every screen that uses `.erp-table-scroll`.
+
+Next: D1-3C (Guardian detail/access reviews) not authorized or started.
