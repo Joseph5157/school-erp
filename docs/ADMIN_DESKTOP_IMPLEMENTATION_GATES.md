@@ -1,6 +1,6 @@
 # Admin Desktop + Academic Year Rollover — Implementation Gates
 
-Status: **UI-D0 ACTIVE, implementation kickoff** (2026-10-20).
+Status: **UI-D0 ACCEPTED and MERGED (PR #92, merge `dd6e9daa`, 2026-10-22). UI-D1-1 planned on a new branch.**
 
 Source planning branch: `docs/parked-admin-desktop-rollover` at `52ddd61` (historical planning record, leave unchanged).
 Implementation base: `main` at `8dc84af` (2026-10-20).
@@ -10,7 +10,7 @@ Implementation branch: `ui/admin-desktop-spike`.
 
 The admin desktop shell is a shared visual foundation. Create and review a minimal representative spike first; then extend it page-by-page. Rollover is a new high-impact domain feature and needs its own frozen ADR before code. Do not combine UI-D0 with rollover model/migration changes.
 
-## UI-D0 — Desktop shell visual spike (active)
+## UI-D0 — Desktop shell visual spike (completed)
 
 **Preferred visual reference:** `docs/ADMIN_DESKTOP_TABLER_REFERENCE.md` (Tabler live preview, concrete five-screen pattern mapping and non-adoption guardrails). Read it before making UI-D0 changes; capture before/after screenshots against the reference.
 
@@ -34,9 +34,9 @@ The admin desktop shell is a shared visual foundation. Create and review a minim
 - Existing project UI rules (`docs/UI_DESIGN_RULES.md`, `docs/UI_REFERENCES.md`) are respected; prioritize current source code over stale prose.
 - No automatic broad migration; stop for review.
 
-## UI-D1+ — Page-by-page adoption (not started)
+## UI-D1+ — Page-by-page adoption (planning opened)
 
-After UI-D0 acceptance, freeze component conventions. Migrate selected admin pages in separate PRs with focused visual and behavioural regression checks. No catch-all restyling.
+UI-D0 is accepted and merged. The first focused UI-D1 gate is the Teacher assignments History-column readability fix; see `docs/ADMIN_DESKTOP_D1_PLAN.md`. Keep separate PRs, focused visual and behavioural regression checks. No catch-all restyling.
 
 ## Rollover 0 — ADR/decision freeze (queued; no code)
 
