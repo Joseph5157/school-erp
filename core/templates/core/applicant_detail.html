@@ -2,7 +2,9 @@
 {% block title %}{{ applicant.full_name }}{% endblock %}
 {% block content %}
 {% include "partials/_page_header.html" with eyebrow="Applicant record" title=applicant.full_name purpose="Application details, decision status, guardians, and student progression." status_label=applicant.get_admission_status_display status_tone=applicant.admission_status|lower only %}
-<dl class="row">
+<section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="applicant-summary-heading">
+<h2 class="h5 mb-3" id="applicant-summary-heading">Applicant summary</h2>
+<dl class="row mb-0">
     <dt class="col-sm-3">Admission status</dt>
     <dd class="col-sm-9">{% include "partials/_status_badge.html" with label=applicant.get_admission_status_display tone=applicant.admission_status|lower only %}</dd>
     {% if applicant.admission_decided_at %}
@@ -20,38 +22,49 @@
     <dt class="col-sm-3">Phone</dt>
     <dd class="col-sm-9">{{ applicant.phone|default:"-" }}</dd>
 </dl>
+</section>
 
 {% if perms.core.change_applicant and applicant.admission_status == "PENDING" and not student %}
-<h2 class="h5">Admission decision</h2>
-<div class="mb-3">
+<section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="applicant-decision-heading">
+<h2 class="h5" id="applicant-decision-heading">Admission decision</h2>
+<div class="d-flex flex-wrap gap-2">
     <a class="btn btn-success" href="{% url 'core:applicant-decision-confirm' applicant.pk 'ACCEPTED' %}">Accept applicant&hellip;</a>
     <a class="btn btn-danger" href="{% url 'core:applicant-decision-confirm' applicant.pk 'REJECTED' %}">Reject applicant&hellip;</a>
 </div>
+</section>
 {% endif %}
 
 {% if student %}
-<h2 class="h5">Student</h2>
-<p>Student record exists: {{ student.full_name }}, {{ student.get_status_display }}. <a href="{% url 'core:student-detail' student.pk %}">View Student record</a></p>
+<section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="applicant-student-heading">
+<h2 class="h5" id="applicant-student-heading">Student</h2>
+<p class="mb-0">Student record exists: {{ student.full_name }}, {{ student.get_status_display }}. <a href="{% url 'core:student-detail' student.pk %}">View Student record</a></p>
 {% if applicant.admission_status != "ACCEPTED" %}
-<div class="alert alert-warning" role="status">Needs reconciliation: this Applicant is still {{ applicant.get_admission_status_display }} but a Student record exists. An administrator can run <code>manage.py reconcile_applicants</code>.</div>
+<div class="alert alert-warning mt-3 mb-0" role="status">Needs reconciliation: this Applicant is still {{ applicant.get_admission_status_display }} but a Student record exists. An administrator can run <code>manage.py reconcile_applicants</code>.</div>
 {% endif %}
+</section>
 {% elif perms.core.add_student and applicant.admission_status == "ACCEPTED" %}
-<h2 class="h5">Student progression</h2>
-<form method="post" action="{% url 'core:applicant-progress' applicant.pk %}" class="mb-3">
+<section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="applicant-progression-heading">
+<h2 class="h5" id="applicant-progression-heading">Student progression</h2>
+<form method="post" action="{% url 'core:applicant-progress' applicant.pk %}">
     {% csrf_token %}
     <button type="submit" class="btn btn-primary">Progress to Student</button>
 </form>
+</section>
 {% endif %}
 
-<h2 class="h5">Guardians</h2>
-{% if perms.core.add_applicantguardian %}
-    <a class="btn btn-primary mb-3" href="{% url 'core:applicant-guardian-create' applicant.pk %}">Associate Guardian</a>
-{% endif %}
-<table class="table">
+<section class="erp-panel mb-4" aria-labelledby="applicant-guardians-heading">
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 p-3 p-md-4 pb-0">
+    <h2 class="h5 mb-0" id="applicant-guardians-heading">Guardians</h2>
+    {% if perms.core.add_applicantguardian %}
+    <a class="btn btn-primary" href="{% url 'core:applicant-guardian-create' applicant.pk %}">Associate Guardian</a>
+    {% endif %}
+</div>
+<div class="erp-table-scroll mt-3" role="region" aria-label="Guardians" tabindex="0">
+<table class="table mb-0">
     <thead>
         <tr>
-            <th>Guardian</th>
-            <th>Relationship</th>
+            <th scope="col">Guardian</th>
+            <th scope="col">Relationship</th>
         </tr>
     </thead>
     <tbody>
@@ -67,5 +80,7 @@
         {% endfor %}
     </tbody>
 </table>
+</div>
+</section>
 <a class="btn btn-link" href="{% url 'core:applicant-list' %}">Back to Applicants</a>
 {% endblock %}
