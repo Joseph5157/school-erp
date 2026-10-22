@@ -5,39 +5,39 @@
 {% include "partials/_page_header.html" with eyebrow="School setup" title="Academic Years" purpose="Each year holds its calendar, terms, subjects and teacher assignments." primary_url=create_url primary_label="Create Academic Year" only %}
 <div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Academic Years" tabindex="0">
-<table class="table">
+<table class="table erp-years-table">
     <thead>
         <tr>
-            <th>Name</th>
-            <th>Start date</th>
-            <th>End date</th>
-            <th>Saturdays</th>
-            <th></th>
+            <th scope="col">Name</th>
+            <th scope="col">Start date</th>
+            <th scope="col">End date</th>
+            <th scope="col">Saturdays</th>
+            <th scope="col"><span class="visually-hidden">Year pages</span></th>
         </tr>
     </thead>
     <tbody>
         {% for academic_year in academic_years %}
         <tr>
-            <td>{{ academic_year.name }}</td>
-            <td>{{ academic_year.start_date }}</td>
-            <td>{{ academic_year.end_date }}</td>
-            <td>{{ academic_year.saturdays_instructional|yesno:"Instructional,Off" }}</td>
-            <td>
+            <td class="text-nowrap fw-semibold">{{ academic_year.name }}</td>
+            <td class="text-nowrap">{{ academic_year.start_date }}</td>
+            <td class="text-nowrap">{{ academic_year.end_date }}</td>
+            <td class="text-nowrap">{{ academic_year.saturdays_instructional|yesno:"Instructional,Off" }}</td>
+            <td class="erp-year-links-cell">
                 <ul class="erp-year-links">
-                    <li><strong>Calendar:</strong>
+                    <li><strong>Calendar:</strong><span class="erp-year-links-group">
                         {% if perms.core.view_schoolcalendarday %}<a href="{% url 'core:academic-year-calendar' academic_year.pk %}">Calendar</a>{% endif %}
-                        {% if perms.core.view_academicterm %}&middot; <a href="{% url 'core:academic-year-terms' academic_year.pk %}">Terms</a>{% endif %}
-                    </li>
-                    <li><strong>Teaching:</strong>
+                        {% if perms.core.view_academicterm %}<a href="{% url 'core:academic-year-terms' academic_year.pk %}">Terms</a>{% endif %}
+                    </span></li>
+                    <li><strong>Teaching:</strong><span class="erp-year-links-group">
                         {% if perms.core.view_academicsubjectoffering %}<a href="{% url 'core:academic-year-offerings' academic_year.pk %}">Subjects offered</a>{% endif %}
-                        {% if perms.core.view_sectionclassteacher %}&middot; <a href="{% url 'core:academic-year-class-teachers' academic_year.pk %}">Class teachers</a>{% endif %}
-                        {% if perms.core.view_assessmentteacherassignment %}&middot; <a href="{% url 'core:academic-year-teacher-assignments' academic_year.pk %}">Subject teachers</a>{% endif %}
-                        {% if perms.core.view_sectionclassteacher %}&middot; <a href="{% url 'core:academic-year-assignments' academic_year.pk %}">Assignment overview</a>{% endif %}
-                    </li>
-                    <li><strong>Assessment:</strong>
+                        {% if perms.core.view_sectionclassteacher %}<a href="{% url 'core:academic-year-class-teachers' academic_year.pk %}">Class teachers</a>{% endif %}
+                        {% if perms.core.view_assessmentteacherassignment %}<a href="{% url 'core:academic-year-teacher-assignments' academic_year.pk %}">Subject teachers</a>{% endif %}
+                        {% if perms.core.view_sectionclassteacher %}<a href="{% url 'core:academic-year-assignments' academic_year.pk %}">Assignment overview</a>{% endif %}
+                    </span></li>
+                    <li><strong>Assessment:</strong><span class="erp-year-links-group">
                         {% if perms.core.view_assessment %}<a href="{% url 'core:academic-year-assessments' academic_year.pk %}">Assessments</a>{% endif %}
-                        {% if perms.core.view_gradingscale %}&middot; <a href="{% url 'core:academic-year-grading-scales' academic_year.pk %}">Grading</a>{% endif %}
-                    </li>
+                        {% if perms.core.view_gradingscale %}<a href="{% url 'core:academic-year-grading-scales' academic_year.pk %}">Grading</a>{% endif %}
+                    </span></li>
                 </ul>
             </td>
         </tr>
