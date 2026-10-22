@@ -1,39 +1,45 @@
 {% extends "base.html" %}
 {% block title %}Assignment overview - {{ academic_year.name }}{% endblock %}
 {% block content %}
-<h1 class="h3 mb-1">Assignment overview: {{ academic_year.name }}</h1>
-<p class="text-muted">Class teachers as of {{ on_date }}. Gaps: {{ class_gaps }} Section(s) without a class teacher, {{ subject_gaps }} Subject/Section(s) without a teacher. Held by inactive or non-teacher logins: {{ inactive }}.</p>
-<p>
-    {% if perms.core.add_sectionclassteacher and perms.core.add_assessmentteacherassignment %}
-    <a class="btn btn-outline-primary btn-sm" href="{% url 'core:assignment-copy' academic_year.pk %}">Copy from another year&hellip;</a>
-    {% endif %}
-    <a class="btn btn-link btn-sm" href="{% url 'core:academic-year-class-teachers' academic_year.pk %}">Class teachers</a>
-    {% if perms.core.view_assessmentteacherassignment %}<a class="btn btn-link btn-sm" href="{% url 'core:academic-year-teacher-assignments' academic_year.pk %}">Subject teachers</a>{% endif %}
+{% if perms.core.add_sectionclassteacher and perms.core.add_assessmentteacherassignment %}{% url 'core:assignment-copy' academic_year.pk as copy_url %}{% endif %}
+{% include "partials/_page_header.html" with eyebrow="School setup" title="Assignment overview" purpose=academic_year.name primary_url=copy_url primary_label="Copy from another year…" only %}
+<p class="erp-note-text">Class teachers as of <span class="text-nowrap">{{ on_date }}</span>. Gaps: {{ class_gaps }} Section(s) without a class teacher, {{ subject_gaps }} Subject/Section(s) without a teacher. Held by inactive or non-teacher logins: {{ inactive }}.</p>
+<p class="d-flex flex-wrap column-gap-3 row-gap-1">
+    <a href="{% url 'core:academic-year-class-teachers' academic_year.pk %}">Class teachers</a>
+    {% if perms.core.view_assessmentteacherassignment %}<a href="{% url 'core:academic-year-teacher-assignments' academic_year.pk %}">Subject teachers</a>{% endif %}
 </p>
 
-<h2 class="h5 mt-3">Class teachers</h2>
-<table class="table table-sm">
-    <thead><tr><th>Section</th><th>Class teacher</th><th></th></tr></thead>
+<h2 class="h5 mt-4" id="overview-class-teachers">Class teachers</h2>
+<div class="erp-panel">
+<div class="erp-table-scroll" role="region" aria-labelledby="overview-class-teachers" tabindex="0">
+<table class="table erp-keep">
+    <thead><tr><th scope="col">Section</th><th scope="col">Class teacher</th><th scope="col">Status</th></tr></thead>
     <tbody>
     {% for row in class_rows %}
         <tr{% if row.gap or row.inactive %} class="table-warning"{% endif %}>
-            <td>{{ row.section }}</td>
+            <td class="text-nowrap">{{ row.section }}</td>
             <td>{% if row.assignment %}<a href="{% url 'core:teacher-load' row.assignment.teacher_id %}">{{ row.assignment.teacher.get_full_name|default:row.assignment.teacher.username }}</a>{% else %}&mdash;{% endif %}</td>
             <td>{% if row.gap %}No class teacher{% elif row.inactive %}Login inactive or not a teacher &mdash; end or replace{% endif %}</td>
         </tr>
+    {% empty %}
+        <tr><td colspan="3">No Sections yet.</td></tr>
     {% endfor %}
     </tbody>
 </table>
+</div>
+</div>
 
-<h2 class="h5 mt-4">Subject teachers</h2>
-<table class="table table-sm">
-    <thead><tr><th>Class/Grade</th><th>Subject</th><th>Section</th><th>Teacher</th><th></th></tr></thead>
+<h2 class="h5 mt-4" id="overview-subject-teachers">Subject teachers</h2>
+<div class="erp-panel">
+<div class="erp-table-scroll" role="region" aria-labelledby="overview-subject-teachers" tabindex="0">
+<table class="table erp-keep">
+    <thead><tr><th scope="col">Class/Grade</th><th scope="col">Subject</th><th scope="col">Section</th><th scope="col">Teacher</th><th scope="col">Status</th></tr></thead>
     <tbody>
     {% for row in subject_rows %}
         <tr{% if row.gap or row.inactive %} class="table-warning"{% endif %}>
             <td>{{ row.offering.class_grade }}</td>
             <td>{{ row.offering.subject.name }}</td>
-            <td>{{ row.section.name }}</td>
+            <td class="text-nowrap">{{ row.section.name }}</td>
             <td>{% if row.assignment %}<a href="{% url 'core:teacher-load' row.assignment.teacher_id %}">{{ row.assignment.teacher.get_full_name|default:row.assignment.teacher.username }}</a>{% else %}&mdash;{% endif %}</td>
             <td>{% if row.gap %}No teacher{% elif row.inactive %}Login inactive or not a teacher &mdash; reassign{% endif %}</td>
         </tr>
@@ -42,4 +48,6 @@
     {% endfor %}
     </tbody>
 </table>
+</div>
+</div>
 {% endblock %}

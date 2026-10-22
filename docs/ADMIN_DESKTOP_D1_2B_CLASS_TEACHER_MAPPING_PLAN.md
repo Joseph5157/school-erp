@@ -1,6 +1,6 @@
 # UI-D1-2B — Class Teacher Mapping and Assignment Overview
 
-Status: **PLANNED — ready for controlled implementation; no application code started** (22 October 2026).
+Status: **IMPLEMENTED — draft PR awaiting design acceptance** (22 October 2026). Evidence in `docs/ui-reviews/ui-d1-2b/`.
 Implementation branch: `ui/admin-desktop-d1-class-teacher-mapping`.
 Source main: `b85f7fa09ce4cf4eb2e337a43c6759c21cdbcf48` (docs-only closeout after PR #94; D1-2A merge `19fd57b43889ccaeffa8d66d7e7d26828fc61760`).
 Parent decisions: `docs/ADMIN_DESKTOP_D1_PLAN.md`, `docs/ADMIN_DESKTOP_D1_2_SCHOOL_CONFIGURATION_PLAN.md`, `docs/ADMIN_DESKTOP_TABLER_REFERENCE.md`, `docs/UI_DESIGN_RULES.md`, `docs/UI_REFERENCES.md`.
