@@ -1,25 +1,28 @@
 {% extends "base.html" %}
 {% block title %}{{ guardian.full_name }}{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">{{ guardian.full_name }}</h1>
-{% if perms.core.change_guardian %}
-    <a class="btn btn-outline-primary mb-3" href="{% url 'core:guardian-edit' guardian.pk %}">Edit contact details</a>
-{% endif %}
+{% if perms.core.change_guardian %}{% url 'core:guardian-edit' guardian.pk as guardian_edit_url %}{% endif %}
+{% include "partials/_page_header.html" with eyebrow="People" title=guardian.full_name secondary_url=guardian_edit_url secondary_label="Edit contact details" only %}
 {% include "partials/_section_nav.html" with sections=profile_sections only %}
-<dl class="row">
+<section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="guardian-contact-heading">
+<h2 class="h5 mb-3" id="guardian-contact-heading">Contact details</h2>
+<dl class="row mb-0">
     <dt class="col-sm-3">Phone</dt>
     <dd class="col-sm-9">{{ guardian.phone|default:"-" }}</dd>
     <dt class="col-sm-3">Email</dt>
     <dd class="col-sm-9">{{ guardian.email|default:"-" }}</dd>
 </dl>
+</section>
 
-<section id="applicants" aria-labelledby="applicants-heading">
-<h2 class="h5" id="applicants-heading">Associated Applicants</h2>
-<table class="table">
+<section id="applicants" aria-labelledby="applicants-heading" class="erp-panel mb-4">
+<div class="p-3 p-md-4 pb-0"><h2 class="h5" id="applicants-heading">Associated Applicants</h2></div>
+<div class="erp-table-scroll mt-3" role="region" aria-label="Associated Applicants" tabindex="0">
+<table class="table mb-0">
+    <caption class="visually-hidden">Associated Applicants</caption>
     <thead>
         <tr>
-            <th>Applicant</th>
-            <th>Relationship</th>
+            <th scope="col">Applicant</th>
+            <th scope="col">Relationship</th>
         </tr>
     </thead>
     <tbody>
@@ -35,10 +38,11 @@
         {% endfor %}
     </tbody>
 </table>
+</div>
 </section>
 {% if "portal-account" in profile_section_ids %}
-<section id="portal-account" aria-labelledby="portal-account-heading">
-<h2 class="h5 mt-4" id="portal-account-heading">Guardian Portal account</h2>
+<section id="portal-account" aria-labelledby="portal-account-heading" class="erp-panel p-3 p-md-4 mb-4">
+<h2 class="h5" id="portal-account-heading">Guardian Portal account</h2>
 {% if active_account %}
 <p>
     Login <strong>{{ active_account.user.username }}</strong>
@@ -46,18 +50,18 @@
     {% if not active_account.user.is_active %}<span class="badge bg-danger">login inactive</span>{% endif %}
     &middot; verified by {{ active_account.identity_verified_by }} ({{ active_account.get_identity_verification_method_display }}) on {{ active_account.created_at|date:"j M Y" }}
 </p>
-<p>
+<div class="d-flex flex-wrap gap-2 mb-3">
     {% if perms.core.reset_guardian_password %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'core:guardian-account-reset-password' active_account.pk %}">Reset password</a>{% endif %}
     {% if perms.core.change_guardian_username %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'core:guardian-account-username' active_account.pk %}">Change username</a>{% endif %}
     {% if perms.core.change_guardianaccount %}<a class="btn btn-outline-danger btn-sm" href="{% url 'core:guardian-account-revoke' active_account.pk %}">Revoke account link</a>{% endif %}
-</p>
+</div>
 {% else %}
 <p class="text-muted">No active portal account. Recording a Guardian grants no access.</p>
 {% if perms.core.add_guardianaccount %}
-<p>
+<div class="d-flex flex-wrap gap-2 mb-3">
     <a class="btn btn-primary btn-sm" href="{% url 'core:guardian-account-create' guardian.pk %}">Create portal account</a>
     <a class="btn btn-outline-primary btn-sm" href="{% url 'core:guardian-account-link' guardian.pk %}">Link an existing login</a>
-</p>
+</div>
 {% endif %}
 {% endif %}
 {% for account in accounts %}{% if not account.is_active %}
@@ -67,11 +71,15 @@
 {% endif %}
 
 {% if "student-access" in profile_section_ids %}
-<section id="student-access" aria-labelledby="student-access-heading">
-<h2 class="h5 mt-4" id="student-access-heading">Student access</h2>
-<p class="text-muted small">Access is granted explicitly for each relationship. The relationship type never grants access by itself.</p>
-<table class="table">
-    <thead><tr><th>Student</th><th>Relationship</th><th>Portal access</th><th></th></tr></thead>
+<section id="student-access" aria-labelledby="student-access-heading" class="erp-panel mb-4">
+<div class="p-3 p-md-4 pb-0">
+<h2 class="h5" id="student-access-heading">Student access</h2>
+<p class="text-muted small mb-0">Access is granted explicitly for each relationship. The relationship type never grants access by itself.</p>
+</div>
+<div class="erp-table-scroll mt-3" role="region" aria-label="Student access" tabindex="0">
+<table class="table mb-0">
+    <caption class="visually-hidden">Student access</caption>
+    <thead><tr><th scope="col">Student</th><th scope="col">Relationship</th><th scope="col">Portal access</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
     <tbody>
     {% for row in relationships %}
         <tr>
@@ -83,11 +91,11 @@
             </td>
             <td class="text-end">
                 {% if row.active_grant %}
-                    {% if perms.core.change_guardianstudentaccess %}<a class="btn btn-outline-danger btn-sm" href="{% url 'core:guardian-access-revoke' row.active_grant.pk %}">Revoke</a>{% endif %}
+                    {% if perms.core.change_guardianstudentaccess %}<a class="btn btn-outline-danger btn-sm" href="{% url 'core:guardian-access-revoke' row.active_grant.pk %}" aria-label="Revoke access for {{ row.link.student.full_name }}">Revoke</a>{% endif %}
                 {% elif perms.core.add_guardianstudentaccess %}
                 <form method="post" action="{% url 'core:guardian-access-grant' row.link.pk %}" class="d-inline">
                     {% csrf_token %}
-                    <button type="submit" class="btn btn-outline-primary btn-sm">Grant access</button>
+                    <button type="submit" class="btn btn-outline-primary btn-sm" aria-label="Grant access for {{ row.link.student.full_name }}">Grant access</button>
                 </form>
                 {% endif %}
             </td>
@@ -97,13 +105,14 @@
     {% endfor %}
     </tbody>
 </table>
+</div>
 </section>
 {% endif %}
 
 {% if "history" in profile_section_ids %}
-<section id="history" aria-labelledby="history-heading">
-<h2 class="h5 mt-4" id="history-heading">Account and access history</h2>
-<ul class="small">
+<section id="history" aria-labelledby="history-heading" class="erp-panel p-3 p-md-4 mb-4">
+<h2 class="h5" id="history-heading">Account and access history</h2>
+<ul class="small mb-0">
     {% for event in events %}<li>{{ event.occurred_at|date:"j M Y, H:i" }} &middot; {{ event.get_event_type_display }}{% if event.actor %} by {{ event.actor }}{% endif %}</li>{% empty %}<li class="text-muted">None.</li>{% endfor %}
 </ul>
 </section>
