@@ -1,24 +1,34 @@
 {% extends "base.html" %}
 {% block title %}Terms - {{ academic_year.name }}{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">Terms: {{ academic_year.name }}</h1>
-<p class="text-muted">{{ academic_year.start_date }} to {{ academic_year.end_date }}. Terms are shown in their explicit order and may not overlap.</p>
-{% if perms.core.add_academicterm %}
-    <a class="btn btn-primary mb-3" href="{% url 'core:term-create' academic_year.pk %}">Add Term</a>
-{% endif %}
-<table class="table">
-    <thead><tr><th>Order</th><th>Name</th><th>Start</th><th>End</th><th></th></tr></thead>
+{% if perms.core.add_academicterm %}{% url 'core:term-create' academic_year.pk as create_url %}{% endif %}
+{% include "partials/_page_header.html" with eyebrow="School setup" title="Terms" purpose=academic_year.name primary_url=create_url primary_label="Add Term" only %}
+<p class="erp-note-text"><span class="text-nowrap">{{ academic_year.start_date }}</span> to <span class="text-nowrap">{{ academic_year.end_date }}</span>. Terms are shown in their explicit order and may not overlap.</p>
+<div class="erp-panel">
+<div class="erp-table-scroll" role="region" aria-label="Terms" tabindex="0">
+<table class="table erp-keep">
+    <thead>
+        <tr>
+            <th scope="col">Order</th>
+            <th scope="col">Name</th>
+            <th scope="col">Start</th>
+            <th scope="col">End</th>
+            <th scope="col"><span class="visually-hidden">Actions</span></th>
+        </tr>
+    </thead>
     <tbody>
         {% for term in terms %}
         <tr>
-            <td>{{ term.display_order }}</td>
-            <td>{{ term.name }}</td>
-            <td>{{ term.start_date }}</td>
-            <td>{{ term.end_date }}</td>
+            <td class="text-nowrap">{{ term.display_order }}</td>
+            <td class="fw-semibold">{{ term.name }}</td>
+            <td class="text-nowrap">{{ term.start_date }}</td>
+            <td class="text-nowrap">{{ term.end_date }}</td>
             <td>
-                {% if perms.core.change_academicterm %}<a href="{% url 'core:term-update' term.pk %}">Edit</a>{% endif %}
-                {% if perms.core.view_termpublication %} &middot; <a href="{% url 'core:term-publication' term.pk %}">Publish to guardians</a>{% endif %}
-                {% if perms.core.change_termremark %} &middot; <a href="{% url 'core:term-remarks' term.pk %}">Remarks</a>{% endif %}
+                <div class="d-flex flex-wrap justify-content-end column-gap-3 row-gap-1 text-nowrap">
+                    {% if perms.core.change_academicterm %}<a href="{% url 'core:term-update' term.pk %}">Edit<span class="visually-hidden"> {{ term.name }}</span></a>{% endif %}
+                    {% if perms.core.view_termpublication %}<a href="{% url 'core:term-publication' term.pk %}">Publish to guardians<span class="visually-hidden">: {{ term.name }}</span></a>{% endif %}
+                    {% if perms.core.change_termremark %}<a href="{% url 'core:term-remarks' term.pk %}">Remarks<span class="visually-hidden">: {{ term.name }}</span></a>{% endif %}
+                </div>
             </td>
         </tr>
         {% empty %}
@@ -26,4 +36,6 @@
         {% endfor %}
     </tbody>
 </table>
+</div>
+</div>
 {% endblock %}

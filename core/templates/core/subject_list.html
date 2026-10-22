@@ -1,23 +1,32 @@
 {% extends "base.html" %}
 {% block title %}Subjects{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">Subjects</h1>
-{% if perms.core.add_subject %}
-    <a class="btn btn-primary mb-3" href="{% url 'core:subject-create' %}">Add Subject</a>
-{% endif %}
-<table class="table">
-    <thead><tr><th>Name</th><th>Code</th><th>Status</th><th></th></tr></thead>
+{% if perms.core.add_subject %}{% url 'core:subject-create' as create_url %}{% endif %}
+{% include "partials/_page_header.html" with eyebrow="School setup" title="Subjects" purpose="Subjects belong to the whole school. Each Academic Year offers them to Classes/Grades separately." primary_url=create_url primary_label="Add Subject" only %}
+<div class="erp-panel">
+<div class="erp-table-scroll" role="region" aria-label="Subjects" tabindex="0">
+<table class="table erp-keep">
+    <thead>
+        <tr>
+            <th scope="col">Name</th>
+            <th scope="col">Code</th>
+            <th scope="col">Status</th>
+            <th scope="col"><span class="visually-hidden">Actions</span></th>
+        </tr>
+    </thead>
     <tbody>
         {% for subject in subjects %}
         <tr>
-            <td>{{ subject.name }}</td>
-            <td>{{ subject.code }}</td>
-            <td>{{ subject.is_active|yesno:"Active,Inactive" }}</td>
-            <td>{% if perms.core.change_subject %}<a href="{% url 'core:subject-update' subject.pk %}">Edit</a>{% endif %}</td>
+            <td class="fw-semibold">{{ subject.name }}</td>
+            <td class="text-nowrap">{% if subject.code %}{{ subject.code }}{% else %}<span aria-hidden="true">&mdash;</span><span class="visually-hidden">No code</span>{% endif %}</td>
+            <td>{% if subject.is_active %}{% include "partials/_status_badge.html" with label="Active" tone="active" only %}{% else %}{% include "partials/_status_badge.html" with label="Inactive" tone="neutral" only %}{% endif %}</td>
+            <td class="text-end text-nowrap">{% if perms.core.change_subject %}<a href="{% url 'core:subject-update' subject.pk %}">Edit<span class="visually-hidden"> {{ subject.name }}</span></a>{% endif %}</td>
         </tr>
         {% empty %}
         <tr><td colspan="4">No Subjects yet.{% if perms.core.add_subject %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:subject-create' %}">Add subject</a>{% endif %}</td></tr>
         {% endfor %}
     </tbody>
 </table>
+</div>
+</div>
 {% endblock %}
