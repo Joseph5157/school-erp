@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Attendance {{ register.date }}{% endblock %}
 {% block content %}
+<div class="erp-attendance-detail-page">
 {% url 'core:attendance-register-list' as attendance_list_url %}
 {% with day=register.date|date:"l, j F Y" %}
 {% include "partials/_page_header.html" with eyebrow="Attendance" title="Attendance register" purpose=register.section|stringformat:"s"|add:" · "|add:day status_label=register.get_status_display status_tone=register.status|lower secondary_url=attendance_list_url secondary_label="Back to attendance" only %}
@@ -83,4 +84,5 @@
 </div>
 </section>
 {% endif %}
+</div>
 {% endblock %}

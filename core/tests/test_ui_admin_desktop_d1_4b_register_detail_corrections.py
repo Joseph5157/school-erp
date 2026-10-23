@@ -365,3 +365,28 @@ class CorrectionHistoryTests(DetailFixture, TestCase):
         self.entry.record_status_change("ABSENT", actor=self.admin, reason="Two")
         first.refresh_from_db()
         self.assertEqual((first.previous_status, first.new_status, first.reason, first.created_at), snapshot)
+
+
+class ScopedCssTests(DetailFixture, TestCase):
+    def setUp(self):
+        self.build()
+
+    def test_d1_4b_css_is_scoped_and_precedes_the_d1_3d1_marker(self):
+        from pathlib import Path
+
+        css = Path("static/css/erp.css").read_text(encoding="utf-8")
+        start = css.index("/* UI-D1-4B")
+        marker = css.index("/* UI-D1-3D1 review fix")
+        self.assertLess(start, marker)
+        block = css[start:marker]
+        selectors = re.findall(r"^(\.[^{]+)\{", block, re.M)
+        self.assertTrue(selectors)
+        for selector in selectors:
+            self.assertTrue(selector.startswith(".erp-attendance-detail-page "), selector)
+
+    def test_detail_page_carries_the_scoping_wrapper_and_correction_page_does_not(self):
+        register = self.register()
+        self.assertContains(self.client.get(self.detail_url(register)), 'class="erp-attendance-detail-page"')
+        _, entry = self.submitted_entry()
+        url = reverse("core:attendance-entry-correct", args=[entry.pk])
+        self.assertNotContains(self.client.get(url), "erp-attendance-detail-page")
