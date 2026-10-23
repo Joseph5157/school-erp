@@ -217,6 +217,20 @@ class FilterStateTests(AttendanceListFixture, TestCase):
         content = self.client.get(self.url, {"start": "not-a-date"}).content.decode()
         self.assertEqual(content.count('class="erp-field-errors"'), 1)
         self.assertIn("Enter a valid date.", content)
+        self.assertEqual(content.count("Filters were not applied; showing all registers."), 1)
+        self.assertIn('value="not-a-date"', content)
+
+    def test_every_invalid_form_says_filters_were_not_applied_and_valid_ones_do_not(self):
+        self.register(date(2026, 7, 6))
+        note = "Filters were not applied"
+        for params in ({"end": "31/02/2026"}, {"section": "999999"}, {"start": "x", "end": "y"}):
+            with self.subTest(params=params):
+                response = self.client.get(self.url, params)
+                self.assertContains(response, note, count=1)
+                self.assertEqual(len(response.context["registers"]), 1)
+                self.assertNotContains(response, "match these filters")
+        self.assertNotContains(self.client.get(self.url, {"start": "2026-07-01"}), note)
+        self.assertNotContains(self.client.get(self.url), note)
 
     def test_invalid_filter_with_no_registers_is_not_reported_as_no_match(self):
         response = self.client.get(self.url, {"start": "not-a-date"})
