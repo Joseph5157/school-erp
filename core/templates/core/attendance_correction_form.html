@@ -2,23 +2,26 @@
 {% block title %}Correct Attendance{% endblock %}
 {% block content %}
 {% include "partials/_page_header.html" with eyebrow="Attendance" title="Correct attendance" purpose="Record a reasoned correction without rewriting the original register history." only %}
-<dl class="row">
+<section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="correction-context-heading">
+<h2 class="h5 mb-3" id="correction-context-heading">Entry being corrected</h2>
+<dl class="row mb-0">
     <dt class="col-sm-3">Student</dt>
-    <dd class="col-sm-9">{{ entry.academic_enrollment.student.full_name }}</dd>
+    <dd class="col-sm-9 text-break">{{ entry.academic_enrollment.student.full_name }}</dd>
     <dt class="col-sm-3">Section</dt>
-    <dd class="col-sm-9">{{ entry.register.section }}</dd>
+    <dd class="col-sm-9 text-break">{{ entry.register.section }}</dd>
     <dt class="col-sm-3">Date</dt>
     <dd class="col-sm-9">{{ entry.register.date }}</dd>
     <dt class="col-sm-3">Current status</dt>
     <dd class="col-sm-9">{{ entry.get_status_display }}</dd>
     {% if entry.absence_note %}
     <dt class="col-sm-3">Absence note</dt>
-    <dd class="col-sm-9">{{ entry.absence_note }}</dd>
+    <dd class="col-sm-9 text-break">{{ entry.absence_note }}</dd>
     {% endif %}
 </dl>
 {% if entry.absence_note %}
-<p class="text-muted">Correcting this entry to Present clears its absence note.</p>
+<p class="text-muted mt-3 mb-0">Correcting this entry to Present clears its absence note.</p>
 {% endif %}
+</section>
 <form method="post" class="erp-form">
     {% csrf_token %}
     {% include "partials/_form_required_legend.html" %}
@@ -30,17 +33,20 @@
     </div>
 </form>
 
-<h2 class="h5 mt-4">Correction history</h2>
+<section class="mt-4" aria-labelledby="correction-history-heading">
+<h2 class="h5" id="correction-history-heading">Correction history</h2>
+<div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Correction history" tabindex="0">
 <table class="table">
+    <caption class="visually-hidden">Correction history for this attendance entry, newest first.</caption>
     <thead>
         <tr>
-            <th>When</th>
-            <th>From</th>
-            <th>To</th>
-            <th>Note change</th>
-            <th>Reason</th>
-            <th>By</th>
+            <th scope="col">When</th>
+            <th scope="col">From</th>
+            <th scope="col">To</th>
+            <th scope="col">Note change</th>
+            <th scope="col">Reason</th>
+            <th scope="col">By</th>
         </tr>
     </thead>
     <tbody>
@@ -49,13 +55,13 @@
             <td>{{ correction.created_at }}</td>
             <td>{{ correction.get_previous_status_display }}</td>
             <td>{{ correction.get_new_status_display }}</td>
-            <td>
+            <td class="text-break">
                 {% if correction.previous_absence_note != correction.new_absence_note %}
                     {{ correction.previous_absence_note|default:"(none)" }} &rarr; {{ correction.new_absence_note|default:"(none)" }}
                 {% endif %}
             </td>
-            <td>{{ correction.reason }}</td>
-            <td>{{ correction.corrected_by }}</td>
+            <td class="text-break">{{ correction.reason|linebreaksbr }}</td>
+            <td class="text-break">{{ correction.corrected_by }}</td>
         </tr>
         {% empty %}
         <tr>
@@ -65,4 +71,6 @@
     </tbody>
 </table>
 </div>
+</div>
+</section>
 {% endblock %}
