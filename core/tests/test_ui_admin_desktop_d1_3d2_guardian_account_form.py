@@ -129,6 +129,14 @@ class GuardianAccountFormD13D2Tests(TestCase):
         self.assertRegex(form, r'name="username"[^>]*maxlength="150"')
         self.assertIn("Existing login username", form)
 
+    def test_note_help_text_forbids_document_numbers_in_both_modes(self):
+        for url, mode in ((self.create_url, "create"), (self.link_url, "link")):
+            with self.subTest(mode=mode):
+                form = self.form_html(self.get(url))
+                self.assertEqual(form.count("No document numbers."), 1)
+                note_block = form[form.index('name="identity_verification_note"'):]
+                self.assertIn("No document numbers.", note_block)
+
     # invalid POST
     def test_missing_fields_show_errors_once_in_both_modes(self):
         before = self.counts()

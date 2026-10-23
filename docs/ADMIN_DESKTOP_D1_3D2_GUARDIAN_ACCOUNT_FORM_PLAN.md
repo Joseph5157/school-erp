@@ -1,6 +1,6 @@
 # UI-D1-3D2 — Guardian Portal Account Create/Link Form (planning specification)
 
-Status: **DESIGN-APPROVED FOR D1-3D2 IMPLEMENTATION ONLY — plan decisions frozen, no application code started** (23 October 2026). Merge, deployment, D1-4 and other gates remain unauthorized.
+Status: **D1-3D2 IMPLEMENTED on branch `ui/admin-desktop-d1-3d2-guardian-account-form` (template and tests committed; synthetic pre-submit/invalid screenshots in `docs/ui-reviews/ui-d1-3d2/`); draft PR pending review** (23 October 2026). Not merged, not deployed; D1-4 and other gates remain unauthorized.
 Planning branch: `plan/ui-admin-desktop-d1-3d2-guardian-account-form`, from `main` `af550ea8ae5db459975537a8074d9d1a4bbe2f89` (D1-3D1 PR #99 merged as `de63dd6`, docs closeout `af550ea`).
 Parent: `docs/ADMIN_DESKTOP_D1_3_ADMISSIONS_PEOPLE_PLAN.md`. Visual references: `docs/UI_DESIGN_RULES.md`, `docs/ADMIN_DESKTOP_TABLER_REFERENCE.md`, and accepted UI-D1-3D1. This plan does **not** authorize merge, deployment, D1-4 or rollover work.
 
