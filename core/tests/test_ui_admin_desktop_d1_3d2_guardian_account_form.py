@@ -294,3 +294,18 @@ class GuardianAccountFormD13D2Tests(TestCase):
                 self.assertIn("login", response["Location"])
                 self.assertEqual(anonymous.post(url, self.data("anon.new")).status_code, 302)
         self.assertEqual(self.counts(), before)
+
+
+class GuardianAccountFormPurposeCssTests(TestCase):
+    def test_purpose_line_wraps_long_names_scoped_to_wrapper(self):
+        from pathlib import Path
+
+        from django.conf import settings
+
+        css = (Path(settings.BASE_DIR) / "static" / "css" / "erp.css").read_text(encoding="utf-8")
+        rule = re.search(
+            r"(\.erp-guardian-form-page \.erp-page-purpose)\s*\{([^}]*)\}", css
+        )
+        self.assertIsNotNone(rule)
+        self.assertIn("overflow-wrap: break-word", rule.group(2))
+        self.assertNotIn("anywhere", rule.group(2))

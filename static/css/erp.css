@@ -1278,3 +1278,7 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
    phone grid track and clipping. Scoped to the Guardian form wrapper so shared headers are unchanged. */
 .erp-guardian-form-page .erp-page-title { overflow-wrap: break-word; min-width: 0; }
 @media (max-width: 767.98px) { .erp-guardian-form-page .erp-page-header { grid-template-columns: minmax(0, 1fr); } }
+
+/* UI-D1-3D2 review fix: the "Guardian: <name>" purpose line wraps a long unbroken name instead of running
+   past the right gutter on phones. Scoped to the Guardian form wrapper so shared headers are unchanged. */
+.erp-guardian-form-page .erp-page-purpose { overflow-wrap: break-word; min-width: 0; }
