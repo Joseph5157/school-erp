@@ -385,7 +385,7 @@ class ScopedCssTests(DetailFixture, TestCase):
             self.assertTrue(selector.startswith(".erp-attendance-detail-page "), selector)
 
     def test_detail_page_carries_the_scoping_wrapper_and_correction_page_does_not(self):
-        register = self.register()
+        register = self.register(on_date=date(2026, 7, 7))
         self.assertContains(self.client.get(self.detail_url(register)), 'class="erp-attendance-detail-page"')
         _, entry = self.submitted_entry()
         url = reverse("core:attendance-entry-correct", args=[entry.pk])
