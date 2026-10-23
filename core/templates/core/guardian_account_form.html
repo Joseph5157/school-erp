@@ -1,14 +1,27 @@
 {% extends "base.html" %}
 {% block title %}Guardian portal account{% endblock %}
 {% block content %}
-<h1 class="h3 mb-1">{% if mode == "create" %}Create portal account{% else %}Link an existing login{% endif %}</h1>
-<p class="text-muted">{{ guardian.full_name }}. Verify the person's identity against the school's records before continuing.
-{% if mode == "create" %}A temporary password is shown once on the next page for offline delivery; it must be changed at first sign-in.{% else %}Use this when the person already has a login (for example a teacher who is also a parent). The login keeps its password.{% endif %}</p>
-<form method="post">
+<div class="erp-guardian-form-page">
+{% if mode == "create" %}
+{% include "partials/_page_header.html" with eyebrow="People" title="Create portal account" purpose="Guardian: "|add:guardian.full_name only %}
+{% else %}
+{% include "partials/_page_header.html" with eyebrow="People" title="Link an existing login" purpose="Guardian: "|add:guardian.full_name only %}
+{% endif %}
+<div class="alert alert-warning"><strong>Identity verification required.</strong> Confirm that you have already verified this person's identity as the Guardian shown above. Select the method actually used and record a brief note. Do not enter document numbers. The system records your verification; it does not verify identity automatically.</div>
+{% if mode == "create" %}
+<p class="erp-guardian-account-instruction">Creating this account generates a temporary password shown only once on the next page for offline delivery. The Guardian must change it at first sign-in. Creating an account does not automatically grant access to any Student.</p>
+{% else %}
+<p class="erp-guardian-account-instruction">Enter the existing login's username. Matching is case-insensitive after normalization; it does not search by name, phone or email. The existing password will not change. Linking this login does not automatically grant access to any Student.</p>
+{% endif %}
+<form method="post" class="erp-form">
     {% csrf_token %}
-    {{ form.non_field_errors }}
-    {{ form.as_p }}
-    <button type="submit" class="btn btn-primary">{% if mode == "create" %}Create account{% else %}Link login{% endif %}</button>
-    <a class="btn btn-link" href="{% url 'core:guardian-detail' guardian.pk %}">Cancel</a>
+    {% include "partials/_form_required_legend.html" %}
+    {% if form.non_field_errors %}<div class="erp-form-errors" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+    {% for field in form %}{% include "partials/_form_field.html" with field=field only %}{% endfor %}
+    <div class="erp-form-actions">
+        <button type="submit" class="btn btn-primary">{% if mode == "create" %}Create account{% else %}Link login{% endif %}</button>
+        <a class="btn btn-link" href="{% url 'core:guardian-detail' guardian.pk %}">Cancel</a>
+    </div>
 </form>
+</div>
 {% endblock %}
