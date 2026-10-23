@@ -291,6 +291,7 @@ class GuardianFormsD13D1Tests(Phase4Fixture, TestCase):
         self.assertIn(f"{wrapper} .erp-page-title", block)
         self.assertIn("overflow-wrap: break-word", block)
         self.assertIn(f"{wrapper} .erp-page-header", block)
+        self.assertIn("grid-template-columns: minmax(0, 1fr)", block)
         # every selector in the new block (including inside @media) starts with the wrapper
         body = re.sub(r"/\*.*?\*/", "", block, flags=re.S)
         selectors = re.findall(r"(?:^|[{}])\s*([^{}@]+?)\s*\{", body)
