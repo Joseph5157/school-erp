@@ -1274,6 +1274,10 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
    cell then fits inside the 356px region and scrolls into view complete, not cut on one side. */
 @media (max-width: 575.98px) { .erp-review-form { width: 15rem; } }
 
+/* UI-D1-4B: the register detail context line (Section name + date) wraps a long unbroken name instead of being clipped. */
+.erp-attendance-detail-page .erp-page-header-copy { min-width: 0; }
+.erp-attendance-detail-page .erp-page-purpose { overflow-wrap: break-word; }
+
 /* UI-D1-3D1 review fix: a long unbroken Guardian name wraps in the form-page H1 instead of widening the
    phone grid track and clipping. Scoped to the Guardian form wrapper so shared headers are unchanged. */
 .erp-guardian-form-page .erp-page-title { overflow-wrap: break-word; min-width: 0; }

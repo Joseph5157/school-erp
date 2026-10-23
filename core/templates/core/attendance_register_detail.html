@@ -1,72 +1,88 @@
 {% extends "base.html" %}
 {% block title %}Attendance {{ register.date }}{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">Attendance: {{ register.section }} - {{ register.date }}</h1>
-<dl class="row">
+<div class="erp-attendance-detail-page">
+{% url 'core:attendance-register-list' as attendance_list_url %}
+{% with day=register.date|date:"l, j F Y" %}
+{% include "partials/_page_header.html" with eyebrow="Attendance" title="Attendance register" purpose=register.section|stringformat:"s"|add:" · "|add:day status_label=register.get_status_display status_tone=register.status|lower secondary_url=attendance_list_url secondary_label="Back to attendance" only %}
+{% endwith %}
+<section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="register-context-heading">
+<h2 class="h5 mb-3" id="register-context-heading">Register details</h2>
+<dl class="row mb-0">
     <dt class="col-sm-3">Academic year</dt>
-    <dd class="col-sm-9">{{ register.academic_year }}</dd>
+    <dd class="col-sm-9 text-break">{{ register.academic_year }}</dd>
     <dt class="col-sm-3">Class/Grade</dt>
-    <dd class="col-sm-9">{{ register.class_grade }}</dd>
+    <dd class="col-sm-9 text-break">{{ register.class_grade }}</dd>
     <dt class="col-sm-3">Section</dt>
-    <dd class="col-sm-9">{{ register.section }}</dd>
+    <dd class="col-sm-9 text-break">{{ register.section }}</dd>
     <dt class="col-sm-3">Date</dt>
     <dd class="col-sm-9">{{ register.date }} ({{ register.date|date:"l" }})</dd>
     <dt class="col-sm-3">Register status</dt>
     <dd class="col-sm-9">
-        <span class="badge {% if register.status == 'SUBMITTED' %}bg-success{% else %}bg-secondary{% endif %}">{{ register.get_status_display }}</span>
+        {% include "partials/_status_badge.html" with label=register.get_status_display tone=register.status|lower only %}
         {% if not register.is_submitted %}
             <span class="text-muted ms-2">Attendance started, not yet official.</span>
         {% endif %}
     </dd>
     {% if register.is_submitted %}
     <dt class="col-sm-3">Submitted</dt>
-    <dd class="col-sm-9">{{ register.submitted_at }} by {{ register.submitted_by }}</dd>
+    <dd class="col-sm-9 text-break">{{ register.submitted_at }} by {{ register.submitted_by }}</dd>
     {% endif %}
 </dl>
+</section>
 
 {% if not register.is_submitted %}
-<h2 class="h5">Roster</h2>
-<p class="text-muted">
+<section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="register-roster-heading">
+<h2 class="h5" id="register-roster-heading">Roster</h2>
+<p class="text-muted mb-0">
     Students enrolled in this Section on {{ register.date }}: {{ capture_form.enrollments|length }}.
     Marked: {{ marked_count }}. Unmarked Students are <strong>not</strong> treated as absent.
 </p>
-{% if capture_form.enrollments %}
-    {% if perms.core.add_attendanceentry %}
-    <form method="post" action="{% url 'core:attendance-capture' register.pk %}" id="attendance-capture">
-        {% csrf_token %}
-        {% include "core/_attendance_capture_table.html" with can_submit=perms.core.change_attendanceregister %}
-    </form>
-    {% else %}
-    <p class="text-muted">You do not have permission to capture attendance.</p>
-    {% endif %}
-{% else %}
-    <p>No Students are enrolled in this Section on this date.</p>
+{% if not capture_form.enrollments %}
+{% include "partials/_empty.html" with text="No Students are enrolled in this Section on this date." only %}
+{% elif not perms.core.add_attendanceentry %}
+<p class="text-muted mt-3 mb-0">You do not have permission to capture attendance.</p>
+{% endif %}
+</section>
+{% if capture_form.enrollments and perms.core.add_attendanceentry %}
+<form method="post" action="{% url 'core:attendance-capture' register.pk %}" id="attendance-capture">
+    {% csrf_token %}
+    {% include "core/_attendance_capture_table.html" with can_submit=perms.core.change_attendanceregister %}
+</form>
 {% endif %}
 {% else %}
-<h2 class="h5">Submitted attendance</h2>
+<section aria-labelledby="register-submitted-heading">
+<h2 class="h5" id="register-submitted-heading">Submitted attendance</h2>
+<div class="erp-panel">
+<div class="erp-table-scroll" role="region" aria-label="Submitted attendance" tabindex="0">
 <table class="table">
+    <caption class="visually-hidden">Submitted attendance for {{ register.section }} on {{ register.date }}.</caption>
     <thead>
         <tr>
-            <th>Student</th>
-            <th>Status</th>
-            <th>Absence note</th>
-            {% if perms.core.change_attendanceentry %}<th>Actions</th>{% endif %}
+            <th scope="col">Student</th>
+            <th scope="col">Status</th>
+            <th scope="col">Absence note</th>
+            {% if perms.core.change_attendanceentry %}<th scope="col">Actions</th>{% endif %}
         </tr>
     </thead>
     <tbody>
         {% for entry in entries %}
         <tr>
-            <td><a href="{% url 'core:student-detail' entry.academic_enrollment.student.pk %}">{{ entry.academic_enrollment.student.full_name }}</a></td>
+            <td class="text-break"><a href="{% url 'core:student-detail' entry.academic_enrollment.student.pk %}">{{ entry.academic_enrollment.student.full_name }}</a></td>
             <td>{{ entry.get_status_display }}</td>
-            <td>{{ entry.absence_note }}</td>
+            <td class="text-break">{{ entry.absence_note }}</td>
             {% if perms.core.change_attendanceentry %}
             <td><a href="{% url 'core:attendance-entry-correct' entry.pk %}">Correct</a></td>
             {% endif %}
         </tr>
         {% empty %}
-        <tr><td colspan="4">No attendance entries.</td></tr>
+        <tr><td colspan="{% if perms.core.change_attendanceentry %}4{% else %}3{% endif %}">No attendance entries.</td></tr>
         {% endfor %}
     </tbody>
 </table>
+</div>
+</div>
+</section>
 {% endif %}
+</div>
 {% endblock %}
