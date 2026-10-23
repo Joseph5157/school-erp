@@ -1,6 +1,6 @@
 # UI-D1-3 — Admissions and People (implementation specification and gate plan)
 
-Status: **D1-3A COMPLETE — design accepted and merged (PR #96, merge `1fedaae`, implementation `5c8f0a8`, 22 October 2026); D1-3B COMPLETE — merged (PR #97, merge `12c3e10`, 22 October 2026); D1-3C COMPLETE — design accepted and merged (PR #98, merge `7cbf201`, implementation head `bc08a8d`, 22 October 2026); D1-3D deferred and unauthorized**.
+Status: **D1-3A COMPLETE — design accepted and merged (PR #96, merge `1fedaae`, implementation `5c8f0a8`, 22 October 2026); D1-3B COMPLETE — merged (PR #97, merge `12c3e10`, 22 October 2026); D1-3C COMPLETE — design accepted and merged (PR #98, merge `7cbf201`, implementation head `bc08a8d`, 22 October 2026); D1-3D1 Guardian People Forms implemented on its own branch, draft PR pending review; D1-3D2 deferred and not authorized**.
 Planning branch: `ui/admin-desktop-d1-admissions-people` (from `main` `9a77ef3`, after D1-2B merge `e43d477`).
 Parent decisions: `docs/ADMIN_DESKTOP_D1_PLAN.md` (D1-3 line), `docs/ADMIN_DESKTOP_TABLER_REFERENCE.md`, `docs/UI_DESIGN_RULES.md`, accepted gates D0 (#92), D1-1 (#93), D1-2A (#94), D1-2B (#95).
 
@@ -67,6 +67,8 @@ Acceptance: fixtures with and without active account, inactive login, must-chang
 
 ### Optional D1-3D — People forms (deferred; only if D1-3A–C accepted)
 
+**23 October 2026 audit / decision:** `applicant_form.html` and `teacher_form.html` already follow the shared form pattern; do not rework them. Three older contact/relationship forms need a contained **D1-3D1** visual gate: `guardian_form.html`, `applicant_guardian_form.html`, `student_guardian_form.html`. The [binding D1-3D1 implementation specification](ADMIN_DESKTOP_D1_3D1_GUARDIAN_FORMS_PLAN.md) authorizes only these templates on `ui/admin-desktop-d1-3d1-guardian-forms` from `main` at `0bccbfb`. `guardian_account_form.html` is **D1-3D2**, a separate sensitive-account form gate, not authorized. Shared `_form_field.html` accessibility improvements are deferred to a separate cross-site review.
+
 `applicant_form`, `guardian_form`, `teacher_form`, `applicant_guardian_form`, `student_guardian_form`, `guardian_account_form`. Most already use `erp-form`; audit first and propose only if real inconsistencies remain.
 
 ## Shared acceptance contract (each sub-gate)
@@ -108,4 +110,4 @@ Acceptance: fixtures with and without active account, inactive login, must-chang
 2. **Teacher "Add teacher" button visibility.** The header action is unconditional in `teacher_list.html`; the page and `teacher-create` route both require `accounts.manage_teacher_accounts`, so behavior is equivalent today. Review explicit permission-gated visibility separately, without silently changing the predicate.
 3. **Guardian list search, sort and pagination.** Functional gate: the list remains unpaginated and unsorted. Needs its own design and implementation gate.
 
-Next: D1-3B (PR #97, merge `12c3e10`) and D1-3C (PR #98, merge `7cbf201`) are complete and merged; not deployed. D1-3D and D1-4 remain on hold and unauthorized until separately approved.
+Next: D1-3D1 Guardian People Forms implemented on its branch; draft PR pending design review. D1-3D2 and D1-4 remain not authorized and on hold; no UI-D1 deployment.

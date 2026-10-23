@@ -1,14 +1,21 @@
 {% extends "base.html" %}
 {% block title %}{% if link %}Change relationship{% else %}Associate Guardian{% endif %}{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">
-    {% if link %}Change relationship: {{ link.guardian.full_name }} and {{ student.full_name }}
-    {% else %}Associate Guardian with {{ student.full_name }}{% endif %}
-</h1>
-<form method="post">
+<div class="erp-guardian-form-page">
+{% if link %}
+{% include "partials/_page_header.html" with eyebrow="People" title="Change relationship: "|add:link.guardian.full_name|add:" and "|add:student.full_name purpose="Update only how this Guardian relates to this Student." only %}
+{% else %}
+{% include "partials/_page_header.html" with eyebrow="People" title="Associate Guardian with "|add:student.full_name purpose="Choose an existing Guardian and how they relate to this Student. A relationship does not grant Portal access." only %}
+{% endif %}
+<form method="post" class="erp-form">
     {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit" class="btn btn-primary">{% if link %}Save relationship{% else %}Save guardian link{% endif %}</button>
-    <a class="btn btn-link" href="{% url 'core:student-detail' student.pk %}">Cancel</a>
+    {% include "partials/_form_required_legend.html" %}
+    {% if form.non_field_errors %}<div class="erp-form-errors" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+    {% for field in form %}{% include "partials/_form_field.html" with field=field only %}{% endfor %}
+    <div class="erp-form-actions">
+        <button type="submit" class="btn btn-primary">{% if link %}Save relationship{% else %}Save guardian link{% endif %}</button>
+        <a class="btn btn-link" href="{% url 'core:student-detail' student.pk %}">Cancel</a>
+    </div>
 </form>
+</div>
 {% endblock %}
