@@ -1273,3 +1273,8 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 /* On phones the table is max-content wide, so pin the form to its floor width: the whole Decision
    cell then fits inside the 356px region and scrolls into view complete, not cut on one side. */
 @media (max-width: 575.98px) { .erp-review-form { width: 15rem; } }
+
+/* UI-D1-3D1 review fix: a long unbroken Guardian name wraps in the form-page H1 instead of widening the
+   phone grid track and clipping. Scoped to the Guardian form wrapper so shared headers are unchanged. */
+.erp-guardian-form-page .erp-page-title { overflow-wrap: break-word; min-width: 0; }
+@media (max-width: 767.98px) { .erp-guardian-form-page .erp-page-header { grid-template-columns: minmax(0, 1fr); } }

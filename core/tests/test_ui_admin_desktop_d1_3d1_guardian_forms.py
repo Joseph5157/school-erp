@@ -262,3 +262,39 @@ class GuardianFormsD13D1Tests(Phase4Fixture, TestCase):
                 self.assertEqual(limited_client.get(url).status_code, 403)
                 self.assertEqual(self.client_class().get(url).status_code, 302)
         self.assertEqual(Guardian.objects.count(), 1)
+
+    # Review fix: long unbroken name must wrap in the H1 at phone width (scoped wrapper + CSS)
+    def test_all_five_modes_render_scoped_wrapper_once(self):
+        link = self.link()
+        urls = [
+            reverse("core:guardian-create"),
+            reverse("core:guardian-edit", args=[self.guardian.pk]),
+            self.applicant_url(),
+            self.add_url(),
+            reverse("core:student-guardian-edit", args=[link.pk]),
+        ]
+        for url in urls:
+            with self.subTest(url=url):
+                content = self.get(url)
+                self.assertEqual(content.count('class="erp-guardian-form-page"'), 1)
+                self.assertEqual(content.count("<h1"), 1)
+
+    def test_guardian_form_page_css_is_scoped_to_wrapper(self):
+        from pathlib import Path
+
+        from django.conf import settings
+
+        css = (Path(settings.BASE_DIR) / "static" / "css" / "erp.css").read_text(encoding="utf-8")
+        wrapper = ".erp-guardian-form-page"
+        start = css.rindex("/* UI-D1-3D1 review fix")
+        block = css[start:]
+        self.assertIn(f"{wrapper} .erp-page-title", block)
+        self.assertIn("overflow-wrap: break-word", block)
+        self.assertIn(f"{wrapper} .erp-page-header", block)
+        # every selector in the new block (including inside @media) starts with the wrapper
+        body = re.sub(r"/\*.*?\*/", "", block, flags=re.S)
+        selectors = re.findall(r"(?:^|[{}])\s*([^{}@]+?)\s*\{", body)
+        self.assertTrue(selectors)
+        for sel in selectors:
+            for part in sel.split(","):
+                self.assertTrue(part.strip().startswith(wrapper), part)

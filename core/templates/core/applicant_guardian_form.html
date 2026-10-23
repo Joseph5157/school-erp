@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Associate Guardian{% endblock %}
 {% block content %}
+<div class="erp-guardian-form-page">
 {% include "partials/_page_header.html" with eyebrow="Admissions" title="Associate Guardian with "|add:applicant.full_name purpose="Choose an existing Guardian and how they relate to this Applicant." only %}
 <form method="post" class="erp-form">
     {% csrf_token %}
@@ -12,4 +13,5 @@
         <a class="btn btn-link" href="{% url 'core:applicant-detail' applicant.pk %}">Cancel</a>
     </div>
 </form>
+</div>
 {% endblock %}

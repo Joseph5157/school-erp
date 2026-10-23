@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{% if guardian %}Edit {{ guardian.full_name }}{% else %}Create Guardian{% endif %}{% endblock %}
 {% block content %}
+<div class="erp-guardian-form-page">
 {% if guardian %}
 {% include "partials/_page_header.html" with eyebrow="People" title="Edit "|add:guardian.full_name purpose="Update this Guardian's contact details. Student and Applicant links are managed separately." only %}
 {% else %}
@@ -16,4 +17,5 @@
         {% if guardian %}<a class="btn btn-link" href="{% url 'core:guardian-detail' guardian.pk %}">Cancel</a>{% else %}<a class="btn btn-link" href="{% url 'core:guardian-list' %}">Cancel</a>{% endif %}
     </div>
 </form>
+</div>
 {% endblock %}

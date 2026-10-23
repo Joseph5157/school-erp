@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{% if link %}Change relationship{% else %}Associate Guardian{% endif %}{% endblock %}
 {% block content %}
+<div class="erp-guardian-form-page">
 {% if link %}
 {% include "partials/_page_header.html" with eyebrow="People" title="Change relationship: "|add:link.guardian.full_name|add:" and "|add:student.full_name purpose="Update only how this Guardian relates to this Student." only %}
 {% else %}
@@ -16,4 +17,5 @@
         <a class="btn btn-link" href="{% url 'core:student-detail' student.pk %}">Cancel</a>
     </div>
 </form>
+</div>
 {% endblock %}
