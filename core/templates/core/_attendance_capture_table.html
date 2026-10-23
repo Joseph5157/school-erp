@@ -1,5 +1,7 @@
-{# Roster for a DRAFT register. Include inside <form id="attendance-capture"> with can_submit=<bool>.
-   With autosave_url (teacher page) each row also saves its own draft over HTMX; the form stays the full fallback. #}
+{% comment %}
+Roster for a DRAFT register. Include inside <form id="attendance-capture"> with can_submit=<bool>.
+With autosave_url (teacher page) each row also saves its own draft over HTMX; the form stays the full fallback.
+{% endcomment %}
 {% with counts=capture_form.counts %}
 <div class="erp-roster" data-erp-roster>
     <div class="erp-countbar">
