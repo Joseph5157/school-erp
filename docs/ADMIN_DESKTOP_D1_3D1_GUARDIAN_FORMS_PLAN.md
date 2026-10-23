@@ -1,6 +1,6 @@
 # UI-D1-3D1 — Guardian People Forms (scoped implementation specification)
 
-Status: **AUTHORIZED for implementation; no application code started** (23 October 2026).
+Status: **IMPLEMENTED on `ui/admin-desktop-d1-3d1-guardian-forms`; draft PR pending review** (23 October 2026). Screenshot evidence: `docs/ui-reviews/ui-d1-3d1/`.
 Branch: `ui/admin-desktop-d1-3d1-guardian-forms`.
 Base: `main` at `0bccbfb0f74b80a3ae1dd999872fa3d81b682bb4` (D1-3C PR #98 merge `7cbf201` and docs-only closeout `0bccbfb`).
 Parent: `docs/ADMIN_DESKTOP_D1_3_ADMISSIONS_PEOPLE_PLAN.md`; design: `docs/UI_DESIGN_RULES.md`, `docs/ADMIN_DESKTOP_TABLER_REFERENCE.md`, accepted D1-3A/B/C and existing Applicant/Teacher forms.
