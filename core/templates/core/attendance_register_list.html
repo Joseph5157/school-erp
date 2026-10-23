@@ -4,38 +4,46 @@
 {% if perms.core.add_attendanceregister %}{% url 'core:attendance-register-create' as attendance_create_url %}{% endif %}
 {% if perms.core.view_attendanceentry %}{% url 'core:attendance-reports' as attendance_reports_url %}{% endif %}
 {% include "partials/_page_header.html" with eyebrow="Daily operations" title="Attendance" purpose="Open registers, review completion, and find recent attendance by section or date." primary_url=attendance_create_url primary_label="Open register" secondary_url=attendance_reports_url secondary_label="View reports" only %}
-<form method="get" class="row g-2 align-items-end mb-3">
+{% with supplied=form.section.value|default:form.start.value|default:form.end.value %}
+<form method="get" class="erp-toolbar erp-toolbar--inline" aria-label="Filter attendance registers">
+    {% if form.errors %}
+    <div class="erp-form-errors" role="alert">
+        {% for error in form.non_field_errors %}<p class="mb-1">{{ error }}</p>{% endfor %}
+        <p class="mb-0">Filters were not applied; showing all registers.</p>
+    </div>
+    {% endif %}
     {% if table.sort_param %}<input type="hidden" name="sort" value="{{ table.sort_param }}">{% endif %}
-    <div class="col-auto">
-        {{ form.section.label_tag }}
-        {{ form.section }}
-    </div>
-    <div class="col-auto">
-        {{ form.start.label_tag }}
-        {{ form.start }}
-    </div>
-    <div class="col-auto">
-        {{ form.end.label_tag }}
-        {{ form.end }}
-    </div>
-    <div class="col-auto">
+    {% include "partials/_form_field.html" with field=form.section %}
+    {% include "partials/_form_field.html" with field=form.start %}
+    {% include "partials/_form_field.html" with field=form.end %}
+    <div class="erp-form-actions">
         <button type="submit" class="btn btn-outline-secondary">Filter</button>
+        {% if supplied %}<a class="btn btn-link" href="{% url 'core:attendance-register-list' %}">Clear filters</a>{% endif %}
     </div>
 </form>
 {% if section_summary is not None %}
-<h2 class="h5">Section summary <small class="text-muted">(submitted attendance only)</small></h2>
-<table class="table table-sm">
-    <thead>
-        <tr><th>Status</th><th>Count</th></tr>
-    </thead>
-    <tbody>
-        {% for row in section_summary %}
-        <tr><td>{{ row.label }}</td><td>{{ row.count }}</td></tr>
-        {% endfor %}
-        <tr><th>Total</th><th>{{ section_total }}</th></tr>
-    </tbody>
-</table>
+<section class="erp-panel p-3 p-md-4" aria-labelledby="attendance-summary-title">
+    <div class="erp-panel-head">
+        <h2 class="h5" id="attendance-summary-title">Section summary</h2>
+        <p class="erp-note-text">Reportable submitted attendance only. Drafts and unmarked students are not counted.</p>
+    </div>
+    <div class="erp-table-scroll" role="region" aria-label="Section summary" tabindex="0">
+    <table class="table table-sm">
+        <caption class="visually-hidden">Section summary of reportable submitted attendance.</caption>
+        <thead>
+            <tr><th scope="col">Status</th><th scope="col">Count</th></tr>
+        </thead>
+        <tbody>
+            {% for row in section_summary %}
+            <tr><th scope="row">{{ row.label }}</th><td>{{ row.count }}</td></tr>
+            {% endfor %}
+            <tr><th scope="row">Total</th><td>{{ section_total }}</td></tr>
+        </tbody>
+    </table>
+    </div>
+</section>
 {% endif %}
+<div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Attendance registers" tabindex="0">
 <table class="table">
     {% include "partials/_table_head.html" with table=table caption="Attendance registers" only %}
@@ -51,11 +59,17 @@
         </tr>
         {% empty %}
         <tr>
+            {% if form.is_valid and supplied %}
+            <td colspan="6">No attendance registers match these filters.</td>
+            {% else %}
             <td colspan="6">No attendance registers yet.{% if perms.core.add_attendanceregister %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:attendance-register-create' %}">Open register</a>{% endif %}</td>
+            {% endif %}
         </tr>
         {% endfor %}
     </tbody>
 </table>
 </div>
+</div>
+{% endwith %}
 {% include "partials/_table_footer.html" with table=table only %}
 {% endblock %}
