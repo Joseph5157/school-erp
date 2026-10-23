@@ -16,7 +16,7 @@ Naming: `<state>-<mode>-<width>.png`, mode is `create` or `link`.
 
 - `create-*` and `link-*` pre-submit at 390, 768, 992, 1024, 1280, 1440 (12).
 - `long-create-*` and `long-link-*` pre-submit with the long guardian name at 390 and 1280 (4).
-- `error-blank-*` all three required fields blank, at 390 and 1280 (4).
+- `error-blank-*` blank submit at 390 and 1280 (4). The identity-verification method select has no empty option (ChoiceField), so the browser submits the default method; the screenshots show the username and note required errors only (2 errors). The three-blank case is covered by the test that posts an empty method directly.
 - `error-invalid-username-create-*` (username `a b`) and `error-nonexistent-username-link-*` (username with no login), at 390 and 1280 (4).
 - `long-error-*` long guardian name with blank required fields, at 390 and 1280 (4).
 - `note200-error-*` a 200-character note typed, then an invalid submit (invalid username), at 390 and 1280 (4).
@@ -60,4 +60,5 @@ Playwright, `Tab` from the top of the page, at 1280 and 390 (identical results f
 - The desktop Cancel link is 38 px tall (shared button CSS, outside scope); 44 px on phone.
 - Browser autofill behavior on the username field is unchanged and not re-tested; recorded as a risk.
 - A user who has `core.add_guardianaccount` without `core.view_guardian` gets a 403 on the guardian detail Cancel target; deferred, unchanged.
+- The verification method defaults to 'In person, with identity documents', so an administrator can submit without actively choosing a method. This is existing form behavior (forms.py is frozen in this gate), partly offset by the new warning text 'Select the method actually used'; recorded as a separate workflow question.
 - Local evidence only; no CI claim.
