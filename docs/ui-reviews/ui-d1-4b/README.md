@@ -37,7 +37,7 @@ Scripted Chromium on the same synthetic database: Draft, Submitted and Correctio
 
 ## Known limits
 
-- **Pre-existing, outside this gate:** `core/_attendance_capture_table.html` starts with a two-line `{# … #}` comment. Django only treats single-line `{# #}` as a comment, so the text "{# Roster for a DRAFT register. Include inside … #}" renders visibly above the roster on both `main` (`before-draft-*`) and this branch, and the raw `<form id="attendance-capture">` in it adds a stray tag. The partial is shared with Teacher Attendance and forbidden here; fix it in its own reviewed change.
+- **Pre-existing, outside this gate:** `core/_attendance_capture_table.html` starts with a two-line `{# … #}` comment. Django only treats single-line `{# #}` as a comment, so the text "{# Roster for a DRAFT register. Include inside … #}" renders visibly above the roster on both `main` (`before-draft-*`) and this branch, and the raw `<form id="attendance-capture">` in it adds a stray tag. The partial is shared with Teacher Attendance and forbidden here; fixed afterwards in its own reviewed change: PR #103 (merge `f8f9e47`).
 - At 200% zoom on a 390px phone (195 CSS px, below the 320px WCAG reflow width) the shared topbar account menu overflows the document by 43px. Shared layout, out of scope.
 - The keyboard check is scripted, not a manual screen-reader or assistive-technology pass.
 - Long unbroken Student names widen the Submitted table inside its scroll region rather than wrapping; table-local scrolling is the accepted behaviour for these tables.
