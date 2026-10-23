@@ -18,7 +18,7 @@ Naming: `<state>-<mode>-<width>.png`, mode is `create` or `link`.
 - `long-create-*` and `long-link-*` pre-submit with the long guardian name at 390 and 1280 (4).
 - `error-blank-*` blank submit at 390 and 1280 (4). The identity-verification method select has no empty option (ChoiceField), so the browser submits the default method; the screenshots show the username and note required errors only (2 errors). The three-blank case is covered by the test that posts an empty method directly.
 - `error-invalid-username-create-*` (username `a b`) and `error-nonexistent-username-link-*` (username with no login), at 390 and 1280 (4).
-- `long-error-*` long guardian name with blank required fields, at 390 and 1280 (4).
+- `long-error-*` long guardian name with the username and note left blank (the method select submits its default), at 390 and 1280 (4).
 - `note200-error-*` a 200-character note typed, then an invalid submit (invalid username), at 390 and 1280 (4).
 
 Images viewed: warning alert is visible above the form in both modes, the mode-specific instruction is correct, one H1, form intact with no blank or unstyled frame. The warning is a plain yellow alert with no close button.
