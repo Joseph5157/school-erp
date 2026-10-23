@@ -1,6 +1,6 @@
 # UI-D1-3D2 — Guardian Portal Account Create/Link Form (planning specification)
 
-Status: **D1-3D2 IMPLEMENTED on branch `ui/admin-desktop-d1-3d2-guardian-account-form` (template and tests committed; synthetic pre-submit/invalid screenshots in `docs/ui-reviews/ui-d1-3d2/`); draft PR pending review** (23 October 2026). Not merged, not deployed; D1-4 and other gates remain unauthorized.
+Status: **D1-3D2 COMPLETE — design accepted and merged (PR #100, merge `d60de53`, implementation head `1e44537`, 23 October 2026); synthetic pre-submit/invalid screenshots in `docs/ui-reviews/ui-d1-3d2/`.** Not deployed; D1-4 and other gates remain unauthorized.
 Planning branch: `plan/ui-admin-desktop-d1-3d2-guardian-account-form`, from `main` `af550ea8ae5db459975537a8074d9d1a4bbe2f89` (D1-3D1 PR #99 merged as `de63dd6`, docs closeout `af550ea`).
 Parent: `docs/ADMIN_DESKTOP_D1_3_ADMISSIONS_PEOPLE_PLAN.md`. Visual references: `docs/UI_DESIGN_RULES.md`, `docs/ADMIN_DESKTOP_TABLER_REFERENCE.md`, and accepted UI-D1-3D1. This plan does **not** authorize merge, deployment, D1-4 or rollover work.
 
@@ -44,6 +44,8 @@ The sole target template, `core/templates/core/guardian_account_form.html`, is s
 | Hygiene | Use fresh implementation branch/worktree from the **approved planning branch** after fetching and verifying it is docs-only and still based on `main` at `af550ea`, or cherry-pick the approved planning docs onto current main if necessary; target PR to `main`. Stage exact files; preserve old worktrees, servers, ignored SDD state and unrelated databases. Only throwaway synthetic screenshot/test data; open **draft PR** and stop. No merge/deployment without separate authorization |
 
 ## 5. Known issues explicitly deferred
+
+- **Deferred security/workflow questions kept open after merge (PR #100; none changed by this UI gate):** (a) browser/password-manager autofill of the Link username field is unchanged and self-linking is not determined safe, so the administrator's own login could be linked by mistake; (b) the verification method select defaults to "In person, with identity documents", so a method can be submitted without being actively chosen; (c) Link errors still distinguish "no active login" from "already linked", which reveals login existence to an administrator with `add_guardianaccount`; (d) Cancel and the Link success redirect can 403 for add-without-view permission. Each needs its own authorized workflow or security gate.
 
 - **Permission asymmetry:** A user may have `core.add_guardianaccount` and submit Create/Link but lack `core.view_guardian`, so Cancel or Link success destination may 403. Do not silently broaden roles or change destination in a template-only gate; document a separate workflow/permissions decision.
 - **Shared form-field ARIA associations** (`aria-invalid` / `aria-describedby`) are not guaranteed by `_form_field.html`. Separate shared-component accessibility review only.
