@@ -24,5 +24,7 @@ Naming: `<state>-<page>-<width>.png`.
 ## Known limits
 
 - At 390 px the 46-character unbroken surname token in the long-name H1 is wider than the heading (heading content 453 px in a 358 px box) and its tail is clipped, with no page-level overflow. Normal multi-word long names wrap correctly. This comes from the shared page header, outside D1-3D1 scope, and was not changed.
+- The desktop Cancel control is 38 px tall, below the 44 px target. This comes from shared button CSS, outside D1-3D1 scope, and was not changed. On phone it is 44 px.
+- Error-state and long-name screenshots exist only at 390 and 1280 px, not at all six widths. Valid-state screenshots cover all six widths.
 - Browser-native HTML5 validation is bypassed for error captures so the server-rendered errors are visible.
 - Keyboard focus order and touch behavior were not exercised beyond screenshots and the Cancel size check; permission denial is covered by tests, not screenshots.

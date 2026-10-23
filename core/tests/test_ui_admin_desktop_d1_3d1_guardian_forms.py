@@ -54,7 +54,7 @@ class GuardianFormsD13D1Tests(Phase4Fixture, TestCase):
     def assert_shared_layout(self, content, eyebrow, submit):
         self.assertEqual(content.count("<h1"), 1)
         self.assertIn('class="erp-page-header"', content)
-        self.assertIn(eyebrow, content)
+        self.assertIn(f'<p class="erp-page-eyebrow">{eyebrow}</p>', content)
         form = self.form_html(content)
         self.assertIn("csrfmiddlewaretoken", form)
         self.assertIn("erp-required-legend", form)
