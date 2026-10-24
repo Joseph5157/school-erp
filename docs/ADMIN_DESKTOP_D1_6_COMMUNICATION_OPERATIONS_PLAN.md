@@ -9,6 +9,8 @@ D1-6 is, like D1-3, D1-4 and D1-5, a **presentation-only** programme. It brings 
 
 **D1-6A closeout:** **MERGED** (PR #115, merge `97a2d79`, head `aeb83f2`, based on `4964972`). Sign-in lockouts and the Student guardian-access review step were modernized (templates, `login-lockouts` breadcrumb rule, one scoped CSS block, 24 tests, evidence in `docs/ui-reviews/ui-d1-6a/`); full PostgreSQL `--parallel 4` suite 2,763 OK; not deployed. Accepted limitations: (1) the review step has no breadcrumb trail, because it is rendered by `student-enroll` and `student-status-change`, which have no rule, and a rule would also change the untouched Enrollment form; (2) Clear lockout remains the unchanged, unconfirmed POST with consequence text only (ledger L3); (3) the manual screen-reader pass and PostgreSQL staging verification remain open (ledger L8). Deferred-work ledger rows L1 to L9 are unchanged. D1-6B to D1-6E are not started by this closeout.
 
+**D1-6B closeout:** **MERGED** (PR #117, merge `ecd2331`, head `f2f0161`, based on `4b791cb`). Announcement list, form, preview and detail were modernized (templates, `announcement-list` rule, permission-gated Announcements crumb, one scoped CSS block, 30 tests, evidence in `docs/ui-reviews/ui-d1-6b/`); review correction: withdrawn notices show "Current audience eligibility" (service counts unchanged); full PostgreSQL `--parallel 4` suite 2,793 OK; not deployed. **Ledger:** L10 added; L3 (Withdraw notice confirmation), L5 and L8 remain open; L1 to L9 unchanged. D1-6C to D1-6E are not started by this closeout.
+
 ## 1. Scope
 
 **In scope (administrator pages):**
