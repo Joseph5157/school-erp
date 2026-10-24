@@ -35,6 +35,7 @@ _ATTENDANCE_REPORTS = Crumb(
     "Attendance reports", "core:attendance-reports", perm="core.view_attendanceentry"
 )
 
+_IMPORTS = Crumb("Bulk imports", "core:import-list", perm="core.view_importbatch")
 _DOCUMENTS = Crumb("Documents", "core:document-index", perm="core.issue_document")
 
 _ACADEMIC_YEARS = Crumb("Academic Years", "core:academic-year-list", perm="core.view_academicyear")
@@ -189,6 +190,12 @@ RULES = {
         ),
         "Withdraw",
     ),
+    # Bulk imports (D1-6E). The list is the sidebar link itself ("Import"); upload and detail show it as a parent only to
+    # viewers who can open it. The list route takes no pk, so no crumb carries one. Commit and discard are POST-only
+    # redirects; the template and problems CSV are downloads, so none of those has a rule.
+    "import-list": Rule("import-list", (), "Bulk imports"),
+    "import-upload": Rule("import-list", (_IMPORTS,), "New import"),
+    "import-detail": Rule("import-list", (_IMPORTS,), "Import"),
     # Notification queue (D1-6D). The page is the sidebar link itself; mark-sent and dismiss are POST-only redirects.
     "notifications-to-send": Rule("notifications-to-send", (), "To send"),
     # Documents (D1-6C). The index is the sidebar link itself; the three issuing/list pages show it as a parent only to

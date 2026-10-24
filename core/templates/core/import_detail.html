@@ -1,9 +1,25 @@
 {% extends "base.html" %}
+{% load i18n %}
 {% block title %}Import {{ batch.pk }}{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">Import {{ batch.pk }} — {{ batch.get_status_display }}</h1>
-<dl class="row">
-    <dt class="col-sm-3">File</dt><dd class="col-sm-9">{{ batch.file_name }}</dd>
+{% blocktrans asvar page_title with pk=batch.pk %}Import {{ pk }}{% endblocktrans %}
+{% url 'core:import-list' as list_url %}
+{% if batch.status == "VALIDATED" %}
+{% include "partials/_page_header.html" with eyebrow="Bulk imports" title=page_title purpose=batch.file_name status_label=batch.get_status_display status_tone="pending" secondary_url=list_url secondary_label="All imports" only %}
+{% elif batch.status == "COMMITTED" %}
+{% include "partials/_page_header.html" with eyebrow="Bulk imports" title=page_title purpose=batch.file_name status_label=batch.get_status_display status_tone="finalized" secondary_url=list_url secondary_label="All imports" only %}
+{% elif batch.status == "DISCARDED" %}
+{% include "partials/_page_header.html" with eyebrow="Bulk imports" title=page_title purpose=batch.file_name status_label=batch.get_status_display status_tone="inactive" secondary_url=list_url secondary_label="All imports" only %}
+{% elif batch.status == "EXPIRED" %}
+{% include "partials/_page_header.html" with eyebrow="Bulk imports" title=page_title purpose=batch.file_name status_label=batch.get_status_display status_tone="stale" secondary_url=list_url secondary_label="All imports" only %}
+{% else %}
+{% include "partials/_page_header.html" with eyebrow="Bulk imports" title=page_title purpose=batch.file_name status_label=batch.get_status_display status_tone="revoked" secondary_url=list_url secondary_label="All imports" only %}
+{% endif %}
+
+<section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="import-facts-heading">
+<h2 class="h5 mb-3" id="import-facts-heading">This import</h2>
+<dl class="row mb-0">
+    <dt class="col-sm-3">File</dt><dd class="col-sm-9 text-break">{{ batch.file_name }}</dd>
     <dt class="col-sm-3">Uploaded</dt><dd class="col-sm-9">{{ batch.uploaded_at|date:"j M Y, H:i" }} by {{ batch.uploaded_by }}</dd>
     <dt class="col-sm-3">Academic Year</dt><dd class="col-sm-9">{{ batch.academic_year }}</dd>
     <dt class="col-sm-3">Enrollment start date</dt><dd class="col-sm-9">{{ batch.enrollment_start_date|date:"j M Y" }}</dd>
@@ -12,92 +28,132 @@
         <dt class="col-sm-3">Finished</dt><dd class="col-sm-9">{{ batch.finished_at|date:"j M Y, H:i" }}{% if batch.finished_by %} by {{ batch.finished_by }}{% endif %}</dd>
     {% endif %}
     {% if batch.failure_reason %}
-        <dt class="col-sm-3">Reason</dt><dd class="col-sm-9">{{ batch.failure_reason }}</dd>
+        <dt class="col-sm-3">Reason</dt><dd class="col-sm-9 text-break">{{ batch.failure_reason }}</dd>
     {% endif %}
 </dl>
+</section>
 
 {% if batch.status == "COMMITTED" %}
-    <div class="alert alert-success">
+    <div class="erp-note-text erp-import-notice mb-4" role="status">
+        {% include "partials/_status_badge.html" with label="Imported" tone="finalized" only %}
         Imported {{ batch.summary.students }} students; created {{ batch.summary.classes_new }} classes,
         {{ batch.summary.sections_new }} sections and {{ batch.summary.guardians_new }} guardians;
         reused {{ batch.summary.guardians_existing }} existing guardians.
     </div>
 {% elif batch.status == "REJECTED" %}
-    <div class="alert alert-danger">This file has {{ batch.error_count }} error{{ batch.error_count|pluralize }}. Nothing was imported. Fix the file and upload it again.</div>
+    <div class="erp-note-text erp-import-notice mb-4" role="status">{% include "partials/_status_badge.html" with label="Rejected" tone="revoked" only %} This file has {{ batch.error_count }} error{{ batch.error_count|pluralize }}. Nothing was imported. Fix the file and upload it again.</div>
 {% endif %}
 
 {% if plan %}
-    <h2 class="h5">Preview</h2>
-    <p>Confirming will create {{ plan.students|length }} students, {{ plan.classes|length }} new classes and {{ plan.sections|length }} new sections, and link {{ plan.guardians|length }} guardians.</p>
+<section class="erp-panel mb-4" aria-labelledby="import-preview-heading">
+    <div class="erp-panel-head p-3 p-md-4 pb-2">
+        <h2 class="h5 mb-2" id="import-preview-heading">Preview</h2>
+        <dl class="erp-import-counts mb-2">
+            <div><dt>Students</dt><dd>{{ plan.students|length }}</dd></div>
+            <div><dt>New classes</dt><dd>{{ plan.classes|length }}</dd></div>
+            <div><dt>New sections</dt><dd>{{ plan.sections|length }}</dd></div>
+            <div><dt>Guardians to link</dt><dd>{{ plan.guardians|length }}</dd></div>
+        </dl>
+        <p class="erp-note-text mb-0">Confirming will create {{ plan.students|length }} students, {{ plan.classes|length }} new classes and {{ plan.sections|length }} new sections, and link {{ plan.guardians|length }} guardians.</p>
+    </div>
     {% if live_errors %}
-        <div class="alert alert-danger">
+        <div class="erp-note-text erp-import-notice m-3" role="alert">
+            {% include "partials/_status_badge.html" with label="Records changed" tone="revoked" only %}
             School records changed since this file was checked:
-            <ul class="mb-0">{% for issue in live_errors %}<li>{{ issue.sheet }}{% if issue.row %} row {{ issue.row }}{% endif %}{% if issue.column %} ({{ issue.column }}){% endif %}: {{ issue.message }}</li>{% endfor %}</ul>
+            <ul class="mb-0">{% for issue in live_errors %}<li class="text-break">{{ issue.sheet }}{% if issue.row %} row {{ issue.row }}{% endif %}{% if issue.column %} ({{ issue.column }}){% endif %}: {{ issue.message }}</li>{% endfor %}</ul>
             Upload the file again.
         </div>
     {% endif %}
     {% if new_warnings %}
-        <div class="alert alert-warning">
+        <div class="erp-note-text erp-import-notice m-3" role="note">
+            {% include "partials/_status_badge.html" with label="New warnings" tone="pending" only %}
             New warnings since this file was checked:
-            <ul class="mb-0">{% for issue in new_warnings %}<li>{{ issue.sheet }}{% if issue.row %} row {{ issue.row }}{% endif %}{% if issue.column %} ({{ issue.column }}){% endif %}: {{ issue.message }}</li>{% endfor %}</ul>
+            <ul class="mb-0">{% for issue in new_warnings %}<li class="text-break">{{ issue.sheet }}{% if issue.row %} row {{ issue.row }}{% endif %}{% if issue.column %} ({{ issue.column }}){% endif %}: {{ issue.message }}</li>{% endfor %}</ul>
         </div>
     {% endif %}
-    <table class="table table-sm">
-        <thead><tr><th>Row</th><th>Name</th><th>Date of birth</th><th>Admission no.</th><th>Placement</th><th>Roll</th><th>Guardians</th></tr></thead>
+    <div class="erp-table-scroll erp-import-scroll" role="region" aria-label="Students to import ({{ plan.students|length }})" tabindex="0">
+    <table class="table erp-import-table">
+        <caption class="visually-hidden">Every Student row that will be imported: spreadsheet row, name, date of birth, admission number, placement, roll number and number of guardians.</caption>
+        <thead>
+            <tr><th scope="col">Row</th><th scope="col">Name</th><th scope="col">Date of birth</th><th scope="col">Admission no.</th><th scope="col">Placement</th><th scope="col">Roll</th><th scope="col">Guardians</th></tr>
+        </thead>
         <tbody>
         {% for student in plan.students %}
             <tr>
-                <td>{{ student.row }}</td>
-                <td>{{ student.full_name }}</td>
-                <td>{{ student.date_of_birth|date:"j M Y"|default:"—" }}</td>
-                <td>{{ student.admission_number|default:"—" }}</td>
-                <td>{{ student.placement }}</td>
+                <th scope="row" class="fw-normal">{{ student.row }}</th>
+                <td class="text-break">{{ student.full_name }}</td>
+                <td class="text-nowrap">{{ student.date_of_birth|date:"j M Y"|default:"—" }}</td>
+                <td class="text-break">{{ student.admission_number|default:"—" }}</td>
+                <td class="text-break">{{ student.placement }}</td>
                 <td>{{ student.roll_number|default:"—" }}</td>
                 <td>{{ student.links|length }}</td>
             </tr>
         {% endfor %}
         </tbody>
     </table>
+    </div>
+</section>
 {% endif %}
 
+{% if errors or warnings %}
+<p class="erp-note-text"><a href="{% url 'core:import-issues-csv' batch.pk %}">Download problems as CSV</a></p>
+{% endif %}
 {% if errors %}
-    <h2 class="h5 text-danger">Errors ({{ errors|length }})</h2>
-    <table class="table table-sm">
-        <thead><tr><th>Sheet</th><th>Row</th><th>Column</th><th>Problem</th></tr></thead>
-        <tbody>{% for r in errors %}<tr><td>{{ r.sheet }}</td><td>{{ r.row_number|default:"" }}</td><td>{{ r.column }}</td><td>{{ r.message }}</td></tr>{% endfor %}</tbody>
+<section class="erp-panel mb-4" aria-labelledby="import-errors-heading">
+    <div class="erp-panel-head p-3 p-md-4 pb-2">
+        <h2 class="h5 mb-0 d-flex flex-wrap align-items-center gap-2" id="import-errors-heading">{% include "partials/_status_badge.html" with label="Error" tone="revoked" only %} Errors ({{ errors|length }})</h2>
+    </div>
+    <div class="erp-table-scroll erp-import-scroll" role="region" aria-label="Errors ({{ errors|length }})" tabindex="0">
+    <table class="table erp-import-table">
+        <caption class="visually-hidden">Every problem that stops this file from being imported: sheet, row, column and what is wrong.</caption>
+        <thead>
+            <tr><th scope="col">Sheet</th><th scope="col">Row</th><th scope="col">Column</th><th scope="col">Problem</th></tr>
+        </thead>
+        <tbody>{% for r in errors %}<tr><th scope="row" class="fw-normal text-nowrap">{{ r.sheet }}</th><td>{{ r.row_number|default:"" }}</td><td class="text-break">{{ r.column }}</td><td class="text-break">{{ r.message }}</td></tr>{% endfor %}</tbody>
     </table>
+    </div>
+</section>
 {% endif %}
 {% if warnings %}
-    <h2 class="h5 text-warning">Warnings ({{ warnings|length }})</h2>
-    <table class="table table-sm">
-        <thead><tr><th>Sheet</th><th>Row</th><th>Column</th><th>Check</th></tr></thead>
-        <tbody>{% for r in warnings %}<tr><td>{{ r.sheet }}</td><td>{{ r.row_number|default:"" }}</td><td>{{ r.column }}</td><td>{{ r.message }}</td></tr>{% endfor %}</tbody>
+<section class="erp-panel mb-4" aria-labelledby="import-warnings-heading">
+    <div class="erp-panel-head p-3 p-md-4 pb-2">
+        <h2 class="h5 mb-0 d-flex flex-wrap align-items-center gap-2" id="import-warnings-heading">{% include "partials/_status_badge.html" with label="Warning" tone="pending" only %} Warnings ({{ warnings|length }})</h2>
+    </div>
+    <div class="erp-table-scroll erp-import-scroll" role="region" aria-label="Warnings ({{ warnings|length }})" tabindex="0">
+    <table class="table erp-import-table">
+        <caption class="visually-hidden">Every row that needs a second look before importing: sheet, row, column and what to check.</caption>
+        <thead>
+            <tr><th scope="col">Sheet</th><th scope="col">Row</th><th scope="col">Column</th><th scope="col">Check</th></tr>
+        </thead>
+        <tbody>{% for r in warnings %}<tr><th scope="row" class="fw-normal text-nowrap">{{ r.sheet }}</th><td>{{ r.row_number|default:"" }}</td><td class="text-break">{{ r.column }}</td><td class="text-break">{{ r.message }}</td></tr>{% endfor %}</tbody>
     </table>
-{% endif %}
-{% if errors or warnings %}
-    <p><a href="{% url 'core:import-issues-csv' batch.pk %}">Download problems as CSV</a></p>
+    </div>
+</section>
 {% endif %}
 
 {% if batch.is_pending and can_run %}
-    <div class="d-flex gap-2">
-        {% if not live_errors %}
-        <form method="post" action="{% url 'core:import-commit' batch.pk %}">
-            {% csrf_token %}
-            {% if needs_review %}
-                <div class="form-check mb-2">
-                    <input class="form-check-input" type="checkbox" name="reviewed_warnings" value="yes" id="reviewed" required>
-                    <label class="form-check-label" for="reviewed">I have reviewed the warnings.</label>
-                </div>
-            {% endif %}
-            <button type="submit" class="btn btn-primary">Confirm import</button>
-        </form>
+<section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="import-actions-heading">
+    <h2 class="h5 mb-3" id="import-actions-heading">Confirm or discard</h2>
+    {% if live_errors %}
+    <p class="erp-note-text">Confirm is not available because school records changed since this file was checked. Upload the file again.</p>
+    {% else %}
+    <form method="post" action="{% url 'core:import-commit' batch.pk %}" class="mb-4">
+        {% csrf_token %}
+        {% if needs_review %}
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" name="reviewed_warnings" value="yes" id="reviewed" required>
+                <label class="form-check-label" for="reviewed">I have reviewed the warnings.</label>
+            </div>
         {% endif %}
-        <form method="post" action="{% url 'core:import-discard' batch.pk %}" class="align-self-end">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-outline-secondary">Discard</button>
-        </form>
-    </div>
-    <p class="text-muted mt-2">A checked file can be confirmed within 24 hours of upload.</p>
+        <button type="submit" class="btn btn-primary">Confirm import</button>
+    </form>
+    {% endif %}
+    <form method="post" action="{% url 'core:import-discard' batch.pk %}">
+        {% csrf_token %}
+        <p class="erp-note-text">Nothing is imported and the file is discarded. It cannot be confirmed later.</p>
+        <button type="submit" class="btn btn-outline-secondary">Discard<span class="visually-hidden"> import {{ batch.pk }}</span></button>
+    </form>
+    <p class="erp-note-text mt-3 mb-0">A checked file can be confirmed within 24 hours of upload.</p>
+</section>
 {% endif %}
-<p class="mt-3"><a href="{% url 'core:import-list' %}">All imports</a></p>
 {% endblock %}
