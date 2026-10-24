@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 {% block title %}New import{% endblock %}
 {% block content %}
-{% include "partials/_page_header.html" with eyebrow="Bulk imports" title="New import" purpose="Check an Excel workbook first. Nothing is saved until you review the preview and confirm." only %}
+{% include "partials/_page_header.html" with eyebrow="Bulk imports" title="New import" purpose="Check an Excel workbook first. The check keeps a batch for you to review; no Student, Guardian, Class or Section records are imported until you confirm." only %}
 <form method="post" enctype="multipart/form-data" class="erp-form">
     {% csrf_token %}
-    <p class="erp-note-text">Use the <a href="{% url 'core:import-template' %}">import template</a>. The file is checked first and nothing is saved until you confirm the preview.</p>
+    <p class="erp-note-text">Use the <a href="{% url 'core:import-template' %}">import template</a>. Checking the file creates an import batch for you to review. No Student, Guardian, Class or Section records are imported until you confirm the preview.</p>
     {% include "partials/_form_required_legend.html" %}
     {% include "partials/_form_error_summary.html" with form=form action_text="checking the file" only %}
     {% for field in form %}{% include "partials/_form_field.html" with field=field only %}{% endfor %}
-    <p class="erp-note-text">What happens next: the file is checked and you see a preview with any errors or warnings. A file with errors is rejected and imports nothing. A checked file can be confirmed within 24 hours.</p>
+    <p class="erp-note-text">What happens next: the file is checked and you see a preview with any errors or warnings. A file with errors is rejected: the batch is kept so you can see the problems, and no school records are imported. A checked file can be confirmed within 24 hours.</p>
     <div class="erp-form-actions">
         <button type="submit" class="btn btn-primary">Check file</button>
         {% if perms.core.view_importbatch %}<a class="btn btn-link" href="{% url 'core:import-list' %}">Cancel</a>{% endif %}

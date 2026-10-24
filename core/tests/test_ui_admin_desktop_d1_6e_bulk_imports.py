@@ -283,6 +283,11 @@ class ListTests(Base):
             '<span class="visually-hidden"> (students.xlsx)</span></a></th>', page)
         self.assertNotIn("No imports yet.", page)
 
+    def test_list_distinguishes_the_review_batch_from_importing_school_records(self):
+        page = html(self.client.get(LIST))
+        self.assertIn("Checking a file keeps a batch for you to review. No school records are imported until you confirm the preview.", page)
+        self.assertNotIn("nothing is saved", page.lower())
+
     def test_view_only_users_get_no_actions(self):
         _, viewer = self.client_with("view_importbatch")
         page = html(viewer.get(LIST))
@@ -316,6 +321,22 @@ class UploadTests(Base):
         page = html(self.upload(b"garbage", name="students.xlsx"))
         self.assertIn("This is not an Excel .xlsx workbook.", page)
         self.assertEqual(ImportBatch.objects.count(), 0)
+
+    def test_upload_explains_that_a_review_batch_is_kept_but_no_school_records_are_imported(self):
+        page = html(self.client.get(UPLOAD))
+        self.assertNotIn("nothing is saved", page.lower())
+        self.assertIn("Checking the file creates an import batch for you to review.", page)
+        self.assertIn("No Student, Guardian, Class or Section records are imported until you confirm the preview.", page)
+        self.assertIn("A file with errors is rejected: the batch is kept so you can see the problems, and no school records are imported.", page)
+        # the statements are true: a valid upload keeps a batch and imports nothing
+        self.upload(workbook([student_row("Asha")]))
+        self.assertEqual(ImportBatch.objects.count(), 1)
+        self.assertEqual((Student.objects.count(), Applicant.objects.count(), Guardian.objects.count()), (0, 0, 0))
+        self.assertFalse(ClassGrade.objects.exclude(name="Class 5").exists())
+        # a rejected upload keeps a batch for review and still imports nothing
+        self.upload(workbook([student_row("Arjun", cls="Nope")]))
+        self.assertEqual(ImportBatch.objects.filter(status=ImportBatch.Status.REJECTED).count(), 1)
+        self.assertEqual(Student.objects.count(), 0)
 
     def test_a_valid_upload_redirects_to_the_preview(self):
         response = self.upload(workbook([student_row("Asha")]))

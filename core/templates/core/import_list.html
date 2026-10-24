@@ -3,9 +3,9 @@
 {% block content %}
 {% if perms.core.run_import %}
 {% url 'core:import-template' as template_url %}{% url 'core:import-upload' as upload_url %}
-{% include "partials/_page_header.html" with eyebrow="Admissions" title="Bulk imports" purpose="Import classes, sections, guardians and students from an Excel workbook. Nothing is saved until you review the preview and confirm." secondary_url=template_url secondary_label="Download template" primary_url=upload_url primary_label="New import" only %}
+{% include "partials/_page_header.html" with eyebrow="Admissions" title="Bulk imports" purpose="Import classes, sections, guardians and students from an Excel workbook. Checking a file keeps a batch for you to review. No school records are imported until you confirm the preview." secondary_url=template_url secondary_label="Download template" primary_url=upload_url primary_label="New import" only %}
 {% else %}
-{% include "partials/_page_header.html" with eyebrow="Admissions" title="Bulk imports" purpose="Import classes, sections, guardians and students from an Excel workbook. Nothing is saved until you review the preview and confirm." only %}
+{% include "partials/_page_header.html" with eyebrow="Admissions" title="Bulk imports" purpose="Import classes, sections, guardians and students from an Excel workbook. Checking a file keeps a batch for you to review. No school records are imported until you confirm the preview." only %}
 {% endif %}
 <div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Import batches" tabindex="0">
