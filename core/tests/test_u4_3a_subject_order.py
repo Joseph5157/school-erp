@@ -71,14 +71,17 @@ class OrderHelperTests(OrderFixture, TestCase):
     """The test helper must not depend on the order Postgres visits rows in."""
 
     def test_reordering_twice_is_safe_when_the_unmentioned_row_is_visited_last(self):
-        self.order({"Telugu": 1, "English": 2, "Mathematics": 3})  # Sanskrit is left at 102
+        # Sanskrit is not in the mapping, so it is left parked above the named positions.
+        self.order({"Telugu": 1, "English": 2, "Mathematics": 3})
         sanskrit = AcademicSubjectOffering.objects.get(subject__name="Sanskrit")
-        # Rewrite its tuple so a sequential scan reaches it after English, and force that plan.
+        # Rewrite its tuple so a sequential scan reaches it after English.
         AcademicSubjectOffering.objects.filter(pk=sanskrit.pk).update(
             display_order=sanskrit.display_order)
-        with connection.cursor() as cursor:
-            cursor.execute("SET LOCAL enable_indexscan = off")
-            cursor.execute("SET LOCAL enable_bitmapscan = off")
+        if connection.vendor == "postgresql":
+            # Force that plan; SQLite has no such settings, so there the rest still runs.
+            with connection.cursor() as cursor:
+                cursor.execute("SET LOCAL enable_indexscan = off")
+                cursor.execute("SET LOCAL enable_bitmapscan = off")
 
         self.order({"Mathematics": 1, "English": 2, "Telugu": 3})
 

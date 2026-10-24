@@ -48,8 +48,9 @@ unchanged, no retries were added, and the final mapping writes are unchanged.
 
 `OrderHelperTests.test_reordering_twice_is_safe_when_the_unmentioned_row_is_visited_last` calls
 `order()` twice, rewrites the left-over row's tuple and disables index/bitmap scans for the
-transaction (`SET LOCAL`) so the left-over row is visited after the row that wants its value. It
-makes the previously random failure deterministic.
+transaction (`SET LOCAL`, guarded by `connection.vendor == "postgresql"`) so the left-over row is
+visited after the row that wants its value. It makes the previously random failure deterministic on
+PostgreSQL. On SQLite the plan settings are skipped, but the reorder assertions still run.
 
 ## Verification
 
@@ -70,5 +71,17 @@ Results:
 | Fixed, module, serial | 21 tests OK |
 | Fixed, module, `--parallel 4` x10 | 10/10 OK (21 tests each) |
 | Fixed, full suite, `--parallel 4` x3 | 3/3 OK, 2509 tests each (2508 before + 1 new) |
+
+Re-verification after review (vendor guard + comment fix):
+
+| Run | Result |
+|---|---|
+| Module, SQLite (`DB_NAME` unset) | 21 tests OK |
+| Module, PostgreSQL, serial | 21 tests OK |
+| Module, PostgreSQL, `--parallel 4` x5 | 5/5 OK |
+| Full suite, PostgreSQL, `--parallel 4` x2 | 2/2 OK, 2509 tests each |
+
+The control result above (old `+ 100` helper fails) was taken before the guard; the guard is true on
+PostgreSQL, so the same statements execute there.
 
 Date: 2026-10-24, Postgres 18, local `school_erp` environment.
