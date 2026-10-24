@@ -248,6 +248,27 @@ class DetailTests(Base, TestCase):
         self.assertNotIn("announcement-prepare", page)
         self.assertNotIn("Prepare WhatsApp messages", page)
 
+    def test_audience_heading_depends_on_state_and_counts_stay_the_service_values(self):
+        notice = self.notice()
+        live = self.administrator.get(self.detail_url(notice))
+        page = html(live)
+        self.assertIn(">Who can see it</h2>", page)
+        self.assertNotIn("Current audience eligibility", page)
+        self.assertNotIn("not who saw the notice", page)
+        counts = announcements.audience_counts(notice)
+        self.assertEqual(live.context["counts"], counts)
+        announcements.withdraw(notice, actor=self.admin, reason="Wrong date")
+        gone = self.administrator.get(self.detail_url(notice))
+        page = html(gone)
+        self.assertIn(">Current audience eligibility</h2>", page)
+        self.assertNotIn("Who can see it", page)
+        self.assertIn("not who saw the notice", page)
+        self.assertIn("This notice is withdrawn, so guardians cannot see it.", page)
+        self.assertNotIn("can see it", page.replace("guardians cannot see it", ""))
+        self.assertEqual(gone.context["counts"], counts)
+        self.assertIn(f'<dd class="col-sm-7"><strong>{counts["guardians"]}</strong></dd>', page)
+        self.assertIn(f'<dd class="col-sm-7"><strong>{counts["opted_in"]}</strong></dd>', page)
+
     def test_prepare_requires_assist_mode_and_permission(self):
         notice = self.notice()
         prepare = reverse("core:announcement-prepare", args=[notice.pk])

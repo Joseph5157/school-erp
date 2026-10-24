@@ -19,7 +19,12 @@
 <div class="erp-notice-body">{{ notice.body|linebreaksbr }}</div>
 </section>
 <section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="notice-reach-heading">
+{% if notice.is_withdrawn %}
+<h2 class="h5 mb-2" id="notice-reach-heading">Current audience eligibility</h2>
+<p class="erp-note-text">These counts show who is eligible for this audience now, not who saw the notice. This notice is withdrawn, so guardians cannot see it.</p>
+{% else %}
 <h2 class="h5 mb-3" id="notice-reach-heading">Who can see it</h2>
+{% endif %}
 <dl class="row mb-0">
     <dt class="col-sm-5">Guardians with portal access</dt><dd class="col-sm-7"><strong>{{ counts.guardians }}</strong></dd>
     <dt class="col-sm-5">Opted in to WhatsApp</dt><dd class="col-sm-7"><strong>{{ counts.opted_in }}</strong></dd>

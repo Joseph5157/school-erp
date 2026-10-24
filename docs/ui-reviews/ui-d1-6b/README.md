@@ -16,7 +16,7 @@ Widths: 360, 390, 768, 1280, 1440 (full-page PNG). `Whole school` has two guardi
 | `detail-live-after-publish-*` | Publish notice (double-clicked) | Success message, **exactly one** notice created (`data-erp-once`) |
 | `detail-class-audience-live-*` | detail | Live badge, facts, counts, "Prepare WhatsApp messages" (ASSIST mode) with consequence text, labelled Withdraw reason with consequence text |
 | `detail-withdraw-blank-reason-error-*` | Withdraw with no reason | The existing "Give a reason for withdrawing this notice." message; nothing withdrawn |
-| `detail-withdrawn-*`, `detail-withdrawn-after-reason-*` | withdrawn notice | Withdrawn badge, who/when/reason, no Prepare or Withdraw controls |
+| `detail-withdrawn-*`, `detail-withdrawn-after-reason-*` | withdrawn notice | Withdrawn badge, who/when/reason, no Prepare or Withdraw controls; the counts sit under **Current audience eligibility** with a note that they are not historical reach and that guardians cannot see a withdrawn notice (Live notices keep "Who can see it"). Refreshed at 390 and 1440px after review |
 | `detail-long-text-*` | long title and unbroken body | Wraps inside its panel; 0px page overflow |
 | `nojs-*` | JavaScript **disabled** | Form shows both Class and Section selectors; preview and publish still work end to end (reached the new notice's detail page) |
 | `restricted-add-only-*` | `add_announcement` only | Form and preview without a Cancel link (no `view_announcement`); the list is 403 |
@@ -36,6 +36,7 @@ Widths: 360, 390, 768, 1280, 1440 (full-page PNG). `Whole school` has two guardi
 
 ## Known limits
 
+- Pre-existing, **not changed here**: Create, Prepare and Withdraw redirect to Announcement detail even for a user without `view_announcement` (a 403 after the action). It needs its own review before production (see the plan's deferred-work ledger).
 - The audience group's legend/field rendering is the existing `as_field_group` output; its look is unchanged.
 - The Withdraw reason is not marked `required` in HTML, so the existing server-side message and audit path stay in charge.
 - A manual screen-reader pass and PostgreSQL staging verification remain open (ledger L8). Nothing is deployed.
