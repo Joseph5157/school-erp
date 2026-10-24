@@ -1337,6 +1337,22 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
   .erp-panel .erp-assessment-table > thead > tr > *:not(.text-nowrap), .erp-panel .erp-assessment-table > tbody > tr > *:not(.text-nowrap) { max-width: 10rem; }
 }
 
+/* UI-D1-6C: documents. The index lists the three document types with a description under each link; the
+   Attendance summary and report-card pickers share one row on wide screens; the summary table aligns its
+   counts to the right and tightens phone padding. */
+.erp-document-types { list-style: none; margin: 0; padding: 0; }
+.erp-document-types > li { display: flex; flex-direction: column; gap: var(--erp-space-1); padding: var(--erp-space-3) 0; border-top: 1px solid var(--erp-rule); }
+.erp-document-types > li:first-child { border-top: 0; padding-top: 0; }
+.erp-document-types > li > a { font-weight: 650; }
+.erp-panel .erp-summary-table th.erp-num, .erp-panel .erp-summary-table td.erp-num { text-align: end; font-variant-numeric: tabular-nums; }
+.erp-panel .erp-summary-table > tfoot > tr > * { padding: .75rem var(--erp-space-4); vertical-align: middle; border-top: 2px solid var(--erp-rule); border-bottom: 0; }
+@media (min-width: 576px) {
+  .erp-toolbar--inline.erp-document-toolbar > .erp-field { flex: 1 1 11rem; max-width: 17rem; min-width: 11rem; }
+}
+@media (max-width: 575.98px) {
+  .erp-panel .erp-document-table > thead > tr > *, .erp-panel .erp-document-table > tbody > tr > *, .erp-panel .erp-document-table > tfoot > tr > * { padding-inline: var(--erp-space-2); overflow-wrap: break-word; }
+}
+
 /* UI-D1-6B: announcements. The notice body keeps its line breaks, wraps long unbroken words inside the panel, and
    the withdraw form stacks its labelled reason field above the button; the list table tightens phone padding. */
 .erp-notice-body { padding: var(--erp-space-3); background: var(--erp-paper); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius-sm); max-width: var(--erp-reading-width); overflow-wrap: break-word; }

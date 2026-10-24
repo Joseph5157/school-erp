@@ -35,6 +35,8 @@ _ATTENDANCE_REPORTS = Crumb(
     "Attendance reports", "core:attendance-reports", perm="core.view_attendanceentry"
 )
 
+_DOCUMENTS = Crumb("Documents", "core:document-index", perm="core.issue_document")
+
 _ACADEMIC_YEARS = Crumb("Academic Years", "core:academic-year-list", perm="core.view_academicyear")
 
 RULES = {
@@ -187,6 +189,12 @@ RULES = {
         ),
         "Withdraw",
     ),
+    # Documents (D1-6C). The index is the sidebar link itself; the three issuing/list pages show it as a parent only to
+    # viewers who can open it (all need issue_document). The two PDF routes are responses, not pages, and have no rule.
+    "document-index": Rule("document-index", (), "Documents"),
+    "bonafide-create": Rule("document-index", (_DOCUMENTS,), "Bonafide certificate"),
+    "attendance-summary": Rule("document-index", (_DOCUMENTS,), "Attendance summary"),
+    "document-report-cards": Rule("document-index", (_DOCUMENTS,), "Report card PDFs"),
     # Announcements (D1-6B). The list is the sidebar link itself; the form/preview (one route) and the detail show it as
     # a parent only to viewers who can open it. The prepare and withdraw routes are POST-only redirects.
     "announcement-list": Rule("announcement-list", (), "Announcements"),
