@@ -1,11 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Reset password{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">Reset password for {{ teacher.username }}</h1>
+{% include "partials/_page_header.html" with eyebrow="Teacher login" title="Reset password" purpose=teacher.username only %}
 <p>A new temporary password will be shown once. Every existing session of this login ends immediately, and the teacher must choose a new password at next sign-in.</p>
-<form method="post">
+<form method="post" class="erp-form">
     {% csrf_token %}
-    <button type="submit" class="btn btn-danger">Reset password</button>
-    <a class="btn btn-link" href="{% url 'core:teacher-detail' teacher.pk %}">Cancel</a>
+    <div class="erp-form-actions">
+        <button type="submit" class="btn btn-danger">Reset password</button>
+        <a class="btn btn-link" href="{% url 'core:teacher-detail' teacher.pk %}">Cancel</a>
+    </div>
 </form>
 {% endblock %}

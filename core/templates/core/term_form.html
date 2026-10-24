@@ -1,12 +1,19 @@
 {% extends "base.html" %}
 {% block title %}{% if creating %}Add Term{% else %}Edit Term{% endif %}{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">{% if creating %}Add Term{% else %}Edit Term{% endif %} <small class="text-muted">{{ academic_year.name }}</small></h1>
-<form method="post">
+{% if creating %}
+{% include "partials/_page_header.html" with eyebrow="Terms" title="Add Term" purpose=academic_year.name only %}
+{% else %}
+{% include "partials/_page_header.html" with eyebrow="Terms" title="Edit Term" purpose=academic_year.name only %}
+{% endif %}
+<form method="post" class="erp-form">
     {% csrf_token %}
-    {{ form.non_field_errors }}
-    {{ form.as_p }}
-    <button type="submit" class="btn btn-primary">Save term</button>
-    <a class="btn btn-link" href="{% url 'core:academic-year-terms' academic_year.pk %}">Cancel</a>
+    {% include "partials/_form_required_legend.html" %}
+    {% include "partials/_form_error_summary.html" with form=form only %}
+    {% include "partials/_form_fields.html" with form=form only %}
+    <div class="erp-form-actions">
+        <button type="submit" class="btn btn-primary">Save term</button>
+        <a class="btn btn-link" href="{% url 'core:academic-year-terms' academic_year.pk %}">Cancel</a>
+    </div>
 </form>
 {% endblock %}

@@ -1,10 +1,12 @@
 {% extends "base.html" %}
 {% block title %}Calendar - {{ academic_year.name }}{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">School calendar: {{ academic_year.name }}</h1>
-<p class="text-muted">{{ academic_year.start_date }} to {{ academic_year.end_date }}</p>
+{% if perms.core.add_schoolcalendarday %}{% url 'core:calendar-day-create' academic_year.pk as create_url %}{% endif %}
+{% include "partials/_page_header.html" with eyebrow="School setup" title="School calendar" purpose=academic_year.name primary_url=create_url primary_label="Add exception" only %}
+<p class="erp-note-text"><span class="text-nowrap">{{ academic_year.start_date }}</span> to <span class="text-nowrap">{{ academic_year.end_date }}</span></p>
 
-<h2 class="h5">Weekly pattern</h2>
+<section aria-labelledby="calendar-weekly">
+<h2 class="erp-section-title" id="calendar-weekly">Weekly pattern</h2>
 <p>
     Monday-Friday: instructional. Sunday: off.
     Saturday: <strong>{{ academic_year.saturdays_instructional|yesno:"instructional,off" }}</strong>.
@@ -22,25 +24,26 @@
     <span class="form-text ms-2">Only possible before any attendance is recorded in this year.</span>
 </form>
 {% endif %}
+</section>
 
-<h2 class="h5">Exceptions</h2>
-{% if perms.core.add_schoolcalendarday %}
-    <a class="btn btn-primary mb-3" href="{% url 'core:calendar-day-create' academic_year.pk %}">Add exception</a>
-{% endif %}
-<table class="table">
+<section aria-labelledby="calendar-exceptions">
+<h2 class="erp-section-title" id="calendar-exceptions">Exceptions</h2>
+<div class="erp-panel">
+<div class="erp-table-scroll" role="region" aria-label="Calendar exceptions" tabindex="0">
+<table class="table erp-keep">
     <thead>
         <tr>
-            <th>Date</th>
-            <th>Day</th>
-            <th>Type</th>
-            <th>Label</th>
-            <th></th>
+            <th scope="col">Date</th>
+            <th scope="col">Day</th>
+            <th scope="col">Type</th>
+            <th scope="col">Label</th>
+            <th scope="col"><span class="visually-hidden">Actions</span></th>
         </tr>
     </thead>
     <tbody>
         {% for day in calendar_days %}
         <tr>
-            <td>{{ day.date }}</td>
+            <td class="text-nowrap">{{ day.date }}</td>
             <td>{{ day.date|date:"l" }}</td>
             <td>{{ day.is_instructional|yesno:"Extra instructional day,Holiday / closure" }}</td>
             <td>{{ day.label }}</td>
@@ -63,14 +66,18 @@
         {% endfor %}
     </tbody>
 </table>
+</div>
+</div>
+</section>
 
-<h2 class="h5">Check a date</h2>
-<form method="get" class="row g-2 align-items-end mb-3">
-    <div class="col-auto">{{ check_form.date.label_tag }} {{ check_form.date }}</div>
-    <div class="col-auto"><button type="submit" class="btn btn-outline-primary">Check</button></div>
+<section aria-labelledby="calendar-check">
+<h2 class="erp-section-title" id="calendar-check">Check a date</h2>
+<form method="get" class="erp-toolbar erp-toolbar--inline">
+    <div class="erp-field">{{ check_form.date.label_tag }} {{ check_form.date }}</div>
+    <div class="erp-form-actions"><button type="submit" class="btn btn-outline-primary">Check</button></div>
 </form>
 {% if check_result %}
-<p>
+<p class="mt-3">
     {{ check_result.date }} ({{ check_result.date|date:"l" }}):
     {% if not check_result.in_year %}
         outside this Academic Year.
@@ -81,4 +88,5 @@
     {% endif %}
 </p>
 {% endif %}
+</section>
 {% endblock %}

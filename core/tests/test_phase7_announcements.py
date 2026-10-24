@@ -327,7 +327,7 @@ class OfficePageTests(AnnouncementFixture, TestCase):
         notice = self.notice()
         page = self.client.post(reverse("core:announcement-prepare", args=[notice.pk]),
                                 follow=True)
-        self.assertContains(page, "Messages ready on the To send page: 2.")
+        self.assertContains(page, "Messages ready on the Message queue page: 2.")
         page = self.client.post(reverse("core:announcement-withdraw", args=[notice.pk]),
                                 {"reason": ""}, follow=True)
         self.assertContains(page, "Give a reason for withdrawing this notice.")

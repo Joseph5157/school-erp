@@ -107,43 +107,43 @@ RULES = {
     # Grading scales (D1-5A). The list and create routes take the Academic Year's pk, but the detail and
     # edit routes take the scale's pk, so those two never reuse `pk` for the year's scale list (their
     # page header links back with the real year id instead).
-    "academic-year-grading-scales": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Grading scales"),
+    "academic-year-grading-scales": Rule("academic-year-grading-scales", (_ACADEMIC_YEARS,), "Grading scales"),
     "grading-scale-create": Rule(
-        "academic-year-list",
+        "academic-year-grading-scales",
         (
             _ACADEMIC_YEARS,
             Crumb("Grading scales", "core:academic-year-grading-scales", True, perm="core.view_gradingscale"),
         ),
         "Add grading scale",
     ),
-    "grading-scale-detail": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Grading scale"),
-    "grading-scale-update": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Edit grading scale"),
+    "grading-scale-detail": Rule("academic-year-grading-scales", (_ACADEMIC_YEARS,), "Grading scale"),
+    "grading-scale-update": Rule("academic-year-grading-scales", (_ACADEMIC_YEARS,), "Edit grading scale"),
     # Assessments (D1-5B). Same pk discipline as above: the list and create routes take the Academic Year's pk,
     # the detail and edit routes take the assessment's pk, and the correction route takes a result's pk, so
     # only a crumb for the same model may reuse `pk` (edit -> its own assessment). Those pages link back to
     # the year's list with the real year id from their page header.
-    "academic-year-assessments": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Assessments"),
+    "academic-year-assessments": Rule("academic-year-assessments", (_ACADEMIC_YEARS,), "Assessments"),
     "assessment-create": Rule(
-        "academic-year-list",
+        "academic-year-assessments",
         (
             _ACADEMIC_YEARS,
             Crumb("Assessments", "core:academic-year-assessments", True, perm="core.view_assessment"),
         ),
         "Plan an assessment",
     ),
-    "assessment-detail": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Assessment"),
+    "assessment-detail": Rule("academic-year-assessments", (_ACADEMIC_YEARS,), "Assessment"),
     "assessment-update": Rule(
-        "academic-year-list",
+        "academic-year-assessments",
         (_ACADEMIC_YEARS, Crumb("Assessment", "core:assessment-detail", True, perm="core.view_assessment")),
         "Edit assessment",
     ),
-    "result-correct": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Correct result"),
+    "result-correct": Rule("academic-year-assessments", (_ACADEMIC_YEARS,), "Correct result"),
     # Result reports (D1-5C). Only administrator routes are listed; the teacher report card (my-report-card) has
     # no rule and keeps the teacher shell. Crumbs reuse `pk` only for the same model: the result sheet's pk is an
     # assessment (-> its detail), the Student reports' pk is a Student (-> Student, Student results), and the
     # matrix's pk is an Academic Year (-> its assessment list).
     "report-result-sheet": Rule(
-        "academic-year-list",
+        "academic-year-assessments",
         (_ACADEMIC_YEARS, Crumb("Assessment", "core:assessment-detail", True, perm="core.view_assessment")),
         "Result sheet",
     ),
@@ -165,13 +165,122 @@ RULES = {
         "Report card",
     ),
     "report-subject-section-results": Rule(
-        "academic-year-list",
+        "report-subject-section-results",
         (
             _ACADEMIC_YEARS,
             Crumb("Assessments", "core:academic-year-assessments", True, perm="core.view_assessment"),
         ),
         "Subject/Section results",
     ),
+    # School setup pages (S2). School edit hangs off the School page; calendar and terms hang off Academic Years.
+    # Calendar-day edit and Term edit take their own pk (not a year id), so they show only the no-id ancestor.
+    "school-create": Rule("school-detail", (), "Create school"),
+    "school-update": Rule(
+        "school-detail",
+        (Crumb("School", "core:school-detail", perm="core.view_school"),),
+        "Edit school",
+    ),
+    "academic-year-calendar": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Calendar"),
+    "calendar-day-create": Rule(
+        "academic-year-list",
+        (_ACADEMIC_YEARS, Crumb("Calendar", "core:academic-year-calendar", True, perm="core.view_academicyear")),
+        "Add exception",
+    ),
+    "calendar-day-update": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Edit exception"),
+    "term-create": Rule(
+        "academic-year-list",
+        (_ACADEMIC_YEARS, Crumb("Terms", "core:academic-year-terms", True, perm="core.view_academicyear")),
+        "Add Term",
+    ),
+    "term-update": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Edit Term"),
+    # Classes, subjects and subject offerings (S2). Section create takes the class's pk, so it links back to the class;
+    # subject edit and offering edit take their own pk, so they show only the no-id ancestor.
+    "class-grade-create": Rule(
+        "class-grade-list",
+        (Crumb("Classes/Grades", "core:class-grade-list", perm="core.view_classgrade"),),
+        "Create Class/Grade",
+    ),
+    "class-grade-detail": Rule(
+        "class-grade-list",
+        (Crumb("Classes/Grades", "core:class-grade-list", perm="core.view_classgrade"),),
+        "Class/Grade",
+    ),
+    "section-create": Rule(
+        "class-grade-list",
+        (
+            Crumb("Classes/Grades", "core:class-grade-list", perm="core.view_classgrade"),
+            Crumb("Class/Grade", "core:class-grade-detail", True, perm="core.view_classgrade"),
+        ),
+        "Create Section",
+    ),
+    "subject-create": Rule(
+        "subject-list",
+        (Crumb("Subjects", "core:subject-list", perm="core.view_subject"),),
+        "Add Subject",
+    ),
+    "subject-update": Rule(
+        "subject-list",
+        (Crumb("Subjects", "core:subject-list", perm="core.view_subject"),),
+        "Edit Subject",
+    ),
+    "offering-create": Rule(
+        "academic-year-list",
+        (
+            _ACADEMIC_YEARS,
+            Crumb("Subjects offered", "core:academic-year-offerings", True, perm="core.view_academicyear"),
+        ),
+        "Offer a Subject",
+    ),
+    "offering-update": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Edit offering"),
+    # Year-scoped setup lists and assignment forms (S2). All sit under Academic Years. The list pages and the
+    # create/copy forms take a year pk; the two "end" forms take an assignment pk, so they show only the no-id ancestor.
+    "academic-year-terms": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Terms"),
+    "academic-year-offerings": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Subjects offered"),
+    "academic-year-class-teachers": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Class teachers"),
+    "academic-year-teacher-assignments": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Subject teachers"),
+    "academic-year-assignments": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Assignment overview"),
+    "class-teacher-assign": Rule(
+        "academic-year-list",
+        (_ACADEMIC_YEARS, Crumb("Class teachers", "core:academic-year-class-teachers", True, perm="core.view_academicyear")),
+        "Assign class teacher",
+    ),
+    "class-teacher-end": Rule("academic-year-list", (_ACADEMIC_YEARS,), "End class teacher assignment"),
+    "teacher-assignment-create": Rule(
+        "academic-year-list",
+        (_ACADEMIC_YEARS, Crumb("Subject teachers", "core:academic-year-teacher-assignments", True, perm="core.view_academicyear")),
+        "Assign a teacher",
+    ),
+    "teacher-assignment-end": Rule("academic-year-list", (_ACADEMIC_YEARS,), "End teacher assignment"),
+    "assignment-copy": Rule(
+        "academic-year-list",
+        (_ACADEMIC_YEARS, Crumb("Assignment overview", "core:academic-year-assignments", True, perm="core.view_academicyear")),
+        "Copy assignments",
+    ),
+    # Guardian account actions and student identifiers (S2). The detail page is the parent. The account and access
+    # actions take an account / grant pk, and the roll-number page an enrollment pk, so they show only the no-id ancestor.
+    "guardian-detail": Rule(
+        "guardian-list",
+        (Crumb("Guardians", "core:guardian-list", perm="core.view_guardian"),),
+        "Guardian",
+    ),
+    "guardian-account-revoke": Rule(
+        "guardian-list", (Crumb("Guardians", "core:guardian-list", perm="core.view_guardian"),), "Revoke account"
+    ),
+    "guardian-account-username": Rule(
+        "guardian-list", (Crumb("Guardians", "core:guardian-list", perm="core.view_guardian"),), "Change username"
+    ),
+    "guardian-account-reset-password": Rule(
+        "guardian-list", (Crumb("Guardians", "core:guardian-list", perm="core.view_guardian"),), "Reset password"
+    ),
+    "guardian-access-revoke": Rule(
+        "guardian-list", (Crumb("Guardians", "core:guardian-list", perm="core.view_guardian"),), "Revoke access"
+    ),
+    "student-admission-number": Rule(
+        "student-list",
+        (_STUDENTS, Crumb("Student", "core:student-detail", True)),
+        "Admission number",
+    ),
+    "enrollment-roll-number": Rule("student-list", (_STUDENTS,), "Roll number"),
     # Term publication (D1-5D). The preview's pk is a Term (not an Academic Year), so it shows only the no-id
     # "Academic Years" ancestor and links back to the year's Terms from its header with the real year id. The
     # publication routes use a publication's pk, so the only pk reuse is Publication detail from Withdraw.
@@ -197,7 +306,7 @@ RULES = {
     "import-upload": Rule("import-list", (_IMPORTS,), "New import"),
     "import-detail": Rule("import-list", (_IMPORTS,), "Import"),
     # Notification queue (D1-6D). The page is the sidebar link itself; mark-sent and dismiss are POST-only redirects.
-    "notifications-to-send": Rule("notifications-to-send", (), "To send"),
+    "notifications-to-send": Rule("notifications-to-send", (), "Message queue"),
     # Documents (D1-6C). The index is the sidebar link itself; the three issuing/list pages show it as a parent only to
     # viewers who can open it (all need issue_document). The two PDF routes are responses, not pages, and have no rule.
     "document-index": Rule("document-index", (), "Documents"),

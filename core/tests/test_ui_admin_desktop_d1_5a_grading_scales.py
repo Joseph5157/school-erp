@@ -282,7 +282,7 @@ class BreadcrumbTests(ScaleFixture, TestCase):
     def test_list_trail(self):
         context = self.trail(self.list_url)
         self.assertEqual(self.labels(context), ["Overview", "Academic Years", "Grading scales"])
-        self.assertEqual(context["nav_section"], "academic-year-list")
+        self.assertEqual(context["nav_section"], "academic-year-grading-scales")
 
     def test_create_links_back_to_the_year_scale_list_with_the_year_pk(self):
         context = self.trail(reverse("core:grading-scale-create", args=[self.year.pk]))

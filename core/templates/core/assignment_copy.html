@@ -1,28 +1,41 @@
 {% extends "base.html" %}
 {% block title %}Copy assignments - {{ target.name }}{% endblock %}
 {% block content %}
-<h1 class="h3 mb-1">Copy assignments into {{ target.name }}</h1>
-<p class="text-muted">Preview first: nothing is written until you confirm. Only exact matches are copied; everything else is listed with the reason it was skipped.</p>
-<form method="get" class="mb-3">
-    <label>Copy from <select name="source" onchange="this.form.submit()">
-        {% for year in sources %}<option value="{{ year.pk }}"{% if source and year.pk == source.pk %} selected{% endif %}>{{ year.name }}</option>{% endfor %}
-    </select></label>
-    <noscript><button type="submit">Preview</button></noscript>
+{% include "partials/_page_header.html" with eyebrow="Assignment overview" title="Copy assignments" purpose=target.name only %}
+<p class="erp-note-text">Preview first: nothing is written until you confirm. Only exact matches are copied; everything else is listed with the reason it was skipped.</p>
+<form method="get" class="erp-toolbar erp-toolbar--inline">
+    <div class="erp-field">
+        <label for="id_source">Copy from</label>
+        <select name="source" id="id_source" class="form-select" onchange="this.form.submit()">
+            {% for year in sources %}<option value="{{ year.pk }}"{% if source and year.pk == source.pk %} selected{% endif %}>{{ year.name }}</option>{% endfor %}
+        </select>
+    </div>
+    <noscript><div class="erp-form-actions"><button type="submit" class="btn btn-outline-secondary">Preview</button></div></noscript>
 </form>
 {% if plan %}
-<h2 class="h5">Will be copied ({{ plan.copies|length }})</h2>
+<section aria-labelledby="copy-will">
+<h2 class="erp-section-title" id="copy-will">Will be copied ({{ plan.copies|length }})</h2>
 <ul>{% for item in plan.copies %}<li>{{ item.label }}</li>{% empty %}<li class="text-muted">Nothing to copy.</li>{% endfor %}</ul>
-<h2 class="h5 mt-3">Skipped ({{ plan.skips|length }})</h2>
-<table class="table table-sm">
-    <thead><tr><th>Assignment</th><th>Reason</th></tr></thead>
+</section>
+<section aria-labelledby="copy-skipped">
+<h2 class="erp-section-title" id="copy-skipped">Skipped ({{ plan.skips|length }})</h2>
+<div class="erp-panel">
+<div class="erp-table-scroll" role="region" aria-label="Skipped assignments" tabindex="0">
+<table class="table erp-keep">
+    <thead><tr><th scope="col">Assignment</th><th scope="col">Reason</th></tr></thead>
     <tbody>{% for skip in plan.skips %}<tr><td>{{ skip.label }}</td><td>{{ skip.reason }}</td></tr>{% empty %}<tr><td colspan="2" class="text-muted">None.</td></tr>{% endfor %}</tbody>
 </table>
+</div>
+</div>
+</section>
 {% if plan.copies %}
-<form method="post">
+<form method="post" class="erp-form">
     {% csrf_token %}
     <input type="hidden" name="source" value="{{ source.pk }}">
     <input type="hidden" name="token" value="{{ plan.token }}">
-    <button type="submit" class="btn btn-primary">Confirm and copy {{ plan.copies|length }} assignment(s)</button>
+    <div class="erp-form-actions">
+        <button type="submit" class="btn btn-primary">Confirm and copy {{ plan.copies|length }} assignment(s)</button>
+    </div>
 </form>
 {% endif %}
 {% else %}

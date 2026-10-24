@@ -79,7 +79,7 @@ class Base(AlertFixture):
 class PageTests(Base, TestCase):
     def test_empty_state_header_and_legacy_text(self):
         page = html(self.client.get(URL))
-        self.assertRegex(page, r'<h1 class="erp-page-title">To send</h1>')
+        self.assertRegex(page, r'<h1 class="erp-page-title">Message queue</h1>')
         self.assertEqual(page.count("<h1"), 1)
         self.assertIn("0 waiting · 0 sent today", page)
         self.assertIn("Nothing to send.", page)
@@ -315,13 +315,13 @@ class AccessAndNavigationTests(Base, TestCase):
 
     def test_rule_and_permission_matrix(self):
         context = breadcrumb_context(resolve(URL))
-        self.assertEqual([c["label"] for c in context["breadcrumbs"]], ["Overview", "To send"])
+        self.assertEqual([c["label"] for c in context["breadcrumbs"]], ["Overview", "Message queue"])
         self.assertEqual(context["nav_section"], "notifications-to-send")
         user, _ = self.client_with("send_notification")
         self.assertEqual(breadcrumb_context(resolve(URL), user)["breadcrumbs"], [])
         user, _ = self.client_with("send_notification", "view_school")
         self.assertEqual([c["label"] for c in breadcrumb_context(resolve(URL), user)["breadcrumbs"]],
-                         ["Overview", "To send"])
+                         ["Overview", "Message queue"])
 
     def test_sidebar_highlights_to_send_empty_and_populated(self):
         for populated in (False, True):

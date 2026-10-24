@@ -35,7 +35,7 @@
 {% if assist and perms.core.send_notification %}
 <section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="notice-whatsapp-heading">
 <h2 class="h5 mb-2" id="notice-whatsapp-heading">WhatsApp</h2>
-<p class="erp-note-text">Queues a message for each opted-in guardian on the To send page. Nothing is sent from here.</p>
+<p class="erp-note-text">Queues a message for each opted-in guardian on the Message queue page. Nothing is sent from here.</p>
 <form method="post" action="{% url 'core:announcement-prepare' notice.pk %}">{% csrf_token %}
     <button type="submit" class="btn btn-success">Prepare WhatsApp messages</button>
 </form>

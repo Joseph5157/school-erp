@@ -14,6 +14,7 @@ class NavLink:
     perm: str | None = None
     mobile_label: str | None = None  # shorter label for the phone bottom bar
     icon: str | None = None  # key into partials/_tab_icon.html
+    year_arg: bool = False  # URL takes the current Academic Year pk; hidden when there is none
 
 
 OFFICE_NAV = (
@@ -38,10 +39,15 @@ OFFICE_NAV = (
         NavLink("Attendance", "core:attendance-register-list", "core.view_attendanceregister"),
         NavLink("Attendance reports", "core:attendance-reports", "core.view_attendanceentry"),
         NavLink("Announcements", "core:announcement-list", "core.view_announcement"),
-        NavLink("To send", "core:notifications-to-send", "core.send_notification"),
+        NavLink("Message queue", "core:notifications-to-send", "core.send_notification"),
         NavLink("Documents", "core:document-index", "core.issue_document"),
     )),
-    ("Results", (
+    ("Assessments & Results", (
+        NavLink("Assessments", "core:academic-year-assessments", "core.view_assessment", year_arg=True),
+        NavLink("Subject/Section results", "core:report-subject-section-results",
+                "core.view_studentresult", year_arg=True),
+        NavLink("Grading scales", "core:academic-year-grading-scales", "core.view_gradingscale",
+                year_arg=True),
         NavLink("Stale publications", "core:publications-stale", "core.view_termpublication"),
     )),
     ("Access and security", (
@@ -81,34 +87,42 @@ def _short(url_name):
     return url_name.split(":", 1)[-1]
 
 
-def _link(link, url_name, section=None, counts=None):
+def _link(link, url_name, section=None, counts=None, year=None):
     short = _short(link.url_name)
+    args = [year.pk] if link.year_arg else []
     return {
         "label": link.label,
         "mobile_label": link.mobile_label or link.label,
         "icon": link.icon,
-        "url": reverse(link.url_name),
+        "url": reverse(link.url_name, args=args),
         "active": url_name == short or section == short,
         "badge": (counts or {}).get(link.url_name, 0),
     }
 
 
-def office_nav(user, url_name, section=None, counts=None):
+def office_nav(user, url_name, section=None, counts=None, year=None):
     """Office sidebar groups the user may see; empty groups are dropped.
 
-    `counts` maps a link's namespaced URL name to a waiting-items number.
+    `counts` maps a link's namespaced URL name to a waiting-items number. `year` is the
+    current Academic Year: links that need one are left out when there is none. A group
+    is `open` when it holds the active link (and always for Home); `badge` totals its links.
     """
     if not (user and user.is_authenticated):
         return []
     groups = []
     for title, links in OFFICE_NAV:
         visible = [
-            _link(link, url_name, section, counts)
+            _link(link, url_name, section, counts, year)
             for link in links
-            if link.perm is None or user.has_perm(link.perm)
+            if (link.perm is None or user.has_perm(link.perm)) and (year is not None or not link.year_arg)
         ]
         if visible:
-            groups.append({"title": title, "links": visible})
+            groups.append({
+                "title": title,
+                "links": visible,
+                "open": title == "Home" or any(item["active"] for item in visible),
+                "badge": sum(item["badge"] for item in visible),
+            })
     return groups
 
 

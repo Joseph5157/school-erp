@@ -3,7 +3,7 @@
 {% block content %}
 {% include "partials/_page_header.html" with eyebrow="Timetable" title="Periods" purpose=academic_year.name only %}
 <p class="text-muted">Periods are the numbered teaching periods of the school day, in order. They carry no clock times.</p>
-{% if perms.core.add_timetableperiod %}
+{% if periods and perms.core.add_timetableperiod %}
     <a class="btn btn-primary mb-3" href="{% url 'core:timetable-period-create' academic_year.pk %}">Add period</a>
 {% endif %}
 <div class="erp-table-scroll" role="region" aria-label="Periods" tabindex="0">
@@ -22,7 +22,7 @@
             </td>
         </tr>
         {% empty %}
-        <tr><td colspan="3">No periods yet.{% if perms.core.add_timetableperiod %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:timetable-period-create' academic_year.pk %}">Add the first period</a>{% endif %}</td></tr>
+        <tr><td colspan="3" class="text-center py-4">No periods yet.{% if perms.core.add_timetableperiod %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:timetable-period-create' academic_year.pk %}">Add the first period</a>{% endif %}</td></tr>
         {% endfor %}
     </tbody>
 </table>

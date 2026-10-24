@@ -1,14 +1,17 @@
 {% extends "base.html" %}
 {% block title %}End teacher assignment{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">End teacher assignment</h1>
+{% include "partials/_page_header.html" with eyebrow="Subject teachers" title="End teacher assignment" purpose=assignment.offering.academic_year.name only %}
 <p>{{ assignment.teacher.get_full_name|default:assignment.teacher.username }} &mdash; {{ assignment.offering.subject.name }}, {{ assignment.section }}, from {{ assignment.start_date }}{% if assignment.end_date %} to {{ assignment.end_date }}{% else %} (open-ended){% endif %}.</p>
-<p class="text-muted">The assignment stays in the history. After the end date this teacher can no longer enter marks, but keeps read-only access to results from the dates they taught.</p>
-<form method="post">
+<p class="erp-note-text">The assignment stays in the history. After the end date this teacher can no longer enter marks, but keeps read-only access to results from the dates they taught.</p>
+<form method="post" class="erp-form">
     {% csrf_token %}
-    {{ form.non_field_errors }}
-    {{ form.as_p }}
-    <button type="submit" class="btn btn-primary">End assignment</button>
-    <a class="btn btn-link" href="{% url 'core:academic-year-teacher-assignments' assignment.offering.academic_year_id %}">Cancel</a>
+    {% include "partials/_form_required_legend.html" %}
+    {% include "partials/_form_error_summary.html" with form=form only %}
+    {% include "partials/_form_fields.html" with form=form only %}
+    <div class="erp-form-actions">
+        <button type="submit" class="btn btn-primary">End assignment</button>
+        <a class="btn btn-link" href="{% url 'core:academic-year-teacher-assignments' assignment.offering.academic_year_id %}">Cancel</a>
+    </div>
 </form>
 {% endblock %}

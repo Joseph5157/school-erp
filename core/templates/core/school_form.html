@@ -1,10 +1,19 @@
 {% extends "base.html" %}
 {% block title %}{% if creating %}Create school{% else %}Edit school{% endif %}{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">{% if creating %}Create school configuration{% else %}Edit school configuration{% endif %}</h1>
-<form method="post">
+{% if creating %}
+{% include "partials/_page_header.html" with eyebrow="School setup" title="Create school configuration" only %}
+{% else %}
+{% include "partials/_page_header.html" with eyebrow="School setup" title="Edit school configuration" only %}
+{% endif %}
+<form method="post" class="erp-form">
     {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit" class="btn btn-primary">Save school details</button>
+    {% include "partials/_form_required_legend.html" %}
+    {% include "partials/_form_error_summary.html" with form=form only %}
+    {% include "partials/_form_fields.html" with form=form only %}
+    <div class="erp-form-actions">
+        <button type="submit" class="btn btn-primary">Save school details</button>
+        {% if not creating %}<a class="btn btn-link" href="{% url 'core:school-detail' %}">Cancel</a>{% endif %}
+    </div>
 </form>
 {% endblock %}
