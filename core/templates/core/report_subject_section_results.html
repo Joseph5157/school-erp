@@ -1,30 +1,43 @@
 {% extends "base.html" %}
 {% block title %}Subject results - {{ academic_year.name }}{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">Subject/Section results: {{ academic_year.name }}</h1>
-<form method="get" class="row g-2 align-items-end mb-3">
-    <div class="col-auto"><label>Subject <select name="offering" class="form-select">
-        <option value="">Choose</option>
-        {% for o in offerings %}<option value="{{ o.pk }}"{% if offering and o.pk == offering.pk %} selected{% endif %}>{{ o.class_grade }} {{ o.subject.name }}</option>{% endfor %}
-    </select></label></div>
-    <div class="col-auto"><label>Section <select name="section" class="form-select">
-        <option value="">Choose</option>
-        {% for s in sections %}<option value="{{ s.pk }}"{% if section and s.pk == section.pk %} selected{% endif %}>{{ s }}</option>{% endfor %}
-    </select></label></div>
-    <div class="col-auto"><label>Term <select name="term" class="form-select">
-        <option value="">All Terms</option>
-        {% for t in terms %}<option value="{{ t.pk }}"{% if term and t.pk == term.pk %} selected{% endif %}>{{ t.name }}</option>{% endfor %}
-    </select></label></div>
-    <div class="col-auto"><button type="submit" class="btn btn-outline-secondary">Show</button></div>
+{% if perms.core.view_assessment %}{% url 'core:academic-year-assessments' academic_year.pk as assessments_url %}{% endif %}
+{% include "partials/_page_header.html" with eyebrow="Results" title="Subject/Section results" purpose=academic_year.name secondary_url=assessments_url secondary_label="Assessments" only %}
+<form method="get" class="erp-toolbar erp-toolbar--inline erp-results-toolbar" aria-label="Choose a Subject, Section and Term">
+    <div class="erp-field">
+        <label for="id_offering">Subject</label>
+        <select name="offering" id="id_offering">
+            <option value="">Choose</option>
+            {% for o in offerings %}<option value="{{ o.pk }}"{% if offering and o.pk == offering.pk %} selected{% endif %}>{{ o.class_grade }} {{ o.subject.name }}</option>{% endfor %}
+        </select>
+    </div>
+    <div class="erp-field">
+        <label for="id_section">Section</label>
+        <select name="section" id="id_section">
+            <option value="">Choose</option>
+            {% for s in sections %}<option value="{{ s.pk }}"{% if section and s.pk == section.pk %} selected{% endif %}>{{ s }}</option>{% endfor %}
+        </select>
+    </div>
+    <div class="erp-field">
+        <label for="id_term">Term</label>
+        <select name="term" id="id_term">
+            <option value="">All Terms</option>
+            {% for t in terms %}<option value="{{ t.pk }}"{% if term and t.pk == term.pk %} selected{% endif %}>{{ t.name }}</option>{% endfor %}
+        </select>
+    </div>
+    <div class="erp-form-actions"><button type="submit" class="btn btn-outline-secondary">Show</button></div>
 </form>
 {% if offering and section %}
-<p class="text-muted">Finalized assessments only. "Absent" is shown as such and never counted as zero.</p>
-<table class="table table-sm">
-    <thead><tr><th>Student</th>{% for a in assessments %}<th><a href="{% url 'core:report-result-sheet' a.pk %}">{{ a.name }}</a><br><small>{{ a.assessment_date }} / {{ a.maximum_marks }}</small></th>{% endfor %}</tr></thead>
+<p class="erp-note-text">Finalized assessments only. "Absent" is shown as such and never counted as zero. A dash (&mdash;) means no result is recorded for that Student in that assessment: it is not Absent and not zero. Totals, averages and ranks are not shown.</p>
+<div class="erp-panel">
+<div class="erp-table-scroll" role="region" aria-label="Results for {{ offering.subject.name }}, {{ section }}" tabindex="0">
+<table class="table erp-results-matrix">
+    <caption class="visually-hidden">Finalized results for {{ offering.subject.name }} in {{ section }}: one row per Student and one column per assessment.</caption>
+    <thead><tr><th scope="col">Student</th>{% for a in assessments %}<th scope="col"><a href="{% url 'core:report-result-sheet' a.pk %}">{{ a.name }}</a><br><small>{{ a.assessment_date }} / {{ a.maximum_marks }}</small></th>{% endfor %}</tr></thead>
     <tbody>
         {% for student, cells in rows %}
         <tr>
-            <td><a href="{% url 'core:report-student-results' student.pk %}">{{ student.full_name }}</a></td>
+            <th scope="row" class="fw-semibold"><a href="{% url 'core:report-student-results' student.pk %}">{{ student.full_name }}</a></th>
             {% for result in cells %}<td>{% if result %}{% if result.status == "MARKED" %}{{ result.score }}{% if result.grade %} ({{ result.grade }}){% endif %}{% else %}Absent{% endif %}{% else %}&mdash;{% endif %}</td>{% endfor %}
         </tr>
         {% empty %}
@@ -32,5 +45,9 @@
         {% endfor %}
     </tbody>
 </table>
+</div>
+</div>
+{% else %}
+<p class="erp-note-text">Choose a Subject and a Section, and optionally a Term, to see its finalized results.</p>
 {% endif %}
 {% endblock %}

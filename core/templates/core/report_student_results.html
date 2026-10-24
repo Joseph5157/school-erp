@@ -1,21 +1,31 @@
 {% extends "base.html" %}
 {% block title %}Results: {{ student.full_name }}{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">Results: {{ student.full_name }}</h1>
-<p>Term report cards:
-    {% for term in terms %}<a href="{% url 'core:report-term-report-card' student.pk term.pk %}">{{ term.academic_year.name }} {{ term.name }}</a>{% if not forloop.last %} &middot; {% endif %}{% empty %}none yet{% endfor %}
-</p>
-<p class="text-muted">Finalized results only, each shown with the Section the Student was in at the time.</p>
-<table class="table">
-    <thead><tr><th>Date</th><th>Term</th><th>Section</th><th>Subject</th><th>Assessment</th><th>Marks</th><th>%</th><th>Grade</th><th>Pass/Fail</th></tr></thead>
+{% if perms.core.view_student %}{% url 'core:student-detail' student.pk as back_url %}{% endif %}
+{% include "partials/_page_header.html" with eyebrow="Results" title=student.full_name purpose="Finalized results, each shown with the Section the Student was in at the time." secondary_url=back_url secondary_label="Back to Student" only %}
+<section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="report-cards-heading">
+    <h2 class="h5" id="report-cards-heading">Term report cards</h2>
+    {% if terms %}
+    <ul class="list-inline mb-0">
+        {% for term in terms %}<li class="list-inline-item me-3"><a href="{% url 'core:report-term-report-card' student.pk term.pk %}">{{ term.academic_year.name }} {{ term.name }}</a></li>{% endfor %}
+    </ul>
+    {% else %}
+    <p class="mb-0">None yet.</p>
+    {% endif %}
+</section>
+<div class="erp-panel">
+<div class="erp-table-scroll" role="region" aria-label="Results for {{ student.full_name }}" tabindex="0">
+<table class="table erp-result-table">
+    <caption class="visually-hidden">Finalized results for {{ student.full_name }}, by date, with the Section the Student was in at the time.</caption>
+    <thead><tr><th scope="col">Assessment</th><th scope="col">Date</th><th scope="col">Term</th><th scope="col">Section</th><th scope="col">Subject</th><th scope="col">Marks</th><th scope="col">%</th><th scope="col">Grade</th><th scope="col">Pass/Fail</th></tr></thead>
     <tbody>
         {% for result in results %}
         <tr>
-            <td>{{ result.assessment.assessment_date }}</td>
-            <td>{{ result.assessment.term.academic_year.name }} {{ result.assessment.term.name }}</td>
-            <td>{{ result.academic_enrollment.section }}</td>
+            <th scope="row" class="fw-semibold">{{ result.assessment.name }}</th>
+            <td class="text-nowrap">{{ result.assessment.assessment_date }}</td>
+            <td class="text-nowrap">{{ result.assessment.term.academic_year.name }} {{ result.assessment.term.name }}</td>
+            <td class="text-nowrap">{{ result.academic_enrollment.section }}</td>
             <td>{{ result.assessment.subject_display }}</td>
-            <td>{{ result.assessment.name }}</td>
             {% include "core/_result_cells.html" %}
         </tr>
         {% empty %}
@@ -23,5 +33,7 @@
         {% endfor %}
     </tbody>
 </table>
-<p><a href="{% url 'core:student-detail' student.pk %}">Back to Student</a></p>
+</div>
+</div>
+<p class="erp-note-text mt-3">Absent is shown as Absent: it is not zero and not a fail. Not graded means no grade was assigned. Totals, averages and ranks are not shown.</p>
 {% endblock %}

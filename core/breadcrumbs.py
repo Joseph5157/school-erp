@@ -135,6 +135,40 @@ RULES = {
         "Edit assessment",
     ),
     "result-correct": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Correct result"),
+    # Result reports (D1-5C). Only administrator routes are listed; the teacher report card (my-report-card) has
+    # no rule and keeps the teacher shell. Crumbs reuse `pk` only for the same model: the result sheet's pk is an
+    # assessment (-> its detail), the Student reports' pk is a Student (-> Student, Student results), and the
+    # matrix's pk is an Academic Year (-> its assessment list).
+    "report-result-sheet": Rule(
+        "academic-year-list",
+        (_ACADEMIC_YEARS, Crumb("Assessment", "core:assessment-detail", True, perm="core.view_assessment")),
+        "Result sheet",
+    ),
+    "report-student-results": Rule(
+        "student-list",
+        (
+            Crumb("Students", "core:student-list", perm="core.view_student"),
+            Crumb("Student", "core:student-detail", True, perm="core.view_student"),
+        ),
+        "Results",
+    ),
+    "report-term-report-card": Rule(
+        "student-list",
+        (
+            Crumb("Students", "core:student-list", perm="core.view_student"),
+            Crumb("Student", "core:student-detail", True, perm="core.view_student"),
+            Crumb("Results", "core:report-student-results", True, perm="core.view_studentresult"),
+        ),
+        "Report card",
+    ),
+    "report-subject-section-results": Rule(
+        "academic-year-list",
+        (
+            _ACADEMIC_YEARS,
+            Crumb("Assessments", "core:academic-year-assessments", True, perm="core.view_assessment"),
+        ),
+        "Subject/Section results",
+    ),
 }
 
 _EMPTY = {"breadcrumbs": [], "nav_section": None}

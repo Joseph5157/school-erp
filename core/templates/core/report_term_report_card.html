@@ -1,23 +1,35 @@
 {% extends "base.html" %}
 {% block title %}Report card: {{ student.full_name }} {{ term.name }}{% endblock %}
 {% block content %}
-<h1 class="h3 mb-1">Term report card</h1>
-<p class="lead">{{ student.full_name }} &middot; {{ term.academic_year.name }} {{ term.name }}{% if placement %} &middot; {{ placement.section }}{% endif %}</p>
-<p class="text-muted small">{{ term.start_date }} to {{ term.end_date }}. Finalized results only; each assessment is shown separately (no weighting, totals or rank).</p>
+{# One template for two shells. Chrome follows current_area; links follow the viewer's real permissions. #}
+{% if perms.core.view_studentresult %}{% url 'core:report-student-results' student.pk as results_url %}{% endif %}
+{% if current_area == "teacher" %}
+{% url 'core:my-students' as students_url %}
+{% include "partials/_page_header.html" with eyebrow="Class report card" title=student.full_name purpose=term.academic_year.name|add:" "|add:term.name primary_url=results_url primary_label="All results" secondary_url=students_url secondary_label="My students" only %}
+{% else %}
+{% include "partials/_page_header.html" with eyebrow="Term report card" title=student.full_name purpose=term.academic_year.name|add:" "|add:term.name secondary_url=results_url secondary_label="All results" only %}
+{% endif %}
+<p class="erp-note-text">{% if placement %}Section: {{ placement.section }}. {% endif %}{{ term.start_date }} to {{ term.end_date }}. Finalized results only; each assessment is shown separately (no weighting, totals or rank).</p>
 {% for subject, results in subjects.items %}
-<h2 class="h5 mt-3">{{ subject.name }}</h2>
-<table class="table table-sm">
-    <thead><tr><th>Assessment</th><th>Date</th><th>Marks</th><th>%</th><th>Grade</th><th>Pass/Fail</th></tr></thead>
+<section class="erp-panel mb-4" aria-labelledby="subject-{{ forloop.counter }}-heading">
+<div class="erp-panel-head p-3 pb-2"><h2 class="h5" id="subject-{{ forloop.counter }}-heading">{{ subject.name }}</h2></div>
+<div class="erp-table-scroll" role="region" aria-label="{{ subject.name }} results" tabindex="0">
+<table class="table erp-result-table">
+    <caption class="visually-hidden">Finalized {{ subject.name }} results for {{ student.full_name }} in {{ term.name }}, each assessment shown separately.</caption>
+    <thead><tr><th scope="col">Assessment</th><th scope="col">Date</th><th scope="col">Marks</th><th scope="col">%</th><th scope="col">Grade</th><th scope="col">Pass/Fail</th></tr></thead>
     <tbody>
         {% for result in results %}
-        <tr><td>{{ result.assessment.name }}</td><td>{{ result.assessment.assessment_date }}</td>{% include "core/_result_cells.html" %}</tr>
+        <tr><th scope="row" class="fw-semibold">{{ result.assessment.name }}</th><td class="text-nowrap">{{ result.assessment.assessment_date }}</td>{% include "core/_result_cells.html" %}</tr>
         {% endfor %}
     </tbody>
 </table>
+</div>
+</section>
 {% empty %}
-<p>No finalized results for this Term yet.</p>
+<div class="erp-panel p-3 p-md-4 mb-4"><p class="mb-0">No finalized results for this Term yet.</p></div>
 {% endfor %}
-<h2 class="h5 mt-4">Teacher's remark</h2>
-<p>{% if remark %}{{ remark.remark|linebreaksbr }}{% else %}<span class="text-muted">No remark.</span>{% endif %}</p>
-{% if perms.core.view_studentresult %}<p><a href="{% url 'core:report-student-results' student.pk %}">All results for {{ student.full_name }}</a></p>{% endif %}
+<section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="remark-heading">
+<h2 class="h5" id="remark-heading">Teacher's remark</h2>
+<p class="mb-0">{% if remark %}{{ remark.remark|linebreaksbr }}{% else %}<span class="text-muted">No remark.</span>{% endif %}</p>
+</section>
 {% endblock %}
