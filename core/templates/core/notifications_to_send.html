@@ -1,46 +1,80 @@
 {% extends "base.html" %}
+{% load i18n %}
 {% block title %}To send{% endblock %}
 {% block content %}
-<h1 class="h3 mb-1">To send</h1>
-<p class="text-muted">{{ rows|length }} waiting &middot; {{ sent_today|length }} sent today</p>
+{% blocktrans asvar counts_text with waiting=rows|length sent=sent_today|length %}{{ waiting }} waiting · {{ sent }} sent today{% endblocktrans %}
+{% include "partials/_page_header.html" with eyebrow="Daily" title="To send" purpose=counts_text only %}
+<p class="erp-note-text">The ERP never sends messages itself. Open each message in WhatsApp from your own phone, then choose Mark as sent.</p>
 
 {% if portal_only %}
-<div class="alert alert-warning">WhatsApp messages are switched off. New messages are not prepared while the school uses portal only. <a href="{% url 'core:school-detail' %}">School settings</a></div>
+<div class="erp-note-text erp-queue-notice" role="note">{% include "partials/_status_badge.html" with label="WhatsApp off" tone="pending" only %} WhatsApp messages are switched off. New messages are not prepared while the school uses portal only. {% if perms.core.view_school %}<a href="{% url 'core:school-detail' %}">School settings</a>{% endif %}</div>
 {% endif %}
 {% if portal_address_missing %}
-<div class="alert alert-warning">The portal address (PORTAL_BASE_URL) is not set, so new WhatsApp messages are not being prepared. Ask whoever runs the server to set it.</div>
+<div class="erp-note-text erp-queue-notice" role="note">{% include "partials/_status_badge.html" with label="Portal address missing" tone="pending" only %} The portal address (PORTAL_BASE_URL) is not set, so new WhatsApp messages are not being prepared. Ask whoever runs the server to set it.</div>
 {% endif %}
 
+<section class="erp-panel mb-4" aria-labelledby="queue-heading">
+<div class="erp-panel-head p-3 p-md-4 pb-2">
+    <h2 class="h5 mb-0" id="queue-heading">Waiting to send</h2>
+</div>
 {% for row in rows %}
 {% with n=row.notification %}
-<div class="card mb-2"><div class="card-body">
-    <p class="fw-semibold mb-0">{{ n.guardian.full_name }}</p>
-    <p class="text-muted small mb-0">{{ n.get_type_display }}{% if n.parameters.first_name %} &middot; {{ n.parameters.first_name }}{% elif not n.student_id %} &middot; School notice{% endif %} &middot; prepared {{ n.created_at|date:"j M, H:i" }}</p>
-    <p class="border rounded p-2 my-2 small bg-light">{{ row.text }}</p>
-    <div class="d-flex flex-wrap gap-2 align-items-start">
-        {% if row.link %}
-        <a class="btn btn-success" href="{{ row.link }}" target="_blank" rel="noopener">Send on WhatsApp</a>
-        <form method="post" action="{% url 'core:notification-mark-sent' n.pk %}">{% csrf_token %}<button type="submit" class="btn btn-outline-primary">Mark as sent</button></form>
-        {% else %}
-        <p class="text-danger small mb-0">Phone number missing or not usable &mdash; <a href="{% url 'core:guardian-edit' n.guardian.pk %}">update the guardian</a>.</p>
-        {% endif %}
-        <form method="post" action="{% url 'core:notification-dismiss' n.pk %}" class="d-flex gap-1">
-            {% csrf_token %}
-            <label class="visually-hidden" for="reason-{{ n.pk }}">Reason for not sending</label>
-            <input class="form-control form-control-sm" id="reason-{{ n.pk }}" name="reason" maxlength="200" placeholder="Reason for not sending" required>
-            <button type="submit" class="btn btn-outline-secondary btn-sm">Dismiss</button>
-        </form>
+{% if forloop.first %}<ul class="erp-queue-list">{% endif %}
+<li class="erp-queue-row">
+    <div class="erp-queue-head">
+        <p class="fw-semibold mb-0 text-break">{{ n.guardian.full_name }}</p>
+        {% if row.link %}{% include "partials/_status_badge.html" with label=n.get_status_display tone="info" only %}{% else %}{% include "partials/_status_badge.html" with label="Phone number missing" tone="stale" only %}{% endif %}
     </div>
-</div></div>
+    <p class="erp-note-text mb-2">{{ n.get_type_display }}{% if n.parameters.first_name %} &middot; {{ n.parameters.first_name }}{% elif not n.student_id %} &middot; School notice{% endif %} &middot; prepared {{ n.created_at|date:"j M, H:i" }}</p>
+    <blockquote class="erp-queue-text" aria-label="Message text">{{ row.text }}</blockquote>
+    <div class="erp-queue-actions">
+        {% if row.link %}
+        <a class="btn btn-success" href="{{ row.link }}" target="_blank" rel="noopener">Send on WhatsApp<span class="visually-hidden"> to {{ n.guardian.full_name }} (opens in a new tab)</span></a>
+        <form method="post" action="{% url 'core:notification-mark-sent' n.pk %}">{% csrf_token %}<button type="submit" class="btn btn-outline-primary">Mark as sent<span class="visually-hidden"> for {{ n.guardian.full_name }}</span></button></form>
+        {% else %}
+        <p class="erp-note-text mb-0">Phone number missing or not usable &mdash; {% if perms.core.change_guardian %}<a href="{% url 'core:guardian-edit' n.guardian.pk %}">update the guardian</a>{% else %}ask someone who can update the guardian{% endif %}.</p>
+        {% endif %}
+    </div>
+    <form method="post" action="{% url 'core:notification-dismiss' n.pk %}" class="erp-queue-dismiss">
+        {% csrf_token %}
+        <div class="erp-field">
+            <label for="reason-{{ n.pk }}">Reason for not sending <span class="erp-required-mark" aria-hidden="true">*</span><span class="visually-hidden"> (required)</span></label>
+            <input class="form-control form-control-sm" id="reason-{{ n.pk }}" name="reason" maxlength="200" required aria-describedby="dismiss-help-{{ n.pk }}">
+            <div class="erp-field-help" id="dismiss-help-{{ n.pk }}">Dismissing does not send the message. The reason is recorded.</div>
+        </div>
+        <button type="submit" class="btn btn-outline-secondary btn-sm">Dismiss<span class="visually-hidden"> message to {{ n.guardian.full_name }}</span></button>
+    </form>
+</li>
+{% if forloop.last %}</ul>{% endif %}
 {% endwith %}
 {% empty %}
 {% include "partials/_empty.html" with title="Nothing to send." text="Messages appear here when the school prepares them." %}
 {% endfor %}
+</section>
 
 {% if sent_today %}
-<h2 class="h5 mt-4">Sent today</h2>
-<ul class="list-unstyled small">
-    {% for n in sent_today %}<li>{{ n.marked_sent_at|date:"H:i" }} &middot; {{ n.guardian.full_name }} &middot; {{ n.get_type_display }}{% if n.parameters.first_name %} ({{ n.parameters.first_name }}){% elif not n.student_id %} (School notice){% endif %} &middot; by {{ n.marked_sent_by.username }}</li>{% endfor %}
-</ul>
+<section class="erp-panel" aria-labelledby="sent-heading">
+<div class="erp-panel-head p-3 p-md-4 pb-2">
+    <h2 class="h5 mb-0" id="sent-heading">Sent today</h2>
+</div>
+<div class="erp-table-scroll" role="region" aria-label="Sent today" tabindex="0">
+<table class="table erp-keep erp-queue-table">
+    <caption class="visually-hidden">Messages marked as sent today: the time, the guardian, the type of message and who marked it sent.</caption>
+    <thead>
+        <tr><th scope="col">Time</th><th scope="col">Guardian</th><th scope="col">Message</th><th scope="col">Marked sent by</th></tr>
+    </thead>
+    <tbody>
+    {% for n in sent_today %}
+        <tr>
+            <th scope="row" class="fw-normal text-nowrap">{{ n.marked_sent_at|date:"H:i" }}</th>
+            <td class="text-break">{{ n.guardian.full_name }}</td>
+            <td>{{ n.get_type_display }}{% if n.parameters.first_name %} ({{ n.parameters.first_name }}){% elif not n.student_id %} (School notice){% endif %}</td>
+            <td class="text-break">{{ n.marked_sent_by.username }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+</section>
 {% endif %}
 {% endblock %}

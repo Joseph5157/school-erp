@@ -1337,6 +1337,18 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
   .erp-panel .erp-assessment-table > thead > tr > *:not(.text-nowrap), .erp-panel .erp-assessment-table > tbody > tr > *:not(.text-nowrap) { max-width: 10rem; }
 }
 
+/* UI-D1-6D: the notification queue. Each message is one record: guardian and status, then the exact message
+   text in a quoted block (line breaks kept, long words wrapped), the send / mark-sent controls, and the
+   labelled dismiss form stacked beneath. Sent today is a labelled table. */
+.erp-queue-list { list-style: none; margin: 0; padding: 0; }
+.erp-queue-row { padding: var(--erp-space-3) var(--erp-space-4); border-top: 1px solid var(--erp-rule); }
+.erp-queue-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--erp-space-1) var(--erp-space-3); }
+.erp-queue-text { margin: 0 0 var(--erp-space-3); padding: var(--erp-space-2) var(--erp-space-3); background: var(--erp-paper); border-left: 3px solid var(--erp-rule); border-radius: var(--erp-radius-sm); white-space: pre-wrap; overflow-wrap: break-word; font-size: var(--erp-text-sm); }
+.erp-queue-actions { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--erp-space-2); margin-bottom: var(--erp-space-3); }
+.erp-queue-dismiss { max-width: 30rem; }
+.erp-queue-dismiss .erp-field { margin-bottom: var(--erp-space-2); }
+.erp-queue-notice { padding: var(--erp-space-3); background: var(--erp-warn-wash); border-radius: var(--erp-radius-sm); margin-bottom: var(--erp-space-3); }
+.erp-panel .erp-queue-table > thead > tr > *, .erp-panel .erp-queue-table > tbody > tr > * { padding-inline: var(--erp-space-2); }
 /* UI-D1-6C: documents. The index lists the three document types with a description under each link; the
    Attendance summary and report-card pickers share one row on wide screens; the summary table aligns its
    counts to the right and tightens phone padding. */
