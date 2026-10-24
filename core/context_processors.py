@@ -29,7 +29,7 @@ def roles(request):
     url_name = match.url_name if match is not None else None
     area = current_area(request)
     if area == "admin":
-        trail = breadcrumb_context(match)
+        trail = breadcrumb_context(match, user)
         nav = office_nav(user, url_name, trail["nav_section"], queue_counts(user))
     else:
         trail = {"breadcrumbs": [], "nav_section": None}

@@ -1,26 +1,48 @@
 {% extends "base.html" %}
-{% block title %}Absent Students{% endblock %}
+{% block title %}Daily absent students{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">Absent Students</h1>
-<form method="get" class="row g-2 align-items-end mb-3">
-    <div class="col-auto">{{ form.date.label_tag }} {{ form.date }}</div>
-    <div class="col-auto"><button type="submit" class="btn btn-outline-secondary">Show</button></div>
+{% url 'core:attendance-reports' as attendance_reports_url %}
+{% include "partials/_page_header.html" with eyebrow="Attendance reports" title="Daily absent students" purpose="Students recorded absent on one date, from submitted registers only." secondary_url=attendance_reports_url secondary_label="Attendance reports" only %}
+<form method="get" class="erp-toolbar erp-toolbar--inline" aria-label="Choose a date">
+    {% include "partials/_form_error_summary.html" with form=form action_text="showing absent students" %}
+    {% include "partials/_form_field.html" with field=form.date %}
+    <div class="erp-form-actions">
+        <button type="submit" class="btn btn-outline-secondary">Show absent students</button>
+    </div>
 </form>
 {% if absentees is not None %}
-<p class="text-muted">Submitted attendance only. Sections whose register is missing or still a draft are listed in the missing-attendance report, not here.</p>
-<table class="table">
-    <thead><tr><th>Section</th><th>Student</th><th>Absence note</th></tr></thead>
-    <tbody>
-        {% for entry in absentees %}
-        <tr>
-            <td><a href="{% url 'core:attendance-register-detail' entry.register.pk %}">{{ entry.register.section }}</a></td>
-            <td><a href="{% url 'core:student-attendance' entry.academic_enrollment.student.pk %}">{{ entry.academic_enrollment.student.full_name }}</a></td>
-            <td>{{ entry.absence_note }}</td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="3">No submitted absences on this date.</td></tr>
-        {% endfor %}
-    </tbody>
-</table>
+{% with on_date=form.cleaned_data.date count=absentees|length %}
+<section class="erp-panel p-3 p-md-4" aria-labelledby="absent-title">
+    <div class="erp-panel-head mb-3">
+        <h2 class="h5" id="absent-title">Absent on {{ on_date|date:"l, j F Y" }}</h2>
+        <p class="erp-note-text">
+            Submitted attendance only. Sections whose register is missing or still a draft are listed in
+            {% if perms.core.view_attendanceregister %}<a href="{% url 'core:report-missing-attendance' %}">Missing attendance</a>{% else %}Missing attendance{% endif %}, not here.
+        </p>
+        <p class="erp-note-text mb-0" role="status">{{ count }} student{{ count|pluralize }} recorded absent.</p>
+    </div>
+    <div class="erp-table-scroll" role="region" aria-label="Absent students" tabindex="0">
+    <table class="table erp-keep erp-attendance-report-table">
+        <caption class="visually-hidden">Students recorded absent on {{ on_date|date:"j F Y" }}.</caption>
+        <thead>
+            <tr><th scope="col">Section</th><th scope="col">Student</th><th scope="col">Absence note</th></tr>
+        </thead>
+        <tbody>
+            {% for entry in absentees %}
+            <tr>
+                <td>{% if perms.core.view_attendanceregister %}<a href="{% url 'core:attendance-register-detail' entry.register.pk %}">{{ entry.register.section }}</a>{% else %}{{ entry.register.section }}{% endif %}</td>
+                <th scope="row" class="fw-normal"><a href="{% url 'core:student-attendance' entry.academic_enrollment.student.pk %}">{{ entry.academic_enrollment.student.full_name }}</a></th>
+                <td>{{ entry.absence_note }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3">No submitted absences on this date.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</section>
+{% endwith %}
+{% elif not form.is_bound %}
+<p class="erp-note-text mt-3">Choose a date to list the students recorded absent.</p>
 {% endif %}
 {% endblock %}
