@@ -35,6 +35,8 @@ _ATTENDANCE_REPORTS = Crumb(
     "Attendance reports", "core:attendance-reports", perm="core.view_attendanceentry"
 )
 
+_ACADEMIC_YEARS = Crumb("Academic Years", "core:academic-year-list", perm="core.view_academicyear")
+
 RULES = {
     "student-detail": Rule("student-list", (_STUDENTS,), "Student"),
     "student-deactivate-confirm": Rule(
@@ -99,6 +101,20 @@ RULES = {
     "timetable-slot-end": Rule("timetable-index", (_TIMETABLE,), "End slot"),
     "timetable-slot-delete": Rule("timetable-index", (_TIMETABLE,), "Delete slot"),
     "announcement-detail": Rule("announcement-list", (_ANNOUNCEMENTS,), "Announcement"),
+    # Grading scales (D1-5A). The list and create routes take the Academic Year's pk, but the detail and
+    # edit routes take the scale's pk, so those two never reuse `pk` for the year's scale list (their
+    # page header links back with the real year id instead).
+    "academic-year-grading-scales": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Grading scales"),
+    "grading-scale-create": Rule(
+        "academic-year-list",
+        (
+            _ACADEMIC_YEARS,
+            Crumb("Grading scales", "core:academic-year-grading-scales", True, perm="core.view_gradingscale"),
+        ),
+        "Add grading scale",
+    ),
+    "grading-scale-detail": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Grading scale"),
+    "grading-scale-update": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Edit grading scale"),
 }
 
 _EMPTY = {"breadcrumbs": [], "nav_section": None}

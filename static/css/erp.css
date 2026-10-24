@@ -1274,6 +1274,17 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
    cell then fits inside the 356px region and scrolls into view complete, not cut on one side. */
 @media (max-width: 575.98px) { .erp-review-form { width: 15rem; } }
 
+/* UI-D1-5A: grading scales. Band lists stack one per line; the numeric From column is right-aligned; the add-band
+   toolbar keeps its two fields compact beside the button. */
+.erp-band-list { margin: 0; padding: 0; list-style: none; }
+.erp-panel .erp-grading-table th.erp-num, .erp-panel .erp-grading-table td.erp-num { text-align: end; font-variant-numeric: tabular-nums; }
+@media (min-width: 576px) {
+  .erp-toolbar--inline.erp-grading-toolbar > .erp-field { flex: 0 1 12rem; }
+}
+@media (max-width: 575.98px) {
+  .erp-panel .erp-grading-table > thead > tr > *, .erp-panel .erp-grading-table > tbody > tr > * { padding-inline: var(--erp-space-2); overflow-wrap: break-word; }
+}
+
 /* UI-D1-4C-1: the three-column attendance report tables (also .erp-keep, so they fit the phone instead of
    scrolling) tighten cell padding on phones, so the State / Absence note column stays on screen and long
    Section names wrap. */

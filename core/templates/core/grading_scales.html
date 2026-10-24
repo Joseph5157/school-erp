@@ -1,24 +1,40 @@
 {% extends "base.html" %}
 {% block title %}Grading scales - {{ academic_year.name }}{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">Grading scales: {{ academic_year.name }}</h1>
-<p class="text-muted">Marks are the official result; grades are worked out from the percentage. Each Grade uses at most one scale per year. Finalized assessments keep the grade bands they were finalized with.</p>
-{% if perms.core.add_gradingscale %}
-    <a class="btn btn-primary mb-3" href="{% url 'core:grading-scale-create' academic_year.pk %}">Add grading scale</a>
-{% endif %}
-<table class="table">
-    <thead><tr><th>Scale</th><th>Applies to</th><th>Bands</th><th>Status</th></tr></thead>
+{% if perms.core.add_gradingscale %}{% url 'core:grading-scale-create' academic_year.pk as create_url %}{% endif %}
+{% include "partials/_page_header.html" with eyebrow="Assessments" title="Grading scales" purpose=academic_year.name primary_url=create_url primary_label="Add grading scale" only %}
+<p class="erp-note-text">Marks are the official result; grades are worked out from the percentage. Each Class/Grade uses at most one scale per Academic Year. Finalized assessments keep the grade bands they were finalized with.</p>
+<div class="erp-panel">
+<div class="erp-table-scroll" role="region" aria-label="Grading scales for {{ academic_year.name }}" tabindex="0">
+<table class="table erp-keep erp-grading-table">
+    <caption class="visually-hidden">Grading scales for {{ academic_year.name }}, with the Class/Grades each applies to, its grade bands and whether it is complete.</caption>
+    <thead>
+        <tr>
+            <th scope="col">Scale</th>
+            <th scope="col">Status</th>
+            <th scope="col">Applies to</th>
+            <th scope="col">Grade bands</th>
+        </tr>
+    </thead>
     <tbody>
         {% for scale in scales %}
         <tr>
-            <td><a href="{% url 'core:grading-scale-detail' scale.pk %}">{{ scale.name }}</a></td>
+            <th scope="row" class="fw-semibold"><a href="{% url 'core:grading-scale-detail' scale.pk %}">{{ scale.name }}</a></th>
+            <td>{% if scale.is_complete %}{% include "partials/_status_badge.html" with label="Complete" tone="finalized" only %}{% else %}{% include "partials/_status_badge.html" with label="Needs a band from 0%" tone="pending" only %}{% endif %}</td>
             <td>{% for link in scale.class_grade_links.all %}{{ link.class_grade }}{% if not forloop.last %}, {% endif %}{% empty %}&mdash;{% endfor %}</td>
-            <td>{% for band in scale.boundaries.all %}{{ band.label }} &ge; {{ band.min_percentage }}%{% if not forloop.last %}; {% endif %}{% empty %}&mdash;{% endfor %}</td>
-            <td>{% if scale.is_complete %}Complete{% else %}<span class="text-danger">Needs a band from 0%</span>{% endif %}</td>
+            <td>
+                {% if scale.boundaries.all %}
+                <ul class="erp-band-list">
+                    {% for band in scale.boundaries.all %}<li class="text-nowrap">{{ band.label }} &ge; {{ band.min_percentage }}%</li>{% endfor %}
+                </ul>
+                {% else %}&mdash;{% endif %}
+            </td>
         </tr>
         {% empty %}
-        <tr><td colspan="4">No grading scales yet.</td></tr>
+        <tr><td colspan="4">No grading scales yet.{% if perms.core.add_gradingscale %} Add one, then give it grade bands.{% endif %}</td></tr>
         {% endfor %}
     </tbody>
 </table>
+</div>
+</div>
 {% endblock %}

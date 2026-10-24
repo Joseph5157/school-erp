@@ -1,0 +1,1226 @@
+[
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grading scales for 2026-27",
+    "tab": 0,
+    "scroll": 201
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scales"
+  ],
+  "user": "demo_admin",
+  "name": "list",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grading scales for 2026-27",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scales"
+  ],
+  "user": "demo_admin",
+  "name": "list",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grading scales for 2026-27",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scales"
+  ],
+  "user": "demo_admin",
+  "name": "list",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grading scales for 2026-27",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scales"
+  ],
+  "user": "demo_admin",
+  "name": "list",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grading scales for 2026-27",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scales"
+  ],
+  "user": "demo_admin",
+  "name": "list",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grading scales for 2026-27",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scales"
+  ],
+  "user": "demo_admin",
+  "name": "list",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grade bands for Standard 10-point",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "detail-complete",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grade bands for Standard 10-point",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "detail-complete",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grade bands for Standard 10-point",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "detail-complete",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grade bands for Standard 10-point",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "detail-complete",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grade bands for Standard 10-point",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "detail-complete",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grade bands for Standard 10-point",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "detail-complete",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grade bands for Incomplete scale",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "detail-incomplete",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grade bands for Incomplete scale",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "detail-incomplete",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grade bands for Incomplete scale",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "detail-incomplete",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grade bands for Incomplete scale",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "detail-incomplete",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grade bands for Incomplete scale",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "detail-incomplete",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grade bands for Incomplete scale",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "detail-incomplete",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grade bands for Blank scale",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "detail-blank",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grade bands for Blank scale",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "detail-blank",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grade bands for Blank scale",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "detail-blank",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grade bands for Blank scale",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "detail-blank",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grade bands for Blank scale",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "detail-blank",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grade bands for Blank scale",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "detail-blank",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grade bands for Primary (Grade 6 to 8) with a deliberately very long descriptive scale name to test wrapping",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "detail-long",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grade bands for Primary (Grade 6 to 8) with a deliberately very long descriptive scale name to test wrapping",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "detail-long",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grade bands for Primary (Grade 6 to 8) with a deliberately very long descriptive scale name to test wrapping",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "detail-long",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grade bands for Primary (Grade 6 to 8) with a deliberately very long descriptive scale name to test wrapping",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "detail-long",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grade bands for Primary (Grade 6 to 8) with a deliberately very long descriptive scale name to test wrapping",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "detail-long",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grade bands for Primary (Grade 6 to 8) with a deliberately very long descriptive scale name to test wrapping",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "detail-long",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scales",
+   "Add grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "create",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scales",
+   "Add grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "create",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scales",
+   "Add grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "create",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scales",
+   "Add grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "create",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scales",
+   "Add grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "create",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scales",
+   "Add grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "create",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Edit grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "edit",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Edit grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "edit",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Edit grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "edit",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Edit grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "edit",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Edit grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "edit",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Edit grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "edit",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grading scales for 2026-27",
+    "tab": 0,
+    "scroll": 201
+   }
+  ],
+  "crumbs": [],
+  "user": "demo_view",
+  "name": "viewer-list",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grading scales for 2026-27",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [],
+  "user": "demo_view",
+  "name": "viewer-list",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grading scales for 2026-27",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [],
+  "user": "demo_view",
+  "name": "viewer-list",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grading scales for 2026-27",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [],
+  "user": "demo_view",
+  "name": "viewer-list",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grading scales for 2026-27",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [],
+  "user": "demo_view",
+  "name": "viewer-list",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grading scales for 2026-27",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [],
+  "user": "demo_view",
+  "name": "viewer-list",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grade bands for Standard 10-point",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [],
+  "user": "demo_view",
+  "name": "viewer-detail",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grade bands for Standard 10-point",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [],
+  "user": "demo_view",
+  "name": "viewer-detail",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grade bands for Standard 10-point",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [],
+  "user": "demo_view",
+  "name": "viewer-detail",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grade bands for Standard 10-point",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [],
+  "user": "demo_view",
+  "name": "viewer-detail",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grade bands for Standard 10-point",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [],
+  "user": "demo_view",
+  "name": "viewer-detail",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grade bands for Standard 10-point",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [],
+  "user": "demo_view",
+  "name": "viewer-detail",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grade bands for Standard 10-point",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scale"
+  ],
+  "user": "demo_school",
+  "name": "school-detail",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grade bands for Standard 10-point",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scale"
+  ],
+  "user": "demo_school",
+  "name": "school-detail",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grade bands for Standard 10-point",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scale"
+  ],
+  "user": "demo_school",
+  "name": "school-detail",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grade bands for Standard 10-point",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scale"
+  ],
+  "user": "demo_school",
+  "name": "school-detail",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grade bands for Standard 10-point",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scale"
+  ],
+  "user": "demo_school",
+  "name": "school-detail",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grade bands for Standard 10-point",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scale"
+  ],
+  "user": "demo_school",
+  "name": "school-detail",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scales",
+   "Add grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "create-invalid",
+  "width": 390,
+  "status": 200,
+  "summary_link": true,
+  "focus_after_summary_click": "id_name"
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scales",
+   "Add grading scale"
+  ],
+  "user": "demo_admin",
+  "name": "create-invalid",
+  "width": 1440,
+  "status": 200,
+  "summary_link": true,
+  "focus_after_summary_click": "id_name"
+ },
+ {
+  "name": "keyboard-scroll-390",
+  "before": 0,
+  "after": 4,
+  "focus_outline": "3px"
+ },
+ {
+  "overflow": 43,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grading scales for 2026-27",
+    "tab": 0,
+    "scroll": 396
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scales"
+  ],
+  "name": "zoom200-390 /academic-years/3/grading-scales/"
+ },
+ {
+  "overflow": 43,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Grade bands for Standard 10-point",
+    "tab": 0,
+    "scroll": 82
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Grading scale"
+  ],
+  "name": "zoom200-390 /grading-scales/1/"
+ }
+]
