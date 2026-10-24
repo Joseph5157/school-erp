@@ -1,0 +1,2478 @@
+[
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Assessments for 2026-27",
+    "tab": 0,
+    "scroll": 434
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments"
+  ],
+  "toolbarRows": 4,
+  "user": "demo_admin",
+  "name": "list",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Assessments for 2026-27",
+    "tab": 0,
+    "scroll": 74
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments"
+  ],
+  "toolbarRows": 2,
+  "user": "demo_admin",
+  "name": "list",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Assessments for 2026-27",
+    "tab": 0,
+    "scroll": 130
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments"
+  ],
+  "toolbarRows": 2,
+  "user": "demo_admin",
+  "name": "list",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Assessments for 2026-27",
+    "tab": 0,
+    "scroll": 98
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments"
+  ],
+  "toolbarRows": 2,
+  "user": "demo_admin",
+  "name": "list",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Assessments for 2026-27",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments"
+  ],
+  "toolbarRows": 2,
+  "user": "demo_admin",
+  "name": "list",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Assessments for 2026-27",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments"
+  ],
+  "toolbarRows": 2,
+  "user": "demo_admin",
+  "name": "list",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Assessments for 2026-27",
+    "tab": 0,
+    "scroll": 308
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments"
+  ],
+  "toolbarRows": 4,
+  "user": "demo_admin",
+  "name": "list-filtered",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Assessments for 2026-27",
+    "tab": 0,
+    "scroll": 58
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments"
+  ],
+  "toolbarRows": 2,
+  "user": "demo_admin",
+  "name": "list-filtered",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Assessments for 2026-27",
+    "tab": 0,
+    "scroll": 114
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments"
+  ],
+  "toolbarRows": 2,
+  "user": "demo_admin",
+  "name": "list-filtered",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Assessments for 2026-27",
+    "tab": 0,
+    "scroll": 82
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments"
+  ],
+  "toolbarRows": 2,
+  "user": "demo_admin",
+  "name": "list-filtered",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Assessments for 2026-27",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments"
+  ],
+  "toolbarRows": 2,
+  "user": "demo_admin",
+  "name": "list-filtered",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Assessments for 2026-27",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments"
+  ],
+  "toolbarRows": 2,
+  "user": "demo_admin",
+  "name": "list-filtered",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Assessments for 2026-27",
+    "tab": 0,
+    "scroll": 145
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments"
+  ],
+  "toolbarRows": 4,
+  "user": "demo_admin",
+  "name": "list-nomatch",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Assessments for 2026-27",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments"
+  ],
+  "toolbarRows": 2,
+  "user": "demo_admin",
+  "name": "list-nomatch",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Assessments for 2026-27",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments"
+  ],
+  "toolbarRows": 2,
+  "user": "demo_admin",
+  "name": "list-nomatch",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Assessments for 2026-27",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments"
+  ],
+  "toolbarRows": 2,
+  "user": "demo_admin",
+  "name": "list-nomatch",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Assessments for 2026-27",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments"
+  ],
+  "toolbarRows": 2,
+  "user": "demo_admin",
+  "name": "list-nomatch",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Assessments for 2026-27",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments"
+  ],
+  "toolbarRows": 2,
+  "user": "demo_admin",
+  "name": "list-nomatch",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Assessments for 2026-27",
+    "tab": 0,
+    "scroll": 434
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments"
+  ],
+  "toolbarRows": 4,
+  "user": "demo_admin",
+  "name": "list-invalid",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Assessments for 2026-27",
+    "tab": 0,
+    "scroll": 74
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments"
+  ],
+  "toolbarRows": 3,
+  "user": "demo_admin",
+  "name": "list-invalid",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Assessments for 2026-27",
+    "tab": 0,
+    "scroll": 130
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments"
+  ],
+  "toolbarRows": 3,
+  "user": "demo_admin",
+  "name": "list-invalid",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Assessments for 2026-27",
+    "tab": 0,
+    "scroll": 98
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments"
+  ],
+  "toolbarRows": 3,
+  "user": "demo_admin",
+  "name": "list-invalid",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Assessments for 2026-27",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments"
+  ],
+  "toolbarRows": 3,
+  "user": "demo_admin",
+  "name": "list-invalid",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Assessments for 2026-27",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments"
+  ],
+  "toolbarRows": 3,
+  "user": "demo_admin",
+  "name": "list-invalid",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Assessments for 2027-28",
+    "tab": 0,
+    "scroll": 145
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments"
+  ],
+  "toolbarRows": 4,
+  "user": "demo_admin",
+  "name": "list-empty-year",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Assessments for 2027-28",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments"
+  ],
+  "toolbarRows": 2,
+  "user": "demo_admin",
+  "name": "list-empty-year",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Assessments for 2027-28",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments"
+  ],
+  "toolbarRows": 2,
+  "user": "demo_admin",
+  "name": "list-empty-year",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Assessments for 2027-28",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments"
+  ],
+  "toolbarRows": 2,
+  "user": "demo_admin",
+  "name": "list-empty-year",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Assessments for 2027-28",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments"
+  ],
+  "toolbarRows": 2,
+  "user": "demo_admin",
+  "name": "list-empty-year",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Assessments for 2027-28",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments"
+  ],
+  "toolbarRows": 2,
+  "user": "demo_admin",
+  "name": "list-empty-year",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Quiz 1",
+    "tab": 0,
+    "scroll": 384
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "detail-notready",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Quiz 1",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "detail-notready",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Quiz 1",
+    "tab": 0,
+    "scroll": 20
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "detail-notready",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Quiz 1",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "detail-notready",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Quiz 1",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "detail-notready",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Quiz 1",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "detail-notready",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Quiz 2 (ready)",
+    "tab": 0,
+    "scroll": 352
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "detail-ready",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Quiz 2 (ready)",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "detail-ready",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Quiz 2 (ready)",
+    "tab": 0,
+    "scroll": 19
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "detail-ready",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Quiz 2 (ready)",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "detail-ready",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Quiz 2 (ready)",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "detail-ready",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Quiz 2 (ready)",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "detail-ready",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Midterm",
+    "tab": 0,
+    "scroll": 405
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "detail-finalized",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Midterm",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "detail-finalized",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Midterm",
+    "tab": 0,
+    "scroll": 18
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "detail-finalized",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Midterm",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "detail-finalized",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Midterm",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "detail-finalized",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Midterm",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "detail-finalized",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Planned unit test with a rather long descriptive name to check wrapping",
+    "tab": 0,
+    "scroll": 212
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "detail-planned",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Planned unit test with a rather long descriptive name to check wrapping",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "detail-planned",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Planned unit test with a rather long descriptive name to check wrapping",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "detail-planned",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Planned unit test with a rather long descriptive name to check wrapping",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "detail-planned",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Planned unit test with a rather long descriptive name to check wrapping",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "detail-planned",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Planned unit test with a rather long descriptive name to check wrapping",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "detail-planned",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Sanskrit oral",
+    "tab": 0,
+    "scroll": 212
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "detail-noteacher",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Sanskrit oral",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "detail-noteacher",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Sanskrit oral",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "detail-noteacher",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Sanskrit oral",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "detail-noteacher",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Sanskrit oral",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "detail-noteacher",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Sanskrit oral",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "detail-noteacher",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments",
+   "Plan an assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "form-create",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments",
+   "Plan an assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "form-create",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments",
+   "Plan an assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "form-create",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments",
+   "Plan an assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "form-create",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments",
+   "Plan an assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "form-create",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments",
+   "Plan an assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "form-create",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment",
+   "Edit assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "form-edit-locked",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment",
+   "Edit assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "form-edit-locked",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment",
+   "Edit assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "form-edit-locked",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment",
+   "Edit assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "form-edit-locked",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment",
+   "Edit assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "form-edit-locked",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment",
+   "Edit assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "form-edit-locked",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment",
+   "Edit assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "form-edit",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment",
+   "Edit assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "form-edit",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment",
+   "Edit assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "form-edit",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment",
+   "Edit assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "form-edit",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment",
+   "Edit assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "form-edit",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment",
+   "Edit assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "form-edit",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Correction history",
+    "tab": 0,
+    "scroll": 65
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Correct result"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "correct",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Correction history",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Correct result"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "correct",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Correction history",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Correct result"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "correct",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Correction history",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Correct result"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "correct",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Correction history",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Correct result"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "correct",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Correction history",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Correct result"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "correct",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Assessments for 2026-27",
+    "tab": 0,
+    "scroll": 434
+   }
+  ],
+  "crumbs": [],
+  "toolbarRows": 4,
+  "user": "demo_view",
+  "name": "viewer-list",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Assessments for 2026-27",
+    "tab": 0,
+    "scroll": 74
+   }
+  ],
+  "crumbs": [],
+  "toolbarRows": 2,
+  "user": "demo_view",
+  "name": "viewer-list",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Assessments for 2026-27",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [],
+  "toolbarRows": 2,
+  "user": "demo_view",
+  "name": "viewer-list",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Assessments for 2026-27",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [],
+  "toolbarRows": 2,
+  "user": "demo_view",
+  "name": "viewer-list",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Assessments for 2026-27",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [],
+  "toolbarRows": 2,
+  "user": "demo_view",
+  "name": "viewer-list",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Assessments for 2026-27",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [],
+  "toolbarRows": 2,
+  "user": "demo_view",
+  "name": "viewer-list",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Quiz 1",
+    "tab": 0,
+    "scroll": 384
+   }
+  ],
+  "crumbs": [],
+  "toolbarRows": null,
+  "user": "demo_view",
+  "name": "viewer-detail-notready",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Quiz 1",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [],
+  "toolbarRows": null,
+  "user": "demo_view",
+  "name": "viewer-detail-notready",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Quiz 1",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [],
+  "toolbarRows": null,
+  "user": "demo_view",
+  "name": "viewer-detail-notready",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Quiz 1",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [],
+  "toolbarRows": null,
+  "user": "demo_view",
+  "name": "viewer-detail-notready",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Quiz 1",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [],
+  "toolbarRows": null,
+  "user": "demo_view",
+  "name": "viewer-detail-notready",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Quiz 1",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [],
+  "toolbarRows": null,
+  "user": "demo_view",
+  "name": "viewer-detail-notready",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Midterm",
+    "tab": 0,
+    "scroll": 337
+   }
+  ],
+  "crumbs": [],
+  "toolbarRows": null,
+  "user": "demo_view",
+  "name": "viewer-detail-finalized",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Midterm",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [],
+  "toolbarRows": null,
+  "user": "demo_view",
+  "name": "viewer-detail-finalized",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Midterm",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [],
+  "toolbarRows": null,
+  "user": "demo_view",
+  "name": "viewer-detail-finalized",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Midterm",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [],
+  "toolbarRows": null,
+  "user": "demo_view",
+  "name": "viewer-detail-finalized",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Midterm",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [],
+  "toolbarRows": null,
+  "user": "demo_view",
+  "name": "viewer-detail-finalized",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Midterm",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [],
+  "toolbarRows": null,
+  "user": "demo_view",
+  "name": "viewer-detail-finalized",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Midterm",
+    "tab": 0,
+    "scroll": 405
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_school",
+  "name": "school-detail-finalized",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Midterm",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_school",
+  "name": "school-detail-finalized",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Midterm",
+    "tab": 0,
+    "scroll": 18
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_school",
+  "name": "school-detail-finalized",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Midterm",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_school",
+  "name": "school-detail-finalized",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Midterm",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_school",
+  "name": "school-detail-finalized",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Midterm",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_school",
+  "name": "school-detail-finalized",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Quiz 2 (ready)",
+    "tab": 0,
+    "scroll": 352
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_school",
+  "name": "school-detail-ready",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Quiz 2 (ready)",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_school",
+  "name": "school-detail-ready",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Quiz 2 (ready)",
+    "tab": 0,
+    "scroll": 19
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_school",
+  "name": "school-detail-ready",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Quiz 2 (ready)",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_school",
+  "name": "school-detail-ready",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Quiz 2 (ready)",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_school",
+  "name": "school-detail-ready",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Quiz 2 (ready)",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_school",
+  "name": "school-detail-ready",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments",
+   "Plan an assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "form-create-invalid",
+  "width": 390,
+  "status": 200,
+  "summary_link": "#id_term",
+  "focus_after_summary_click": "id_term"
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Correction history",
+    "tab": 0,
+    "scroll": 65
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Correct result"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "correct-invalid",
+  "width": 390,
+  "status": 200,
+  "summary_link": "#id_reason",
+  "focus_after_summary_click": "id_reason"
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments",
+   "Plan an assessment"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "form-create-invalid",
+  "width": 1440,
+  "status": 200,
+  "summary_link": "#id_term",
+  "focus_after_summary_click": "id_term"
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Correction history",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Correct result"
+  ],
+  "toolbarRows": null,
+  "user": "demo_admin",
+  "name": "correct-invalid",
+  "width": 1440,
+  "status": 200,
+  "summary_link": "#id_reason",
+  "focus_after_summary_click": "id_reason"
+ },
+ {
+  "name": "keyboard-scroll-roster-390",
+  "before": 0,
+  "after": 28,
+  "focus_outline": "3px"
+ },
+ {
+  "overflow": 43,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Assessments for 2026-27",
+    "tab": 0,
+    "scroll": 629
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessments"
+  ],
+  "toolbarRows": 4,
+  "name": "zoom200-390 /academic-years/4/assessments/"
+ },
+ {
+  "overflow": 43,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results for Midterm",
+    "tab": 0,
+    "scroll": 600
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Assessment"
+  ],
+  "toolbarRows": null,
+  "name": "zoom200-390 /assessments/3/"
+ }
+]
