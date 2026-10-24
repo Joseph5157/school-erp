@@ -37,6 +37,23 @@ Widths shot: 1440, 1280, 1024, 992, 768, 390 (full-page PNG). Restricted users: 
 
 Review-driven fixes made during capture: the first capture showed the State and Absence note columns pushed off-screen on phones and "Open register" wrapping beside the Draft badge; the tables now fit, with a small scoped `erp-attendance-report-table` rule.
 
+## Review correction: Missing attendance toolbar on one row
+
+Review asked for Start, End, Section and "Show missing attendance" to fit on one row at 1280 and 1440px. The form gets a scoped `erp-attendance-report-toolbar` modifier (existing `erp-toolbar erp-toolbar--inline` pattern kept) and, from 576px up, its three fields share the row (`flex: 1 1 11rem`, min 11rem, max 17rem) instead of each claiming 18rem. Under 576px the shared full-width stacking rule is untouched. Template change: one class on the `<form>`. All names, required markers, GET parameters, validation and permissions are unchanged. Probes (`toolbar` key in `measurements.json`, rows counted by distinct bottoms of the fields and the button):
+
+| Width | Rows (pristine / results / inverted / invalid) | Field width | Clipped labels / form overflow / page overflow |
+| --- | --- | --- | --- |
+| 1440 | 1 / 1 / 1 / 1 | 272px | none / 0 / 0 |
+| 1280 | 1 / 1 / 1 / 1 | 227px | none / 0 / 0 |
+| 1024 | 2 / 2 / 2 / 2 (button wraps) | 215px | none / 0 / 0 |
+| 992 | 2 / 2 / 2 / 2 | 205px | none / 0 / 0 |
+| 768 | 2 / 2 / 2 / 2 | 223px | none / 0 / 0 |
+| 390 and 360 | 4 (fields and button stack) | 324 / 294px | none / 0 / 0 |
+
+Refreshed: all `missing-*` and `register-missing-results-*` PNGs at 390, 768, 992, 1024, 1280 and 1440 (the invalid-form states are `missing-invalid-fields-*` and `missing-inverted-*`). Re-checked on the final head: document overflow 0px at every width in every state (43px only at 195px, the known shared top bar); 0 dangling `aria-describedby`; the summary link moves focus to `#id_start`; focus outline 3px solid; tab order from the error summary goes Section link, Start (day/month/year segments of the native date control), End. Final results: `manage.py check` clean; focused UI modules 102 OK; **full PostgreSQL `--parallel 4`: 2558 tests OK**.
+
+Minor, left as is: in the invalid state the existing toolbar bottom-aligns fields, so a field with an error message below it makes its label sit a little higher than its neighbours.
+
 ## Known limits
 
 - SQLite, synthetic data; no staging or production verification.

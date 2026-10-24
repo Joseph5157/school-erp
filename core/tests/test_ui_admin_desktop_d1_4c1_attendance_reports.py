@@ -515,8 +515,17 @@ class PhoneFitTests(ReportsFixture, TestCase):
         self.assertLess(start, css.index("/* UI-D1-4B"))
         self.assertLess(start, css.index("/* UI-D1-3D1 review fix"))
         block = css[start:css.index("/* UI-D1-4B")]
-        for selector in re.findall(r"^\s+(\.[^{]+?)\s*(?:,|\{)", block, re.M):
-            self.assertIn(".erp-attendance-report-table", selector)
+        selectors = re.findall(r"^\s+(\.[^{]+?)\s*(?:,|\{)", block, re.M)
+        self.assertTrue(selectors)
+        for selector in selectors:
+            self.assertIn(".erp-attendance-report-", selector)
+
+    def test_missing_toolbar_carries_its_scoped_modifier_and_keeps_the_get_form(self):
+        content = self.client.get(self.missing_url).content.decode()
+        form = content.split('aria-label="Choose a date range"')[0].rsplit("<form", 1)[1]
+        self.assertIn("erp-toolbar erp-toolbar--inline erp-attendance-report-toolbar", form)
+        self.assertIn('method="get"', form)
+        self.assertEqual(content.count('class="erp-required-mark"'), 2)  # Start and End stay marked
 
 
 # --- permissions (unchanged) ----------------------------------------------------------------

@@ -6,7 +6,7 @@
 {% else %}
 {% url 'core:attendance-register-list' as header_url %}{% include "partials/_page_header.html" with eyebrow="Attendance" title="Missing attendance" purpose="Days attendance was expected but no register has been submitted." secondary_url=header_url secondary_label="Attendance" only %}
 {% endif %}
-<form method="get" class="erp-toolbar erp-toolbar--inline" aria-label="Choose a date range">
+<form method="get" class="erp-toolbar erp-toolbar--inline erp-attendance-report-toolbar" aria-label="Choose a date range">
     {% include "partials/_form_error_summary.html" with form=form action_text="showing missing attendance" %}
     {% include "partials/_form_field.html" with field=form.start %}
     {% include "partials/_form_field.html" with field=form.end %}
