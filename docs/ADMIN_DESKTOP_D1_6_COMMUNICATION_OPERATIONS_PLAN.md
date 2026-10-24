@@ -7,6 +7,8 @@
 
 D1-6 is, like D1-3, D1-4 and D1-5, a **presentation-only** programme. It brings the remaining Communication and Operations administrator pages into the accepted admin-desktop system. It adds **no new send path, issuance path, import rule, report, export, permission, route or workflow**, and it changes no delivery, issuance, validation or audit behaviour. It is split into five independent gates (section 8), each its own draft PR and review, in risk-ascending order.
 
+**D1-6A closeout:** **MERGED** (PR #115, merge `97a2d79`, head `aeb83f2`, based on `4964972`). Sign-in lockouts and the Student guardian-access review step were modernized (templates, `login-lockouts` breadcrumb rule, one scoped CSS block, 24 tests, evidence in `docs/ui-reviews/ui-d1-6a/`); full PostgreSQL `--parallel 4` suite 2,763 OK; not deployed. Accepted limitations: (1) the review step has no breadcrumb trail, because it is rendered by `student-enroll` and `student-status-change`, which have no rule, and a rule would also change the untouched Enrollment form; (2) Clear lockout remains the unchanged, unconfirmed POST with consequence text only (ledger L3); (3) the manual screen-reader pass and PostgreSQL staging verification remain open (ledger L8). Deferred-work ledger rows L1 to L9 are unchanged. D1-6B to D1-6E are not started by this closeout.
+
 ## 1. Scope
 
 **In scope (administrator pages):**
