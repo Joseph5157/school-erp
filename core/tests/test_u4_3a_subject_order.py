@@ -6,8 +6,8 @@ from decimal import Decimal
 
 from django.apps import apps
 from django.core.exceptions import ValidationError
-from django.db import IntegrityError, transaction
-from django.db.models import F
+from django.db import IntegrityError, connection, transaction
+from django.db.models import F, Max
 from django.test import TestCase
 from django.urls import reverse
 
@@ -42,9 +42,13 @@ class OrderFixture(PublicationFixture):
         offerings = {
             o.subject.name: o for o in AcademicSubjectOffering.objects.filter(
                 academic_year=self.year, class_grade=self.grade6).select_related("subject")}
-        AcademicSubjectOffering.objects.filter(
-            pk__in=[o.pk for o in offerings.values()]
-        ).update(display_order=F("display_order") + 100)
+        # Shift past the current maximum: every new value is then above every old one, so no
+        # row can collide with another whatever order Postgres checks the unique constraint in.
+        pks = [o.pk for o in offerings.values()]
+        shift = AcademicSubjectOffering.objects.filter(pk__in=pks).aggregate(
+            top=Max("display_order"))["top"]
+        AcademicSubjectOffering.objects.filter(pk__in=pks).update(
+            display_order=F("display_order") + shift)
         for name, position in mapping.items():
             AcademicSubjectOffering.objects.filter(pk=offerings[name].pk).update(
                 display_order=position)
@@ -61,6 +65,29 @@ class OrderFixture(PublicationFixture):
     def entries(self, publication_obj):
         return list(publication_obj.entries.order_by("display_order").values_list(
             "subject_label", "display_order"))
+
+
+class OrderHelperTests(OrderFixture, TestCase):
+    """The test helper must not depend on the order Postgres visits rows in."""
+
+    def test_reordering_twice_is_safe_when_the_unmentioned_row_is_visited_last(self):
+        self.order({"Telugu": 1, "English": 2, "Mathematics": 3})  # Sanskrit is left at 102
+        sanskrit = AcademicSubjectOffering.objects.get(subject__name="Sanskrit")
+        # Rewrite its tuple so a sequential scan reaches it after English, and force that plan.
+        AcademicSubjectOffering.objects.filter(pk=sanskrit.pk).update(
+            display_order=sanskrit.display_order)
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL enable_indexscan = off")
+            cursor.execute("SET LOCAL enable_bitmapscan = off")
+
+        self.order({"Mathematics": 1, "English": 2, "Telugu": 3})
+
+        self.assertEqual(
+            list(AcademicSubjectOffering.objects.filter(class_grade=self.grade6)
+                 .order_by("display_order").values_list("subject__name", "display_order")[:3]),
+            [("Mathematics", 1), ("English", 2), ("Telugu", 3)])
+        self.assertGreater(
+            AcademicSubjectOffering.objects.get(subject__name="Sanskrit").display_order, 3)
 
 
 class BackfillTests(OrderFixture, TestCase):
