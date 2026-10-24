@@ -1,6 +1,6 @@
 # UI-D1-4C — Admin Attendance Reports
 
-**Status:** **PLAN ONLY — decisions D1–D7 APPROVED with clarifications (PR #105 review, 2026-10-24); amended, awaiting closeout.** No application code is changed by this document or its PR. Implementation order after this plan is merged: **D1-4C-1 first**, on a fresh branch from `main`; D1-4C-2 is a separate later gate.
+**Status:** **COMPLETE — both gates implemented and merged.** Plan merged in PR #105 (merge `64809e5`; decisions D1–D7 approved with clarifications, 2026-10-24). **D1-4C-1 MERGED** (PR #106, merge `6ef74be`, head `c0d073c`; full PostgreSQL suite 2,558 OK; evidence `docs/ui-reviews/ui-d1-4c1/`). **D1-4C-2 MERGED** (PR #107, merge `aedfd33`, head `00c113c`; full PostgreSQL suite 2,593 OK; evidence `docs/ui-reviews/ui-d1-4c2/`). Neither gate is deployed. The text below is the approved plan as written; the open follow-ups are listed in section 11.
 **Planning branch:** `plan/ui-admin-desktop-d1-4c-attendance-reports`, based on `main` `4d7d3fc` (docs closeout for PR #104; flaky-test fix merge `9aa08e4`).
 **Parent:** `docs/ADMIN_DESKTOP_D1_PLAN.md` (D1-4). **Binding design:** `docs/UI_DESIGN_RULES.md`, `docs/ADMIN_DESKTOP_TABLER_REFERENCE.md`, the accepted D0 / D1-3 / D1-4A / D1-4B patterns.
 **Domain authority:** ADR 0006 (enrollment effective dating), ADR 0007 (attendance model; supersedes 0005 for Phase 2), ADR 0008 (school calendar), ADR 0012 (teacher attendance; corrections stay administrator-only), and `core/reports.py` (the single implementation of "reportable").
