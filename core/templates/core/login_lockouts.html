@@ -1,13 +1,31 @@
 {% extends "base.html" %}
 {% block title %}Sign-in lockouts{% endblock %}
 {% block content %}
-<h1 class="h3 mb-1">Sign-in lockouts</h1>
-<p class="text-muted">Usernames currently refused after repeated failed sign-ins (5 from one network source, or 20 from any, within 15 minutes). Lockouts expire on their own; clearing one is recorded.</p>
-<ul>
-    {% for username in locked %}
-    <li><code>{{ username }}</code>
-        <form method="post" class="d-inline ms-2">{% csrf_token %}<input type="hidden" name="username" value="{{ username }}"><button type="submit" class="btn btn-outline-secondary btn-sm">Clear</button></form>
-    </li>
-    {% empty %}<li class="text-muted">No usernames are locked.</li>{% endfor %}
-</ul>
+{% include "partials/_page_header.html" with eyebrow="Access and security" title="Sign-in lockouts" purpose="Usernames currently refused after repeated failed sign-ins (5 from one network source, or 20 from any, within 15 minutes). Lockouts expire on their own; clearing one is recorded." only %}
+<div class="erp-panel">
+<div class="erp-table-scroll" role="region" aria-label="Locked usernames" tabindex="0">
+<table class="table erp-keep erp-lockout-table">
+    <caption class="visually-hidden">Usernames that are currently locked out of signing in, with a button to clear each lockout.</caption>
+    <thead>
+        <tr>
+            <th scope="col">Username</th>
+            <th scope="col">Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for username in locked %}
+        <tr>
+            <th scope="row" class="fw-normal text-break"><code>{{ username }}</code></th>
+            <td>
+                <form method="post" class="erp-lockout-clear">{% csrf_token %}<input type="hidden" name="username" value="{{ username }}"><button type="submit" class="btn btn-outline-secondary btn-sm">Clear<span class="visually-hidden"> lockout for {{ username }}</span></button></form>
+                <p class="erp-note-text mb-0">Lets this username try to sign in again straight away. The clear is recorded.</p>
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="2" class="text-muted">No usernames are locked.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+</div>
 {% endblock %}
