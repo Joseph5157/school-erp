@@ -1,33 +1,41 @@
 {% extends "base.html" %}
 {% block title %}Guardian access review{% endblock %}
 {% block content %}
-<h1 class="h3 mb-1">Guardian access review</h1>
-<p class="text-muted">{{ student.full_name }} &middot; {{ trigger }}</p>
-<p>This Student has active Guardian Portal access. Decide explicitly, for each guardian, whether access is retained or revoked. Nothing is decided automatically, and the change is not saved until every guardian is decided.</p>
+{% include "partials/_page_header.html" with eyebrow=student.full_name title="Guardian access review" purpose="This Student has active Guardian Portal access. Decide explicitly, for each guardian, whether access is retained or revoked. Nothing is decided automatically, and the change is not saved until every guardian is decided." only %}
+<section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="access-review-context-heading">
+<h2 class="h5 mb-3" id="access-review-context-heading">Why this review is needed</h2>
+<dl class="row mb-0">
+    <dt class="col-sm-3">Student</dt><dd class="col-sm-9 text-break">{{ student.full_name }}</dd>
+    <dt class="col-sm-3">Review trigger</dt><dd class="col-sm-9">{{ trigger }}</dd>
+    <dt class="col-sm-3">Guardians to decide</dt><dd class="col-sm-9">{{ grants|length }}</dd>
+</dl>
+</section>
 <form method="post" action="{{ action }}">
     {% csrf_token %}
     {% for name, value in hidden %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
     <input type="hidden" name="access_review" value="1">
-    <table class="table">
-        <thead><tr><th>Guardian</th><th>Relationship</th><th>Granted</th><th>Decision</th></tr></thead>
-        <tbody>
-        {% for grant in grants %}
-            <tr>
-                <td>{{ grant.student_guardian.guardian.full_name }}</td>
-                <td>{{ grant.student_guardian.get_relationship_type_display }}</td>
-                <td>{{ grant.granted_at|date:"j M Y" }}</td>
-                <td>
-                    {% for value, label in decisions %}
-                    <label class="me-3"><input type="radio" name="decision_{{ grant.pk }}" value="{{ value }}" required> {{ label }}</label>
-                    {% endfor %}
-                </td>
-            </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-    <p><label for="access_note">Note (optional, recorded with the decisions)</label>
-       <input type="text" name="access_note" id="access_note" maxlength="200" class="form-control"></p>
-    <button type="submit" class="btn btn-primary">Record decisions and continue</button>
-    <a class="btn btn-link" href="{% url 'core:student-detail' student.pk %}">Cancel</a>
+    <section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="access-review-decisions-heading">
+    <h2 class="h5 mb-3" id="access-review-decisions-heading">Decisions</h2>
+    <p class="erp-note-text">Every guardian needs a decision before anything is saved.</p>
+    {% for grant in grants %}
+    <fieldset class="erp-access-decision">
+        <legend class="erp-access-decision-legend">{{ grant.student_guardian.guardian.full_name }}<span class="visually-hidden">: decision</span></legend>
+        <p class="erp-note-text mb-2">{{ grant.student_guardian.get_relationship_type_display }} &middot; access granted {{ grant.granted_at|date:"j M Y" }}</p>
+        <div class="erp-access-decision-options">
+            {% for value, label in decisions %}
+            <label class="erp-access-decision-option" for="decision_{{ grant.pk }}_{{ value }}"><input type="radio" id="decision_{{ grant.pk }}_{{ value }}" name="decision_{{ grant.pk }}" value="{{ value }}" required> {{ label }}</label>
+            {% endfor %}
+        </div>
+    </fieldset>
+    {% endfor %}
+    <div class="erp-field mt-3 mb-0">
+        <label for="access_note">Note (optional, recorded with the decisions)</label>
+        <input type="text" name="access_note" id="access_note" maxlength="200" class="form-control">
+    </div>
+    </section>
+    <div class="d-flex flex-wrap align-items-center gap-2">
+        <button type="submit" class="btn btn-primary">Record decisions and continue</button>
+        {% if perms.core.view_student %}<a class="btn btn-link" href="{% url 'core:student-detail' student.pk %}">Cancel</a>{% endif %}
+    </div>
 </form>
 {% endblock %}

@@ -187,6 +187,8 @@ RULES = {
         ),
         "Withdraw",
     ),
+    # Security operations (D1-6A). `section` is the sidebar link's route name, not its "Access and security" group label.
+    "login-lockouts": Rule("login-lockouts", (), "Sign-in lockouts"),
 }
 
 _EMPTY = {"breadcrumbs": [], "nav_section": None}
