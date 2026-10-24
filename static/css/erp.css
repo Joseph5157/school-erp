@@ -1289,6 +1289,29 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
    reason gets a floor) and scrolls inside its labelled region instead of squeezing the audit values. */
 .erp-panel .erp-correction-table .erp-correction-reason { min-width: 16rem; max-width: 26rem; white-space: normal; overflow-wrap: break-word; }
 .erp-panel .erp-correction-table { min-width: 44rem; }
+/* UI-D1-5C: result reports. Result tables keep short cells on one line and tighten phone padding; the Subject/Section
+   matrix scrolls inside its labelled region with a sticky Student column and one-line assessment columns; its
+   Subject / Section / Term toolbar shares one row on wide desktops. */
+.erp-panel .erp-result-table td.text-nowrap { font-variant-numeric: tabular-nums; }
+.erp-panel .erp-results-matrix { border-collapse: separate; border-spacing: 0; }
+.erp-panel .erp-results-matrix thead th { vertical-align: bottom; white-space: nowrap; }
+.erp-panel .erp-results-matrix tbody td { white-space: nowrap; text-align: center; font-variant-numeric: tabular-nums; }
+.erp-panel .erp-results-matrix thead th:not(:first-child) { text-align: center; }
+.erp-panel .erp-results-matrix thead th:first-child,
+.erp-panel .erp-results-matrix tbody th[scope="row"] {
+  position: sticky; left: 0; z-index: 1; min-width: 9rem; max-width: 14rem; background: var(--erp-surface);
+  box-shadow: 1px 0 0 var(--erp-rule); white-space: normal; text-align: start;
+}
+.erp-panel .erp-results-matrix thead th:first-child { background: var(--erp-paper); }
+@media (min-width: 576px) {
+  .erp-toolbar--inline.erp-results-toolbar > .erp-field { flex: 1 1 11rem; max-width: 17rem; min-width: 11rem; }
+}
+@media (max-width: 575.98px) {
+  .erp-panel .erp-result-table > thead > tr > *, .erp-panel .erp-result-table > tbody > tr > * { padding-inline: var(--erp-space-2); overflow-wrap: break-word; }
+  .erp-panel .erp-result-table > thead > tr > *:not(.text-nowrap), .erp-panel .erp-result-table > tbody > tr > *:not(.text-nowrap) { max-width: 10rem; }
+  .erp-panel .erp-results-matrix thead th:first-child, .erp-panel .erp-results-matrix tbody th[scope="row"] { min-width: 7rem; max-width: 8rem; }
+  .erp-panel .erp-results-matrix > thead > tr > *, .erp-panel .erp-results-matrix > tbody > tr > * { padding-inline: var(--erp-space-2); }
+}
 /* UI-D1-5B: the assessment filter toolbar (Term, Section, Status, button) shares one row on wide desktops; the
    assessment tables (list and roster) tighten phone padding and keep long names wrapping inside their region. */
 @media (min-width: 576px) {

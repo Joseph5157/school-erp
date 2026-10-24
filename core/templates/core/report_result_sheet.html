@@ -1,23 +1,29 @@
 {% extends "base.html" %}
 {% block title %}Result sheet: {{ assessment.name }}{% endblock %}
 {% block content %}
-<h1 class="h3 mb-1">Result sheet</h1>
-<p class="lead">{{ assessment.subject_display }} &middot; {{ assessment.section }} &middot; {{ assessment.name }}</p>
-<p>{{ assessment.term.academic_year.name }} {{ assessment.term.name }} &middot; {{ assessment.assessment_date }} &middot; maximum {{ assessment.maximum_marks }}{% if assessment.pass_mark is not None %} &middot; pass mark {{ assessment.pass_mark }}{% endif %}{% if assessment.grading_scale_name %} &middot; graded with {{ assessment.grading_scale_name }}{% endif %}</p>
+{% if perms.core.view_assessment %}{% url 'core:assessment-detail' assessment.pk as back_url %}{% endif %}
+{% with section_text=assessment.section|stringformat:"s" %}
+{% include "partials/_page_header.html" with eyebrow="Result sheet" title=assessment.name purpose=assessment.subject_display|add:" · "|add:section_text status_label=assessment.get_status_display status_tone=assessment.status|lower secondary_url=back_url secondary_label="Back to assessment" only %}
+{% endwith %}
+<p class="erp-note-text">{{ assessment.term.academic_year.name }} {{ assessment.term.name }} &middot; {{ assessment.assessment_date }} &middot; maximum {{ assessment.maximum_marks }}{% if assessment.pass_mark is not None %} &middot; pass mark {{ assessment.pass_mark }}{% endif %}{% if assessment.grading_scale_name %} &middot; graded with {{ assessment.grading_scale_name }}{% endif %}</p>
 {% if results is None %}
-<div class="alert alert-secondary">This assessment is not finalized yet, so it has no official results.</div>
+<div class="erp-form-errors" role="status">This assessment is not finalized yet, so it has no official results.</div>
 {% else %}
-<table class="table">
-    <thead><tr><th>Student</th><th>Marks</th><th>%</th><th>Grade</th><th>Pass/Fail</th></tr></thead>
+<div class="erp-panel">
+<div class="erp-table-scroll" role="region" aria-label="Result sheet for {{ assessment.name }}" tabindex="0">
+<table class="table erp-result-table">
+    <caption class="visually-hidden">Official results for {{ assessment.name }}: each Student's marks, percentage, grade and pass or fail.</caption>
+    <thead><tr><th scope="col">Student</th><th scope="col">Marks</th><th scope="col">%</th><th scope="col">Grade</th><th scope="col">Pass/Fail</th></tr></thead>
     <tbody>
         {% for result in results %}
-        <tr><td>{{ result.student.full_name }}</td>{% include "core/_result_cells.html" %}</tr>
+        <tr><th scope="row" class="fw-semibold">{{ result.student.full_name }}</th>{% include "core/_result_cells.html" %}</tr>
         {% empty %}
         <tr><td colspan="5">No results.</td></tr>
         {% endfor %}
     </tbody>
 </table>
-<p class="text-muted small">Finalized {{ assessment.finalized_at }} by {{ assessment.finalized_by }}. Values include any audited corrections.</p>
+</div>
+</div>
+<p class="erp-note-text mt-3">Finalized {{ assessment.finalized_at }} by {{ assessment.finalized_by }}. Values include any audited corrections. Absent is shown as Absent: it is not zero and not a fail. Not graded means no grade was assigned.</p>
 {% endif %}
-<p><a href="{% url 'core:assessment-detail' assessment.pk %}">Back to assessment</a></p>
 {% endblock %}
