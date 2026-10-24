@@ -115,6 +115,26 @@ RULES = {
     ),
     "grading-scale-detail": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Grading scale"),
     "grading-scale-update": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Edit grading scale"),
+    # Assessments (D1-5B). Same pk discipline as above: the list and create routes take the Academic Year's pk,
+    # the detail and edit routes take the assessment's pk, and the correction route takes a result's pk, so
+    # only a crumb for the same model may reuse `pk` (edit -> its own assessment). Those pages link back to
+    # the year's list with the real year id from their page header.
+    "academic-year-assessments": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Assessments"),
+    "assessment-create": Rule(
+        "academic-year-list",
+        (
+            _ACADEMIC_YEARS,
+            Crumb("Assessments", "core:academic-year-assessments", True, perm="core.view_assessment"),
+        ),
+        "Plan an assessment",
+    ),
+    "assessment-detail": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Assessment"),
+    "assessment-update": Rule(
+        "academic-year-list",
+        (_ACADEMIC_YEARS, Crumb("Assessment", "core:assessment-detail", True, perm="core.view_assessment")),
+        "Edit assessment",
+    ),
+    "result-correct": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Correct result"),
 }
 
 _EMPTY = {"breadcrumbs": [], "nav_section": None}

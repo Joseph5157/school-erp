@@ -1277,12 +1277,26 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 /* UI-D1-5A: grading scales. Band lists stack one per line; the numeric From column is right-aligned; the add-band
    toolbar keeps its two fields compact beside the button. */
 .erp-band-list { margin: 0; padding: 0; list-style: none; }
-.erp-panel .erp-grading-table th.erp-num, .erp-panel .erp-grading-table td.erp-num { text-align: end; font-variant-numeric: tabular-nums; }
+.erp-panel .erp-grading-table th.erp-num, .erp-panel .erp-grading-table td.erp-num,
+.erp-panel .erp-assessment-table th.erp-num, .erp-panel .erp-assessment-table td.erp-num { text-align: end; font-variant-numeric: tabular-nums; }
 @media (min-width: 576px) {
   .erp-toolbar--inline.erp-grading-toolbar > .erp-field { flex: 0 1 12rem; }
 }
 @media (max-width: 575.98px) {
   .erp-panel .erp-grading-table > thead > tr > *, .erp-panel .erp-grading-table > tbody > tr > * { padding-inline: var(--erp-space-2); overflow-wrap: break-word; }
+}
+/* UI-D1-5B review: the Correction History keeps readable widths (dates, scores and usernames stay on one line, the
+   reason gets a floor) and scrolls inside its labelled region instead of squeezing the audit values. */
+.erp-panel .erp-correction-table .erp-correction-reason { min-width: 16rem; max-width: 26rem; white-space: normal; overflow-wrap: break-word; }
+.erp-panel .erp-correction-table { min-width: 44rem; }
+/* UI-D1-5B: the assessment filter toolbar (Term, Section, Status, button) shares one row on wide desktops; the
+   assessment tables (list and roster) tighten phone padding and keep long names wrapping inside their region. */
+@media (min-width: 576px) {
+  .erp-toolbar--inline.erp-assessment-toolbar > .erp-field { flex: 1 1 11rem; max-width: 17rem; min-width: 11rem; }
+}
+@media (max-width: 575.98px) {
+  .erp-panel .erp-assessment-table > thead > tr > *, .erp-panel .erp-assessment-table > tbody > tr > * { padding-inline: var(--erp-space-2); overflow-wrap: break-word; }
+  .erp-panel .erp-assessment-table > thead > tr > *:not(.text-nowrap), .erp-panel .erp-assessment-table > tbody > tr > *:not(.text-nowrap) { max-width: 10rem; }
 }
 
 /* UI-D1-4C-1: the three-column attendance report tables (also .erp-keep, so they fit the phone instead of
