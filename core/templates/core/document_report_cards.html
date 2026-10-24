@@ -1,23 +1,41 @@
 {% extends "base.html" %}
 {% block title %}Report card PDFs{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">Report card PDFs</h1>
-<form method="get" class="mb-4">
-    {{ form.as_p }}
-    <button type="submit" class="btn btn-primary">Show report cards</button>
-    <a class="btn btn-link" href="{% url 'core:document-index' %}">Back</a>
+{% include "partials/_page_header.html" with eyebrow="Documents" title="Report card PDFs" purpose="Each PDF is a Student's current published report card. Corrected, replaced or withdrawn versions are never listed." only %}
+<form method="get" class="erp-toolbar erp-toolbar--inline erp-document-toolbar" aria-label="Choose a Student">
+    {% include "partials/_form_error_summary.html" with form=form action_text="showing report cards" %}
+    {% include "partials/_form_field.html" with field=form.student %}
+    <div class="erp-form-actions">
+        <button type="submit" class="btn btn-primary">Show report cards</button>
+        {% if perms.core.issue_document %}<a class="btn btn-link" href="{% url 'core:document-index' %}">Back</a>{% endif %}
+    </div>
 </form>
 {% if student %}
-    <h2 class="h5">{{ student.full_name }}</h2>
-    <ul class="list-group">
-    {% for pub in publications %}
-        <li class="list-group-item d-flex justify-content-between">
-            <span>{{ pub.term_label }} &middot; {{ pub.academic_year_label }}</span>
-            <a href="{% url 'core:document-report-card-pdf' pub.pk %}">PDF</a>
-        </li>
-    {% empty %}
-        <li class="list-group-item">No published report cards for this student.</li>
-    {% endfor %}
-    </ul>
+<section class="erp-panel" aria-labelledby="report-cards-heading">
+    <div class="erp-panel-head p-3 p-md-4 pb-2">
+        <h2 class="h5" id="report-cards-heading">{{ student.full_name }}</h2>
+    </div>
+    <div class="erp-table-scroll" role="region" aria-label="Report cards for {{ student.full_name }}" tabindex="0">
+    <table class="table erp-keep erp-document-table">
+        <caption class="visually-hidden">Current published report cards for {{ student.full_name }}: Term, Academic Year and a link to the PDF.</caption>
+        <thead>
+            <tr><th scope="col">Term</th><th scope="col">Academic Year</th><th scope="col"><span class="visually-hidden">PDF</span></th></tr>
+        </thead>
+        <tbody>
+        {% for pub in publications %}
+            <tr>
+                <th scope="row" class="fw-semibold">{{ pub.term_label }}</th>
+                <td>{{ pub.academic_year_label }}</td>
+                <td><a href="{% url 'core:document-report-card-pdf' pub.pk %}">PDF<span class="visually-hidden"> for {{ student.full_name }}, {{ pub.term_label }} {{ pub.academic_year_label }}</span></a></td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="3">No published report cards for this student.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</section>
+{% elif not form.is_bound %}
+<p class="erp-note-text mt-3">Choose a Student to list their current published report cards.</p>
 {% endif %}
 {% endblock %}

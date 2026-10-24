@@ -2,26 +2,45 @@
 {% block title %}Documents{% endblock %}
 {% block content %}
 {% include "partials/_page_header.html" with eyebrow="Daily operations" title="Documents" purpose="Issue certificates and report cards as numbered PDFs." only %}
-<div class="list-group mb-4">
-    <a class="list-group-item list-group-item-action" href="{% url 'core:bonafide-create' %}">Bonafide certificate</a>
-    <a class="list-group-item list-group-item-action" href="{% url 'core:document-report-cards' %}">Report card PDF</a>
-    <a class="list-group-item list-group-item-action" href="{% url 'core:attendance-summary' %}">Attendance summary</a>
+<section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="document-types-heading">
+<h2 class="h5 mb-3" id="document-types-heading">Issue a document</h2>
+<ul class="erp-document-types">
+    <li><a href="{% url 'core:bonafide-create' %}">Bonafide certificate</a><span class="erp-note-text">Confirms that a Student is currently enrolled. A serial number is assigned and the PDF opens next.</span></li>
+    <li><a href="{% url 'core:document-report-cards' %}">Report card PDF</a><span class="erp-note-text">Open the PDF of a Student's current published report cards.</span></li>
+    <li><a href="{% url 'core:attendance-summary' %}">Attendance summary</a><span class="erp-note-text">Counts submitted attendance for one Section over a date range. Issuing assigns a serial number.</span></li>
+</ul>
+</section>
+<section class="erp-panel" aria-labelledby="document-recent-heading">
+<div class="erp-panel-head p-3 p-md-4 pb-2">
+    <h2 class="h5 mb-1" id="document-recent-heading">Recently issued</h2>
+    <p class="erp-note-text">The latest 50 documents. Issued documents are kept as a permanent record.</p>
 </div>
-<h2 class="h5">Recently issued</h2>
-<table class="table table-sm">
-    <thead><tr><th>Serial</th><th>Type</th><th>Student</th><th>Issued</th><th></th></tr></thead>
+<div class="erp-table-scroll" role="region" aria-label="Recently issued documents" tabindex="0">
+<table class="table erp-keep erp-document-table">
+    <caption class="visually-hidden">Recently issued documents: serial number, type, Student, when it was issued and a link to its PDF.</caption>
+    <thead>
+        <tr>
+            <th scope="col">Serial</th>
+            <th scope="col">Type</th>
+            <th scope="col">Student</th>
+            <th scope="col">Issued</th>
+            <th scope="col"><span class="visually-hidden">PDF</span></th>
+        </tr>
+    </thead>
     <tbody>
     {% for doc in recent %}
         <tr>
-            <td>{{ doc.serial }}</td>
+            <th scope="row" class="fw-semibold text-nowrap">{{ doc.serial }}</th>
             <td>{{ doc.get_document_type_display }}</td>
-            <td>{{ doc.student.full_name|default:"—" }}</td>
-            <td>{{ doc.issued_at|date:"j M Y, H:i" }}</td>
-            <td><a href="{% url 'core:document-pdf' doc.pk %}">PDF</a></td>
+            <td class="text-break">{{ doc.student.full_name|default:"—" }}</td>
+            <td class="text-nowrap">{{ doc.issued_at|date:"j M Y, H:i" }}</td>
+            <td><a href="{% url 'core:document-pdf' doc.pk %}">PDF<span class="visually-hidden"> for {{ doc.serial }}</span></a></td>
         </tr>
     {% empty %}
         <tr><td colspan="5">Nothing issued yet.</td></tr>
     {% endfor %}
     </tbody>
 </table>
+</div>
+</section>
 {% endblock %}
