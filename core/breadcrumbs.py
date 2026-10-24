@@ -169,6 +169,24 @@ RULES = {
         ),
         "Subject/Section results",
     ),
+    # Term publication (D1-5D). The preview's pk is a Term (not an Academic Year), so it shows only the no-id
+    # "Academic Years" ancestor and links back to the year's Terms from its header with the real year id. The
+    # publication routes use a publication's pk, so the only pk reuse is Publication detail from Withdraw.
+    "term-publication": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Publish to guardians"),
+    "publications-stale": Rule("publications-stale", (), "Stale publications"),
+    "publication-detail": Rule(
+        "publications-stale",
+        (Crumb("Stale publications", "core:publications-stale", perm="core.view_termpublication"),),
+        "Publication",
+    ),
+    "publication-withdraw": Rule(
+        "publications-stale",
+        (
+            Crumb("Stale publications", "core:publications-stale", perm="core.view_termpublication"),
+            Crumb("Publication", "core:publication-detail", True, perm="core.view_termpublication"),
+        ),
+        "Withdraw",
+    ),
 }
 
 _EMPTY = {"breadcrumbs": [], "nav_section": None}

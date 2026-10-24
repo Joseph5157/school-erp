@@ -1,0 +1,5 @@
+{# A publication version's status as a badge with text. Context: pub (a TermPublication) #}
+{% if pub.status == "PUBLISHED" %}{% include "partials/_status_badge.html" with label=pub.get_status_display tone="published" only %}
+{% elif pub.status == "STALE" %}{% include "partials/_status_badge.html" with label=pub.get_status_display tone="stale" only %}
+{% elif pub.status == "SUPERSEDED" %}{% include "partials/_status_badge.html" with label=pub.get_status_display tone="neutral" only %}
+{% else %}{% include "partials/_status_badge.html" with label=pub.get_status_display tone="revoked" only %}{% endif %}

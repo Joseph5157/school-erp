@@ -1312,6 +1312,21 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
   .erp-panel .erp-results-matrix thead th:first-child, .erp-panel .erp-results-matrix tbody th[scope="row"] { min-width: 7rem; max-width: 8rem; }
   .erp-panel .erp-results-matrix > thead > tr > *, .erp-panel .erp-results-matrix > tbody > tr > * { padding-inline: var(--erp-space-2); }
 }
+/* UI-D1-5D: Term publication. The preview is a list of one record per Student (action badge, what will be
+   released, remark) inside a panel; the Section toolbar shares one row on wide desktops; the version tables
+   tighten phone padding and cap wrapping cells. */
+.erp-publication-list { list-style: none; margin: 0; padding: 0; }
+.erp-publication-row { padding: var(--erp-space-3) var(--erp-space-4); border-top: 1px solid var(--erp-rule); }
+.erp-publication-row:first-child { border-top: 0; }
+.erp-publication-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--erp-space-1) var(--erp-space-3); }
+.erp-publication-release { margin-top: var(--erp-space-2); padding: var(--erp-space-2) var(--erp-space-3); background: var(--erp-paper); border-radius: var(--erp-radius-sm); }
+@media (min-width: 576px) {
+  .erp-toolbar--inline.erp-publication-toolbar > .erp-field { flex: 1 1 14rem; max-width: 22rem; min-width: 14rem; }
+}
+@media (max-width: 575.98px) {
+  .erp-panel .erp-publication-table > thead > tr > *, .erp-panel .erp-publication-table > tbody > tr > * { padding-inline: var(--erp-space-2); overflow-wrap: break-word; }
+  .erp-panel .erp-publication-table > thead > tr > *:not(.text-nowrap), .erp-panel .erp-publication-table > tbody > tr > *:not(.text-nowrap) { max-width: 11rem; }
+}
 /* UI-D1-5B: the assessment filter toolbar (Term, Section, Status, button) shares one row on wide desktops; the
    assessment tables (list and roster) tighten phone padding and keep long names wrapping inside their region. */
 @media (min-width: 576px) {
