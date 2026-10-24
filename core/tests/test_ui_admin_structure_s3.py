@@ -128,3 +128,15 @@ class SidebarPageTests(AuthorizationClientsMixin, TestCase):
     def test_teacher_and_guardian_shells_have_no_office_groups(self):
         response = self.non_admin.get(reverse("core:my-home"))
         self.assertNotContains(response, "erp-nav-group", status_code=response.status_code)
+
+
+class ContentCanvasTests(TestCase):
+    def test_1440_cap_is_scoped_to_the_admin_shell(self):
+        from pathlib import Path
+
+        from django.conf import settings
+
+        css = (Path(settings.BASE_DIR) / "static" / "css" / "erp.css").read_text(encoding="utf-8")
+        self.assertIn("body.has-sidebar .erp-content { max-width: 90rem; margin-inline: auto; }", css)
+        # Teacher and Guardian pages (no sidebar) keep the original desktop width.
+        self.assertIn("  .erp-content { max-width: 96rem; }", css)
