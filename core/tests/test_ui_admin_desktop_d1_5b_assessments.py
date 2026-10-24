@@ -516,7 +516,7 @@ class BreadcrumbTests(AssessmentFixture, TestCase):
     def test_list_and_create_trails_use_the_year_pk(self):
         context = self.trail(self.list_url)
         self.assertEqual(self.labels(context), ["Overview", "Academic Years", "Assessments"])
-        self.assertEqual(context["nav_section"], "academic-year-list")
+        self.assertEqual(context["nav_section"], "academic-year-assessments")
         create = self.trail(reverse("core:assessment-create", args=[self.year.pk]))
         self.assertEqual(self.labels(create),
                          ["Overview", "Academic Years", "Assessments", "Plan an assessment"])

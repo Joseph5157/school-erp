@@ -13,25 +13,24 @@ from django.urls import reverse
 
 from core import guardian_accounts as ga
 from core.models import (
-    Applicant,
-    Guardian,
-    GuardianAccount,
-    Student,
-    TimetablePeriod,
+    TEACHERS_GROUP_NAME,
     AcademicSubjectOffering,
     AcademicTerm,
     AcademicYear,
-    ClassGrade,
+    Applicant,
     AssessmentTeacherAssignment,
+    ClassGrade,
+    Guardian,
+    GuardianAccount,
     School,
     SchoolCalendarDay,
     Section,
     SectionClassTeacher,
+    Student,
     Subject,
-    TEACHERS_GROUP_NAME,
+    TimetablePeriod,
 )
 from core.tests.test_authorization import AuthorizationClientsMixin
-
 
 User = get_user_model()
 

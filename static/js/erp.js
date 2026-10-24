@@ -17,6 +17,28 @@
     });
   });
 
+  // Sidebar groups: the group with the active page (and Home) stays open; the others remember being opened
+  // or closed in this browser. Without JS or storage the server-rendered state is used as is.
+  (function () {
+    var key = "erp.nav.open";
+    var groups = document.querySelectorAll("[data-erp-nav-group]");
+    if (!groups.length) return;
+    var stored = null;
+    try { stored = JSON.parse(window.localStorage.getItem(key)); } catch (error) { stored = null; }
+    if (!stored || typeof stored !== "object") stored = {};
+    groups.forEach(function (group) {
+      var name = group.getAttribute("data-erp-nav-group");
+      if (!group.hasAttribute("data-erp-nav-pinned") && stored[name] === true) group.open = true;
+      group.addEventListener("toggle", function () {
+        if (group.hasAttribute("data-erp-nav-pinned")) return;
+        stored[name] = group.open;
+        try { window.localStorage.setItem(key, JSON.stringify(stored)); } catch (error) { /* storage unavailable */ }
+      });
+    });
+    var active = document.querySelector(".erp-sidebar .nav-link.active");
+    if (active && active.scrollIntoView) active.scrollIntoView({ block: "nearest" });
+  })();
+
   // Success and info messages close after 6 seconds; warnings and errors stay until dismissed.
   var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   document.querySelectorAll("[data-erp-autohide]").forEach(function (alert) {

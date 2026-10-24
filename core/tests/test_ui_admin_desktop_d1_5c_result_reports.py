@@ -375,7 +375,7 @@ class BreadcrumbTests(ReportFixture, TestCase):
         context = self.trail(self.sheet_url)
         self.assertEqual(self.labels(context), ["Overview", "Academic Years", "Assessment", "Result sheet"])
         self.assertEqual(context["breadcrumbs"][2]["url"], reverse("core:assessment-detail", args=[self.ut1.pk]))
-        self.assertEqual(context["nav_section"], "academic-year-list")
+        self.assertEqual(context["nav_section"], "academic-year-assessments")
 
     def test_matrix_links_to_the_year_assessment_list(self):
         context = self.trail(self.matrix_url)

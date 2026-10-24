@@ -170,6 +170,24 @@ body.erp { min-height: 100vh; }
   font-size: var(--erp-text-xs); font-weight: 600; line-height: 1.5; white-space: nowrap;
 }
 
+/* ---------- S3: collapsible sidebar groups ---------- */
+/* Each group is a <details>, so it works without JS. The group holding the active link starts open; the group's
+   waiting-count badge shows only while the group is closed, so a collapsed group never hides a queue. */
+.erp-nav-group > summary.erp-nav-heading {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--erp-space-2);
+  margin: .5rem 0 .25rem; padding-block: .5rem; list-style: none; cursor: pointer;
+  position: sticky; top: 0; z-index: 1; background: var(--erp-surface);
+}
+.erp-nav-group > summary.erp-nav-heading::-webkit-details-marker { display: none; }
+.erp-nav-group > summary.erp-nav-heading::after {
+  content: ""; flex: 0 0 auto; width: .45rem; height: .45rem; margin-left: auto;
+  border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg); transition: transform .15s ease-out;
+}
+.erp-nav-group[open] > summary.erp-nav-heading::after { transform: rotate(45deg); }
+.erp-nav-group > summary .erp-nav-badge { margin-left: 0; }
+.erp-nav-group[open] > summary .erp-nav-badge { display: none; }
+
 @media (min-width: 992px) {
   body.has-sidebar .erp-sidebar {
     position: fixed; top: var(--erp-topbar-h); bottom: 0; left: 0;

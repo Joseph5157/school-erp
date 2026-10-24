@@ -27,6 +27,7 @@ from core import (
     setup_checklist,
     timetable,
 )
+from core.academic_years import current_academic_year
 from core.authorization import (
     administrator_required,
     can_enter_results,
@@ -2724,18 +2725,8 @@ STUDENT_CHIP_CHOICES = (
 
 
 def _current_academic_year(today):
-    """The Academic Year containing `today`, else the most recent by start date.
-
-    "Most recent by start date" alone would pick a future year that has been
-    set up in advance and make every Student look unplaced, so prefer the year
-    that is actually in progress.
-    """
-    return (
-        AcademicYear.objects.filter(start_date__lte=today, end_date__gte=today)
-        .order_by("-start_date")
-        .first()
-        or AcademicYear.objects.order_by("-start_date").first()
-    )
+    """See `core.academic_years.current_academic_year`."""
+    return current_academic_year(today)
 
 
 def _parse_id(request, name, valid_ids):

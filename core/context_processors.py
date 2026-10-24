@@ -1,8 +1,9 @@
 from django.urls import reverse
 
+from core.academic_years import current_academic_year
 from core.authorization import is_guardian, is_teacher, user_areas
 from core.breadcrumbs import breadcrumb_context
-from core.models import School, SchoolLogo
+from core.models import School, SchoolLogo, business_today
 from core.nav_badges import queue_counts
 from core.navigation import current_area, office_nav, teacher_tabs
 
@@ -30,7 +31,10 @@ def roles(request):
     area = current_area(request)
     if area == "admin":
         trail = breadcrumb_context(match, user)
-        nav = office_nav(user, url_name, trail["nav_section"], queue_counts(user))
+        nav = office_nav(
+            user, url_name, trail["nav_section"], queue_counts(user),
+            current_academic_year(business_today()),
+        )
     else:
         trail = {"breadcrumbs": [], "nav_section": None}
         nav = []

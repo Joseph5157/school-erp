@@ -61,7 +61,7 @@ class NavigationDataTests(Phase4Fixture, TestCase):
         groups = office_nav(self.admin, "school-detail")
         self.assertEqual(
             self.titles(groups),
-            ["Home", "School setup", "Admissions", "Daily", "Results", "Access and security"],
+            ["Home", "School setup", "Admissions", "Daily", "Assessments & Results", "Access and security"],
         )
         self.assertIn("Academic Years", self.labels(groups))
         self.assertIn("Sign-in lockouts", self.labels(groups))

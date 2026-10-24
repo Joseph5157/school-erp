@@ -107,43 +107,43 @@ RULES = {
     # Grading scales (D1-5A). The list and create routes take the Academic Year's pk, but the detail and
     # edit routes take the scale's pk, so those two never reuse `pk` for the year's scale list (their
     # page header links back with the real year id instead).
-    "academic-year-grading-scales": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Grading scales"),
+    "academic-year-grading-scales": Rule("academic-year-grading-scales", (_ACADEMIC_YEARS,), "Grading scales"),
     "grading-scale-create": Rule(
-        "academic-year-list",
+        "academic-year-grading-scales",
         (
             _ACADEMIC_YEARS,
             Crumb("Grading scales", "core:academic-year-grading-scales", True, perm="core.view_gradingscale"),
         ),
         "Add grading scale",
     ),
-    "grading-scale-detail": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Grading scale"),
-    "grading-scale-update": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Edit grading scale"),
+    "grading-scale-detail": Rule("academic-year-grading-scales", (_ACADEMIC_YEARS,), "Grading scale"),
+    "grading-scale-update": Rule("academic-year-grading-scales", (_ACADEMIC_YEARS,), "Edit grading scale"),
     # Assessments (D1-5B). Same pk discipline as above: the list and create routes take the Academic Year's pk,
     # the detail and edit routes take the assessment's pk, and the correction route takes a result's pk, so
     # only a crumb for the same model may reuse `pk` (edit -> its own assessment). Those pages link back to
     # the year's list with the real year id from their page header.
-    "academic-year-assessments": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Assessments"),
+    "academic-year-assessments": Rule("academic-year-assessments", (_ACADEMIC_YEARS,), "Assessments"),
     "assessment-create": Rule(
-        "academic-year-list",
+        "academic-year-assessments",
         (
             _ACADEMIC_YEARS,
             Crumb("Assessments", "core:academic-year-assessments", True, perm="core.view_assessment"),
         ),
         "Plan an assessment",
     ),
-    "assessment-detail": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Assessment"),
+    "assessment-detail": Rule("academic-year-assessments", (_ACADEMIC_YEARS,), "Assessment"),
     "assessment-update": Rule(
-        "academic-year-list",
+        "academic-year-assessments",
         (_ACADEMIC_YEARS, Crumb("Assessment", "core:assessment-detail", True, perm="core.view_assessment")),
         "Edit assessment",
     ),
-    "result-correct": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Correct result"),
+    "result-correct": Rule("academic-year-assessments", (_ACADEMIC_YEARS,), "Correct result"),
     # Result reports (D1-5C). Only administrator routes are listed; the teacher report card (my-report-card) has
     # no rule and keeps the teacher shell. Crumbs reuse `pk` only for the same model: the result sheet's pk is an
     # assessment (-> its detail), the Student reports' pk is a Student (-> Student, Student results), and the
     # matrix's pk is an Academic Year (-> its assessment list).
     "report-result-sheet": Rule(
-        "academic-year-list",
+        "academic-year-assessments",
         (_ACADEMIC_YEARS, Crumb("Assessment", "core:assessment-detail", True, perm="core.view_assessment")),
         "Result sheet",
     ),
@@ -165,7 +165,7 @@ RULES = {
         "Report card",
     ),
     "report-subject-section-results": Rule(
-        "academic-year-list",
+        "report-subject-section-results",
         (
             _ACADEMIC_YEARS,
             Crumb("Assessments", "core:academic-year-assessments", True, perm="core.view_assessment"),
