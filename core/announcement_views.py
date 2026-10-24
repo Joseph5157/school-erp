@@ -74,7 +74,7 @@ def announcement_prepare(request, pk):
     except ValidationError as problem:
         messages.error(request, problem.messages[0])
     else:
-        text = (f"Messages ready on the To send page: {result['prepared']}. "
+        text = (f"Messages ready on the Message queue page: {result['prepared']}. "
                 f"Not sent (no WhatsApp consent): {result['skipped']}.")
         if result["done"]:
             text += f" Already sent or dismissed: {result['done']}."

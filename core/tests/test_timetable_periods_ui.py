@@ -74,6 +74,19 @@ class PeriodScreenTests(Phase4Fixture, TestCase):
         self.assertContains(response, "No periods yet")
         self.assertContains(response, reverse("core:timetable-period-create", args=[self.year.pk]))
 
+    def test_empty_state_has_a_single_add_action(self):
+        page = self.client.get(self.list_url).content.decode()
+        create = reverse("core:timetable-period-create", args=[self.year.pk])
+        self.assertEqual(page.count(f'href="{create}"'), 1)
+        self.assertIn("Add the first period", page)
+        self.assertNotIn(">Add period<", page)
+
+    def test_header_add_action_returns_once_periods_exist(self):
+        self.make_period(1, "P1")
+        page = self.client.get(self.list_url).content.decode()
+        self.assertEqual(page.count(">Add period<"), 1)
+        self.assertNotIn("Add the first period", page)
+
     def test_unknown_year_is_404(self):
         self.assertEqual(
             self.client.get(reverse("core:timetable-periods", args=[9999])).status_code, 404

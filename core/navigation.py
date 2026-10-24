@@ -38,7 +38,7 @@ OFFICE_NAV = (
         NavLink("Attendance", "core:attendance-register-list", "core.view_attendanceregister"),
         NavLink("Attendance reports", "core:attendance-reports", "core.view_attendanceentry"),
         NavLink("Announcements", "core:announcement-list", "core.view_announcement"),
-        NavLink("To send", "core:notifications-to-send", "core.send_notification"),
+        NavLink("Message queue", "core:notifications-to-send", "core.send_notification"),
         NavLink("Documents", "core:document-index", "core.issue_document"),
     )),
     ("Results", (

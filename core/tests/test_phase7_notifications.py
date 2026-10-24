@@ -411,4 +411,4 @@ class ToSendPageTests(NotificationFixture, TestCase):
     def test_nav_link_for_admin_only(self):
         self.assertContains(self.client.get(self.url), f'href="{self.url}"')
         labels = [link["label"] for group in office_nav(self.rao, "") for link in group["links"]]
-        self.assertNotIn("To send", labels)
+        self.assertNotIn("Message queue", labels)

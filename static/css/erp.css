@@ -1223,7 +1223,7 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 
 @media (min-width: 992px) {
   /* Fluid working area for heavy tables; long-form pages keep their own reading widths. */
-  .erp-content { max-width: 96rem; }
+  .erp-content { max-width: 90rem; margin-inline: auto; }
   .erp-page-header { margin-bottom: var(--erp-space-4); border-bottom-color: transparent; padding-bottom: 0; }
   .erp-page-title { font-size: 1.75rem; }
   .erp-topbar { padding-inline: var(--erp-space-5); }

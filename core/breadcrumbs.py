@@ -197,7 +197,7 @@ RULES = {
     "import-upload": Rule("import-list", (_IMPORTS,), "New import"),
     "import-detail": Rule("import-list", (_IMPORTS,), "Import"),
     # Notification queue (D1-6D). The page is the sidebar link itself; mark-sent and dismiss are POST-only redirects.
-    "notifications-to-send": Rule("notifications-to-send", (), "To send"),
+    "notifications-to-send": Rule("notifications-to-send", (), "Message queue"),
     # Documents (D1-6C). The index is the sidebar link itself; the three issuing/list pages show it as a parent only to
     # viewers who can open it (all need issue_document). The two PDF routes are responses, not pages, and have no rule.
     "document-index": Rule("document-index", (), "Documents"),

@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% load i18n %}
-{% block title %}To send{% endblock %}
+{% block title %}Message queue{% endblock %}
 {% block content %}
 {% blocktrans asvar counts_text with waiting=rows|length sent=sent_today|length %}{{ waiting }} waiting · {{ sent }} sent today{% endblocktrans %}
-{% include "partials/_page_header.html" with eyebrow="Daily" title="To send" purpose=counts_text only %}
+{% include "partials/_page_header.html" with eyebrow="Daily" title="Message queue" purpose=counts_text only %}
 <p class="erp-note-text">The ERP never sends messages itself. Open each message in WhatsApp from your own phone, then choose Mark as sent.</p>
 
 {% if portal_only %}
