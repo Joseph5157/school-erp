@@ -16,7 +16,7 @@ from django.urls import resolve, reverse
 
 from core import reports
 from core.breadcrumbs import breadcrumb_context
-from core.models import AttendanceRegister, AttendanceStatus, SchoolCalendarDay
+from core.models import AttendanceRegister, AttendanceStatus, SchoolCalendarDay, Section
 from core.tests.test_ui_admin_desktop_d1_4a_attendance_list import AttendanceListFixture
 
 User = get_user_model()
@@ -105,6 +105,24 @@ class AriaAssertions:
             self.assertIsNotNone(described, field_id)
             for token in described.group(1).split():
                 self.assertIn(f'id="{token}"', content, f"{field_id} -> {token}")
+
+
+class FormValueAssertions:
+    """Assert what a GET toolbar really presets, never by matching database-assigned ids in the markup."""
+
+    def assertNoPresetValue(self, tag, name):
+        """The named <input> carries no value attribute, so the filter has no default."""
+        match = re.search(rf'<input[^>]* name="{name}"[^>]*>', tag)
+        self.assertIsNotNone(match, name)
+        self.assertNotRegex(match.group(0), r"\bvalue=", name)
+
+    def assertOnlyEmptyOptionSelected(self, tag, name):
+        """The named <select> preselects nothing but its empty option."""
+        select = re.search(rf'<select[^>]* name="{name}"[^>]*>(.*?)</select>', tag, re.S)
+        self.assertIsNotNone(select, name)
+        selected = re.findall(r"<option\b[^>]*\bselected\b[^>]*>", select.group(1))
+        self.assertEqual(len(selected), 1, selected)
+        self.assertIn('value=""', selected[0])
 
 
 # --- breadcrumb mechanism -----------------------------------------------------------------
@@ -268,7 +286,7 @@ class ReportsIndexTests(ReportsFixture, TestCase):
 # --- Daily absent students ----------------------------------------------------------------
 
 
-class DailyAbsenteesTests(AriaAssertions, ReportsFixture, TestCase):
+class DailyAbsenteesTests(AriaAssertions, FormValueAssertions, ReportsFixture, TestCase):
     def setUp(self):
         self.build_reports()
 
@@ -289,7 +307,7 @@ class DailyAbsenteesTests(AriaAssertions, ReportsFixture, TestCase):
         tag = content.split('aria-label="Choose a date"')[1].split("</form>")[0]
         self.assertEqual(re.findall(r'<(?:select|input)[^>]* name="(\w+)"', tag), ["date"])
         self.assertIn(">Show absent students</button>", tag)
-        self.assertNotIn('value="2', tag)
+        self.assertNoPresetValue(tag, "date")
 
     def test_results_table_structure_columns_and_note(self):
         self.submitted(MON, absent=[self.ravi], present=[self.asha], notes={self.ravi.pk: "Fever"})
@@ -373,7 +391,7 @@ class DailyAbsenteesTests(AriaAssertions, ReportsFixture, TestCase):
 # --- Missing attendance -------------------------------------------------------------------
 
 
-class MissingAttendanceTests(AriaAssertions, ReportsFixture, TestCase):
+class MissingAttendanceTests(AriaAssertions, FormValueAssertions, ReportsFixture, TestCase):
     def setUp(self):
         self.build_reports()
         self.window = {"start": MON.isoformat(), "end": WED.isoformat(), "section": self.six_a.pk}
@@ -396,9 +414,24 @@ class MissingAttendanceTests(AriaAssertions, ReportsFixture, TestCase):
             re.findall(r'<(?:select|input)[^>]* name="(\w+)"', tag), ["start", "end", "section"]
         )
         self.assertEqual(re.findall(r"<label[^>]*>([^<]+):</label>", tag), ["Start", "End", "Section"])
-        self.assertNotIn('value="2', tag)
-        self.assertEqual(tag.count("selected"), 1)  # only the empty "---------" Section option
+        self.assertNoPresetValue(tag, "start")
+        self.assertNoPresetValue(tag, "end")
+        self.assertOnlyEmptyOptionSelected(tag, "section")
         self.assertIn('<option value="" selected>', tag)
+
+    def test_no_defaults_hold_whatever_ids_the_database_assigns(self):
+        # Section ids of 20 and above (and 2000) used to trip a `'value="2'` substring check.
+        for pk in (20, 2000):
+            Section.objects.create(pk=pk, class_grade=self.grade6, name=f"High {pk}")
+        content = self.client.get(self.missing_url).content.decode()
+        tag = content.split('aria-label="Choose a date range"')[1].split("</form>")[0]
+        self.assertIn('<option value="20">', tag)
+        self.assertIn('<option value="2000">', tag)
+        self.assertNoPresetValue(tag, "start")
+        self.assertNoPresetValue(tag, "end")
+        self.assertOnlyEmptyOptionSelected(tag, "section")
+        absent = self.client.get(self.absent_url).content.decode()
+        self.assertNoPresetValue(absent.split('aria-label="Choose a date"')[1].split("</form>")[0], "date")
 
     def test_draft_and_not_taken_are_distinct_and_never_absent(self):
         self.submitted(MON, present=[self.asha, self.ravi])
