@@ -1,74 +1,88 @@
 {% extends "base.html" %}
 {% block title %}Attendance for {{ student.full_name }}{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">Attendance for {{ student.full_name }}</h1>
-<form method="get" class="row g-2 align-items-end mb-3">
-    <div class="col-auto">
-        {{ form.start.label_tag }}
-        {{ form.start }}
-    </div>
-    <div class="col-auto">
-        {{ form.end.label_tag }}
-        {{ form.end }}
-    </div>
-    <div class="col-auto">
-        <button type="submit" class="btn btn-outline-secondary">Filter</button>
+{% with page_title="Attendance for "|add:student.full_name %}
+{% if perms.core.view_student %}
+{% url 'core:student-detail' student.pk as header_url %}{% include "partials/_page_header.html" with eyebrow="Students" title=page_title purpose="Attendance history and percentage from submitted registers only." secondary_url=header_url secondary_label="Back to student" only %}
+{% else %}
+{% url 'core:attendance-reports' as header_url %}{% include "partials/_page_header.html" with eyebrow="Students" title=page_title purpose="Attendance history and percentage from submitted registers only." secondary_url=header_url secondary_label="Attendance reports" only %}
+{% endif %}
+{% endwith %}
+<form method="get" class="erp-toolbar erp-toolbar--inline erp-attendance-report-toolbar" aria-label="Filter attendance by date">
+    {% include "partials/_form_error_summary.html" with form=form action_text="filtering the history" %}
+    {% include "partials/_form_field.html" with field=form.start %}
+    {% include "partials/_form_field.html" with field=form.end %}
+    <div class="erp-form-actions">
+        <button type="submit" class="btn btn-outline-secondary">Filter history</button>
+        {% if form.is_bound %}<a class="btn btn-link" href="{% url 'core:student-attendance' student.pk %}">Clear filter</a>{% endif %}
     </div>
 </form>
-
-<h2 class="h5">Summary</h2>
-<p class="text-muted">Submitted attendance only; missing or draft registers are not counted as absent.</p>
-<p>Attendance percentage:
-    <strong>{% if percentage is not None %}{{ percentage }}%{% else %}&mdash;{% endif %}</strong>
-</p>
-<table class="table">
-    <thead>
-        <tr>
-            <th>Status</th>
-            <th>Count</th>
-        </tr>
-    </thead>
-    <tbody>
+<section class="erp-panel p-3 p-md-4" aria-labelledby="student-summary-title">
+    <div class="erp-panel-head mb-3">
+        <h2 class="h5" id="student-summary-title">
+            Summary{% if form.is_bound and form.errors %}: all recorded attendance{% elif form.is_bound and form.cleaned_data.start and form.cleaned_data.end %}: {{ form.cleaned_data.start|date:"j M Y" }} to {{ form.cleaned_data.end|date:"j M Y" }}{% elif form.is_bound and form.cleaned_data.start %}: from {{ form.cleaned_data.start|date:"j M Y" }}{% elif form.is_bound and form.cleaned_data.end %}: up to {{ form.cleaned_data.end|date:"j M Y" }}{% endif %}
+        </h2>
+        {% if form.is_bound and form.errors %}
+        <p class="erp-note-text"><strong>The date filter was not applied; showing all recorded attendance.</strong></p>
+        {% endif %}
+        <p class="erp-note-text">Submitted attendance only; missing or draft registers are not counted as absent.</p>
+    </div>
+    <dl class="d-flex flex-wrap gap-4 mb-0">
         {% for row in summary %}
-        <tr>
-            <td>{{ row.label }}</td>
-            <td>{{ row.count }}</td>
-        </tr>
+        <div><dt class="small text-muted fw-normal">{{ row.label }}</dt><dd class="h5 mb-0">{{ row.count }}</dd></div>
         {% endfor %}
-        <tr>
-            <th>Total</th>
-            <th>{{ total }}</th>
-        </tr>
-    </tbody>
-</table>
-
-<h2 class="h5 mt-4">Attendance history</h2>
-<table class="table">
-    <thead>
-        <tr>
-            <th>Date</th>
-            <th>Academic year</th>
-            <th>Section</th>
-            <th>Register</th>
-            <th>Status</th>
-            <th>Absence note</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for entry in entries %}
-        <tr>
-            <td>{{ entry.register.date }}</td>
-            <td>{{ entry.register.academic_year }}</td>
-            <td>{{ entry.register.section }}</td>
-            <td>{{ entry.register.get_status_display }}</td>
-            <td>{{ entry.get_status_display }}</td>
-            <td>{{ entry.absence_note }}</td>
-        </tr>
-        {% empty %}
-        <tr>
-            <td colspan="6">No attendance recorded.</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+        <div><dt class="small text-muted fw-normal">Total counted</dt><dd class="h5 mb-0">{{ total }}</dd></div>
+        <div><dt class="small text-muted fw-normal">Attendance percentage</dt><dd class="h5 mb-0">{% if percentage is not None %}{{ percentage }}%{% else %}<span aria-hidden="true">&mdash;</span><span class="visually-hidden">No reportable attendance</span>{% endif %}</dd></div>
+    </dl>
+    {% if percentage is None %}
+    <p class="erp-note-text small mt-3 mb-0">A dash (&mdash;) means no submitted attendance counts yet. It is not 0% and not absent.</p>
+    {% endif %}
+</section>
+<section class="erp-panel p-3 p-md-4" aria-labelledby="student-history-title">
+    <div class="erp-panel-head mb-3">
+        <h2 class="h5" id="student-history-title">
+            Attendance history{% if form.is_bound and form.errors %}: all recorded attendance{% elif form.is_bound and form.cleaned_data.start and form.cleaned_data.end %}: {{ form.cleaned_data.start|date:"j M Y" }} to {{ form.cleaned_data.end|date:"j M Y" }}{% elif form.is_bound and form.cleaned_data.start %}: from {{ form.cleaned_data.start|date:"j M Y" }}{% elif form.is_bound and form.cleaned_data.end %}: up to {{ form.cleaned_data.end|date:"j M Y" }}{% endif %}
+        </h2>
+        {% if form.is_bound and form.errors %}
+        <p class="erp-note-text"><strong>The date filter was not applied; showing all recorded attendance.</strong></p>
+        {% endif %}
+        <p class="erp-note-text">
+            {% if form.is_bound and not form.errors and form.cleaned_data.start or form.is_bound and not form.errors and form.cleaned_data.end %}This list shows every recorded entry in the selected date range.{% else %}This list shows every recorded entry.{% endif %}
+            Only entries on submitted registers, on instructional dates
+            within the Student's enrollment, and not in the future are counted in the summary above, so an entry
+            listed here may not be counted.
+        </p>
+    </div>
+    <div class="erp-table-scroll" role="region" aria-label="Attendance history" tabindex="0">
+    <table class="table">
+        <caption class="visually-hidden">Recorded attendance entries for {{ student.full_name }}, by date.</caption>
+        <thead>
+            <tr>
+                <th scope="col">Date</th>
+                <th scope="col">Academic year</th>
+                <th scope="col">Section</th>
+                <th scope="col">Register</th>
+                <th scope="col">Status</th>
+                <th scope="col">Absence note</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in entries %}
+            <tr>
+                <th scope="row" class="fw-normal text-nowrap">{{ entry.register.date|date:"j M Y" }}</th>
+                <td>{{ entry.register.academic_year }}</td>
+                <td>{{ entry.register.section }}</td>
+                <td>{% include "partials/_status_badge.html" with label=entry.register.get_status_display tone=entry.register.status|lower only %}</td>
+                <td>{{ entry.get_status_display }}</td>
+                <td>{{ entry.absence_note }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6">No attendance recorded.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</section>
 {% endblock %}

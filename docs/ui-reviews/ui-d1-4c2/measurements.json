@@ -1,0 +1,4186 @@
+{
+ "measurements": [
+  {
+   "who": "admin",
+   "state": "monthly-pristine",
+   "width": 360,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 3,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": []
+  },
+  {
+   "who": "admin",
+   "state": "monthly-pristine",
+   "width": 390,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 3,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": []
+  },
+  {
+   "who": "admin",
+   "state": "monthly-pristine",
+   "width": 768,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": []
+  },
+  {
+   "who": "admin",
+   "state": "monthly-pristine",
+   "width": 992,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": []
+  },
+  {
+   "who": "admin",
+   "state": "monthly-pristine",
+   "width": 1024,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": []
+  },
+  {
+   "who": "admin",
+   "state": "monthly-pristine",
+   "width": 1280,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": []
+  },
+  {
+   "who": "admin",
+   "state": "monthly-pristine",
+   "width": 1440,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": []
+  },
+  {
+   "who": "admin",
+   "state": "monthly-results",
+   "width": 360,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 3,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Monthly attendance by Student",
+     "scrollRange": 15,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "monthly-results",
+   "width": 390,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 3,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Monthly attendance by Student",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "monthly-results",
+   "width": 768,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Monthly attendance by Student",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "monthly-results",
+   "width": 992,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Monthly attendance by Student",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "monthly-results",
+   "width": 1024,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Monthly attendance by Student",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "monthly-results",
+   "width": 1280,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Monthly attendance by Student",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "monthly-results",
+   "width": 1440,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Monthly attendance by Student",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "monthly-section-b",
+   "width": 360,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 3,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Monthly attendance by Student",
+     "scrollRange": 15,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "monthly-section-b",
+   "width": 390,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 3,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Monthly attendance by Student",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "monthly-section-b",
+   "width": 768,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Monthly attendance by Student",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "monthly-section-b",
+   "width": 992,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Monthly attendance by Student",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "monthly-section-b",
+   "width": 1024,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Monthly attendance by Student",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "monthly-section-b",
+   "width": 1280,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Monthly attendance by Student",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "monthly-section-b",
+   "width": 1440,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Monthly attendance by Student",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "monthly-long-dash",
+   "width": 360,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 3,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Monthly attendance by Student",
+     "scrollRange": 15,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "monthly-long-dash",
+   "width": 390,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 3,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Monthly attendance by Student",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "monthly-long-dash",
+   "width": 768,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Monthly attendance by Student",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "monthly-long-dash",
+   "width": 992,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Monthly attendance by Student",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "monthly-long-dash",
+   "width": 1024,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Monthly attendance by Student",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "monthly-long-dash",
+   "width": 1280,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Monthly attendance by Student",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "monthly-long-dash",
+   "width": 1440,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Monthly attendance by Student",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "monthly-no-students",
+   "width": 360,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 3,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Monthly attendance by Student",
+     "scrollRange": 15,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "monthly-no-students",
+   "width": 390,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 3,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Monthly attendance by Student",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "monthly-no-students",
+   "width": 768,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Monthly attendance by Student",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "monthly-no-students",
+   "width": 992,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Monthly attendance by Student",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "monthly-no-students",
+   "width": 1024,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Monthly attendance by Student",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "monthly-no-students",
+   "width": 1280,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Monthly attendance by Student",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "monthly-no-students",
+   "width": 1440,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Monthly attendance by Student",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "monthly-invalid-empty",
+   "width": 360,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 2,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 3,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": []
+  },
+  {
+   "who": "admin",
+   "state": "monthly-invalid-empty",
+   "width": 390,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 2,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 3,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": []
+  },
+  {
+   "who": "admin",
+   "state": "monthly-invalid-empty",
+   "width": 768,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 2,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": []
+  },
+  {
+   "who": "admin",
+   "state": "monthly-invalid-empty",
+   "width": 992,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 2,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": []
+  },
+  {
+   "who": "admin",
+   "state": "monthly-invalid-empty",
+   "width": 1024,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 2,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": []
+  },
+  {
+   "who": "admin",
+   "state": "monthly-invalid-empty",
+   "width": 1280,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 2,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": []
+  },
+  {
+   "who": "admin",
+   "state": "monthly-invalid-empty",
+   "width": 1440,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 2,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": []
+  },
+  {
+   "who": "admin",
+   "state": "monthly-invalid-month",
+   "width": 360,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 1,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 3,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": []
+  },
+  {
+   "who": "admin",
+   "state": "monthly-invalid-month",
+   "width": 390,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 1,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 3,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": []
+  },
+  {
+   "who": "admin",
+   "state": "monthly-invalid-month",
+   "width": 768,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 1,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": []
+  },
+  {
+   "who": "admin",
+   "state": "monthly-invalid-month",
+   "width": 992,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 1,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": []
+  },
+  {
+   "who": "admin",
+   "state": "monthly-invalid-month",
+   "width": 1024,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 1,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": []
+  },
+  {
+   "who": "admin",
+   "state": "monthly-invalid-month",
+   "width": 1280,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 1,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": []
+  },
+  {
+   "who": "admin",
+   "state": "monthly-invalid-month",
+   "width": 1440,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 1,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": []
+  },
+  {
+   "who": "admin",
+   "state": "history-first-load",
+   "width": 360,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 3,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 416,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-first-load",
+   "width": 390,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 3,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 386,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-first-load",
+   "width": 768,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-first-load",
+   "width": 992,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 54,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-first-load",
+   "width": 1024,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 22,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-first-load",
+   "width": 1280,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-first-load",
+   "width": 1440,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-filtered",
+   "width": 360,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 3,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 413,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-filtered",
+   "width": 390,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 3,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 383,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-filtered",
+   "width": 768,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-filtered",
+   "width": 992,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 51,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-filtered",
+   "width": 1024,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 19,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-filtered",
+   "width": 1280,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-filtered",
+   "width": 1440,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-invalid-inverted",
+   "width": 360,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 2,
+   "toolbar": {
+    "rows": 3,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 416,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-invalid-inverted",
+   "width": 390,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 2,
+   "toolbar": {
+    "rows": 3,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 386,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-invalid-inverted",
+   "width": 768,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 2,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-invalid-inverted",
+   "width": 992,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 2,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 54,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-invalid-inverted",
+   "width": 1024,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 2,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 22,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-invalid-inverted",
+   "width": 1280,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 2,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-invalid-inverted",
+   "width": 1440,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 2,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-invalid-garbage",
+   "width": 360,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 1,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 2,
+   "toolbar": {
+    "rows": 3,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 416,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-invalid-garbage",
+   "width": 390,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 1,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 2,
+   "toolbar": {
+    "rows": 3,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 386,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-invalid-garbage",
+   "width": 768,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 1,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 2,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-invalid-garbage",
+   "width": 992,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 1,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 2,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 54,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-invalid-garbage",
+   "width": 1024,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 1,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 2,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 22,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-invalid-garbage",
+   "width": 1280,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 1,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 2,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-invalid-garbage",
+   "width": 1440,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 1,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 2,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-draft-only",
+   "width": 360,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student Six",
+   "backToStudent": true,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 3,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 381,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-draft-only",
+   "width": 390,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student Six",
+   "backToStudent": true,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 3,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 351,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-draft-only",
+   "width": 768,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student Six",
+   "backToStudent": true,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-draft-only",
+   "width": 992,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student Six",
+   "backToStudent": true,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 21,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-draft-only",
+   "width": 1024,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student Six",
+   "backToStudent": true,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-draft-only",
+   "width": 1280,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student Six",
+   "backToStudent": true,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-draft-only",
+   "width": 1440,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student Six",
+   "backToStudent": true,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-empty",
+   "width": 360,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student Five",
+   "backToStudent": true,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 3,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 298,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-empty",
+   "width": 390,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student Five",
+   "backToStudent": true,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 3,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 268,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-empty",
+   "width": 768,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student Five",
+   "backToStudent": true,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-empty",
+   "width": 992,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student Five",
+   "backToStudent": true,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-empty",
+   "width": 1024,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student Five",
+   "backToStudent": true,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-empty",
+   "width": 1280,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student Five",
+   "backToStudent": true,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "history-empty",
+   "width": 1440,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student Five",
+   "backToStudent": true,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "admin",
+   "state": "monthly-results @200%",
+   "width": 640,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0
+  },
+  {
+   "who": "admin",
+   "state": "monthly-results @200%",
+   "width": 195,
+   "overflow": 43,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0
+  },
+  {
+   "who": "admin",
+   "state": "history-first-load @200%",
+   "width": 640,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 0
+  },
+  {
+   "who": "admin",
+   "state": "history-first-load @200%",
+   "width": 195,
+   "overflow": 43,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 0
+  },
+  {
+   "who": "admin",
+   "state": "history-invalid-garbage @200%",
+   "width": 640,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 1,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 2
+  },
+  {
+   "who": "admin",
+   "state": "history-invalid-garbage @200%",
+   "width": 195,
+   "overflow": 43,
+   "h1": 1,
+   "invalid": 1,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 2
+  },
+  {
+   "who": "entry",
+   "state": "monthly-results",
+   "width": 360,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 3,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Monthly attendance by Student",
+     "scrollRange": 15,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "entry",
+   "state": "monthly-results",
+   "width": 390,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 3,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Monthly attendance by Student",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "entry",
+   "state": "monthly-results",
+   "width": 768,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Monthly attendance by Student",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "entry",
+   "state": "monthly-results",
+   "width": 992,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Monthly attendance by Student",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "entry",
+   "state": "monthly-results",
+   "width": 1024,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Monthly attendance by Student",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "entry",
+   "state": "monthly-results",
+   "width": 1280,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Monthly attendance by Student",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "entry",
+   "state": "monthly-results",
+   "width": 1440,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance reports",
+    "Monthly summary"
+   ],
+   "title": "Monthly Class/Section summary",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Monthly attendance by Student",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "entry",
+   "state": "history-first-load",
+   "width": 360,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 3,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 416,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "entry",
+   "state": "history-first-load",
+   "width": 390,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 3,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 386,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "entry",
+   "state": "history-first-load",
+   "width": 768,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "entry",
+   "state": "history-first-load",
+   "width": 992,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 54,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "entry",
+   "state": "history-first-load",
+   "width": 1024,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 22,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "entry",
+   "state": "history-first-load",
+   "width": 1280,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "entry",
+   "state": "history-first-load",
+   "width": 1440,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "register",
+   "state": "monthly-403",
+   "width": 360,
+   "http": 403,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Monthly summary"
+   ],
+   "title": "You don't have access to this page",
+   "backToStudent": false,
+   "notApplied": 0
+  },
+  {
+   "who": "register",
+   "state": "monthly-403",
+   "width": 390,
+   "http": 403,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Monthly summary"
+   ],
+   "title": "You don't have access to this page",
+   "backToStudent": false,
+   "notApplied": 0
+  },
+  {
+   "who": "register",
+   "state": "monthly-403",
+   "width": 768,
+   "http": 403,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Monthly summary"
+   ],
+   "title": "You don't have access to this page",
+   "backToStudent": false,
+   "notApplied": 0
+  },
+  {
+   "who": "register",
+   "state": "monthly-403",
+   "width": 992,
+   "http": 403,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Monthly summary"
+   ],
+   "title": "You don't have access to this page",
+   "backToStudent": false,
+   "notApplied": 0
+  },
+  {
+   "who": "register",
+   "state": "monthly-403",
+   "width": 1024,
+   "http": 403,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Monthly summary"
+   ],
+   "title": "You don't have access to this page",
+   "backToStudent": false,
+   "notApplied": 0
+  },
+  {
+   "who": "register",
+   "state": "monthly-403",
+   "width": 1280,
+   "http": 403,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Monthly summary"
+   ],
+   "title": "You don't have access to this page",
+   "backToStudent": false,
+   "notApplied": 0
+  },
+  {
+   "who": "register",
+   "state": "monthly-403",
+   "width": 1440,
+   "http": 403,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Monthly summary"
+   ],
+   "title": "You don't have access to this page",
+   "backToStudent": false,
+   "notApplied": 0
+  },
+  {
+   "who": "register",
+   "state": "history-403",
+   "width": 360,
+   "http": 403,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance"
+   ],
+   "title": "You don't have access to this page",
+   "backToStudent": false,
+   "notApplied": 0
+  },
+  {
+   "who": "register",
+   "state": "history-403",
+   "width": 390,
+   "http": 403,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance"
+   ],
+   "title": "You don't have access to this page",
+   "backToStudent": false,
+   "notApplied": 0
+  },
+  {
+   "who": "register",
+   "state": "history-403",
+   "width": 768,
+   "http": 403,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance"
+   ],
+   "title": "You don't have access to this page",
+   "backToStudent": false,
+   "notApplied": 0
+  },
+  {
+   "who": "register",
+   "state": "history-403",
+   "width": 992,
+   "http": 403,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance"
+   ],
+   "title": "You don't have access to this page",
+   "backToStudent": false,
+   "notApplied": 0
+  },
+  {
+   "who": "register",
+   "state": "history-403",
+   "width": 1024,
+   "http": 403,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance"
+   ],
+   "title": "You don't have access to this page",
+   "backToStudent": false,
+   "notApplied": 0
+  },
+  {
+   "who": "register",
+   "state": "history-403",
+   "width": 1280,
+   "http": 403,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance"
+   ],
+   "title": "You don't have access to this page",
+   "backToStudent": false,
+   "notApplied": 0
+  },
+  {
+   "who": "register",
+   "state": "history-403",
+   "width": 1440,
+   "http": 403,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Attendance"
+   ],
+   "title": "You don't have access to this page",
+   "backToStudent": false,
+   "notApplied": 0
+  },
+  {
+   "who": "noschool",
+   "state": "history-first-load",
+   "width": 360,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 3,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 416,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "noschool",
+   "state": "history-first-load",
+   "width": 390,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 3,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 386,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "noschool",
+   "state": "history-first-load",
+   "width": 768,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "noschool",
+   "state": "history-first-load",
+   "width": 992,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "noschool",
+   "state": "history-first-load",
+   "width": 1024,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "noschool",
+   "state": "history-first-load",
+   "width": 1280,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "noschool",
+   "state": "history-first-load",
+   "width": 1440,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": false,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "student",
+   "state": "history-first-load",
+   "width": 360,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 3,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 416,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "student",
+   "state": "history-first-load",
+   "width": 390,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 3,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 386,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "student",
+   "state": "history-first-load",
+   "width": 768,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "student",
+   "state": "history-first-load",
+   "width": 992,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 54,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "student",
+   "state": "history-first-load",
+   "width": 1024,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 22,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "student",
+   "state": "history-first-load",
+   "width": 1280,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  },
+  {
+   "who": "student",
+   "state": "history-first-load",
+   "width": 1440,
+   "http": 200,
+   "overflow": 0,
+   "h1": 1,
+   "invalid": 0,
+   "danglingDescribedby": [],
+   "breadcrumb": [
+    "Overview",
+    "Students",
+    "Student",
+    "Attendance"
+   ],
+   "title": "Attendance for Demo Student One",
+   "backToStudent": true,
+   "notApplied": 0,
+   "toolbar": {
+    "rows": 1,
+    "clippedLabels": false,
+    "formOverflow": 0
+   },
+   "regions": [
+    {
+     "label": "Attendance history",
+     "scrollRange": 0,
+     "tabindex": 0
+    }
+   ]
+  }
+ ],
+ "shots": [
+  {
+   "file": "monthly-pristine-1440.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-pristine-1280.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-pristine-1024.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-pristine-992.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-pristine-768.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-pristine-390.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-results-1440.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-results-1280.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-results-1024.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-results-992.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-results-768.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-results-390.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-section-b-1440.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-section-b-1280.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-section-b-1024.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-section-b-992.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-section-b-768.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-section-b-390.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-long-dash-1440.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-long-dash-1280.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-long-dash-1024.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-long-dash-992.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-long-dash-768.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-long-dash-390.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-no-students-1440.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-no-students-1280.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-no-students-1024.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-no-students-992.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-no-students-768.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-no-students-390.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-invalid-empty-1440.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-invalid-empty-1280.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-invalid-empty-1024.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-invalid-empty-992.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-invalid-empty-768.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-invalid-empty-390.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-invalid-month-1440.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-invalid-month-1280.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-invalid-month-1024.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-invalid-month-992.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-invalid-month-768.png",
+   "status": 200
+  },
+  {
+   "file": "monthly-invalid-month-390.png",
+   "status": 200
+  },
+  {
+   "file": "history-first-load-1440.png",
+   "status": 200
+  },
+  {
+   "file": "history-first-load-1280.png",
+   "status": 200
+  },
+  {
+   "file": "history-first-load-1024.png",
+   "status": 200
+  },
+  {
+   "file": "history-first-load-992.png",
+   "status": 200
+  },
+  {
+   "file": "history-first-load-768.png",
+   "status": 200
+  },
+  {
+   "file": "history-first-load-390.png",
+   "status": 200
+  },
+  {
+   "file": "history-filtered-1440.png",
+   "status": 200
+  },
+  {
+   "file": "history-filtered-1280.png",
+   "status": 200
+  },
+  {
+   "file": "history-filtered-1024.png",
+   "status": 200
+  },
+  {
+   "file": "history-filtered-992.png",
+   "status": 200
+  },
+  {
+   "file": "history-filtered-768.png",
+   "status": 200
+  },
+  {
+   "file": "history-filtered-390.png",
+   "status": 200
+  },
+  {
+   "file": "history-invalid-inverted-1440.png",
+   "status": 200
+  },
+  {
+   "file": "history-invalid-inverted-1280.png",
+   "status": 200
+  },
+  {
+   "file": "history-invalid-inverted-1024.png",
+   "status": 200
+  },
+  {
+   "file": "history-invalid-inverted-992.png",
+   "status": 200
+  },
+  {
+   "file": "history-invalid-inverted-768.png",
+   "status": 200
+  },
+  {
+   "file": "history-invalid-inverted-390.png",
+   "status": 200
+  },
+  {
+   "file": "history-invalid-garbage-1440.png",
+   "status": 200
+  },
+  {
+   "file": "history-invalid-garbage-1280.png",
+   "status": 200
+  },
+  {
+   "file": "history-invalid-garbage-1024.png",
+   "status": 200
+  },
+  {
+   "file": "history-invalid-garbage-992.png",
+   "status": 200
+  },
+  {
+   "file": "history-invalid-garbage-768.png",
+   "status": 200
+  },
+  {
+   "file": "history-invalid-garbage-390.png",
+   "status": 200
+  },
+  {
+   "file": "history-draft-only-1440.png",
+   "status": 200
+  },
+  {
+   "file": "history-draft-only-1280.png",
+   "status": 200
+  },
+  {
+   "file": "history-draft-only-1024.png",
+   "status": 200
+  },
+  {
+   "file": "history-draft-only-992.png",
+   "status": 200
+  },
+  {
+   "file": "history-draft-only-768.png",
+   "status": 200
+  },
+  {
+   "file": "history-draft-only-390.png",
+   "status": 200
+  },
+  {
+   "file": "history-empty-1440.png",
+   "status": 200
+  },
+  {
+   "file": "history-empty-1280.png",
+   "status": 200
+  },
+  {
+   "file": "history-empty-1024.png",
+   "status": 200
+  },
+  {
+   "file": "history-empty-992.png",
+   "status": 200
+  },
+  {
+   "file": "history-empty-768.png",
+   "status": 200
+  },
+  {
+   "file": "history-empty-390.png",
+   "status": 200
+  },
+  {
+   "file": "entry-monthly-results-1280.png",
+   "status": 200
+  },
+  {
+   "file": "entry-monthly-results-390.png",
+   "status": 200
+  },
+  {
+   "file": "entry-history-first-load-1280.png",
+   "status": 200
+  },
+  {
+   "file": "entry-history-first-load-390.png",
+   "status": 200
+  },
+  {
+   "file": "register-monthly-403-1280.png",
+   "status": 403
+  },
+  {
+   "file": "register-monthly-403-390.png",
+   "status": 403
+  },
+  {
+   "file": "register-history-403-1280.png",
+   "status": 403
+  },
+  {
+   "file": "register-history-403-390.png",
+   "status": 403
+  },
+  {
+   "file": "noschool-history-first-load-1280.png",
+   "status": 200
+  },
+  {
+   "file": "noschool-history-first-load-390.png",
+   "status": 200
+  },
+  {
+   "file": "student-history-first-load-1280.png",
+   "status": 200
+  },
+  {
+   "file": "student-history-first-load-390.png",
+   "status": 200
+  }
+ ],
+ "summary_link_focus": "#id_start -> id_start",
+ "tab_order_history_invalid": [
+  "INPUT id_start",
+  "INPUT id_start",
+  "INPUT id_start",
+  "INPUT id_start",
+  "INPUT id_end",
+  "INPUT id_end",
+  "INPUT id_end",
+  "INPUT id_end",
+  "BUTTON Filter history"
+ ],
+ "focus_outline": "solid 3px",
+ "history_region_390": {
+  "scrollLeft": 235,
+  "max": 386,
+  "focusable": true
+ }
+}

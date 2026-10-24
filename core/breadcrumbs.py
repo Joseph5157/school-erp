@@ -53,6 +53,18 @@ RULES = {
     "report-missing-attendance": Rule(
         "attendance-reports", (_ATTENDANCE_REPORTS,), "Missing attendance"
     ),
+    "report-monthly-section": Rule(
+        "attendance-reports", (_ATTENDANCE_REPORTS,), "Monthly summary"
+    ),
+    # Student history keeps its logical parents (the Student), shown only to viewers who may open them.
+    "student-attendance": Rule(
+        "student-list",
+        (
+            Crumb("Students", "core:student-list", perm="core.view_student"),
+            Crumb("Student", "core:student-detail", True, perm="core.view_student"),
+        ),
+        "Attendance",
+    ),
     "attendance-register-detail": Rule("attendance-register-list", (_ATTENDANCE,), "Register"),
     "attendance-entry-correct": Rule("attendance-register-list", (_ATTENDANCE,), "Correct entry"),
     "announcement-create": Rule("announcement-list", (_ANNOUNCEMENTS,), "New announcement"),
