@@ -24,7 +24,7 @@ SAVE_FORMS = {
     "guardian_form": ({}, "Save guardian"),
     "offering_form": ({"academic_year": YEAR}, "Save subject offering"),
     "school_form": ({}, "Save school details"),
-    "section_form": ({"class_grade": {"name": "Grade 6"}}, "Save section"),
+    "section_form": ({"class_grade": {"pk": 1, "name": "Grade 6"}}, "Save section"),
     "subject_form": ({"creating": True}, "Save subject"),
     "term_form": ({"academic_year": YEAR}, "Save term"),
 }

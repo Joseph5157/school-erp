@@ -11,7 +11,13 @@ from django.contrib.auth.models import Group
 from django.test import TestCase
 from django.urls import reverse
 
+from core import guardian_accounts as ga
 from core.models import (
+    Applicant,
+    Guardian,
+    GuardianAccount,
+    Student,
+    TimetablePeriod,
     AcademicSubjectOffering,
     AcademicTerm,
     AcademicYear,
@@ -58,6 +64,17 @@ class Fixture(AuthorizationClientsMixin):
             teacher=self.teacher, offering=self.offering, section=self.section,
             start_date=datetime.date(2026, 6, 1),
         )
+        self.guardian = Guardian.objects.create(full_name="Meena Rao", phone="98450-12345")
+        self.account, _ = ga.create_guardian_account(
+            guardian=self.guardian, username="meena.rao",
+            method=GuardianAccount.VerificationMethod.IN_PERSON_DOCUMENTS,
+            note="Aadhaar card seen by office", actor=self.admin_user,
+        )
+        self.student = Student.objects.create(
+            applicant=Applicant.objects.create(admission_status="ACCEPTED", full_name="Asha Rao"),
+            full_name="Asha Rao",
+        )
+        self.period = TimetablePeriod.objects.create(academic_year=self.year, sequence=1, label="P1")
         self.day = SchoolCalendarDay.objects.create(
             academic_year=self.year, date=datetime.date(2026, 8, 15), is_instructional=False, label="Holiday"
         )
@@ -66,6 +83,7 @@ class Fixture(AuthorizationClientsMixin):
         y, t, d = self.year.pk, self.term.pk, self.day.pk
         c, sub, o = self.class_grade.pk, self.subject.pk, self.offering.pk
         ca, sa, tp = self.class_assignment.pk, self.subject_assignment.pk, self.teacher.pk
+        acc, stu, per = self.account.pk, self.student.pk, self.period.pk
         return [
             # batch 1: school, calendar, terms
             ("school-update", reverse("core:school-update"), ["Overview", "School", "Edit school"], "School"),
@@ -117,6 +135,21 @@ class Fixture(AuthorizationClientsMixin):
              ["Overview", "Academic Years", "Assignment overview", "Copy assignments"], "Academic Years"),
             ("teacher-load", reverse("core:teacher-load", args=[tp]),
              ["Overview", "Teachers", "Teacher", "Workload"], "Teachers"),
+            # batch 4: account confirms and identifiers; batch 5: deletes
+            ("teacher-reset-password", reverse("core:teacher-reset-password", args=[tp]),
+             ["Overview", "Teachers", "Teacher", "Reset password"], "Teachers"),
+            ("teacher-reactivate", reverse("core:teacher-reactivate", args=[tp]),
+             ["Overview", "Teachers", "Teacher", "Reactivate"], "Teachers"),
+            ("guardian-account-reset-password", reverse("core:guardian-account-reset-password", args=[acc]),
+             ["Overview", "Guardians", "Reset password"], "Guardians"),
+            ("guardian-account-username", reverse("core:guardian-account-username", args=[acc]),
+             ["Overview", "Guardians", "Change username"], "Guardians"),
+            ("guardian-account-revoke", reverse("core:guardian-account-revoke", args=[acc]),
+             ["Overview", "Guardians", "Revoke account"], "Guardians"),
+            ("student-admission-number", reverse("core:student-admission-number", args=[stu]),
+             ["Overview", "Students", "Student", "Admission number"], "Students"),
+            ("timetable-period-delete", reverse("core:timetable-period-delete", args=[per]),
+             ["Overview", "Timetable", "Delete period"], "Timetable"),
         ]
 
 
@@ -138,7 +171,7 @@ class SharedShellTests(Fixture, TestCase):
         for name in ("school-update", "calendar-day-create", "term-create", "term-update", "class-grade-create",
                      "section-create", "subject-create", "subject-update", "offering-create", "offering-update",
                      "class-teacher-assign", "class-teacher-end", "teacher-assignment-create",
-                     "teacher-assignment-end"):
+                     "teacher-assignment-end", "guardian-account-username"):
             url = next(u for n, u, _, _ in self.cases() if n == name)
             with self.subTest(page=name):
                 page = self.administrator.get(url).content.decode()

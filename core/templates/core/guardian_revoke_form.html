@@ -1,13 +1,16 @@
 {% extends "base.html" %}
 {% block title %}Revoke{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">Revoke {{ subject }}</h1>
-<p class="text-muted">Revocation takes effect immediately and is permanent; it is recorded, never deleted. Access can only be given again by a new grant.</p>
-<form method="post">
+{% include "partials/_page_header.html" with eyebrow="Guardian access" title="Revoke" purpose=subject only %}
+<p class="erp-note-text">Revocation takes effect immediately and is permanent; it is recorded, never deleted. Access can only be given again by a new grant.</p>
+<form method="post" class="erp-form">
     {% csrf_token %}
-    {{ form.non_field_errors }}
-    {{ form.as_p }}
-    <button type="submit" class="btn btn-danger">Revoke</button>
-    <a class="btn btn-link" href="{% url 'core:guardian-detail' guardian.pk %}">Cancel</a>
+    {% include "partials/_form_required_legend.html" %}
+    {% include "partials/_form_error_summary.html" with form=form only %}
+    {% include "partials/_form_fields.html" with form=form only %}
+    <div class="erp-form-actions">
+        <button type="submit" class="btn btn-danger">Revoke</button>
+        <a class="btn btn-link" href="{% url 'core:guardian-detail' guardian.pk %}">Cancel</a>
+    </div>
 </form>
 {% endblock %}

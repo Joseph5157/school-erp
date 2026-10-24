@@ -256,6 +256,31 @@ RULES = {
         (_ACADEMIC_YEARS, Crumb("Assignment overview", "core:academic-year-assignments", True, perm="core.view_academicyear")),
         "Copy assignments",
     ),
+    # Guardian account actions and student identifiers (S2). The detail page is the parent. The account and access
+    # actions take an account / grant pk, and the roll-number page an enrollment pk, so they show only the no-id ancestor.
+    "guardian-detail": Rule(
+        "guardian-list",
+        (Crumb("Guardians", "core:guardian-list", perm="core.view_guardian"),),
+        "Guardian",
+    ),
+    "guardian-account-revoke": Rule(
+        "guardian-list", (Crumb("Guardians", "core:guardian-list", perm="core.view_guardian"),), "Revoke account"
+    ),
+    "guardian-account-username": Rule(
+        "guardian-list", (Crumb("Guardians", "core:guardian-list", perm="core.view_guardian"),), "Change username"
+    ),
+    "guardian-account-reset-password": Rule(
+        "guardian-list", (Crumb("Guardians", "core:guardian-list", perm="core.view_guardian"),), "Reset password"
+    ),
+    "guardian-access-revoke": Rule(
+        "guardian-list", (Crumb("Guardians", "core:guardian-list", perm="core.view_guardian"),), "Revoke access"
+    ),
+    "student-admission-number": Rule(
+        "student-list",
+        (_STUDENTS, Crumb("Student", "core:student-detail", True)),
+        "Admission number",
+    ),
+    "enrollment-roll-number": Rule("student-list", (_STUDENTS,), "Roll number"),
     # Term publication (D1-5D). The preview's pk is a Term (not an Academic Year), so it shows only the no-id
     # "Academic Years" ancestor and links back to the year's Terms from its header with the real year id. The
     # publication routes use a publication's pk, so the only pk reuse is Publication detail from Withdraw.
