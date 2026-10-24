@@ -44,3 +44,19 @@ Widths: 360, 390, 768, 992, 1024, 1280, 1440 (full-page PNG). `measurements.json
 - The preview summary shows only `plan.selected|length` of `plan.rows|length`; a breakdown by action needs a new data contract (recorded follow-up).
 - The confirmation is a single POST with an explanatory note, exactly as before; no separate confirmation page was added.
 - Wide tables scroll locally on phones; 43px top-bar overflow at 195 CSS px is pre-existing.
+
+## Review correction: Withdraw page destination permissions
+
+The Withdraw route needs `publish_termpublication`; Publication detail needs the separate `view_termpublication`. The **Back to publication** header action and the **Cancel** link are now rendered only for viewers who hold `view_termpublication` (template only; nothing replaces them with another gated route). Screenshots `withdraw-*`, `withdraw-publish-and-view-*`, `withdraw-publish-only-*`, `withdraw-publish-only-invalid-*`, `withdraw-view-only-403-*` and `withdraw-teacher-403-*` (360, 390, 768, 1024, 1440; invalid at 360, 390, 1440) were recaptured; measurements are in `measurements-withdraw.json`.
+
+| User | Withdraw page | Back / Cancel links |
+| --- | --- | --- |
+| Administrator (publish + view) | 200 | both point to `/publications/2/` |
+| `demo_both` (publish + view) | 200 | both present |
+| `demo_publish` (publish only) | 200, form and Withdraw button work | **none** (no inaccessible destination is offered) |
+| `demo_view` (view only) | 403 | n/a |
+| Teacher | 403 | n/a |
+
+Page overflow 0px at every width and state; 0 dangling `aria-describedby`; the invalid publish-only form shows the error summary and its link focuses `#id_reason`.
+
+Known limit (unchanged view behaviour): after a successful withdrawal the existing view redirects to Publication detail, which a publish-only user cannot open (403). Changing that redirect is a view change and out of scope; recorded as a follow-up.

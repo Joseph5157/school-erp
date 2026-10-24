@@ -1,7 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Withdraw publication{% endblock %}
 {% block content %}
-{% url 'core:publication-detail' pub.pk as back_url %}
+{# Publication detail needs view_termpublication, which Withdraw (publish_termpublication) does not imply. #}
+{% if perms.core.view_termpublication %}{% url 'core:publication-detail' pub.pk as back_url %}{% endif %}
 {% with version_text=pub.version|stringformat:"s" %}
 {% include "partials/_page_header.html" with eyebrow="Withdraw publication" title="Withdraw report card" purpose=pub.student.full_name|add:" — "|add:pub.term_label|add:" (version "|add:version_text|add:")" secondary_url=back_url secondary_label="Back to publication" only %}
 {% endwith %}
@@ -13,7 +14,7 @@
     {% for field in form %}{% include "partials/_form_field.html" with field=field only %}{% endfor %}
     <div class="erp-form-actions">
         <button type="submit" class="btn btn-danger">Withdraw</button>
-        <a class="btn btn-link" href="{{ back_url }}">Cancel</a>
+        {% if back_url %}<a class="btn btn-link" href="{{ back_url }}">Cancel</a>{% endif %}
     </div>
 </form>
 {% endblock %}

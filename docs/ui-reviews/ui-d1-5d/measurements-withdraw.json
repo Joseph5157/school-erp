@@ -1,0 +1,371 @@
+[
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "backLinks": [
+   "Back to publication -> /publications/2/",
+   "Cancel -> /publications/2/"
+  ],
+  "summary": false,
+  "withdrawButton": true,
+  "user": "demo_admin",
+  "name": "withdraw",
+  "width": 360,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "backLinks": [
+   "Back to publication -> /publications/2/",
+   "Cancel -> /publications/2/"
+  ],
+  "summary": false,
+  "withdrawButton": true,
+  "user": "demo_admin",
+  "name": "withdraw",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "backLinks": [
+   "Back to publication -> /publications/2/",
+   "Cancel -> /publications/2/"
+  ],
+  "summary": false,
+  "withdrawButton": true,
+  "user": "demo_admin",
+  "name": "withdraw",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "backLinks": [
+   "Back to publication -> /publications/2/",
+   "Cancel -> /publications/2/"
+  ],
+  "summary": false,
+  "withdrawButton": true,
+  "user": "demo_admin",
+  "name": "withdraw",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "backLinks": [
+   "Back to publication -> /publications/2/",
+   "Cancel -> /publications/2/"
+  ],
+  "summary": false,
+  "withdrawButton": true,
+  "user": "demo_admin",
+  "name": "withdraw",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "backLinks": [
+   "Back to publication -> /publications/2/",
+   "Cancel -> /publications/2/"
+  ],
+  "summary": false,
+  "withdrawButton": true,
+  "user": "demo_both",
+  "name": "withdraw-publish-and-view",
+  "width": 360,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "backLinks": [
+   "Back to publication -> /publications/2/",
+   "Cancel -> /publications/2/"
+  ],
+  "summary": false,
+  "withdrawButton": true,
+  "user": "demo_both",
+  "name": "withdraw-publish-and-view",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "backLinks": [
+   "Back to publication -> /publications/2/",
+   "Cancel -> /publications/2/"
+  ],
+  "summary": false,
+  "withdrawButton": true,
+  "user": "demo_both",
+  "name": "withdraw-publish-and-view",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "backLinks": [
+   "Back to publication -> /publications/2/",
+   "Cancel -> /publications/2/"
+  ],
+  "summary": false,
+  "withdrawButton": true,
+  "user": "demo_both",
+  "name": "withdraw-publish-and-view",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "backLinks": [
+   "Back to publication -> /publications/2/",
+   "Cancel -> /publications/2/"
+  ],
+  "summary": false,
+  "withdrawButton": true,
+  "user": "demo_both",
+  "name": "withdraw-publish-and-view",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "backLinks": [],
+  "summary": false,
+  "withdrawButton": true,
+  "user": "demo_publish",
+  "name": "withdraw-publish-only",
+  "width": 360,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "backLinks": [],
+  "summary": false,
+  "withdrawButton": true,
+  "user": "demo_publish",
+  "name": "withdraw-publish-only",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "backLinks": [],
+  "summary": false,
+  "withdrawButton": true,
+  "user": "demo_publish",
+  "name": "withdraw-publish-only",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "backLinks": [],
+  "summary": false,
+  "withdrawButton": true,
+  "user": "demo_publish",
+  "name": "withdraw-publish-only",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "backLinks": [],
+  "summary": false,
+  "withdrawButton": true,
+  "user": "demo_publish",
+  "name": "withdraw-publish-only",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "backLinks": [],
+  "summary": false,
+  "withdrawButton": false,
+  "user": "demo_view",
+  "name": "withdraw-view-only-403",
+  "width": 360,
+  "status": 403
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "backLinks": [],
+  "summary": false,
+  "withdrawButton": false,
+  "user": "demo_view",
+  "name": "withdraw-view-only-403",
+  "width": 390,
+  "status": 403
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "backLinks": [],
+  "summary": false,
+  "withdrawButton": false,
+  "user": "demo_view",
+  "name": "withdraw-view-only-403",
+  "width": 768,
+  "status": 403
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "backLinks": [],
+  "summary": false,
+  "withdrawButton": false,
+  "user": "demo_view",
+  "name": "withdraw-view-only-403",
+  "width": 1024,
+  "status": 403
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "backLinks": [],
+  "summary": false,
+  "withdrawButton": false,
+  "user": "demo_view",
+  "name": "withdraw-view-only-403",
+  "width": 1440,
+  "status": 403
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "backLinks": [],
+  "summary": false,
+  "withdrawButton": false,
+  "user": "demo_rao",
+  "name": "withdraw-teacher-403",
+  "width": 360,
+  "status": 403
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "backLinks": [],
+  "summary": false,
+  "withdrawButton": false,
+  "user": "demo_rao",
+  "name": "withdraw-teacher-403",
+  "width": 390,
+  "status": 403
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "backLinks": [],
+  "summary": false,
+  "withdrawButton": false,
+  "user": "demo_rao",
+  "name": "withdraw-teacher-403",
+  "width": 768,
+  "status": 403
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "backLinks": [],
+  "summary": false,
+  "withdrawButton": false,
+  "user": "demo_rao",
+  "name": "withdraw-teacher-403",
+  "width": 1024,
+  "status": 403
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "backLinks": [],
+  "summary": false,
+  "withdrawButton": false,
+  "user": "demo_rao",
+  "name": "withdraw-teacher-403",
+  "width": 1440,
+  "status": 403
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "backLinks": [],
+  "summary": true,
+  "withdrawButton": true,
+  "user": "demo_publish",
+  "name": "withdraw-publish-only-invalid",
+  "width": 360,
+  "status": 200,
+  "focus_after_summary_click": "id_reason"
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "backLinks": [],
+  "summary": true,
+  "withdrawButton": true,
+  "user": "demo_publish",
+  "name": "withdraw-publish-only-invalid",
+  "width": 390,
+  "status": 200,
+  "focus_after_summary_click": "id_reason"
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "backLinks": [],
+  "summary": true,
+  "withdrawButton": true,
+  "user": "demo_publish",
+  "name": "withdraw-publish-only-invalid",
+  "width": 1440,
+  "status": 200,
+  "focus_after_summary_click": "id_reason"
+ }
+]

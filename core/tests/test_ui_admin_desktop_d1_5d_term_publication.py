@@ -428,6 +428,60 @@ class WithdrawTests(UiFixture, TestCase):
         self.assertEqual(self.pub_for(self.asha).status, Status.PUBLISHED)
 
 
+    def test_publish_only_user_gets_no_link_to_the_inaccessible_publication_detail(self):
+        _, publisher = self.client_with("publish_termpublication")
+        detail = reverse("core:publication-detail", args=[self.pub.pk])
+        self.assertEqual(publisher.get(detail).status_code, 403)  # the destination really is closed
+        response = publisher.get(self.url)
+        page = html(response)
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn(f'href="{detail}"', page)
+        self.assertNotIn("Back to publication", page)
+        self.assertNotIn(">Cancel</a>", page)
+        self.assertIn('class="btn btn-danger">Withdraw</button>', page)  # the form itself still works
+        self.assertIn('for="id_reason"', page)
+
+    def test_view_only_user_still_cannot_open_withdraw(self):
+        _, viewer = self.client_with("view_termpublication")
+        self.assertEqual(viewer.get(self.url).status_code, 403)
+        self.assertEqual(viewer.post(self.url, {"reason": "x"}).status_code, 403)
+        self.assertEqual(self.pub_for(self.asha).status, Status.PUBLISHED)
+
+    def test_publish_and_view_user_keeps_both_back_links(self):
+        _, both = self.client_with("publish_termpublication", "view_termpublication")
+        detail = reverse("core:publication-detail", args=[self.pub.pk])
+        page = html(both.get(self.url))
+        self.assertIn("Back to publication", page)
+        self.assertIn(">Cancel</a>", page)
+        self.assertEqual(page.count(f'href="{detail}"'), 2)  # header action and Cancel
+
+    def test_publish_only_post_still_withdraws_with_the_audited_reason(self):
+        user, publisher = self.client_with("publish_termpublication")
+        response = publisher.post(self.url, {"reason": "Sent to the wrong family"})
+        self.assertRedirects(response, reverse("core:publication-detail", args=[self.pub.pk]),
+                             fetch_redirect_response=False)  # the unchanged view's redirect
+        self.pub.refresh_from_db()
+        self.assertEqual(self.pub.status, Status.WITHDRAWN)
+        self.assertEqual(self.pub.status_reason, "Sent to the wrong family")
+        self.assertEqual(self.pub.status_changed_by, user)
+        self.assertEqual(self.cards(), [])
+
+    def test_publish_only_blank_reason_shows_the_error_summary_without_a_back_link(self):
+        _, publisher = self.client_with("publish_termpublication")
+        page = html(publisher.post(self.url, {"reason": ""}))
+        self.assertIn('role="alert" id="form-error-summary"', page)
+        self.assertNotIn("Back to publication", page)
+        self.assertEqual(self.pub_for(self.asha).status, Status.PUBLISHED)
+
+    def test_anonymous_and_teacher_access_is_unchanged(self):
+        self.assertEqual(self.client_class().get(self.url).status_code, 302)
+        self.assertEqual(self.client_class().post(self.url, {"reason": "x"}).status_code, 302)
+        teacher = self.teacher_client()
+        self.assertEqual(teacher.get(self.url).status_code, 403)
+        self.assertEqual(teacher.post(self.url, {"reason": "x"}).status_code, 403)
+        self.assertEqual(self.pub_for(self.asha).status, Status.PUBLISHED)
+
+
 class BreadcrumbTests(UiFixture, TestCase):
     def setUp(self):
         super().setUp()
