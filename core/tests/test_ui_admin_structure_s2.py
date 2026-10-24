@@ -6,6 +6,8 @@ Presentation only: every page keeps its URL, form, context and permission. Each 
 
 import datetime
 
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.test import TestCase
 from django.urls import reverse
 
@@ -14,12 +16,18 @@ from core.models import (
     AcademicTerm,
     AcademicYear,
     ClassGrade,
+    AssessmentTeacherAssignment,
     School,
     SchoolCalendarDay,
     Section,
+    SectionClassTeacher,
     Subject,
+    TEACHERS_GROUP_NAME,
 )
 from core.tests.test_authorization import AuthorizationClientsMixin
+
+
+User = get_user_model()
 
 
 class Fixture(AuthorizationClientsMixin):
@@ -39,6 +47,17 @@ class Fixture(AuthorizationClientsMixin):
         self.offering = AcademicSubjectOffering.objects.create(
             academic_year=self.year, class_grade=self.class_grade, subject=self.subject, display_order=1
         )
+        self.offering.set_sections([self.section])
+        self.teacher = User.objects.create_user(username="iyer", password="pass-12345")
+        self.teacher.groups.add(Group.objects.get_or_create(name=TEACHERS_GROUP_NAME)[0])
+        self.class_assignment = SectionClassTeacher.assign(
+            teacher=self.teacher, academic_year=self.year, section=self.section,
+            start_date=datetime.date(2026, 6, 1),
+        )
+        self.subject_assignment = AssessmentTeacherAssignment.objects.create(
+            teacher=self.teacher, offering=self.offering, section=self.section,
+            start_date=datetime.date(2026, 6, 1),
+        )
         self.day = SchoolCalendarDay.objects.create(
             academic_year=self.year, date=datetime.date(2026, 8, 15), is_instructional=False, label="Holiday"
         )
@@ -46,6 +65,7 @@ class Fixture(AuthorizationClientsMixin):
     def cases(self):
         y, t, d = self.year.pk, self.term.pk, self.day.pk
         c, sub, o = self.class_grade.pk, self.subject.pk, self.offering.pk
+        ca, sa, tp = self.class_assignment.pk, self.subject_assignment.pk, self.teacher.pk
         return [
             # batch 1: school, calendar, terms
             ("school-update", reverse("core:school-update"), ["Overview", "School", "Edit school"], "School"),
@@ -74,6 +94,29 @@ class Fixture(AuthorizationClientsMixin):
              ["Overview", "Academic Years", "Subjects offered", "Offer a Subject"], "Academic Years"),
             ("offering-update", reverse("core:offering-update", args=[o]),
              ["Overview", "Academic Years", "Edit offering"], "Academic Years"),
+            # batch 3: assignments and year-scoped lists
+            ("terms-list", reverse("core:academic-year-terms", args=[y]),
+             ["Overview", "Academic Years", "Terms"], "Academic Years"),
+            ("offerings-list", reverse("core:academic-year-offerings", args=[y]),
+             ["Overview", "Academic Years", "Subjects offered"], "Academic Years"),
+            ("class-teachers-list", reverse("core:academic-year-class-teachers", args=[y]),
+             ["Overview", "Academic Years", "Class teachers"], "Academic Years"),
+            ("subject-teachers-list", reverse("core:academic-year-teacher-assignments", args=[y]),
+             ["Overview", "Academic Years", "Subject teachers"], "Academic Years"),
+            ("assignment-overview", reverse("core:academic-year-assignments", args=[y]),
+             ["Overview", "Academic Years", "Assignment overview"], "Academic Years"),
+            ("class-teacher-assign", reverse("core:class-teacher-assign", args=[y]),
+             ["Overview", "Academic Years", "Class teachers", "Assign class teacher"], "Academic Years"),
+            ("class-teacher-end", reverse("core:class-teacher-end", args=[ca]),
+             ["Overview", "Academic Years", "End class teacher assignment"], "Academic Years"),
+            ("teacher-assignment-create", reverse("core:teacher-assignment-create", args=[y]),
+             ["Overview", "Academic Years", "Subject teachers", "Assign a teacher"], "Academic Years"),
+            ("teacher-assignment-end", reverse("core:teacher-assignment-end", args=[sa]),
+             ["Overview", "Academic Years", "End teacher assignment"], "Academic Years"),
+            ("assignment-copy", reverse("core:assignment-copy", args=[y]),
+             ["Overview", "Academic Years", "Assignment overview", "Copy assignments"], "Academic Years"),
+            ("teacher-load", reverse("core:teacher-load", args=[tp]),
+             ["Overview", "Teachers", "Teacher", "Workload"], "Teachers"),
         ]
 
 
@@ -93,7 +136,9 @@ class SharedShellTests(Fixture, TestCase):
 
     def test_forms_keep_their_post_target_csrf_and_cancel_link(self):
         for name in ("school-update", "calendar-day-create", "term-create", "term-update", "class-grade-create",
-                     "section-create", "subject-create", "subject-update", "offering-create", "offering-update"):
+                     "section-create", "subject-create", "subject-update", "offering-create", "offering-update",
+                     "class-teacher-assign", "class-teacher-end", "teacher-assignment-create",
+                     "teacher-assignment-end"):
             url = next(u for n, u, _, _ in self.cases() if n == name)
             with self.subTest(page=name):
                 page = self.administrator.get(url).content.decode()

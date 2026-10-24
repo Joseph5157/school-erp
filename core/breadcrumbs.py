@@ -232,6 +232,30 @@ RULES = {
         "Offer a Subject",
     ),
     "offering-update": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Edit offering"),
+    # Year-scoped setup lists and assignment forms (S2). All sit under Academic Years. The list pages and the
+    # create/copy forms take a year pk; the two "end" forms take an assignment pk, so they show only the no-id ancestor.
+    "academic-year-terms": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Terms"),
+    "academic-year-offerings": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Subjects offered"),
+    "academic-year-class-teachers": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Class teachers"),
+    "academic-year-teacher-assignments": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Subject teachers"),
+    "academic-year-assignments": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Assignment overview"),
+    "class-teacher-assign": Rule(
+        "academic-year-list",
+        (_ACADEMIC_YEARS, Crumb("Class teachers", "core:academic-year-class-teachers", True, perm="core.view_academicyear")),
+        "Assign class teacher",
+    ),
+    "class-teacher-end": Rule("academic-year-list", (_ACADEMIC_YEARS,), "End class teacher assignment"),
+    "teacher-assignment-create": Rule(
+        "academic-year-list",
+        (_ACADEMIC_YEARS, Crumb("Subject teachers", "core:academic-year-teacher-assignments", True, perm="core.view_academicyear")),
+        "Assign a teacher",
+    ),
+    "teacher-assignment-end": Rule("academic-year-list", (_ACADEMIC_YEARS,), "End teacher assignment"),
+    "assignment-copy": Rule(
+        "academic-year-list",
+        (_ACADEMIC_YEARS, Crumb("Assignment overview", "core:academic-year-assignments", True, perm="core.view_academicyear")),
+        "Copy assignments",
+    ),
     # Term publication (D1-5D). The preview's pk is a Term (not an Academic Year), so it shows only the no-id
     # "Academic Years" ancestor and links back to the year's Terms from its header with the real year id. The
     # publication routes use a publication's pk, so the only pk reuse is Publication detail from Withdraw.
