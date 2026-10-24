@@ -40,19 +40,22 @@
 </section>
 <section class="erp-panel p-3 p-md-4" aria-labelledby="student-history-title">
     <div class="erp-panel-head mb-3">
-        <h2 class="h5" id="student-history-title">Attendance history{% if form.is_bound and form.errors %}: all recorded attendance{% endif %}</h2>
+        <h2 class="h5" id="student-history-title">
+            Attendance history{% if form.is_bound and form.errors %}: all recorded attendance{% elif form.is_bound and form.cleaned_data.start and form.cleaned_data.end %}: {{ form.cleaned_data.start|date:"j M Y" }} to {{ form.cleaned_data.end|date:"j M Y" }}{% elif form.is_bound and form.cleaned_data.start %}: from {{ form.cleaned_data.start|date:"j M Y" }}{% elif form.is_bound and form.cleaned_data.end %}: up to {{ form.cleaned_data.end|date:"j M Y" }}{% endif %}
+        </h2>
         {% if form.is_bound and form.errors %}
         <p class="erp-note-text"><strong>The date filter was not applied; showing all recorded attendance.</strong></p>
         {% endif %}
         <p class="erp-note-text">
-            This list shows every recorded entry. Only entries on submitted registers, on instructional dates
+            {% if form.is_bound and not form.errors and form.cleaned_data.start or form.is_bound and not form.errors and form.cleaned_data.end %}This list shows every recorded entry in the selected date range.{% else %}This list shows every recorded entry.{% endif %}
+            Only entries on submitted registers, on instructional dates
             within the Student's enrollment, and not in the future are counted in the summary above, so an entry
             listed here may not be counted.
         </p>
     </div>
     <div class="erp-table-scroll" role="region" aria-label="Attendance history" tabindex="0">
     <table class="table">
-        <caption class="visually-hidden">Every recorded attendance entry for {{ student.full_name }}, by date.</caption>
+        <caption class="visually-hidden">Recorded attendance entries for {{ student.full_name }}, by date.</caption>
         <thead>
             <tr>
                 <th scope="col">Date</th>

@@ -44,6 +44,20 @@ Widths shot: 1440, 1280, 1024, 992, 768, 390 (full-page PNG). Restricted users: 
 
 Review-driven fixes made during capture: the first capture showed the Monthly table 9px wider than its region at 390px, so the three numeric columns use tighter padding on phones; and the keyboard-scroll probe was changed from End (which scrolls vertically) to ArrowRight.
 
+## Review correction: Attendance history heading and note follow the filter
+
+Review asked for the History H2 to show the applied range like the Summary H2. Student history (`student_attendance.html` only; no view, form or report change) now reads, for both headings:
+
+| State | Summary / History heading suffix | History note | "Not applied" disclosure |
+| --- | --- | --- | --- |
+| First load, or bound with empty dates | none (unchanged) | "This list shows every recorded entry." | 0 |
+| Start + End | `: 19 Oct 2026 to 20 Oct 2026` | "…every recorded entry in the selected date range." | 0 |
+| Start only | `: from 7 Oct 2026` style | "…in the selected date range." | 0 |
+| End only | `: up to 7 Oct 2026` style | "…in the selected date range." | 0 |
+| Invalid (bad date, start after end) | `: all recorded attendance` (unchanged) | "This list shows every recorded entry." | exactly 2 |
+
+The table caption is now the neutral "Recorded attendance entries for …, by date." so it cannot imply entries outside the range. The counting explanation ("only entries on submitted registers, on instructional dates within the Student's enrollment, and not in the future are counted… an entry listed here may not be counted") is shown in every state. Screenshots refreshed (all 90); `history-filtered-1440.png` and `history-filtered-390.png` show the matching headings. Re-measured: document overflow 0px at 360 to 1440, 0 dangling `aria-describedby`, "not applied" note 0 / 0 / 2 / 2 on first load / filtered / the two invalid states, summary link focuses `#id_start`, 3px focus outline. Final results: `manage.py check` clean; focused set **221 OK**; **full PostgreSQL `--parallel 4`: 2593 tests OK**.
+
 ## Known limits
 
 - SQLite, synthetic data; no staging or production verification.

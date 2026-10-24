@@ -347,6 +347,77 @@ class StudentHistoryTests(AriaAssertions, C2Fixture, TestCase):
         self.assertNotIn("Summary:", content)
         self.assertNotIn("form-error-summary", content)
 
+    def headings(self, params=None):
+        """The Summary and History H2 texts (whitespace collapsed) and the History note."""
+        content = self.client.get(self.history, params or {}).content.decode()
+
+        def text(pattern):
+            match = re.search(pattern, content, re.S)
+            return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", match.group(1))).strip()
+
+        return (
+            text(r'id="student-summary-title">(.*?)</h2>'),
+            text(r'id="student-history-title">(.*?)</h2>'),
+            text(r'(This list shows every recorded entry[^<]*?)\s*Only entries'),
+            content,
+        )
+
+    def test_summary_and_history_headings_for_every_filter_state(self):
+        both = {"start": MON.isoformat(), "end": TUE.isoformat()}
+        cases = (
+            # (query, summary heading, history heading, history note)
+            ({}, "Summary", "Attendance history", "This list shows every recorded entry."),
+            ({"start": "", "end": ""}, "Summary", "Attendance history", "This list shows every recorded entry."),
+            (
+                both,
+                "Summary: 6 Jul 2026 to 7 Jul 2026",
+                "Attendance history: 6 Jul 2026 to 7 Jul 2026",
+                "This list shows every recorded entry in the selected date range.",
+            ),
+            (
+                {"start": TUE.isoformat()},
+                "Summary: from 7 Jul 2026",
+                "Attendance history: from 7 Jul 2026",
+                "This list shows every recorded entry in the selected date range.",
+            ),
+            (
+                {"end": TUE.isoformat()},
+                "Summary: up to 7 Jul 2026",
+                "Attendance history: up to 7 Jul 2026",
+                "This list shows every recorded entry in the selected date range.",
+            ),
+            (
+                {"start": WED.isoformat(), "end": MON.isoformat()},
+                "Summary: all recorded attendance",
+                "Attendance history: all recorded attendance",
+                "This list shows every recorded entry.",
+            ),
+            (
+                {"start": "x"},
+                "Summary: all recorded attendance",
+                "Attendance history: all recorded attendance",
+                "This list shows every recorded entry.",
+            ),
+        )
+        for params, summary, history, note in cases:
+            with self.subTest(params=params):
+                got_summary, got_history, got_note, content = self.headings(params)
+                self.assertEqual(got_summary, summary)
+                self.assertEqual(got_history, history)
+                self.assertEqual(got_note, note)
+                # The counting rule is explained in every state.
+                self.assertIn("listed here may not be counted", re.sub(r"\s+", " ", content))
+                invalid = "all recorded attendance" in history
+                self.assertEqual(content.count(self.NOT_APPLIED), 2 if invalid else 0)
+
+    def test_a_filtered_history_never_claims_to_contain_entries_outside_the_range(self):
+        response = self.client.get(self.history, {"start": MON.isoformat(), "end": MON.isoformat()})
+        self.assertEqual([e.register.date for e in response.context["entries"]], [MON])
+        content = re.sub(r"\s+", " ", response.content.decode())
+        self.assertIn("every recorded entry in the selected date range", content)
+        self.assertNotIn("This list shows every recorded entry.", content)
+        self.assertNotIn("Every recorded attendance entry", content)  # the table caption is neutral too
+
     def test_toolbar_fields_and_button(self):
         content = self.client.get(self.history).content.decode()
         tag = content.split('aria-label="Filter attendance by date"')[1].split("</form>")[0]
