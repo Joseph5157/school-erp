@@ -1285,6 +1285,10 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 @media (max-width: 575.98px) {
   .erp-panel .erp-grading-table > thead > tr > *, .erp-panel .erp-grading-table > tbody > tr > * { padding-inline: var(--erp-space-2); overflow-wrap: break-word; }
 }
+/* UI-D1-5B review: the Correction History keeps readable widths (dates, scores and usernames stay on one line, the
+   reason gets a floor) and scrolls inside its labelled region instead of squeezing the audit values. */
+.erp-panel .erp-correction-table .erp-correction-reason { min-width: 16rem; max-width: 26rem; white-space: normal; overflow-wrap: break-word; }
+.erp-panel .erp-correction-table { min-width: 44rem; }
 /* UI-D1-5B: the assessment filter toolbar (Term, Section, Status, button) shares one row on wide desktops; the
    assessment tables (list and roster) tighten phone padding and keep long names wrapping inside their region. */
 @media (min-width: 576px) {

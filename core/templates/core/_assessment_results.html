@@ -20,7 +20,7 @@
             {% if assessment.is_finalized and perms.core.correct_studentresult and not read_only %}<td>{% if result %}<a href="{% url 'core:result-correct' result.pk %}" aria-label="Correct result for {{ enrollment.student.full_name }}">Correct</a>{% endif %}</td>{% endif %}
         </tr>
         {% empty %}
-        <tr><td colspan="8">No Students are enrolled in this Section on the assessment date.</td></tr>
+        <tr><td colspan="{% if assessment.pass_mark is not None %}{% if assessment.is_finalized and perms.core.correct_studentresult and not read_only %}8{% else %}7{% endif %}{% elif assessment.is_finalized and perms.core.correct_studentresult and not read_only %}7{% else %}6{% endif %}">No Students are enrolled in this Section on the assessment date.</td></tr>
         {% endfor %}
     </tbody>
 </table>

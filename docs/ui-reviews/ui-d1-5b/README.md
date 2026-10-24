@@ -43,3 +43,20 @@ Seeded assessments: **1** Quiz 1 (draft, one marked, one **Absent**, one **Not e
 - The list table's column order differs from the plan (Assessment and Status first) so the name and state stay visible on phones.
 - The "corrected" badge keeps its original lowercase text and the row link keeps the visible text "Correct" (with an accessible name that includes the Student) because existing Phase 4 tests assert both strings.
 - Tables scroll locally on phones; 43px top-bar overflow at 195 CSS px is pre-existing.
+
+## Review corrections (PR #111 review)
+
+Two corrections after design review; screenshots `correct-*`, `correct-invalid-*`, `correct-scrolled-*` (360, 390, 768, 1440) and `empty-roster-*` (360, 390, 1440) were recaptured from a seed with **three corrections, one 230-character reason and a 39-character username**. Measurements are in `measurements-review.json` (they supersede the `correct` and `correct-invalid` rows of `measurements.json`).
+
+1. **Correction History table.** It now has its own class, `erp-correction-table` (no longer `erp-keep`), scoped CSS only: When, From, To and By stay on one line, the Reason column has a 16rem floor and 26rem cap and wraps, and the table has a 44rem floor. The labelled, focusable `erp-table-scroll` region scrolls it; the column order and every audit value are unchanged.
+
+| Width | Table / region | Page overflow | Local scroll | Keyboard |
+| --- | --- | --- | --- | --- |
+| 360 | 1071px / 326px | **0px** | 745px | focus ring 3px; ArrowRight scrolls the region, page stays 0px |
+| 390 | 1071px / 356px | **0px** | 715px | same |
+| 768 | 911px / 734px | **0px** | 177px | n/a |
+| 1440 | 1126px / 1126px | **0px** | none | n/a |
+
+   Dates and usernames never wrap (rows are 49px; the long reason wraps to about 145px at 1440). The invalid correction form shows the error summary and keeps the history unchanged at every width.
+
+2. **Empty roster colspan.** `colspan` is now 6 plus one for Pass/Fail plus one for the Correct column. Measured with the header count: draft without pass mark 6, with pass mark 7, finalized with Correct 7 or 8, finalized for a viewer without Correct 6 or 7 (all six cases asserted in tests; the screenshots show the 7-column case).

@@ -18,7 +18,7 @@ from django.test import TestCase
 from django.urls import resolve, reverse
 
 from core.breadcrumbs import breadcrumb_context
-from core.models import AcademicYear, Assessment, ResultCorrection, ResultStatus, StudentResult
+from core.models import AcademicYear, Assessment, ResultCorrection, ResultStatus, Section, StudentResult
 from core.tests.phase4_fixtures import Phase4Fixture
 
 User = get_user_model()
@@ -293,6 +293,46 @@ class DetailTests(AssessmentFixture, TestCase):
         self.assertEqual(len(response.context["rows"]), 3)
 
 
+    def empty_roster_assessment(self, *, pass_mark, finalized):
+        """An assessment in a Section with no enrolled Students, so the roster is empty."""
+        self._empty_sections = getattr(self, "_empty_sections", 0) + 1
+        section = Section.objects.create(class_grade=self.grade6, name=f"Empty {self._empty_sections}")
+        assessment = self.unique_assessment(
+            f"Empty roster {self._empty_sections}", section=section, pass_mark=pass_mark
+        )
+        if finalized:
+            self.force_finalize(assessment)
+        return assessment
+
+    def test_empty_roster_colspan_matches_the_visible_columns(self):
+        _, viewer = self.client_with("view_assessment")
+        cases = (  # (pass mark, finalized, client, expected visible columns)
+            (None, False, self.client, 6),
+            ("8", False, self.client, 7),
+            (None, True, self.client, 7),   # Correct column, no Pass/Fail
+            ("8", True, self.client, 8),    # Correct column and Pass/Fail
+            (None, True, viewer, 6),        # finalized but the viewer cannot correct
+            ("8", True, viewer, 7),
+        )
+        for pass_mark, finalized, client, expected in cases:
+            with self.subTest(pass_mark=pass_mark, finalized=finalized, expected=expected):
+                assessment = self.empty_roster_assessment(pass_mark=pass_mark, finalized=finalized)
+                page = html(client.get(reverse("core:assessment-detail", args=[assessment.pk])))
+                table = re.search(r'aria-label="Results for[^>]*>.*?</table>', page, re.S).group(0)
+                headers = len(re.findall(r'<th scope="col"', table))
+                colspan = int(re.search(r'<td colspan="(\d+)">No Students are enrolled', table).group(1))
+                self.assertEqual(headers, expected)
+                self.assertEqual(colspan, headers)
+                self.assertIn("No Students are enrolled in this Section on the assessment date.", table)
+
+    def test_populated_roster_rows_match_the_header_count(self):
+        page = html(self.client.get(self.final_url))
+        table = re.search(r'aria-label="Results for[^>]*>.*?</table>', page, re.S).group(0)
+        headers = len(re.findall(r'<th scope="col"', table))
+        first_row = re.search(r"<tbody>.*?<tr>(.*?)</tr>", table, re.S).group(1)
+        self.assertEqual(headers, len(re.findall(r"<t[dh][ >]", first_row)))
+
+
 class FormTests(AssessmentFixture, TestCase):
     def setUp(self):
         self.build()
@@ -398,6 +438,39 @@ class CorrectionTests(AssessmentFixture, TestCase):
         draft_result = StudentResult.objects.get(academic_enrollment=self.ravi_a)
         response = self.client.get(reverse("core:result-correct", args=[draft_result.pk]))
         self.assertRedirects(response, self.draft_url)
+
+
+    def test_history_table_has_its_own_scoped_class_and_readable_cells(self):
+        reason = "Re-marked after a paper recount, with the second marker's agreement noted in the file."
+        self.zoya_result.correct(
+            new_status=ResultStatus.MARKED, new_score="42", actor=self.admin, reason=reason
+        )
+        page = html(self.client.get(self.url))
+        region = re.search(r'<div class="erp-table-scroll"[^>]*aria-label="Correction history"[^>]*>', page).group(0)
+        self.assertIn('role="region"', region)
+        self.assertIn('tabindex="0"', region)
+        table = re.search(r'aria-label="Correction history".*?</table>', page, re.S).group(0)
+        self.assertIn('<table class="table erp-correction-table">', table)
+        self.assertNotIn("erp-keep", table)
+        self.assertEqual(re.findall(r'<th scope="col">([^<]+)</th>', table),
+                         ["When", "From", "To", "Reason", "By"])
+        row = re.search(r"<tbody>.*?<tr>(.*?)</tr>", table, re.S).group(1)
+        cells = re.findall(r"<td([^>]*)>(.*?)</td>", row, re.S)
+        self.assertEqual([c[0].strip() for c in cells],
+                         ['class="text-nowrap"', 'class="text-nowrap"', 'class="text-nowrap"',
+                          'class="text-break erp-correction-reason"', 'class="text-nowrap"'])
+        self.assertEqual([cells[1][1], cells[2][1]], ["40.00", "42.00"])
+        self.assertIn("agreement noted in the file.", cells[3][1])  # the whole reason is kept
+        self.assertEqual(cells[4][1], "admin")
+
+    def test_history_survives_an_invalid_post(self):
+        self.zoya_result.correct(
+            new_status=ResultStatus.MARKED, new_score="42", actor=self.admin, reason="First fix."
+        )
+        page = html(self.client.post(self.url, {"status": "MARKED", "score": "", "reason": ""}))
+        self.assertIn("First fix.", page)
+        self.assertIn('role="alert" id="form-error-summary"', page)
+        self.assertEqual(ResultCorrection.objects.count(), 1)
 
 
 class AccessTests(AssessmentFixture, TestCase):

@@ -25,7 +25,7 @@
 <section class="erp-panel mt-4" aria-labelledby="correction-history-heading">
 <div class="erp-panel-head p-3 pb-2"><h2 class="h5" id="correction-history-heading">Correction history</h2></div>
 <div class="erp-table-scroll" role="region" aria-label="Correction history" tabindex="0">
-<table class="table erp-keep">
+<table class="table erp-correction-table">
     <caption class="visually-hidden">Corrections to this result, with the previous and new value, the reason and who made the change.</caption>
     <thead>
         <tr><th scope="col">When</th><th scope="col">From</th><th scope="col">To</th><th scope="col">Reason</th><th scope="col">By</th></tr>
@@ -33,11 +33,11 @@
     <tbody>
         {% for c in corrections %}
         <tr>
-            <td>{{ c.created_at }}</td>
-            <td>{% if c.previous_status == "MARKED" %}{{ c.previous_score }}{% else %}Absent{% endif %}</td>
-            <td>{% if c.new_status == "MARKED" %}{{ c.new_score }}{% else %}Absent{% endif %}</td>
-            <td class="text-break">{{ c.reason }}</td>
-            <td>{{ c.corrected_by }}</td>
+            <td class="text-nowrap">{{ c.created_at }}</td>
+            <td class="text-nowrap">{% if c.previous_status == "MARKED" %}{{ c.previous_score }}{% else %}Absent{% endif %}</td>
+            <td class="text-nowrap">{% if c.new_status == "MARKED" %}{{ c.new_score }}{% else %}Absent{% endif %}</td>
+            <td class="text-break erp-correction-reason">{{ c.reason }}</td>
+            <td class="text-nowrap">{{ c.corrected_by }}</td>
         </tr>
         {% empty %}
         <tr><td colspan="5">No corrections yet.</td></tr>
