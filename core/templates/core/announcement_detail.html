@@ -1,27 +1,56 @@
 {% extends "base.html" %}
 {% block title %}{{ notice.title }}{% endblock %}
 {% block content %}
-<h1 class="h3 mb-1">{{ notice.title }}</h1>
-<p class="text-muted">{{ notice.audience_label }} &middot; published {{ notice.published_at|date:"j M Y, H:i" }} by {{ notice.published_by.username }}{% if notice.is_withdrawn %} &middot; <strong>withdrawn</strong> {{ notice.withdrawn_at|date:"j M Y, H:i" }} by {{ notice.withdrawn_by.username }}: {{ notice.withdrawal_reason }}{% endif %}</p>
-<div class="border rounded p-3 mb-3" style="max-width: 40rem">{{ notice.body|linebreaksbr }}</div>
-
-<p>Guardians with portal access: <strong>{{ counts.guardians }}</strong> &middot; opted in to WhatsApp: <strong>{{ counts.opted_in }}</strong></p>
+{% if notice.is_withdrawn %}
+{% include "partials/_page_header.html" with eyebrow="Announcement" title=notice.title purpose=notice.audience_label status_label="Withdrawn" status_tone="revoked" only %}
+{% else %}
+{% include "partials/_page_header.html" with eyebrow="Announcement" title=notice.title purpose=notice.audience_label status_label="Live" status_tone="published" only %}
+{% endif %}
+<section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="notice-facts-heading">
+<h2 class="h5 mb-3" id="notice-facts-heading">Notice</h2>
+<dl class="row mb-3">
+    <dt class="col-sm-3">Audience</dt><dd class="col-sm-9">{{ notice.audience_label }}</dd>
+    <dt class="col-sm-3">Published</dt><dd class="col-sm-9 text-break">{{ notice.published_at|date:"j M Y, H:i" }} by {{ notice.published_by.username }}</dd>
+    {% if notice.is_withdrawn %}
+    <dt class="col-sm-3">Withdrawn</dt><dd class="col-sm-9 text-break">{{ notice.withdrawn_at|date:"j M Y, H:i" }} by {{ notice.withdrawn_by.username }}</dd>
+    <dt class="col-sm-3">Reason</dt><dd class="col-sm-9 text-break">{{ notice.withdrawal_reason }}</dd>
+    {% endif %}
+</dl>
+<div class="erp-notice-body">{{ notice.body|linebreaksbr }}</div>
+</section>
+<section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="notice-reach-heading">
+<h2 class="h5 mb-3" id="notice-reach-heading">Who can see it</h2>
+<dl class="row mb-0">
+    <dt class="col-sm-5">Guardians with portal access</dt><dd class="col-sm-7"><strong>{{ counts.guardians }}</strong></dd>
+    <dt class="col-sm-5">Opted in to WhatsApp</dt><dd class="col-sm-7"><strong>{{ counts.opted_in }}</strong></dd>
+</dl>
+</section>
 
 {% if not notice.is_withdrawn %}
-<div class="d-flex flex-wrap gap-3 align-items-start">
-    {% if assist and perms.core.send_notification %}
-    <form method="post" action="{% url 'core:announcement-prepare' notice.pk %}">{% csrf_token %}
-        <button type="submit" class="btn btn-success">Prepare WhatsApp messages</button>
-    </form>
-    {% endif %}
-    {% if perms.core.withdraw_announcement %}
-    <form method="post" action="{% url 'core:announcement-withdraw' notice.pk %}" class="d-flex gap-1">{% csrf_token %}
-        <label class="visually-hidden" for="withdraw-reason">Reason for withdrawing</label>
-        <input class="form-control" id="withdraw-reason" name="reason" maxlength="200" placeholder="Reason for withdrawing">
-        <button type="submit" class="btn btn-outline-danger">Withdraw</button>
-    </form>
-    {% endif %}
-</div>
+{% if assist and perms.core.send_notification %}
+<section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="notice-whatsapp-heading">
+<h2 class="h5 mb-2" id="notice-whatsapp-heading">WhatsApp</h2>
+<p class="erp-note-text">Queues a message for each opted-in guardian on the To send page. Nothing is sent from here.</p>
+<form method="post" action="{% url 'core:announcement-prepare' notice.pk %}">{% csrf_token %}
+    <button type="submit" class="btn btn-success">Prepare WhatsApp messages</button>
+</form>
+</section>
+{% endif %}
+{% if perms.core.withdraw_announcement %}
+<section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="notice-withdraw-heading">
+<h2 class="h5 mb-2" id="notice-withdraw-heading">Withdraw this notice</h2>
+<p class="erp-note-text">Guardians stop seeing it at once. The withdrawal is recorded with your reason.</p>
+<form method="post" action="{% url 'core:announcement-withdraw' notice.pk %}" class="erp-withdraw-form">{% csrf_token %}
+    <div class="erp-field">
+        <label for="withdraw-reason">Reason for withdrawing <span class="erp-required-mark" aria-hidden="true">*</span><span class="visually-hidden"> (required)</span></label>
+        <input class="form-control" id="withdraw-reason" name="reason" maxlength="200">
+    </div>
+    <button type="submit" class="btn btn-outline-danger">Withdraw</button>
+</form>
+</section>
+{% endif %}
+{% else %}
+<p class="erp-note-text">This notice was withdrawn. Guardians no longer see it, and it is kept as a record.</p>
 {% endif %}
 <p class="mt-3"><a href="{% url 'core:announcement-list' %}">All announcements</a></p>
 {% endblock %}
