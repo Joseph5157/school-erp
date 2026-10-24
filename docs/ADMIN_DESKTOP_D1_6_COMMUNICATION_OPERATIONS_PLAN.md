@@ -11,6 +11,8 @@ D1-6 is, like D1-3, D1-4 and D1-5, a **presentation-only** programme. It brings 
 
 **D1-6B closeout:** **MERGED** (PR #117, merge `ecd2331`, head `f2f0161`, based on `4b791cb`). Announcement list, form, preview and detail were modernized (templates, `announcement-list` rule, permission-gated Announcements crumb, one scoped CSS block, 30 tests, evidence in `docs/ui-reviews/ui-d1-6b/`); review correction: withdrawn notices show "Current audience eligibility" (service counts unchanged); full PostgreSQL `--parallel 4` suite 2,793 OK; not deployed. **Ledger:** L10 added; L3 (Withdraw notice confirmation), L5 and L8 remain open; L1 to L9 unchanged. D1-6C to D1-6E are not started by this closeout.
 
+**D1-6C closeout:** **MERGED** (PR #119, merge `f3135f0`, head `bde63d4`, based on `7bd36a8`). Documents index, Bonafide form, Attendance summary and Report card PDF list were modernized (templates, document breadcrumb rules, one scoped CSS block, 33 tests, evidence in `docs/ui-reviews/ui-d1-6c/`); full PostgreSQL `--parallel 4` suite 2,826 OK; not deployed. Safeguards re-proved: a GET of any page never issues; each Bonafide or Attendance-summary POST creates exactly one audited issuance; PDF headers and authorization unchanged; the report card list equals `visible_publications` (stale, superseded and withdrawn excluded). **Recorded behaviour:** a report card PDF GET can issue or reuse an audited document on first view (existing, unchanged), while listing report cards issues nothing. Ledger L1 to L10 preserved unchanged. D1-6D and D1-6E are not started by this closeout.
+
 ## 1. Scope
 
 **In scope (administrator pages):**
