@@ -1337,6 +1337,18 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
   .erp-panel .erp-assessment-table > thead > tr > *:not(.text-nowrap), .erp-panel .erp-assessment-table > tbody > tr > *:not(.text-nowrap) { max-width: 10rem; }
 }
 
+/* UI-D1-6E: bulk imports. The preview, error and warning tables hold every row (no pagination), so each sits in a
+   labelled region that scrolls on its own (both ways) with a sticky header, and the page itself never grows with
+   the row count. The preview counts are a summary strip. */
+.erp-import-counts { display: flex; flex-wrap: wrap; gap: var(--erp-space-2) var(--erp-space-5); margin: 0; }
+.erp-import-counts > div { display: flex; flex-direction: column; }
+.erp-import-counts dt { font-size: var(--erp-text-sm); font-weight: 600; color: var(--erp-ink-soft); }
+.erp-import-counts dd { margin: 0; font-size: 1.25rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.erp-import-scroll { max-height: 28rem; overflow: auto; }
+.erp-import-scroll > .erp-import-table > thead > tr > th { position: sticky; top: 0; z-index: 1; background: var(--erp-paper); }
+.erp-panel .erp-import-table > thead > tr > *, .erp-panel .erp-import-table > tbody > tr > * { padding-inline: var(--erp-space-3); }
+.erp-import-notice { padding: var(--erp-space-3); background: var(--erp-warn-wash); border-radius: var(--erp-radius-sm); }
+.erp-panel .erp-import-list-table > thead > tr > *, .erp-panel .erp-import-list-table > tbody > tr > * { padding-inline: var(--erp-space-3); }
 /* UI-D1-6D: the notification queue. Each message is one record: guardian and status, then the exact message
    text in a quoted block (line breaks kept, long words wrapped), the send / mark-sent controls, and the
    labelled dismiss form stacked beneath. Sent today is a labelled table. */

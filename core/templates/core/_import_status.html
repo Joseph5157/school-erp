@@ -1,0 +1,7 @@
+{# Import batch status as a text badge. Use: {% include "core/_import_status.html" with batch=batch only %} #}
+{% if batch.status == "VALIDATED" %}{% include "partials/_status_badge.html" with label=batch.get_status_display tone="pending" only %}
+{% elif batch.status == "REJECTED" %}{% include "partials/_status_badge.html" with label=batch.get_status_display tone="revoked" only %}
+{% elif batch.status == "COMMITTED" %}{% include "partials/_status_badge.html" with label=batch.get_status_display tone="finalized" only %}
+{% elif batch.status == "DISCARDED" %}{% include "partials/_status_badge.html" with label=batch.get_status_display tone="inactive" only %}
+{% elif batch.status == "EXPIRED" %}{% include "partials/_status_badge.html" with label=batch.get_status_display tone="stale" only %}
+{% else %}{% include "partials/_status_badge.html" with label=batch.get_status_display tone="revoked" only %}{% endif %}
