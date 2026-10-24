@@ -1,0 +1,3563 @@
+[
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "preview-first",
+  "width": 360,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "preview-first",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "preview-first",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "preview-first",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "preview-first",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "preview-first",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "preview-first",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [
+   "Status:\nSkipped",
+   "Status:\nSkipped",
+   "Status:\nSkipped",
+   "Status:\nWill publish",
+   "Status:\nWill republish"
+  ],
+  "confirmDisabled": false,
+  "confirmLabel": "Confirm and publish 2 report card(s)",
+  "rows": 5,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "preview-A",
+  "width": 360,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [
+   "Status:\nSkipped",
+   "Status:\nSkipped",
+   "Status:\nSkipped",
+   "Status:\nWill publish",
+   "Status:\nWill republish"
+  ],
+  "confirmDisabled": false,
+  "confirmLabel": "Confirm and publish 2 report card(s)",
+  "rows": 5,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "preview-A",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [
+   "Status:\nSkipped",
+   "Status:\nSkipped",
+   "Status:\nSkipped",
+   "Status:\nWill publish",
+   "Status:\nWill republish"
+  ],
+  "confirmDisabled": false,
+  "confirmLabel": "Confirm and publish 2 report card(s)",
+  "rows": 5,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "preview-A",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [
+   "Status:\nSkipped",
+   "Status:\nSkipped",
+   "Status:\nSkipped",
+   "Status:\nWill publish",
+   "Status:\nWill republish"
+  ],
+  "confirmDisabled": false,
+  "confirmLabel": "Confirm and publish 2 report card(s)",
+  "rows": 5,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "preview-A",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [
+   "Status:\nSkipped",
+   "Status:\nSkipped",
+   "Status:\nSkipped",
+   "Status:\nWill publish",
+   "Status:\nWill republish"
+  ],
+  "confirmDisabled": false,
+  "confirmLabel": "Confirm and publish 2 report card(s)",
+  "rows": 5,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "preview-A",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [
+   "Status:\nSkipped",
+   "Status:\nSkipped",
+   "Status:\nSkipped",
+   "Status:\nWill publish",
+   "Status:\nWill republish"
+  ],
+  "confirmDisabled": false,
+  "confirmLabel": "Confirm and publish 2 report card(s)",
+  "rows": 5,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "preview-A",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [
+   "Status:\nSkipped",
+   "Status:\nSkipped",
+   "Status:\nSkipped",
+   "Status:\nWill publish",
+   "Status:\nWill republish"
+  ],
+  "confirmDisabled": false,
+  "confirmLabel": "Confirm and publish 2 report card(s)",
+  "rows": 5,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "preview-A",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [
+   "Status:\nWill publish",
+   "Status:\nSkipped"
+  ],
+  "confirmDisabled": false,
+  "confirmLabel": "Confirm and publish 1 report card(s)",
+  "rows": 2,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "preview-B",
+  "width": 360,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [
+   "Status:\nWill publish",
+   "Status:\nSkipped"
+  ],
+  "confirmDisabled": false,
+  "confirmLabel": "Confirm and publish 1 report card(s)",
+  "rows": 2,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "preview-B",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [
+   "Status:\nWill publish",
+   "Status:\nSkipped"
+  ],
+  "confirmDisabled": false,
+  "confirmLabel": "Confirm and publish 1 report card(s)",
+  "rows": 2,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "preview-B",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [
+   "Status:\nWill publish",
+   "Status:\nSkipped"
+  ],
+  "confirmDisabled": false,
+  "confirmLabel": "Confirm and publish 1 report card(s)",
+  "rows": 2,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "preview-B",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [
+   "Status:\nWill publish",
+   "Status:\nSkipped"
+  ],
+  "confirmDisabled": false,
+  "confirmLabel": "Confirm and publish 1 report card(s)",
+  "rows": 2,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "preview-B",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [
+   "Status:\nWill publish",
+   "Status:\nSkipped"
+  ],
+  "confirmDisabled": false,
+  "confirmLabel": "Confirm and publish 1 report card(s)",
+  "rows": 2,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "preview-B",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [
+   "Status:\nWill publish",
+   "Status:\nSkipped"
+  ],
+  "confirmDisabled": false,
+  "confirmLabel": "Confirm and publish 1 report card(s)",
+  "rows": 2,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "preview-B",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [
+   "Status:\nIncomplete",
+   "Status:\nIncomplete"
+  ],
+  "confirmDisabled": true,
+  "confirmLabel": "Confirm and publish 0 report card(s)",
+  "rows": 2,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "preview-C-incomplete",
+  "width": 360,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [
+   "Status:\nIncomplete",
+   "Status:\nIncomplete"
+  ],
+  "confirmDisabled": true,
+  "confirmLabel": "Confirm and publish 0 report card(s)",
+  "rows": 2,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "preview-C-incomplete",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [
+   "Status:\nIncomplete",
+   "Status:\nIncomplete"
+  ],
+  "confirmDisabled": true,
+  "confirmLabel": "Confirm and publish 0 report card(s)",
+  "rows": 2,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "preview-C-incomplete",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [
+   "Status:\nIncomplete",
+   "Status:\nIncomplete"
+  ],
+  "confirmDisabled": true,
+  "confirmLabel": "Confirm and publish 0 report card(s)",
+  "rows": 2,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "preview-C-incomplete",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [
+   "Status:\nIncomplete",
+   "Status:\nIncomplete"
+  ],
+  "confirmDisabled": true,
+  "confirmLabel": "Confirm and publish 0 report card(s)",
+  "rows": 2,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "preview-C-incomplete",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [
+   "Status:\nIncomplete",
+   "Status:\nIncomplete"
+  ],
+  "confirmDisabled": true,
+  "confirmLabel": "Confirm and publish 0 report card(s)",
+  "rows": 2,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "preview-C-incomplete",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [
+   "Status:\nIncomplete",
+   "Status:\nIncomplete"
+  ],
+  "confirmDisabled": true,
+  "confirmLabel": "Confirm and publish 0 report card(s)",
+  "rows": 2,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "preview-C-incomplete",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [
+   "Status:\nIncomplete",
+   "Status:\nIncomplete"
+  ],
+  "confirmDisabled": false,
+  "confirmLabel": "Confirm and publish 1 report card(s)",
+  "rows": 2,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "preview-C-included",
+  "width": 360,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [
+   "Status:\nIncomplete",
+   "Status:\nIncomplete"
+  ],
+  "confirmDisabled": false,
+  "confirmLabel": "Confirm and publish 1 report card(s)",
+  "rows": 2,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "preview-C-included",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [
+   "Status:\nIncomplete",
+   "Status:\nIncomplete"
+  ],
+  "confirmDisabled": false,
+  "confirmLabel": "Confirm and publish 1 report card(s)",
+  "rows": 2,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "preview-C-included",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [
+   "Status:\nIncomplete",
+   "Status:\nIncomplete"
+  ],
+  "confirmDisabled": false,
+  "confirmLabel": "Confirm and publish 1 report card(s)",
+  "rows": 2,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "preview-C-included",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [
+   "Status:\nIncomplete",
+   "Status:\nIncomplete"
+  ],
+  "confirmDisabled": false,
+  "confirmLabel": "Confirm and publish 1 report card(s)",
+  "rows": 2,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "preview-C-included",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [
+   "Status:\nIncomplete",
+   "Status:\nIncomplete"
+  ],
+  "confirmDisabled": false,
+  "confirmLabel": "Confirm and publish 1 report card(s)",
+  "rows": 2,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "preview-C-included",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [
+   "Status:\nIncomplete",
+   "Status:\nIncomplete"
+  ],
+  "confirmDisabled": false,
+  "confirmLabel": "Confirm and publish 1 report card(s)",
+  "rows": 2,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "preview-C-included",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Stale publications",
+    "tab": 0,
+    "scroll": 452
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications"
+  ],
+  "badges": [
+   "Status:\nStale \u2014 needs review"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "stale-list",
+  "width": 360,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Stale publications",
+    "tab": 0,
+    "scroll": 422
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications"
+  ],
+  "badges": [
+   "Status:\nStale \u2014 needs review"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "stale-list",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Stale publications",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications"
+  ],
+  "badges": [
+   "Status:\nStale \u2014 needs review"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "stale-list",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Stale publications",
+    "tab": 0,
+    "scroll": 10
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications"
+  ],
+  "badges": [
+   "Status:\nStale \u2014 needs review"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "stale-list",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Stale publications",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications"
+  ],
+  "badges": [
+   "Status:\nStale \u2014 needs review"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "stale-list",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Stale publications",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications"
+  ],
+  "badges": [
+   "Status:\nStale \u2014 needs review"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "stale-list",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Stale publications",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications"
+  ],
+  "badges": [
+   "Status:\nStale \u2014 needs review"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "stale-list",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 362
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 265
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication"
+  ],
+  "badges": [
+   "Status:\nPublished",
+   "Status:\nPublished"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "detail-published",
+  "width": 360,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 332
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 235
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication"
+  ],
+  "badges": [
+   "Status:\nPublished",
+   "Status:\nPublished"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "detail-published",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 0
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication"
+  ],
+  "badges": [
+   "Status:\nPublished",
+   "Status:\nPublished"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "detail-published",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 22
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication"
+  ],
+  "badges": [
+   "Status:\nPublished",
+   "Status:\nPublished"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "detail-published",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 0
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication"
+  ],
+  "badges": [
+   "Status:\nPublished",
+   "Status:\nPublished"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "detail-published",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 0
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication"
+  ],
+  "badges": [
+   "Status:\nPublished",
+   "Status:\nPublished"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "detail-published",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 0
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication"
+  ],
+  "badges": [
+   "Status:\nPublished",
+   "Status:\nPublished"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "detail-published",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 399
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 376
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication"
+  ],
+  "badges": [
+   "Status:\nStale \u2014 needs review",
+   "Status:\nStale \u2014 needs review"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "detail-stale",
+  "width": 360,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 369
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 346
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication"
+  ],
+  "badges": [
+   "Status:\nStale \u2014 needs review",
+   "Status:\nStale \u2014 needs review"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "detail-stale",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 0
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication"
+  ],
+  "badges": [
+   "Status:\nStale \u2014 needs review",
+   "Status:\nStale \u2014 needs review"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "detail-stale",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 31
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication"
+  ],
+  "badges": [
+   "Status:\nStale \u2014 needs review",
+   "Status:\nStale \u2014 needs review"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "detail-stale",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 0
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication"
+  ],
+  "badges": [
+   "Status:\nStale \u2014 needs review",
+   "Status:\nStale \u2014 needs review"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "detail-stale",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 0
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication"
+  ],
+  "badges": [
+   "Status:\nStale \u2014 needs review",
+   "Status:\nStale \u2014 needs review"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "detail-stale",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 0
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication"
+  ],
+  "badges": [
+   "Status:\nStale \u2014 needs review",
+   "Status:\nStale \u2014 needs review"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "detail-stale",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 294
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 320
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication"
+  ],
+  "badges": [
+   "Status:\nSuperseded",
+   "Status:\nPublished",
+   "Status:\nSuperseded"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "detail-superseded",
+  "width": 360,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 264
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 290
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication"
+  ],
+  "badges": [
+   "Status:\nSuperseded",
+   "Status:\nPublished",
+   "Status:\nSuperseded"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "detail-superseded",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 0
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication"
+  ],
+  "badges": [
+   "Status:\nSuperseded",
+   "Status:\nPublished",
+   "Status:\nSuperseded"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "detail-superseded",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 9
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication"
+  ],
+  "badges": [
+   "Status:\nSuperseded",
+   "Status:\nPublished",
+   "Status:\nSuperseded"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "detail-superseded",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 0
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication"
+  ],
+  "badges": [
+   "Status:\nSuperseded",
+   "Status:\nPublished",
+   "Status:\nSuperseded"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "detail-superseded",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 0
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication"
+  ],
+  "badges": [
+   "Status:\nSuperseded",
+   "Status:\nPublished",
+   "Status:\nSuperseded"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "detail-superseded",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 0
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication"
+  ],
+  "badges": [
+   "Status:\nSuperseded",
+   "Status:\nPublished",
+   "Status:\nSuperseded"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "detail-superseded",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 294
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 323
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication"
+  ],
+  "badges": [
+   "Status:\nPublished",
+   "Status:\nPublished",
+   "Status:\nSuperseded"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "detail-current-v2",
+  "width": 360,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 264
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 293
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication"
+  ],
+  "badges": [
+   "Status:\nPublished",
+   "Status:\nPublished",
+   "Status:\nSuperseded"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "detail-current-v2",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 0
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication"
+  ],
+  "badges": [
+   "Status:\nPublished",
+   "Status:\nPublished",
+   "Status:\nSuperseded"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "detail-current-v2",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 9
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication"
+  ],
+  "badges": [
+   "Status:\nPublished",
+   "Status:\nPublished",
+   "Status:\nSuperseded"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "detail-current-v2",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 0
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication"
+  ],
+  "badges": [
+   "Status:\nPublished",
+   "Status:\nPublished",
+   "Status:\nSuperseded"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "detail-current-v2",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 0
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication"
+  ],
+  "badges": [
+   "Status:\nPublished",
+   "Status:\nPublished",
+   "Status:\nSuperseded"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "detail-current-v2",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 0
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication"
+  ],
+  "badges": [
+   "Status:\nPublished",
+   "Status:\nPublished",
+   "Status:\nSuperseded"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "detail-current-v2",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 294
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 317
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication"
+  ],
+  "badges": [
+   "Status:\nWithdrawn",
+   "Status:\nWithdrawn"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "detail-withdrawn",
+  "width": 360,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 264
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 287
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication"
+  ],
+  "badges": [
+   "Status:\nWithdrawn",
+   "Status:\nWithdrawn"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "detail-withdrawn",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 0
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication"
+  ],
+  "badges": [
+   "Status:\nWithdrawn",
+   "Status:\nWithdrawn"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "detail-withdrawn",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 9
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication"
+  ],
+  "badges": [
+   "Status:\nWithdrawn",
+   "Status:\nWithdrawn"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "detail-withdrawn",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 0
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication"
+  ],
+  "badges": [
+   "Status:\nWithdrawn",
+   "Status:\nWithdrawn"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "detail-withdrawn",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 0
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication"
+  ],
+  "badges": [
+   "Status:\nWithdrawn",
+   "Status:\nWithdrawn"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "detail-withdrawn",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 0
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication"
+  ],
+  "badges": [
+   "Status:\nWithdrawn",
+   "Status:\nWithdrawn"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "detail-withdrawn",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication",
+   "Withdraw"
+  ],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "withdraw",
+  "width": 360,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication",
+   "Withdraw"
+  ],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "withdraw",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication",
+   "Withdraw"
+  ],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "withdraw",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication",
+   "Withdraw"
+  ],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "withdraw",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication",
+   "Withdraw"
+  ],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "withdraw",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication",
+   "Withdraw"
+  ],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "withdraw",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication",
+   "Withdraw"
+  ],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "withdraw",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [],
+  "badges": [
+   "Status:\nIncomplete",
+   "Status:\nIncomplete"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 2,
+  "messages": [],
+  "user": "demo_view",
+  "name": "viewer-preview-C",
+  "width": 360,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [],
+  "badges": [
+   "Status:\nIncomplete",
+   "Status:\nIncomplete"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 2,
+  "messages": [],
+  "user": "demo_view",
+  "name": "viewer-preview-C",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [],
+  "badges": [
+   "Status:\nIncomplete",
+   "Status:\nIncomplete"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 2,
+  "messages": [],
+  "user": "demo_view",
+  "name": "viewer-preview-C",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [],
+  "badges": [
+   "Status:\nIncomplete",
+   "Status:\nIncomplete"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 2,
+  "messages": [],
+  "user": "demo_view",
+  "name": "viewer-preview-C",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [],
+  "badges": [
+   "Status:\nIncomplete",
+   "Status:\nIncomplete"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 2,
+  "messages": [],
+  "user": "demo_view",
+  "name": "viewer-preview-C",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [],
+  "badges": [
+   "Status:\nIncomplete",
+   "Status:\nIncomplete"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 2,
+  "messages": [],
+  "user": "demo_view",
+  "name": "viewer-preview-C",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [],
+  "badges": [
+   "Status:\nIncomplete",
+   "Status:\nIncomplete"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 2,
+  "messages": [],
+  "user": "demo_view",
+  "name": "viewer-preview-C",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [],
+  "badges": [
+   "Status:\nSkipped",
+   "Status:\nSkipped",
+   "Status:\nSkipped",
+   "Status:\nWill publish",
+   "Status:\nWill republish"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 5,
+  "messages": [],
+  "user": "demo_view",
+  "name": "viewer-preview-A",
+  "width": 360,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [],
+  "badges": [
+   "Status:\nSkipped",
+   "Status:\nSkipped",
+   "Status:\nSkipped",
+   "Status:\nWill publish",
+   "Status:\nWill republish"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 5,
+  "messages": [],
+  "user": "demo_view",
+  "name": "viewer-preview-A",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [],
+  "badges": [
+   "Status:\nSkipped",
+   "Status:\nSkipped",
+   "Status:\nSkipped",
+   "Status:\nWill publish",
+   "Status:\nWill republish"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 5,
+  "messages": [],
+  "user": "demo_view",
+  "name": "viewer-preview-A",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [],
+  "badges": [
+   "Status:\nSkipped",
+   "Status:\nSkipped",
+   "Status:\nSkipped",
+   "Status:\nWill publish",
+   "Status:\nWill republish"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 5,
+  "messages": [],
+  "user": "demo_view",
+  "name": "viewer-preview-A",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [],
+  "badges": [
+   "Status:\nSkipped",
+   "Status:\nSkipped",
+   "Status:\nSkipped",
+   "Status:\nWill publish",
+   "Status:\nWill republish"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 5,
+  "messages": [],
+  "user": "demo_view",
+  "name": "viewer-preview-A",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [],
+  "badges": [
+   "Status:\nSkipped",
+   "Status:\nSkipped",
+   "Status:\nSkipped",
+   "Status:\nWill publish",
+   "Status:\nWill republish"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 5,
+  "messages": [],
+  "user": "demo_view",
+  "name": "viewer-preview-A",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [],
+  "badges": [
+   "Status:\nSkipped",
+   "Status:\nSkipped",
+   "Status:\nSkipped",
+   "Status:\nWill publish",
+   "Status:\nWill republish"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 5,
+  "messages": [],
+  "user": "demo_view",
+  "name": "viewer-preview-A",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Stale publications",
+    "tab": 0,
+    "scroll": 452
+   }
+  ],
+  "crumbs": [],
+  "badges": [
+   "Status:\nStale \u2014 needs review"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_view",
+  "name": "viewer-stale-list",
+  "width": 360,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Stale publications",
+    "tab": 0,
+    "scroll": 422
+   }
+  ],
+  "crumbs": [],
+  "badges": [
+   "Status:\nStale \u2014 needs review"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_view",
+  "name": "viewer-stale-list",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Stale publications",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [],
+  "badges": [
+   "Status:\nStale \u2014 needs review"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_view",
+  "name": "viewer-stale-list",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Stale publications",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [],
+  "badges": [
+   "Status:\nStale \u2014 needs review"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_view",
+  "name": "viewer-stale-list",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Stale publications",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [],
+  "badges": [
+   "Status:\nStale \u2014 needs review"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_view",
+  "name": "viewer-stale-list",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Stale publications",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [],
+  "badges": [
+   "Status:\nStale \u2014 needs review"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_view",
+  "name": "viewer-stale-list",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Stale publications",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [],
+  "badges": [
+   "Status:\nStale \u2014 needs review"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_view",
+  "name": "viewer-stale-list",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 399
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 376
+   }
+  ],
+  "crumbs": [],
+  "badges": [
+   "Status:\nStale \u2014 needs review",
+   "Status:\nStale \u2014 needs review"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_view",
+  "name": "viewer-detail-stale",
+  "width": 360,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 369
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 346
+   }
+  ],
+  "crumbs": [],
+  "badges": [
+   "Status:\nStale \u2014 needs review",
+   "Status:\nStale \u2014 needs review"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_view",
+  "name": "viewer-detail-stale",
+  "width": 390,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 0
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [],
+  "badges": [
+   "Status:\nStale \u2014 needs review",
+   "Status:\nStale \u2014 needs review"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_view",
+  "name": "viewer-detail-stale",
+  "width": 768,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 0
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [],
+  "badges": [
+   "Status:\nStale \u2014 needs review",
+   "Status:\nStale \u2014 needs review"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_view",
+  "name": "viewer-detail-stale",
+  "width": 992,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 0
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [],
+  "badges": [
+   "Status:\nStale \u2014 needs review",
+   "Status:\nStale \u2014 needs review"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_view",
+  "name": "viewer-detail-stale",
+  "width": 1024,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 0
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [],
+  "badges": [
+   "Status:\nStale \u2014 needs review",
+   "Status:\nStale \u2014 needs review"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_view",
+  "name": "viewer-detail-stale",
+  "width": 1280,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 0
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 0
+   }
+  ],
+  "crumbs": [],
+  "badges": [
+   "Status:\nStale \u2014 needs review",
+   "Status:\nStale \u2014 needs review"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_view",
+  "name": "viewer-detail-stale",
+  "width": 1440,
+  "status": 200
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_view",
+  "name": "viewer-withdraw-403",
+  "width": 360,
+  "status": 403
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_view",
+  "name": "viewer-withdraw-403",
+  "width": 390,
+  "status": 403
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_view",
+  "name": "viewer-withdraw-403",
+  "width": 768,
+  "status": 403
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_view",
+  "name": "viewer-withdraw-403",
+  "width": 992,
+  "status": 403
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_view",
+  "name": "viewer-withdraw-403",
+  "width": 1024,
+  "status": 403
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_view",
+  "name": "viewer-withdraw-403",
+  "width": 1280,
+  "status": 403
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_view",
+  "name": "viewer-withdraw-403",
+  "width": 1440,
+  "status": 403
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_noperm",
+  "name": "noperm-preview-403",
+  "width": 360,
+  "status": 403
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_noperm",
+  "name": "noperm-preview-403",
+  "width": 390,
+  "status": 403
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_noperm",
+  "name": "noperm-preview-403",
+  "width": 768,
+  "status": 403
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_noperm",
+  "name": "noperm-preview-403",
+  "width": 992,
+  "status": 403
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_noperm",
+  "name": "noperm-preview-403",
+  "width": 1024,
+  "status": 403
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_noperm",
+  "name": "noperm-preview-403",
+  "width": 1280,
+  "status": 403
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_noperm",
+  "name": "noperm-preview-403",
+  "width": 1440,
+  "status": 403
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_rao",
+  "name": "teacher-preview-403",
+  "width": 360,
+  "status": 403
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_rao",
+  "name": "teacher-preview-403",
+  "width": 390,
+  "status": 403
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_rao",
+  "name": "teacher-preview-403",
+  "width": 768,
+  "status": 403
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_rao",
+  "name": "teacher-preview-403",
+  "width": 992,
+  "status": 403
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_rao",
+  "name": "teacher-preview-403",
+  "width": 1024,
+  "status": 403
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_rao",
+  "name": "teacher-preview-403",
+  "width": 1280,
+  "status": 403
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_rao",
+  "name": "teacher-preview-403",
+  "width": 1440,
+  "status": 403
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication",
+   "Withdraw"
+  ],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "withdraw-invalid",
+  "width": 360,
+  "status": 200,
+  "focus_after_summary_click": "id_reason"
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [
+   "Status:\nSkipped",
+   "Status:\nSkipped",
+   "Status:\nSkipped",
+   "Status:\nWill publish",
+   "Status:\nWill republish"
+  ],
+  "confirmDisabled": false,
+  "confirmLabel": "Confirm and publish 2 report card(s)",
+  "rows": 5,
+  "messages": [
+   "Results changed since the preview, or this preview was already confirmed. Review the new preview."
+  ],
+  "user": "demo_admin",
+  "name": "confirm-changed-token",
+  "width": 360,
+  "status": 200,
+  "rowsBefore": 5
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication",
+   "Withdraw"
+  ],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "withdraw-invalid",
+  "width": 390,
+  "status": 200,
+  "focus_after_summary_click": "id_reason"
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [
+   "Status:\nSkipped",
+   "Status:\nSkipped",
+   "Status:\nSkipped",
+   "Status:\nWill publish",
+   "Status:\nWill republish"
+  ],
+  "confirmDisabled": false,
+  "confirmLabel": "Confirm and publish 2 report card(s)",
+  "rows": 5,
+  "messages": [
+   "Results changed since the preview, or this preview was already confirmed. Review the new preview."
+  ],
+  "user": "demo_admin",
+  "name": "confirm-changed-token",
+  "width": 390,
+  "status": 200,
+  "rowsBefore": 5
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication",
+   "Withdraw"
+  ],
+  "badges": [],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "user": "demo_admin",
+  "name": "withdraw-invalid",
+  "width": 1440,
+  "status": 200,
+  "focus_after_summary_click": "id_reason"
+ },
+ {
+  "overflow": 0,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [
+   "Status:\nSkipped",
+   "Status:\nSkipped",
+   "Status:\nSkipped",
+   "Status:\nWill publish",
+   "Status:\nWill republish"
+  ],
+  "confirmDisabled": false,
+  "confirmLabel": "Confirm and publish 2 report card(s)",
+  "rows": 5,
+  "messages": [
+   "Results changed since the preview, or this preview was already confirmed. Review the new preview."
+  ],
+  "user": "demo_admin",
+  "name": "confirm-changed-token",
+  "width": 1440,
+  "status": 200,
+  "rowsBefore": 5
+ },
+ {
+  "name": "keyboard-versions-390",
+  "before": 0,
+  "after": 34,
+  "outline": "3px",
+  "pageOverflow": 0
+ },
+ {
+  "overflow": 43,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [],
+  "crumbs": [
+   "Overview",
+   "Academic Years",
+   "Publish to guardians"
+  ],
+  "badges": [
+   "Status:\nSkipped",
+   "Status:\nSkipped",
+   "Status:\nSkipped",
+   "Status:\nWill publish",
+   "Status:\nWill republish"
+  ],
+  "confirmDisabled": false,
+  "confirmLabel": "Confirm and publish 2 report card(s)",
+  "rows": 5,
+  "messages": [],
+  "name": "zoom200-390 /terms/1/publication/?section=1"
+ },
+ {
+  "overflow": 43,
+  "h1": 1,
+  "dangling": 0,
+  "regions": [
+   {
+    "label": "Results as released in version",
+    "tab": 0,
+    "scroll": 459
+   },
+   {
+    "label": "All versions of this report ca",
+    "tab": 0,
+    "scroll": 485
+   }
+  ],
+  "crumbs": [
+   "Overview",
+   "Stale publications",
+   "Publication"
+  ],
+  "badges": [
+   "Status:\nSuperseded",
+   "Status:\nPublished",
+   "Status:\nSuperseded"
+  ],
+  "confirmDisabled": null,
+  "confirmLabel": null,
+  "rows": 0,
+  "messages": [],
+  "name": "zoom200-390 /publications/5/"
+ }
+]

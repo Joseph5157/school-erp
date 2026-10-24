@@ -1,13 +1,19 @@
 {% extends "base.html" %}
 {% block title %}Withdraw publication{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">Withdraw {{ pub.student.full_name }} &mdash; {{ pub.term_label }} (version {{ pub.version }})</h1>
-<p class="text-muted">Guardians stop seeing this report card at once. The version is kept permanently as history.</p>
-<form method="post">
+{% url 'core:publication-detail' pub.pk as back_url %}
+{% with version_text=pub.version|stringformat:"s" %}
+{% include "partials/_page_header.html" with eyebrow="Withdraw publication" title="Withdraw report card" purpose=pub.student.full_name|add:" — "|add:pub.term_label|add:" (version "|add:version_text|add:")" secondary_url=back_url secondary_label="Back to publication" only %}
+{% endwith %}
+<p class="erp-note-text">Guardians stop seeing this report card at once. The version is kept permanently as history.</p>
+<form method="post" class="erp-form">
     {% csrf_token %}
-    {{ form.non_field_errors }}
-    {{ form.as_p }}
-    <button type="submit" class="btn btn-danger">Withdraw</button>
-    <a class="btn btn-link" href="{% url 'core:publication-detail' pub.pk %}">Cancel</a>
+    {% include "partials/_form_required_legend.html" %}
+    {% include "partials/_form_error_summary.html" with form=form action_text="withdrawing" only %}
+    {% for field in form %}{% include "partials/_form_field.html" with field=field only %}{% endfor %}
+    <div class="erp-form-actions">
+        <button type="submit" class="btn btn-danger">Withdraw</button>
+        <a class="btn btn-link" href="{{ back_url }}">Cancel</a>
+    </div>
 </form>
 {% endblock %}

@@ -1,9 +1,36 @@
 {% extends "base.html" %}
 {% block title %}Stale publications{% endblock %}
 {% block content %}
-<h1 class="h3 mb-1">Stale publications</h1>
-<p class="text-muted">A released result or remark was corrected. Guardians no longer see these report cards until you review and republish (or withdraw) them.</p>
-<ul>
-    {% for pub in stale %}<li><a href="{% url 'core:publication-detail' pub.pk %}">{{ pub.student.full_name }} &mdash; {{ pub.term.academic_year.name }} {{ pub.term_label }} (version {{ pub.version }})</a>{% if pub.status_reason %} &middot; {{ pub.status_reason }}{% endif %}</li>{% empty %}<li class="text-muted">None.</li>{% endfor %}
-</ul>
+{% include "partials/_page_header.html" with eyebrow="Guardian report cards" title="Stale publications" purpose="A released result or remark was corrected. Guardians no longer see these report cards until you review and republish (or withdraw) them." only %}
+<div class="erp-panel">
+<div class="erp-table-scroll" role="region" aria-label="Stale publications" tabindex="0">
+<table class="table erp-publication-table">
+    <caption class="visually-hidden">Report cards that were corrected after release: the Student, Term, version, why it is stale and a link to review it.</caption>
+    <thead>
+        <tr>
+            <th scope="col">Student</th>
+            <th scope="col">Term</th>
+            <th scope="col">Version</th>
+            <th scope="col">Status</th>
+            <th scope="col">Reason</th>
+            <th scope="col"><span class="visually-hidden">Review</span></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for pub in stale %}
+        <tr>
+            <th scope="row" class="fw-semibold">{{ pub.student.full_name }}</th>
+            <td class="text-nowrap">{{ pub.term.academic_year.name }} {{ pub.term_label }}</td>
+            <td class="text-nowrap">Version {{ pub.version }}</td>
+            <td>{% include "core/_publication_status.html" with pub=pub only %}</td>
+            <td class="text-break">{% if pub.status_reason %}{{ pub.status_reason }}{% else %}<span class="text-muted">None recorded</span>{% endif %}</td>
+            <td><a href="{% url 'core:publication-detail' pub.pk %}">Review<span class="visually-hidden"> {{ pub.student.full_name }}, {{ pub.term_label }} version {{ pub.version }}</span></a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6">None. Every released report card still matches its source results.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+</div>
 {% endblock %}
