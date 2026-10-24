@@ -1,17 +1,33 @@
 {% extends "base.html" %}
 {% block title %}Attendance reports{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">Attendance reports</h1>
-<p class="text-muted">
-    Counts and percentages use only submitted attendance on instructional, non-future dates
-    within each Student's enrollment. Missing and draft registers never count as absent.
-    Percentage = Present / (Present + Absent).
+{% if perms.core.view_attendanceregister %}{% url 'core:attendance-register-list' as attendance_registers_url %}{% endif %}
+{% include "partials/_page_header.html" with eyebrow="Daily operations" title="Attendance reports" purpose="Counts and percentages use only submitted attendance on instructional, non-future dates within each Student's enrollment. Missing and draft registers never count as absent. Percentage = Present / (Present + Absent)." secondary_url=attendance_registers_url secondary_label="Attendance registers" only %}
+<section class="erp-panel p-3 p-md-4" aria-labelledby="attendance-reports-title">
+    <div class="erp-panel-head">
+        <h2 class="h5" id="attendance-reports-title">Choose a report</h2>
+    </div>
+    <ul class="list-unstyled mb-0">
+        <li class="position-relative py-3">
+            <a class="stretched-link fw-semibold" href="{% url 'core:report-daily-absentees' %}">Daily absent students</a>
+            <p class="erp-note-text mb-1">Students recorded absent on one date, from submitted registers.</p>
+            <p class="small text-muted mb-0">You choose: a date.</p>
+        </li>
+        {% if perms.core.view_attendanceregister %}
+        <li class="position-relative py-3 border-top">
+            <a class="stretched-link fw-semibold" href="{% url 'core:report-missing-attendance' %}">Missing attendance</a>
+            <p class="erp-note-text mb-1">Sections with no submitted register on a day attendance was expected. A draft or unopened register is not an absence.</p>
+            <p class="small text-muted mb-0">You choose: a date range, and optionally a Section.</p>
+        </li>
+        {% endif %}
+        <li class="position-relative py-3 border-top">
+            <a class="stretched-link fw-semibold" href="{% url 'core:report-monthly-section' %}">Monthly Class/Section summary</a>
+            <p class="erp-note-text mb-1">Present, absent and attendance percentage for each Student in a Section for one month.</p>
+            <p class="small text-muted mb-0">You choose: a Section and a month.</p>
+        </li>
+    </ul>
+</section>
+<p class="erp-note-text mt-3">
+    Student history: open a Student{% if perms.core.view_student %} from <a href="{% url 'core:student-list' %}">Students</a>{% endif %}, then View Attendance.
 </p>
-<ul class="list-group mb-3">
-    <li class="list-group-item"><a href="{% url 'core:attendance-register-list' %}">Daily Section registers</a></li>
-    <li class="list-group-item"><a href="{% url 'core:report-daily-absentees' %}">Daily absent-student list</a></li>
-    <li class="list-group-item"><a href="{% url 'core:report-missing-attendance' %}">Missing attendance</a></li>
-    <li class="list-group-item"><a href="{% url 'core:report-monthly-section' %}">Monthly Class/Section summary</a></li>
-    <li class="list-group-item">Student history and percentage: open a Student, then "View Attendance".</li>
-</ul>
 {% endblock %}
