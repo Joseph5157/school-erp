@@ -1280,6 +1280,7 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 @media (max-width: 575.98px) {
   .erp-panel .erp-attendance-report-table > thead > tr > *,
   .erp-panel .erp-attendance-report-table > tbody > tr > * { padding-inline: var(--erp-space-2); overflow-wrap: break-word; }
+  .erp-panel .erp-attendance-report-table .erp-num { padding-inline: var(--erp-space-1); }
 }
 /* UI-D1-4C-1: the Missing attendance toolbar (Start, End, Section, button) fits one row on wide desktops by
    letting its three fields share the row instead of each claiming 18rem; below 992px they wrap whole. The
@@ -1287,6 +1288,8 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 @media (min-width: 576px) {
   .erp-toolbar--inline.erp-attendance-report-toolbar > .erp-field { flex: 1 1 11rem; max-width: 17rem; min-width: 11rem; }
 }
+/* UI-D1-4C-2: numeric columns (Present, Absent, Attendance %) are right-aligned with tabular figures. */
+.erp-panel .erp-attendance-report-table th.erp-num, .erp-panel .erp-attendance-report-table td.erp-num { text-align: end; font-variant-numeric: tabular-nums; }
 
 /* UI-D1-4B: the register detail context line (Section name + date) wraps a long unbroken name instead of being clipped. */
 .erp-attendance-detail-page .erp-page-header-copy { min-width: 0; }
