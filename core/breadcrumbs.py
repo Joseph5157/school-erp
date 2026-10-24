@@ -172,6 +172,66 @@ RULES = {
         ),
         "Subject/Section results",
     ),
+    # School setup pages (S2). School edit hangs off the School page; calendar and terms hang off Academic Years.
+    # Calendar-day edit and Term edit take their own pk (not a year id), so they show only the no-id ancestor.
+    "school-create": Rule("school-detail", (), "Create school"),
+    "school-update": Rule(
+        "school-detail",
+        (Crumb("School", "core:school-detail", perm="core.view_school"),),
+        "Edit school",
+    ),
+    "academic-year-calendar": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Calendar"),
+    "calendar-day-create": Rule(
+        "academic-year-list",
+        (_ACADEMIC_YEARS, Crumb("Calendar", "core:academic-year-calendar", True, perm="core.view_academicyear")),
+        "Add exception",
+    ),
+    "calendar-day-update": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Edit exception"),
+    "term-create": Rule(
+        "academic-year-list",
+        (_ACADEMIC_YEARS, Crumb("Terms", "core:academic-year-terms", True, perm="core.view_academicyear")),
+        "Add Term",
+    ),
+    "term-update": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Edit Term"),
+    # Classes, subjects and subject offerings (S2). Section create takes the class's pk, so it links back to the class;
+    # subject edit and offering edit take their own pk, so they show only the no-id ancestor.
+    "class-grade-create": Rule(
+        "class-grade-list",
+        (Crumb("Classes/Grades", "core:class-grade-list", perm="core.view_classgrade"),),
+        "Create Class/Grade",
+    ),
+    "class-grade-detail": Rule(
+        "class-grade-list",
+        (Crumb("Classes/Grades", "core:class-grade-list", perm="core.view_classgrade"),),
+        "Class/Grade",
+    ),
+    "section-create": Rule(
+        "class-grade-list",
+        (
+            Crumb("Classes/Grades", "core:class-grade-list", perm="core.view_classgrade"),
+            Crumb("Class/Grade", "core:class-grade-detail", True, perm="core.view_classgrade"),
+        ),
+        "Create Section",
+    ),
+    "subject-create": Rule(
+        "subject-list",
+        (Crumb("Subjects", "core:subject-list", perm="core.view_subject"),),
+        "Add Subject",
+    ),
+    "subject-update": Rule(
+        "subject-list",
+        (Crumb("Subjects", "core:subject-list", perm="core.view_subject"),),
+        "Edit Subject",
+    ),
+    "offering-create": Rule(
+        "academic-year-list",
+        (
+            _ACADEMIC_YEARS,
+            Crumb("Subjects offered", "core:academic-year-offerings", True, perm="core.view_academicyear"),
+        ),
+        "Offer a Subject",
+    ),
+    "offering-update": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Edit offering"),
     # Term publication (D1-5D). The preview's pk is a Term (not an Academic Year), so it shows only the no-id
     # "Academic Years" ancestor and links back to the year's Terms from its header with the real year id. The
     # publication routes use a publication's pk, so the only pk reuse is Publication detail from Withdraw.

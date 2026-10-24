@@ -1,0 +1,3 @@
+{# Every field of a form in the shared field style. Use: {% include "partials/_form_fields.html" with form=form only %} #}
+{% for field in form.hidden_fields %}{{ field }}{% endfor %}
+{% for field in form.visible_fields %}{% if field.field.widget.use_fieldset %}{% include "partials/_form_choice_field.html" with field=field only %}{% else %}{% include "partials/_form_field.html" with field=field only %}{% endif %}{% endfor %}
