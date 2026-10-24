@@ -27,7 +27,7 @@ class Rule:
 _STUDENTS = Crumb("Students", "core:student-list")
 _APPLICANTS = Crumb("Applicants", "core:applicant-list")
 _ATTENDANCE = Crumb("Attendance", "core:attendance-register-list")
-_ANNOUNCEMENTS = Crumb("Announcements", "core:announcement-list")
+_ANNOUNCEMENTS = Crumb("Announcements", "core:announcement-list", perm="core.view_announcement")
 _TEACHERS = Crumb("Teachers", "core:teacher-list")
 _TEACHER = Crumb("Teacher", "core:teacher-detail", True)
 _TIMETABLE = Crumb("Timetable", "core:timetable-index")
@@ -187,6 +187,9 @@ RULES = {
         ),
         "Withdraw",
     ),
+    # Announcements (D1-6B). The list is the sidebar link itself; the form/preview (one route) and the detail show it as
+    # a parent only to viewers who can open it. The prepare and withdraw routes are POST-only redirects.
+    "announcement-list": Rule("announcement-list", (), "Announcements"),
     # Security operations (D1-6A). `section` is the sidebar link's route name, not its "Access and security" group label.
     "login-lockouts": Rule("login-lockouts", (), "Sign-in lockouts"),
 }

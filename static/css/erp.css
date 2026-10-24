@@ -1337,6 +1337,16 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
   .erp-panel .erp-assessment-table > thead > tr > *:not(.text-nowrap), .erp-panel .erp-assessment-table > tbody > tr > *:not(.text-nowrap) { max-width: 10rem; }
 }
 
+/* UI-D1-6B: announcements. The notice body keeps its line breaks, wraps long unbroken words inside the panel, and
+   the withdraw form stacks its labelled reason field above the button; the list table tightens phone padding. */
+.erp-notice-body { padding: var(--erp-space-3); background: var(--erp-paper); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius-sm); max-width: var(--erp-reading-width); overflow-wrap: break-word; }
+.erp-withdraw-form { max-width: 30rem; }
+@media (max-width: 575.98px) {
+  .erp-panel .erp-announcement-table > thead > tr > *, .erp-panel .erp-announcement-table > tbody > tr > * { padding-inline: var(--erp-space-2); overflow-wrap: break-word; }
+}
+.erp-panel .erp-announcement-table tbody th[scope="row"] { min-width: 12rem; max-width: 22rem; }
+.erp-panel .erp-announcement-table td:nth-child(3) { min-width: 7rem; }
+
 /* UI-D1-4C-1: the three-column attendance report tables (also .erp-keep, so they fit the phone instead of
    scrolling) tighten cell padding on phones, so the State / Absence note column stays on screen and long
    Section names wrap. */

@@ -2,14 +2,21 @@
 {% block title %}Preview notice{% endblock %}
 {% block content %}
 {% include "partials/_page_header.html" with eyebrow="New notice" title="Preview notice" purpose="Nothing is published until you choose Publish notice." only %}
-<h2 class="h4 mb-1">{{ notice.title }}</h2>
+<section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="notice-preview-heading">
+<h2 class="h4 mb-1 text-break" id="notice-preview-heading">{{ notice.title }}</h2>
 <p class="text-muted">{{ notice.audience_label }}</p>
-<div class="border rounded p-3 mb-3" style="max-width: 40rem">{{ notice.body|linebreaksbr }}</div>
-
-<p>Guardians with portal access: <strong>{{ counts.guardians }}</strong> &middot; opted in to WhatsApp: <strong>{{ counts.opted_in }}</strong></p>
+<div class="erp-notice-body">{{ notice.body|linebreaksbr }}</div>
+</section>
+<section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="notice-reach-heading">
+<h2 class="h5 mb-3" id="notice-reach-heading">Who will see it</h2>
+<dl class="row mb-0">
+    <dt class="col-sm-5">Guardians with portal access</dt><dd class="col-sm-7"><strong>{{ counts.guardians }}</strong></dd>
+    <dt class="col-sm-5">Opted in to WhatsApp</dt><dd class="col-sm-7"><strong>{{ counts.opted_in }}</strong></dd>
+</dl>
 {% if not counts.guardians %}
-<div class="alert alert-warning" style="max-width: 40rem" role="status">Nobody can see this notice yet. No guardian with portal access has a child in this audience. You can still publish it.</div>
+<div class="erp-note-text mt-3" role="status">{% include "partials/_status_badge.html" with label="No guardians yet" tone="pending" only %} Nobody can see this notice yet. No guardian with portal access has a child in this audience. You can still publish it.</div>
 {% endif %}
+</section>
 
 <div class="d-flex flex-wrap gap-2 align-items-start">
     <form method="post" action="{% url 'core:announcement-create' %}">
@@ -24,6 +31,6 @@
         <input type="hidden" name="edit" value="1">
         <button type="submit" class="btn btn-outline-secondary">Back to edit</button>
     </form>
-    <a class="btn btn-link" href="{% url 'core:announcement-list' %}">Cancel</a>
+    {% if perms.core.view_announcement %}<a class="btn btn-link" href="{% url 'core:announcement-list' %}">Cancel</a>{% endif %}
 </div>
 {% endblock %}

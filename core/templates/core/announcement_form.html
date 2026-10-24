@@ -1,17 +1,19 @@
 {% extends "base.html" %}
 {% block title %}New notice{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">New notice</h1>
-<p class="text-muted">You'll see a preview before anything is sent. Published notices can't be edited; withdraw and republish to correct one.</p>
-<form method="post" style="max-width: 40rem" data-erp-audience-form>
+{% include "partials/_page_header.html" with eyebrow="Announcements" title="New notice" purpose="You'll see a preview before anything is sent. Published notices can't be edited; withdraw and republish to correct one." only %}
+<form method="post" class="erp-form" data-erp-audience-form>
     {% csrf_token %}
-    {{ form.non_field_errors }}
+    {% include "partials/_form_required_legend.html" %}
+    {% include "partials/_form_error_summary.html" with form=form action_text="previewing" only %}
     {% include "partials/_form_field.html" with field=form.title only %}
     {% include "partials/_form_field.html" with field=form.body only %}
     <div class="mb-3">{{ form.audience.as_field_group }}</div>
     <div data-erp-audience-field="CLASS">{% include "partials/_form_field.html" with field=form.class_grade only %}</div>
     <div data-erp-audience-field="SECTION">{% include "partials/_form_field.html" with field=form.section only %}</div>
-    <button type="submit" class="btn btn-primary">Preview notice</button>
-    <a class="btn btn-link" href="{% url 'core:announcement-list' %}">Cancel</a>
+    <div class="erp-form-actions">
+        <button type="submit" class="btn btn-primary">Preview notice</button>
+        {% if perms.core.view_announcement %}<a class="btn btn-link" href="{% url 'core:announcement-list' %}">Cancel</a>{% endif %}
+    </div>
 </form>
 {% endblock %}
