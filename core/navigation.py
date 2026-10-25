@@ -33,7 +33,6 @@ OFFICE_NAV = (
         NavLink("Applicants", "core:applicant-list", "core.view_applicant"),
         NavLink("Students", "core:student-list", "core.view_student"),
         NavLink("Guardians", "core:guardian-list", "core.view_guardian"),
-        NavLink("Import", "core:import-list", "core.view_importbatch"),
     )),
     ("Daily", (
         NavLink("Attendance", "core:attendance-register-list", "core.view_attendanceregister"),
@@ -41,6 +40,9 @@ OFFICE_NAV = (
         NavLink("Announcements", "core:announcement-list", "core.view_announcement"),
         NavLink("Message queue", "core:notifications-to-send", "core.send_notification"),
         NavLink("Documents", "core:document-index", "core.issue_document"),
+    )),
+    ("Data tools", (
+        NavLink("Import", "core:import-list", "core.view_importbatch"),
     )),
     ("Assessments & Results", (
         NavLink("Assessments", "core:academic-year-assessments", "core.view_assessment", year_arg=True),
