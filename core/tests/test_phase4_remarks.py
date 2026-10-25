@@ -101,10 +101,12 @@ class TermRemarkTests(Phase4Fixture, TestCase):
         html = self.rao_client.get(self.url, {"section": self.six_a.pk}).content.decode()
         self.assertRegex(
             html,
-            r'(?s)<form method="post">.*?<div class="erp-panel">\s*<div class="erp-table-scroll" '
+            r'(?s)<form method="post">.*?<div class="erp-panel mb-4">\s*<div class="erp-table-scroll" '
             r'role="region" aria-label="Term remarks" tabindex="0">\s*'
-            r'<table class="table align-middle erp-keep">.*?</table>\s*</div>\s*</div>.*?</form>',
+            r'<table class="table align-middle">.*?</table>\s*</div>\s*</div>.*?</form>',
         )
+        # erp-keep must be absent so the table scrolls on phones instead of squeezing.
+        self.assertNotIn("erp-keep", html)
 
     def test_one_non_blank_remark_per_student_per_term(self):
         TermRemark.objects.create(

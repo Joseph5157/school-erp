@@ -170,7 +170,9 @@ class StudentDetailPanelTablesTests(BoundaryFixture, TestCase):
             with self.subTest(label=label):
                 self.assertRegex(
                     html,
-                    r'<div class="erp-panel">\s*<div class="erp-table-scroll" role="region" '
-                    r'aria-label="%s" tabindex="0">\s*<table class="table erp-keep">' % label,
+                    r'<div class="erp-panel mb-4">\s*<div class="erp-table-scroll" role="region" '
+                    r'aria-label="%s" tabindex="0">\s*<table class="table">' % label,
                 )
         self.assertEqual(html.count('<div class="erp-table-scroll"'), 3)
+        # erp-keep must be absent so the tables scroll on phones instead of squeezing.
+        self.assertNotIn("erp-keep", html)

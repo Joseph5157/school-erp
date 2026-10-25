@@ -440,7 +440,8 @@ class IssuesAccessibilityTests(IssuesFixture, TestCase):
             )),
             2,
         )
-        self.assertEqual(html.count('<table class="table erp-keep">'), 2)
+        # erp-keep must be absent so the tables scroll on phones instead of squeezing.
+        self.assertNotIn("erp-keep", html)
 
     def test_date_error_uses_the_summary_pattern(self):
         response = self.client.get(self.issues_url() + "?date=2030-01-01")

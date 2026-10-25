@@ -97,7 +97,8 @@ class SectionSelectionTests(GridFixture, TestCase):
         self.assertRegex(
             html, r'<div class="erp-panel">\s*<div class="erp-table-scroll" role="region"'
         )
-        self.assertIn('<table class="table erp-keep">', html)
+        # erp-keep must be absent so the table scrolls on phones instead of squeezing.
+        self.assertNotIn("erp-keep", html)
 
     def test_sections_page_empty_state(self):
         AcademicSubjectOffering.objects.all().delete()

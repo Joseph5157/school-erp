@@ -420,7 +420,8 @@ class PeriodTableMobileTests(Phase4Fixture, TestCase):
             self.assertRegex(
                 html, r'<div class="erp-panel">\s*<div class="erp-table-scroll" role="region"'
             )
-            self.assertIn('<table class="table erp-keep">', html)
+            # erp-keep must be absent so the table scrolls on phones instead of squeezing.
+            self.assertNotIn("erp-keep", html)
 
     def test_row_actions_are_buttons_so_they_get_the_touch_target_size(self):
         html = self.client.get(
