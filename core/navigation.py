@@ -13,47 +13,49 @@ class NavLink:
     url_name: str  # namespaced, e.g. "core:student-list"
     perm: str | None = None
     mobile_label: str | None = None  # shorter label for the phone bottom bar
-    icon: str | None = None  # key into partials/_tab_icon.html
+    icon: str | None = None  # key into partials/_tab_icon.html (Teacher tabs) or partials/_icon.html (office sidebar)
     year_arg: bool = False  # URL takes the current Academic Year pk; hidden when there is none
 
 
 OFFICE_NAV = (
     ("Home", (
-        NavLink("Overview", "core:admin-overview", "core.view_school"),
+        NavLink("Overview", "core:admin-overview", "core.view_school", icon="overview"),
     )),
     ("School setup", (
-        NavLink("School", "core:school-detail", "core.view_school"),
-        NavLink("Academic Years", "core:academic-year-list", "core.view_academicyear"),
-        NavLink("Classes/Grades", "core:class-grade-list", "core.view_classgrade"),
-        NavLink("Subjects", "core:subject-list", "core.view_subject"),
-        NavLink("Timetable", "core:timetable-index", "core.view_timetableperiod"),
-        NavLink("Teachers", "core:teacher-list", "accounts.manage_teacher_accounts"),
+        NavLink("School", "core:school-detail", "core.view_school", icon="school"),
+        NavLink("Academic Years", "core:academic-year-list", "core.view_academicyear", icon="calendar"),
+        NavLink("Classes/Grades", "core:class-grade-list", "core.view_classgrade", icon="classes"),
+        NavLink("Subjects", "core:subject-list", "core.view_subject", icon="subjects"),
+        NavLink("Timetable", "core:timetable-index", "core.view_timetableperiod", icon="timetable"),
+        NavLink("Teachers", "core:teacher-list", "accounts.manage_teacher_accounts", icon="teachers"),
     )),
     ("Admissions", (
-        NavLink("Applicants", "core:applicant-list", "core.view_applicant"),
-        NavLink("Students", "core:student-list", "core.view_student"),
-        NavLink("Guardians", "core:guardian-list", "core.view_guardian"),
-        NavLink("Import", "core:import-list", "core.view_importbatch"),
+        NavLink("Applicants", "core:applicant-list", "core.view_applicant", icon="applicants"),
+        NavLink("Students", "core:student-list", "core.view_student", icon="students"),
+        NavLink("Guardians", "core:guardian-list", "core.view_guardian", icon="guardians"),
     )),
     ("Daily", (
-        NavLink("Attendance", "core:attendance-register-list", "core.view_attendanceregister"),
-        NavLink("Attendance reports", "core:attendance-reports", "core.view_attendanceentry"),
-        NavLink("Announcements", "core:announcement-list", "core.view_announcement"),
-        NavLink("Message queue", "core:notifications-to-send", "core.send_notification"),
-        NavLink("Documents", "core:document-index", "core.issue_document"),
+        NavLink("Attendance", "core:attendance-register-list", "core.view_attendanceregister", icon="attendance"),
+        NavLink("Attendance reports", "core:attendance-reports", "core.view_attendanceentry", icon="reports"),
+        NavLink("Announcements", "core:announcement-list", "core.view_announcement", icon="announcements"),
+        NavLink("Message queue", "core:notifications-to-send", "core.send_notification", icon="queue"),
+        NavLink("Documents", "core:document-index", "core.issue_document", icon="documents"),
+    )),
+    ("Data tools", (
+        NavLink("Import", "core:import-list", "core.view_importbatch", icon="import"),
     )),
     ("Assessments & Results", (
-        NavLink("Assessments", "core:academic-year-assessments", "core.view_assessment", year_arg=True),
+        NavLink("Assessments", "core:academic-year-assessments", "core.view_assessment", year_arg=True, icon="assessments"),
         NavLink("Subject/Section results", "core:report-subject-section-results",
-                "core.view_studentresult", year_arg=True),
+                "core.view_studentresult", year_arg=True, icon="results"),
         NavLink("Grading scales", "core:academic-year-grading-scales", "core.view_gradingscale",
-                year_arg=True),
-        NavLink("Stale publications", "core:publications-stale", "core.view_termpublication"),
+                year_arg=True, icon="grading"),
+        NavLink("Stale publications", "core:publications-stale", "core.view_termpublication", icon="stale"),
     )),
     ("Access and security", (
         NavLink("Access reviews", "core:guardian-access-reviews",
-                "core.view_guardianaccessreview"),
-        NavLink("Sign-in lockouts", "core:login-lockouts", "accounts.clear_login_lockout"),
+                "core.view_guardianaccessreview", icon="access"),
+        NavLink("Sign-in lockouts", "core:login-lockouts", "accounts.clear_login_lockout", icon="lockouts"),
     )),
 )
 

@@ -61,7 +61,8 @@ class NavigationDataTests(Phase4Fixture, TestCase):
         groups = office_nav(self.admin, "school-detail")
         self.assertEqual(
             self.titles(groups),
-            ["Home", "School setup", "Admissions", "Daily", "Assessments & Results", "Access and security"],
+            ["Home", "School setup", "Admissions", "Daily", "Data tools", "Assessments & Results",
+             "Access and security"],
         )
         self.assertIn("Academic Years", self.labels(groups))
         self.assertIn("Sign-in lockouts", self.labels(groups))
@@ -77,6 +78,27 @@ class NavigationDataTests(Phase4Fixture, TestCase):
         groups = office_nav(clerk, None)
         self.assertEqual(self.titles(groups), ["Admissions"])
         self.assertEqual(self.labels(groups), ["Students"])
+
+    def test_import_is_in_data_tools_not_admissions(self):
+        groups = office_nav(self.admin, None)
+        by_title = {group["title"]: group for group in groups}
+        self.assertEqual([link["label"] for link in by_title["Data tools"]["links"]], ["Import"])
+        self.assertNotIn("Import", [link["label"] for link in by_title["Admissions"]["links"]])
+        self.assertEqual(by_title["Data tools"]["links"][0]["url"], reverse("core:import-list"))
+
+    def test_data_tools_group_needs_the_import_permission(self):
+        clerk = self.make_user("clerk")
+        clerk.user_permissions.add(
+            Permission.objects.get(codename="view_student", content_type__app_label="core")
+        )
+        self.assertNotIn("Data tools", self.titles(office_nav(clerk, None)))
+        importer = self.make_user("importer")
+        importer.user_permissions.add(
+            Permission.objects.get(codename="view_importbatch", content_type__app_label="core")
+        )
+        groups = office_nav(importer, None)
+        self.assertEqual(self.titles(groups), ["Data tools"])
+        self.assertEqual(self.labels(groups), ["Import"])
 
     def test_active_link_follows_url_name(self):
         groups = office_nav(self.admin, "student-list")

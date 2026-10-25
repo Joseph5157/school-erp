@@ -48,7 +48,8 @@ class OfficeNavTests(AuthorizationClientsMixin, TestCase):
         titles = [g["title"] for g in office_nav(self.superuser_client_user(), "", year=self.year)]
         self.assertEqual(
             titles,
-            ["Home", "School setup", "Admissions", "Daily", "Assessments & Results", "Access and security"],
+            ["Home", "School setup", "Admissions", "Daily", "Data tools", "Assessments & Results",
+             "Access and security"],
         )
 
     def superuser_client_user(self):

@@ -279,6 +279,8 @@ class ReportsIndexTests(ReportsFixture, TestCase):
 
     def test_no_invented_numbers_or_charts(self):
         content = self.client.get(self.index).content.decode().lower()
+        # The sidebar's decorative nav icons (UI-16) are not charts.
+        content = re.sub(r"<svg class=\"erp-nav-icon\".*?</svg>", "", content, flags=re.S)
         for banned in ("<canvas", "<svg", "erp-stat"):
             self.assertNotIn(banned, content)
 
