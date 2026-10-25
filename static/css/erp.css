@@ -13,10 +13,19 @@
   --erp-accent-strong: #185842;
   --erp-accent-wash: #e3efe9;
 
+  /* Brand (nav, avatar, header) and action (buttons, links, fills) split from the accent (UI-10).
+     Both default to the accent trio; success (--erp-ok*) is its own literal trio below. */
+  --erp-brand: var(--erp-accent);
+  --erp-brand-strong: var(--erp-accent-strong);
+  --erp-brand-wash: var(--erp-accent-wash);
+  --erp-action: var(--erp-accent);
+  --erp-action-strong: var(--erp-accent-strong);
+  --erp-action-wash: var(--erp-accent-wash);
+
   /* Status colours: ok (green) / warn (amber) / bad (red) / info (blue). */
-  --erp-ok: var(--erp-accent);
-  --erp-ok-strong: var(--erp-accent-strong);
-  --erp-ok-wash: var(--erp-accent-wash);
+  --erp-ok: #1f6b52;
+  --erp-ok-strong: #185842;
+  --erp-ok-wash: #e3efe9;
   --erp-warn: #9a5b00;
   --erp-warn-wash: #fbf0dc;
   --erp-bad: #a3322a;
@@ -67,29 +76,29 @@
   --bs-body-color: var(--erp-ink);
   --bs-secondary-color: var(--erp-ink-soft);
   --bs-border-color: var(--erp-rule);
-  --bs-link-color: var(--erp-accent);
+  --bs-link-color: var(--erp-action);
   --bs-link-color-rgb: 31, 107, 82;
-  --bs-link-hover-color: var(--erp-accent-strong);
-  --bs-primary: var(--erp-accent);
+  --bs-link-hover-color: var(--erp-action-strong);
+  --bs-primary: var(--erp-action);
   --bs-primary-rgb: 31, 107, 82;
 }
 
 .btn-primary {
-  --bs-btn-bg: var(--erp-accent);
-  --bs-btn-border-color: var(--erp-accent);
-  --bs-btn-hover-bg: var(--erp-accent-strong);
-  --bs-btn-hover-border-color: var(--erp-accent-strong);
-  --bs-btn-active-bg: var(--erp-accent-strong);
-  --bs-btn-active-border-color: var(--erp-accent-strong);
-  --bs-btn-disabled-bg: var(--erp-accent);
-  --bs-btn-disabled-border-color: var(--erp-accent);
+  --bs-btn-bg: var(--erp-action);
+  --bs-btn-border-color: var(--erp-action);
+  --bs-btn-hover-bg: var(--erp-action-strong);
+  --bs-btn-hover-border-color: var(--erp-action-strong);
+  --bs-btn-active-bg: var(--erp-action-strong);
+  --bs-btn-active-border-color: var(--erp-action-strong);
+  --bs-btn-disabled-bg: var(--erp-action);
+  --bs-btn-disabled-border-color: var(--erp-action);
 }
 .btn-outline-primary {
-  --bs-btn-color: var(--erp-accent);
-  --bs-btn-border-color: var(--erp-accent);
-  --bs-btn-hover-bg: var(--erp-accent);
-  --bs-btn-hover-border-color: var(--erp-accent);
-  --bs-btn-active-bg: var(--erp-accent-strong);
+  --bs-btn-color: var(--erp-action);
+  --bs-btn-border-color: var(--erp-action);
+  --bs-btn-hover-bg: var(--erp-action);
+  --bs-btn-hover-border-color: var(--erp-action);
+  --bs-btn-active-bg: var(--erp-action-strong);
 }
 /* Enabled secondary actions read as active; disabled buttons look distinct. */
 .btn-outline-secondary {
@@ -154,7 +163,7 @@ body.erp { min-height: 100vh; }
   padding: .4rem .6rem; border-radius: 6px; color: var(--erp-ink);
   text-decoration: none; white-space: nowrap;
 }
-.erp-topbar-links a.active { background: var(--erp-accent-wash); color: var(--erp-accent); font-weight: 600; }
+.erp-topbar-links a.active { background: var(--erp-brand-wash); color: var(--erp-brand); font-weight: 600; }
 .erp-spacer { flex: 1; }
 
 .erp-main { min-width: 0; max-width: 100%; overflow-x: clip; }
@@ -173,7 +182,7 @@ body.erp { min-height: 100vh; }
 }
 .erp-sidebar .nav-link { color: var(--erp-ink); border-radius: 6px; padding: .4rem .75rem; }
 .erp-sidebar .nav-link:hover { background: var(--erp-paper); }
-.erp-sidebar .nav-link.active { background: var(--erp-accent-wash); color: var(--erp-accent); font-weight: 600; }
+.erp-sidebar .nav-link.active { background: var(--erp-brand-wash); color: var(--erp-brand); font-weight: 600; }
 .erp-sidebar .nav-link { display: flex; align-items: center; gap: var(--erp-space-2); }
 .erp-nav-badge {
   margin-left: auto; padding: 0 var(--erp-space-2); border-radius: var(--erp-radius-sm);
@@ -223,7 +232,7 @@ body.erp { min-height: 100vh; }
   min-height: var(--erp-tabbar-h); padding: .25rem; font-size: .8rem; line-height: 1.2;
   color: var(--erp-ink-soft); text-decoration: none;
 }
-.erp-tabbar a.active { color: var(--erp-accent); font-weight: 700; box-shadow: inset 0 3px 0 var(--erp-accent); }
+.erp-tabbar a.active { color: var(--erp-brand); font-weight: 700; box-shadow: inset 0 3px 0 var(--erp-brand); }
 /* U3.1 Teacher bottom bar: icon above a one-line label. Scoped to the Teacher
    area (body.erp-teacher) so the guardian bar, which shares .erp-tabbar, is unchanged. */
 .erp-teacher .erp-tabbar a {
@@ -454,7 +463,7 @@ body.erp { min-height: 100vh; }
 .erp-avatar {
   width: 1.9rem; height: 1.9rem; border-radius: 50%;
   display: inline-grid; place-items: center;
-  background: var(--erp-accent-wash); color: var(--erp-accent); font-weight: 700; font-size: .85rem;
+  background: var(--erp-brand-wash); color: var(--erp-brand); font-weight: 700; font-size: .85rem;
 }
 .erp-account-panel {
   position: absolute; right: 0; top: calc(100% + .4rem); z-index: 1040;
@@ -517,7 +526,7 @@ body.has-tabbar .erp-messages {
   white-space: nowrap; padding: .3rem .8rem; border-radius: 999px; border: 1px solid var(--erp-rule);
   color: var(--erp-ink); text-decoration: none; background: var(--erp-surface); font-size: .9rem;
 }
-.erp-chips a.active { background: var(--erp-accent); border-color: var(--erp-accent); color: #fff; }
+.erp-chips a.active { background: var(--erp-action); border-color: var(--erp-action); color: #fff; }
 
 .erp-pill {
   display: inline-block; padding: .1rem .55rem; border-radius: 999px;
@@ -761,7 +770,7 @@ body.has-tabbar .erp-messages {
   border-radius: 999px; padding: .35rem .8rem; font-size: .9rem; min-height: 2.25rem;
 }
 .erp-count-tabs [data-erp-filter][aria-pressed="true"] {
-  background: var(--erp-accent); border-color: var(--erp-accent); color: #fff; font-weight: 600;
+  background: var(--erp-action); border-color: var(--erp-action); color: #fff; font-weight: 600;
 }
 .erp-mark-present { margin-left: auto; }
 
@@ -788,7 +797,7 @@ body.has-tabbar .erp-messages {
 }
 .erp-toggles input:focus-visible + .erp-toggle { outline: 3px solid var(--erp-accent); outline-offset: 2px; }
 .erp-toggles input:checked + .erp-toggle.is-present {
-  background: var(--erp-accent); border-color: var(--erp-accent); color: #fff;
+  background: var(--erp-action); border-color: var(--erp-action); color: #fff;
 }
 .erp-toggles input:checked + .erp-toggle.is-absent {
   background: var(--erp-crit); border-color: var(--erp-crit); color: #fff;
@@ -836,7 +845,7 @@ body.has-tabbar .erp-messages {
 .erp-entry-note { flex-basis: 100%; color: var(--erp-ink-soft); font-size: .9rem; }
 
 .erp-section-title { font-size: 1.05rem; font-weight: 700; margin: 1.5rem 0 .6rem; }
-.erp-progress { width: 100%; height: .4rem; accent-color: var(--erp-accent); margin-top: .4rem; }
+.erp-progress { width: 100%; height: .4rem; accent-color: var(--erp-action); margin-top: .4rem; }
 
 .erp-month-nav {
   display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: .5rem;
@@ -855,7 +864,7 @@ body.has-tabbar .erp-messages {
 .erp-score { font-size: 1.25rem; min-height: 2.75rem; max-width: 10rem; }
 .erp-toggles-3 { grid-template-columns: repeat(3, 1fr); }
 .erp-toggles input:checked + .erp-toggle.is-marked {
-  background: var(--erp-accent); border-color: var(--erp-accent); color: #fff;
+  background: var(--erp-action); border-color: var(--erp-action); color: #fff;
 }
 .erp-toggles input:checked + .erp-toggle.is-blank {
   background: var(--erp-ink-soft); border-color: var(--erp-ink-soft); color: #fff;
@@ -927,7 +936,7 @@ body.has-tabbar .erp-messages {
 .erp-setup-summary { margin: 0; color: var(--erp-ink-soft); font-size: var(--erp-text-sm); }
 .erp-setup-progress { margin: 0; color: var(--erp-ink-soft); font-size: var(--erp-text-sm); font-weight: 600; white-space: nowrap; }
 .erp-setup-bar { height: .5rem; margin-bottom: var(--erp-space-4); }
-.erp-setup-bar .progress-bar { background-color: var(--erp-accent); }
+.erp-setup-bar .progress-bar { background-color: var(--erp-action); }
 .erp-setup-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .erp-setup-step { display: flex; align-items: center; gap: var(--erp-space-3); padding: var(--erp-space-3) 0; border-bottom: 1px solid var(--erp-rule); flex-wrap: wrap; }
 .erp-setup-step:last-child { border-bottom: 0; padding-bottom: 0; }
@@ -952,7 +961,7 @@ body.has-tabbar .erp-messages {
 
 .erp-breadcrumb ol { display: flex; flex-wrap: wrap; gap: var(--erp-space-2); list-style: none; padding: 0; margin: 0 0 var(--erp-space-3); font-size: var(--erp-text-sm); color: var(--erp-ink-soft); }
 .erp-breadcrumb li + li::before { content: "/"; margin-right: var(--erp-space-2); }
-.erp-breadcrumb a { color: var(--erp-accent); }
+.erp-breadcrumb a { color: var(--erp-action); }
 .erp-breadcrumb li[aria-current] { color: var(--erp-ink); }
 
 .erp-sort-link { color: inherit; text-decoration: none; display: inline-flex; align-items: center; min-height: 2.75rem; }
@@ -963,8 +972,8 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 .erp-table-count { margin: 0; color: var(--erp-ink-soft); font-size: var(--erp-text-sm); }
 .erp-pagination ul { display: flex; flex-wrap: wrap; gap: var(--erp-space-1); list-style: none; margin: 0; padding: 0; }
 .erp-pagination a, .erp-pagination span { display: inline-flex; align-items: center; justify-content: center; min-width: 2.75rem; min-height: 2.75rem; padding: 0 var(--erp-space-3); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius-sm); background: var(--erp-surface); color: var(--erp-ink); text-decoration: none; }
-.erp-pagination a:hover { background: var(--erp-accent-wash); }
-.erp-pagination span[aria-current] { background: var(--erp-accent); border-color: var(--erp-accent); color: #fff; font-weight: 600; }
+.erp-pagination a:hover { background: var(--erp-action-wash); }
+.erp-pagination span[aria-current] { background: var(--erp-action); border-color: var(--erp-action); color: #fff; font-weight: 600; }
 
 /* Profile page "On this page" menu (audit F20). Single scrolling row on phones, wrapping on wide screens. */
 .erp-section-nav {
