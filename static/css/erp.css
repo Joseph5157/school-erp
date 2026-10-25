@@ -50,6 +50,10 @@
   --erp-table-pad-y: .75rem;
   --erp-table-pad-x: 1rem;
   --erp-table-head-pad-y: .75rem;
+  /* Button tokens (UI-15): one radius everywhere; 40px / 32px heights from 768px up (phones keep 44px). */
+  --erp-btn-radius: var(--erp-radius-sm);
+  --erp-btn-height: 2.5rem;
+  --erp-btn-height-sm: 2rem;
   --erp-line-tight: 1.2;
   --erp-line-body: 1.55;
   --erp-focus-color: #0b6e4f;
@@ -710,6 +714,18 @@ body.has-tabbar .erp-messages {
   .btn { min-height: 2.75rem; }
 }
 
+/* Buttons (UI-15): radius is global; desktop heights line buttons up with 40px fields. */
+.btn,
+.btn-sm,
+.btn-lg { --bs-btn-border-radius: var(--erp-btn-radius); }
+@media (min-width: 768px) {
+  .btn { min-height: var(--erp-btn-height); }
+  .btn-sm { min-height: var(--erp-btn-height-sm); }
+  .erp-field :where(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select) {
+    min-height: var(--erp-btn-height);
+  }
+}
+
 /* ---------- U2: attendance roster ---------- */
 
 .erp-countbar {
@@ -1219,10 +1235,12 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 .erp-toolbar .form-label { margin-bottom: var(--erp-space-1); font-size: var(--erp-text-xs); font-weight: 600; color: var(--erp-ink-soft); }
 
 .erp-toolbar--inline { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--erp-space-3) var(--erp-space-4); max-width: none; }
-.erp-toolbar--inline > .erp-field { margin-bottom: 0; flex: 0 1 18rem; }
+.erp-toolbar--inline > .erp-field { margin-bottom: 0; flex: 1 1 11rem; }
 .erp-toolbar--inline > .erp-form-actions { margin: 0; padding: 0; border-top: 0; }
 .erp-toolbar--inline > .erp-form-errors { flex: 1 1 100%; margin-bottom: 0; }
 @media (max-width: 575.98px) { .erp-toolbar--inline > .erp-field { flex-basis: 100%; } }
+/* The 17rem cap applies above the phone breakpoint so phone fields still fill the row. */
+@media (min-width: 576px) { .erp-toolbar--inline > .erp-field { max-width: 17rem; } }
 
 /* Data table: scannable header, row hover, no outer rules (the panel draws them). */
 .erp-panel .table { margin-bottom: 0; --bs-table-bg: transparent; }
