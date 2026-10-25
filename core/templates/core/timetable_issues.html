@@ -14,8 +14,9 @@
 <h2 class="h4 mt-4">Teacher clashes</h2>
 <p class="text-muted">A teacher derived from the subject assignment for two Sections in the same period and weekday. Every clash in {{ academic_year.name }} is listed, including past and planned ones, marked against {{ report_date|date:"j M Y" }}.</p>
 {% if clashes %}
+<div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Teacher clashes" tabindex="0">
-<table class="table">
+<table class="table erp-keep">
     <thead>
         <tr><th scope="col">Teacher</th><th scope="col">Status</th><th scope="col">Period and day</th><th scope="col">Sections</th><th scope="col">Dates</th></tr>
     </thead>
@@ -41,6 +42,7 @@
     </tbody>
 </table>
 </div>
+</div>
 {% else %}
 {% include "partials/_empty.html" with title="No teacher clashes" text="No teacher is scheduled into two Sections in the same period and weekday." %}
 {% endif %}
@@ -51,8 +53,9 @@
 {% else %}
 <p class="text-muted">Slots effective on {{ report_date|date:"l j M Y" }} whose Subject and Section have no teacher assigned on that date. They are valid; they appear on no teacher's list until a teacher is assigned.</p>
 {% if missing %}
+<div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Slots with no teacher" tabindex="0">
-<table class="table">
+<table class="table erp-keep">
     <thead>
         <tr><th scope="col">Section</th><th scope="col">Period</th><th scope="col">Day</th><th scope="col">Subject</th><th scope="col">Effective</th><th scope="col"><span class="visually-hidden">Open</span></th></tr>
     </thead>
@@ -69,6 +72,7 @@
         {% endfor %}
     </tbody>
 </table>
+</div>
 </div>
 {% elif effective_count %}
 {% include "partials/_empty.html" with title="All slots covered" text="Every slot effective on this date has a teacher." %}

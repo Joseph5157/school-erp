@@ -430,6 +430,18 @@ class IssuesAccessibilityTests(IssuesFixture, TestCase):
         self.assertIn('class="erp-table-scroll" role="region" aria-label="Slots with no teacher"',
                       html)
 
+    def test_both_tables_sit_in_the_shared_panel_and_keep_their_columns(self):
+        self.make_clash(end=date(2026, 12, 31))
+        self.raw_slot(period=self.p2, weekday=3, offering=self.science)
+        html = self.client.get(self.issues_url()).content.decode()
+        self.assertEqual(
+            len(re.findall(
+                r'<div class="erp-panel">\s*<div class="erp-table-scroll" role="region"', html
+            )),
+            2,
+        )
+        self.assertEqual(html.count('<table class="table erp-keep">'), 2)
+
     def test_date_error_uses_the_summary_pattern(self):
         response = self.client.get(self.issues_url() + "?date=2030-01-01")
         html = response.content.decode()

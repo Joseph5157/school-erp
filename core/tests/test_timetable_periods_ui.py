@@ -411,6 +411,17 @@ class PeriodTableMobileTests(Phase4Fixture, TestCase):
             self.assertIn(f'class="erp-table-scroll" role="region" aria-label="{label}"', html)
             self.assertIn('tabindex="0"', html)
 
+    def test_index_and_periods_tables_sit_in_the_shared_panel(self):
+        for url in (
+            reverse("core:timetable-index"),
+            reverse("core:timetable-periods", args=[self.year.pk]),
+        ):
+            html = self.client.get(url).content.decode()
+            self.assertRegex(
+                html, r'<div class="erp-panel">\s*<div class="erp-table-scroll" role="region"'
+            )
+            self.assertIn('<table class="table erp-keep">', html)
+
     def test_row_actions_are_buttons_so_they_get_the_touch_target_size(self):
         html = self.client.get(
             reverse("core:timetable-periods", args=[self.year.pk])
