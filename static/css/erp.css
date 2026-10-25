@@ -50,6 +50,10 @@
   --erp-table-pad-y: .75rem;
   --erp-table-pad-x: 1rem;
   --erp-table-head-pad-y: .75rem;
+  /* Button tokens (UI-15): one radius everywhere; 40px / 32px heights from 768px up (phones keep 44px). */
+  --erp-btn-radius: var(--erp-radius-sm);
+  --erp-btn-height: 2.5rem;
+  --erp-btn-height-sm: 2rem;
   --erp-line-tight: 1.2;
   --erp-line-body: 1.55;
   --erp-focus-color: #0b6e4f;
@@ -630,6 +634,14 @@ body.has-tabbar .erp-messages {
 }
 
 .erp-form { max-width: var(--erp-reading-width); }
+.erp-form-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 1rem; }
+.erp-form-grid > :not(.erp-field) { grid-column: 1 / -1; }
+.erp-field--full { grid-column: 1 / -1; }
+/* Grid items do not collapse margins: keep the footer gap at 24px after the last field's 1rem. */
+.erp-form-grid > .erp-form-actions { margin-top: var(--erp-space-2); }
+@media (min-width: 992px) {
+  .erp-form.erp-form-grid { max-width: 60rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 .erp-form-intro { margin-bottom: var(--erp-space-5); color: var(--erp-ink-soft); }
 .erp-required-legend {
   margin-bottom: var(--erp-space-4);
@@ -708,6 +720,26 @@ body.has-tabbar .erp-messages {
   .erp-form-actions .is-destructive { margin-left: 0; }
   .erp-field :where(input:not([type="checkbox"]):not([type="radio"]), select, textarea),
   .btn { min-height: 2.75rem; }
+}
+
+/* Buttons (UI-15): radius is global; desktop heights line buttons up with 40px fields. */
+.btn,
+.btn-sm,
+.btn-lg { --bs-btn-border-radius: var(--erp-btn-radius); }
+@media (min-width: 768px) {
+  .btn { min-height: var(--erp-btn-height); }
+  .btn-sm { min-height: var(--erp-btn-height-sm); }
+  .btn-link { min-height: 0; }
+  /* Plain Bootstrap search bars: inputs match the 40px buttons beside them. */
+  .erp-toolbar :where(.form-control:not(.form-control-sm):not(textarea), .form-select:not(.form-select-sm)),
+  .erp-term-remarks-filter :where(.form-control:not(.form-control-sm):not(textarea), .form-select:not(.form-select-sm)) {
+    min-height: var(--erp-btn-height);
+  }
+  .erp-field :where(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select) {
+    min-height: var(--erp-btn-height);
+    /* 24px line + 2 x .4rem padding + 2px border = 38.8px, so the 40px min-height governs. */
+    padding-block: .4rem;
+  }
 }
 
 /* ---------- U2: attendance roster ---------- */
@@ -1219,10 +1251,12 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 .erp-toolbar .form-label { margin-bottom: var(--erp-space-1); font-size: var(--erp-text-xs); font-weight: 600; color: var(--erp-ink-soft); }
 
 .erp-toolbar--inline { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--erp-space-3) var(--erp-space-4); max-width: none; }
-.erp-toolbar--inline > .erp-field { margin-bottom: 0; flex: 0 1 18rem; }
+.erp-toolbar--inline > .erp-field { margin-bottom: 0; flex: 1 1 11rem; }
 .erp-toolbar--inline > .erp-form-actions { margin: 0; padding: 0; border-top: 0; }
 .erp-toolbar--inline > .erp-form-errors { flex: 1 1 100%; margin-bottom: 0; }
 @media (max-width: 575.98px) { .erp-toolbar--inline > .erp-field { flex-basis: 100%; } }
+/* The 17rem cap applies above the phone breakpoint so phone fields still fill the row. */
+@media (min-width: 576px) { .erp-toolbar--inline > .erp-field { max-width: 17rem; } }
 
 /* Data table: scannable header, row hover, no outer rules (the panel draws them). */
 .erp-panel .table { margin-bottom: 0; --bs-table-bg: transparent; }

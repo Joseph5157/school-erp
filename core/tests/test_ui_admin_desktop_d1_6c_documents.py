@@ -162,6 +162,7 @@ class AttendanceSummaryTests(Base, TestCase):
         self.assertIn('<form method="get" class="erp-toolbar erp-toolbar--inline erp-document-toolbar"', page)
         self.assertNotIn("form-error-summary", page)
         self.assertNotIn("Issue PDF with serial number", page)
+        self.assertIn('<button type="submit" class="btn btn-outline-secondary">Show summary</button>', page)
         self.assertFalse(IssuedDocument.objects.exists())
 
     def test_summary_table_equals_the_service_and_a_get_never_issues(self):
@@ -233,6 +234,7 @@ class ReportCardTests(Base, TestCase):
         page = html(self.client.get(CARDS))
         self.assertRegex(page, r'<h1 class="erp-page-title">Report card PDFs</h1>')
         self.assertIn("Choose a Student to list their current published report cards.", page)
+        self.assertIn('<button type="submit" class="btn btn-outline-secondary">Show report cards</button>', page)
         self.assertNotIn("form-error-summary", page)
 
     def test_list_is_a_labelled_table_with_descriptive_pdf_links_to_the_same_route(self):

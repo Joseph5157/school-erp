@@ -2,7 +2,7 @@
 {% block title %}Term remarks - {{ term.name }}{% endblock %}
 {% block content %}
 <h1 class="h3 mb-3">Term remarks: {{ term.academic_year.name }} {{ term.name }}</h1>
-<form method="get" class="row g-2 align-items-end mb-3">
+<form method="get" class="row g-2 align-items-end mb-3 erp-term-remarks-filter">
     <div class="col-auto">
         <label for="id_section">Section:</label>
         <select name="section" id="id_section" class="form-select">

@@ -198,6 +198,7 @@ class SharedShellTests(Fixture, TestCase):
         self.assertIn(reverse("core:calendar-day-delete", args=[self.day.pk]), page)
         self.assertIn(reverse("core:academic-year-saturday-rule", args=[self.year.pk]), page)
         self.assertIn("Check a date", page)
+        self.assertIn('<button type="submit" class="btn btn-outline-secondary">Check</button>', page)
 
     def test_class_detail_keeps_section_action_and_back_link(self):
         page = self.administrator.get(reverse("core:class-grade-detail", args=[self.class_grade.pk])).content.decode()

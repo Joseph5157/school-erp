@@ -1,4 +1,4 @@
-<div class="erp-field{% if field.errors %} is-invalid{% endif %}">
+<div class="erp-field{% if extra_class %} {{ extra_class }}{% endif %}{% if field.errors %} is-invalid{% endif %}">
     {{ field.label_tag }}
     {% if field.field.required %}<span class="erp-required-mark" aria-hidden="true"> *</span><span class="visually-hidden"> (required)</span>{% endif %}
     {{ field }}
