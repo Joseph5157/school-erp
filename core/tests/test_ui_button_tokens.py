@@ -39,6 +39,7 @@ class ButtonTokenTests(SimpleTestCase):
         self.assertIsNotNone(match)
         self.assertIn("min-height: var(--erp-btn-height);", match.group(1))
         self.assertIn("min-height: var(--erp-btn-height-sm);", match.group(2))
+        self.assertRegex(self.css, r"\.btn-sm \{[^}]*\}\s*\.btn-link \{ min-height: 0; \}")
 
     def test_desktop_field_height_matches_buttons_and_phones_keep_44px(self):
         base = self.rule('.erp-field :where(input:not([type="checkbox"]):not([type="radio"]), select, textarea)')
@@ -47,8 +48,10 @@ class ButtonTokenTests(SimpleTestCase):
             '.erp-field :where(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select)'
         )
         self.assertIn("min-height: var(--erp-btn-height);", desktop)
+        # 24px line + 2 x .4rem + 2px border is under 40px, so the min-height is what sets the height.
+        self.assertIn("padding-block: .4rem;", desktop)
         self.assertIn("textarea { min-height: 7rem;", self.css)
-        self.assertIn("  .btn { min-height: 2.75rem; }\n}", self.css)
+        self.assertRegex(self.css, r"\n\s*\.btn \{ min-height: 2\.75rem; \}\s*\n\}")
 
     def test_bare_inline_toolbar_field_basis(self):
         rule = self.rule(".erp-toolbar--inline > .erp-field")

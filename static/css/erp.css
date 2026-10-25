@@ -721,8 +721,11 @@ body.has-tabbar .erp-messages {
 @media (min-width: 768px) {
   .btn { min-height: var(--erp-btn-height); }
   .btn-sm { min-height: var(--erp-btn-height-sm); }
+  .btn-link { min-height: 0; }
   .erp-field :where(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select) {
     min-height: var(--erp-btn-height);
+    /* 24px line + 2 x .4rem padding + 2px border = 38.8px, so the 40px min-height governs. */
+    padding-block: .4rem;
   }
 }
 
