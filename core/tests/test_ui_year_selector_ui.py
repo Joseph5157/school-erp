@@ -93,3 +93,68 @@ class GuardianPortalNoYearMenuTests(BoundaryFixture, TestCase):
         page = self.guardian_client().get(reverse("portal:home"))
         self.assertNotContains(page, "erp-year-menu")
         self.assertNotContains(page, "erp-year-drawer")
+
+
+NOTE = 'class="erp-note-text erp-year-note"'
+
+
+class YearNoteTests(TestCase):
+    def setUp(self):
+        School.objects.create(name="Sri Vidya School")
+        today = business_today()
+        self.old = AcademicYear.objects.create(
+            name="2025-2026", start_date=today - timedelta(days=400), end_date=today - timedelta(days=60)
+        )
+        self.cur = AcademicYear.objects.create(
+            name="2026-2027", start_date=today - timedelta(days=30), end_date=today + timedelta(days=300)
+        )
+        self.future = AcademicYear.objects.create(
+            name="2027-2028", start_date=today + timedelta(days=400), end_date=today + timedelta(days=700)
+        )
+        self.admin = User.objects.create_user(username="admin", password="pass-12345")
+        self.admin.groups.add(Group.objects.get(name="School Administrators"))
+        self.teacher = User.objects.create_user(username="rao", password="pass-12345")
+        self.teacher.groups.add(Group.objects.get(name=TEACHERS_GROUP_NAME))
+
+    def get(self, user, url):
+        client = self.client_class()
+        client.force_login(user)
+        return client.get(url)
+
+    def assessments(self, year):
+        return reverse("core:academic-year-assessments", kwargs={"pk": year.pk})
+
+    def test_past_year_shows_note_with_both_names(self):
+        page = self.get(self.admin, self.assessments(self.old))
+        self.assertContains(page, NOTE)
+        self.assertContains(page, "You are viewing 2025-2026, not the current year (2026-2027).")
+
+    def test_future_year_shows_note(self):
+        page = self.get(self.admin, self.assessments(self.future))
+        self.assertContains(page, "You are viewing 2027-2028, not the current year (2026-2027).")
+
+    def test_current_year_shows_no_note(self):
+        page = self.get(self.admin, self.assessments(self.cur))
+        self.assertNotContains(page, "erp-year-note")
+
+    def test_year_independent_page_shows_no_note(self):
+        page = self.get(self.admin, reverse("core:student-list"))
+        self.assertNotContains(page, "erp-year-note")
+
+    def test_teacher_and_login_show_no_note(self):
+        self.assertNotContains(self.get(self.teacher, reverse("core:my-home")), "erp-year-note")
+        self.assertNotContains(self.client_class().get(reverse("login")), "erp-year-note")
+
+    def test_single_current_year_shows_no_note(self):
+        self.old.delete()
+        self.future.delete()
+        page = self.get(self.admin, self.assessments(self.cur))
+        self.assertNotContains(page, "erp-year-note")
+
+
+class GuardianPortalNoYearNoteTests(BoundaryFixture, TestCase):
+    def test_portal_renders_no_note(self):
+        for name, start, end in (("2025-2026", "2025-06-01", "2026-04-30"), ("2026-2027", "2026-06-01", "2027-04-30")):
+            AcademicYear.objects.get_or_create(name=name, defaults={"start_date": start, "end_date": end})
+        page = self.guardian_client().get(reverse("portal:home"))
+        self.assertNotContains(page, "erp-year-note")

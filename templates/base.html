@@ -43,6 +43,7 @@
     <main id="main" class="erp-main">
         <div class="erp-content">
             {% include "partials/_breadcrumbs.html" %}
+            {% if year_is_scoped_page and not viewing_year_is_current %}{% include "partials/_year_note.html" %}{% endif %}
             {% block content %}{% endblock %}
         </div>
     </main>
