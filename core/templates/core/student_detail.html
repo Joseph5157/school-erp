@@ -47,6 +47,8 @@
 
 <section id="status-history" aria-labelledby="status-history-heading">
 <h2 class="h5" id="status-history-heading">Status history</h2>
+<div class="erp-panel mb-4">
+<div class="erp-table-scroll" role="region" aria-label="Status history" tabindex="0">
 <table class="table">
     <thead>
         <tr><th>When</th><th>From</th><th>To</th><th>Reason</th><th>By</th></tr>
@@ -65,6 +67,8 @@
         {% endfor %}
     </tbody>
 </table>
+</div>
+</div>
 </section>
 
 <section id="placement" aria-labelledby="placement-heading">
@@ -96,6 +100,8 @@
 
 <section id="enrollment-history" aria-labelledby="enrollment-history-heading">
 <h2 class="h5" id="enrollment-history-heading">Enrollment history</h2>
+<div class="erp-panel mb-4">
+<div class="erp-table-scroll" role="region" aria-label="Enrollment history" tabindex="0">
 <table class="table">
     <thead>
         <tr>
@@ -127,6 +133,8 @@
         {% endfor %}
     </tbody>
 </table>
+</div>
+</div>
 </section>
 
 <section id="guardians" aria-labelledby="guardians-heading">
@@ -134,6 +142,8 @@
 {% if perms.core.add_studentguardian %}
     <a class="btn btn-primary mb-3" href="{% url 'core:student-guardian-add' student.pk %}">Associate Guardian</a>
 {% endif %}
+<div class="erp-panel mb-4">
+<div class="erp-table-scroll" role="region" aria-label="Guardians" tabindex="0">
 <table class="table">
     <thead>
         <tr>
@@ -156,5 +166,7 @@
         {% endfor %}
     </tbody>
 </table>
+</div>
+</div>
 </section>
 {% endblock %}

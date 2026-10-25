@@ -161,3 +161,18 @@ class GuardianProfileTests(BoundaryFixture, TestCase):
         profile = self.portal.get(self.url).context["profile"]
         self.assertEqual(profile["placement"]["academic_year"], "2027-28")
         self.assertIsNone(profile["placement"]["roll_number"])
+
+
+class StudentDetailPanelTablesTests(BoundaryFixture, TestCase):
+    def test_three_tables_are_labelled_panel_regions(self):
+        html = self.client.get(reverse("core:student-detail", args=[self.asha.pk])).content.decode()
+        for label in ("Status history", "Enrollment history", "Guardians"):
+            with self.subTest(label=label):
+                self.assertRegex(
+                    html,
+                    r'<div class="erp-panel mb-4">\s*<div class="erp-table-scroll" role="region" '
+                    r'aria-label="%s" tabindex="0">\s*<table class="table">' % label,
+                )
+        self.assertEqual(html.count('<div class="erp-table-scroll"'), 3)
+        # erp-keep must be absent so the tables scroll on phones instead of squeezing.
+        self.assertNotIn("erp-keep", html)

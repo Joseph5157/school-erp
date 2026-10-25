@@ -17,6 +17,8 @@
 <form method="post">
     {% csrf_token %}
     <input type="hidden" name="section" value="{{ section.pk }}">
+    <div class="erp-panel mb-4">
+    <div class="erp-table-scroll" role="region" aria-label="Term remarks" tabindex="0">
     <table class="table align-middle">
         <thead><tr><th>Student</th><th>Remark</th><th>Last written by</th><th></th></tr></thead>
         <tbody>
@@ -32,6 +34,8 @@
             {% endfor %}
         </tbody>
     </table>
+    </div>
+    </div>
     {% if rows %}<button type="submit" class="btn btn-primary">Save remarks</button>{% endif %}
 </form>
 {% endif %}

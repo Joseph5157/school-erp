@@ -90,6 +90,16 @@ class SectionSelectionTests(GridFixture, TestCase):
         self.assertContains(response, self.grid_url(self.six_b))
         self.assertNotContains(response, "Grade 9")
 
+    def test_sections_table_sits_in_the_shared_panel(self):
+        html = self.client.get(
+            reverse("core:timetable-sections", args=[self.year.pk])
+        ).content.decode()
+        self.assertRegex(
+            html, r'<div class="erp-panel">\s*<div class="erp-table-scroll" role="region"'
+        )
+        # erp-keep must be absent so the table scrolls on phones instead of squeezing.
+        self.assertNotIn("erp-keep", html)
+
     def test_sections_page_empty_state(self):
         AcademicSubjectOffering.objects.all().delete()
         response = self.client.get(reverse("core:timetable-sections", args=[self.year.pk]))

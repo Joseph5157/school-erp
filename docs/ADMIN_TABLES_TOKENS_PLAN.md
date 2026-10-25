@@ -1,11 +1,11 @@
 # Admin tables and table tokens (UI-06, UI-14) — plan
 
-Status: **PLAN, decisions settled 2026-10-25; awaiting review before execution.** No code written. Branch `docs/ui-06-14-tables-tokens-plan` from `main` (`a332a0b`).
+Status: **IMPLEMENTED on branch `feat/ui-06-14-tables-tokens`** (plan decisions settled 2026-10-25; planned from `main` `a332a0b`). Awaiting merge.
 Source: Admin Desktop UI/UX audit items UI-06 (Medium, "two table systems coexist") and UI-14 (Low, "fractional type and spacing values").
 Out of scope: palette (UI-10), buttons (UI-15), icons (UI-16), filter/form density (UI-08), sticky headers, empty-state pattern, Teacher and Guardian-portal tables, print/credential slips, any model/migration/route/permission change.
 
 ## What a survey found (so the plan is smaller than the audit suggests)
-- The audit's "two table systems" is real but narrow. ~40 admin tables already sit in `.erp-panel` + `.erp-table-scroll` and share one rule block (`erp.css` ~1221-1231). Only **8 templates** still render plain Bootstrap tables: `student_detail` (3 tables), `term_remarks`, `timetable_index`, `timetable_periods`, `timetable_sections`, `timetable_issues` (2 tables). The Assessment detail results table is already inside a panel.
+- The audit's "two table systems" is real but narrow. ~40 admin tables already sit in `.erp-panel` + `.erp-table-scroll` and share one rule block (`erp.css` ~1221-1231). Only **6 templates** (9 tables) still render plain Bootstrap tables: `student_detail` (3 tables), `term_remarks`, `timetable_index`, `timetable_periods`, `timetable_sections`, `timetable_issues` (2 tables). The Assessment detail results table is already inside a panel.
 - There is no global `.table`/`th`/`td` rule, so legacy tables get Bootstrap's 16px headers and `.5rem` padding. The 41–121px row-height spread in the audit is mostly content (multi-line cells), not two paddings.
 - The fractional values come from: `--erp-text-xs: .78rem` (12.48px) used by the shared table header; a literal `.7rem` (11.2px) header padding at `erp.css:1223`; and `--erp-text-sm: .9rem` (14.4px). Roughly 80 other fractional literals exist across the stylesheet and are **not** touched here.
 - No test asserts a table pixel value or table font-size. Tests that constrain the work are listed under Constraints.
@@ -26,7 +26,7 @@ The shared rule `.erp-panel .table > thead th` and `.erp-panel .table > tbody td
 ## Constraints
 - Do not reformat the `erp.css` line `.erp-panel > .erp-table-scroll { border-radius: 0; scrollbar-gutter: auto; }` (asserted verbatim by `test_ui_admin_desktop_d0.py:80`) or the `.erp-table-scroll:focus-visible` rule (`test_ui_table_scroll_focus.py:13`).
 - Keep these exact HTML strings where tests assert them: `class="erp-table-scroll" role="region"` (timetable issues/periods tests), `<div class="erp-panel">\n<div class="erp-table-scroll" role="region" ` (attendance), `<th scope="col" class="erp-num">`, `<td class="erp-num">`, and `scope="col"` on headers.
-- Phone behaviour: tables need `.erp-keep` to scroll instead of reflowing (see the CSS/nav gotchas note); every converted table gets it, as the modern ones do.
+- Phone behaviour: below 576px a table inside `.erp-table-scroll` WITHOUT `.erp-keep` gets `width: max-content` and scrolls horizontally; `.erp-keep` opts out and squeezes the columns to the phone width. Converted tables must therefore NOT carry `erp-keep` (it was wrongly added in the first pass and removed in the fix commit). Keep it only for tables of 2-3 short columns that should fit the phone.
 - CSS added for a page must be scoped to that page's own class; an earlier unscoped rule once collided with `.erp-section-title`.
 - Match surrounding style. Reuse `partials/_table_head.html` only where a table already has sort data (no new sortable columns).
 
@@ -37,13 +37,13 @@ Done when: no `.7rem` literal remains in the panel table header rule; the tokens
 
 ### Task 2: Timetable pages onto the panel look
 Files: `core/templates/core/timetable_index.html`, `timetable_periods.html`, `timetable_sections.html`, `timetable_issues.html` (two tables), their existing tests (`test_timetable_*_ui.py`).
-Wrap each table's existing `<div class="erp-table-scroll" ...>` in `<div class="erp-panel">` and add `erp-keep` to the `<table class="table">`. Do not change table content, headings, links, forms or empty states. The exact string `class="erp-table-scroll" role="region"` must remain a substring.
-Done when: each of the five tables renders inside `.erp-panel`, carries `erp-keep`, and every existing timetable test passes unchanged; add one test per template asserting the panel wrapper and `erp-keep`.
+Wrap each table's existing `<div class="erp-table-scroll" ...>` in `<div class="erp-panel">` and leave the `<table class="table">` WITHOUT `erp-keep` so it scrolls on phones. Do not change table content, headings, links, forms or empty states. The exact string `class="erp-table-scroll" role="region"` must remain a substring.
+Done when: each of the five tables renders inside `.erp-panel`, does not carry `erp-keep`, and every existing timetable test passes unchanged; add one test per template asserting the panel wrapper and that `erp-keep` is absent.
 
 ### Task 3: Student detail and Term remarks
 Files: `core/templates/core/student_detail.html` (three tables, ~lines 50, 99, 137), `core/templates/core/term_remarks.html` (~line 20), their existing tests.
-These tables are bare (no scroll wrapper). Wrap each table in `<div class="erp-panel"><div class="erp-table-scroll" role="region" aria-label="…" tabindex="0">` with a meaningful label per table (reuse the table's preceding heading text), add `erp-keep`, and keep `align-middle` on Term remarks. Do not change cell content, links or form controls inside Term remarks.
-Done when: all four tables are panel-wrapped with labelled regions, existing tests pass, and a test per template asserts the wrapper, label and `erp-keep`; the Term remarks form still posts exactly as before.
+These tables are bare (no scroll wrapper). Wrap each table in `<div class="erp-panel"><div class="erp-table-scroll" role="region" aria-label="…" tabindex="0">` with a meaningful label per table (reuse the table's preceding heading text), do not add `erp-keep`, give the panel `mb-4` where content follows (the bare `.table` margin-bottom is zeroed inside a panel), and keep `align-middle` on Term remarks. Do not change cell content, links or form controls inside Term remarks.
+Done when: all four tables are panel-wrapped with labelled regions, existing tests pass, and a test per template asserts the wrapper, label and absence of `erp-keep`; the Term remarks form still posts exactly as before.
 
 ## Verification (after all tasks)
 `manage.py check`, the touched test modules, then the full suite (`--parallel 4`; known flaky `u4_3a_subject_order` and one date-dependent test are unrelated). Visual check in a scratch Postgres database (create, migrate, `seed_demo` with `DJANGO_DEBUG=True`, drop afterwards) at 1366×768: Students list, Subjects, Timetable overview, Student detail, Term remarks, and Report card; compare header size, row height and alignment against a modern table. Measure computed header font-size (13px) and header padding (12px/16px) in the browser. Rollback = revert the PR; no migrations.
