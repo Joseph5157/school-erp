@@ -70,3 +70,24 @@ class PaletteTokenTests(SimpleTestCase):
                     self.resolve(f"--erp-{family}-strong"), self.resolve(f"--erp-{family}-wash")
                 )
                 self.assertGreaterEqual(ratio, 4.5)
+
+    def test_text_on_wash_and_white_on_action_meet_aa(self):
+        for family in ("brand", "action"):
+            with self.subTest(family=family):
+                ratio = self.contrast(self.resolve(f"--erp-{family}"), self.resolve(f"--erp-{family}-wash"))
+                self.assertGreaterEqual(ratio, 4.5)
+        self.assertGreaterEqual(self.contrast(self.resolve("--erp-surface"), self.resolve("--erp-action")), 4.5)
+
+    def test_rules_use_the_semantic_tokens(self):
+        css = (Path(settings.BASE_DIR) / "static" / "css" / "erp.css").read_text(encoding="utf-8")
+        primary = css[css.index(".btn-primary {") :]
+        self.assertIn("var(--erp-action)", primary[: primary.index("}")])
+        nav = css[css.index(".erp-sidebar .nav-link.active {") :]
+        self.assertIn("var(--erp-brand)", nav[: nav.index("}")])
+
+    def test_no_rule_outside_root_uses_the_legacy_accent(self):
+        css = (Path(settings.BASE_DIR) / "static" / "css" / "erp.css").read_text(encoding="utf-8")
+        outside = css[css.index(":root {") :]
+        outside = outside[outside.index("\n}") :]
+        self.assertNotIn("var(--erp-accent", outside)
+

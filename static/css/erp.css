@@ -8,7 +8,7 @@
   --erp-surface: #ffffff;
   --erp-rule: #dde1dc;
 
-  /* The single accent: green (interactions, links, primary buttons). */
+  /* Legacy accent trio: kept as plain hex for tests; rules use brand, action and ok below. */
   --erp-accent: #1f6b52;
   --erp-accent-strong: #185842;
   --erp-accent-wash: #e3efe9;
@@ -263,7 +263,7 @@ body.erp { min-height: 100vh; }
 .erp-teacher .erp-day-linkcard { display: block; color: inherit; text-decoration: none; }
 .erp-teacher .erp-day-linkcard .erp-day-title,
 .erp-teacher .erp-day-linkcard .erp-card-meta { display: block; }
-.erp-teacher .erp-day-linkcard:hover { border-color: var(--erp-accent); }
+.erp-teacher .erp-day-linkcard:hover { border-color: var(--erp-action); }
 .erp-teacher .erp-day-linkcard:focus-visible {
   outline: 2px solid var(--erp-focus-color); outline-offset: 2px;
 }
@@ -287,7 +287,7 @@ body.erp { min-height: 100vh; }
   background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
 }
 .erp-teacher .erp-tile:not(.is-link) { background: var(--erp-paper); }
-.erp-teacher .erp-tile.is-link:hover { border-color: var(--erp-accent); }
+.erp-teacher .erp-tile.is-link:hover { border-color: var(--erp-action); }
 .erp-teacher .erp-tile-label {
   margin: 0; font-size: .78rem; font-weight: 600; letter-spacing: .02em; color: var(--erp-ink-soft);
 }
@@ -336,7 +336,7 @@ body.erp { min-height: 100vh; }
 /* My day colour: quiet washes from existing tokens (plus one neutral lavender), no gradients or shadows.
    Ink and soft-ink text on every wash stays above 4.5:1; focus rings are unchanged. */
 .erp-teacher .erp-day { --erp-day-remark-wash: #f1eff7; --erp-day-tint-rule: rgba(24, 33, 43, .1); }
-.erp-teacher .erp-tile.is-attendance { background: var(--erp-accent-wash); border-color: rgba(31, 107, 82, .22); }
+.erp-teacher .erp-tile.is-attendance { background: var(--erp-ok-wash); border-color: rgba(31, 107, 82, .22); }
 .erp-teacher .erp-tile.is-marks { background: var(--erp-info-wash); border-color: rgba(29, 95, 168, .22); }
 .erp-teacher .erp-tile.is-attendance .erp-tile-meta,
 .erp-teacher .erp-tile.is-marks .erp-tile-meta,
@@ -344,14 +344,14 @@ body.erp { min-height: 100vh; }
 .erp-teacher .erp-tile.is-marks .erp-tile-label { color: var(--erp-ink); }
 /* Decorative tile icon (the label text always accompanies it); the label is indented to clear it. */
 .erp-teacher .erp-tile-icon { position: absolute; top: 1rem; left: 1rem; width: 1.125rem; height: 1.125rem; }
-.erp-teacher .erp-tile.is-attendance .erp-tile-icon { color: var(--erp-accent-strong); }
+.erp-teacher .erp-tile.is-attendance .erp-tile-icon { color: var(--erp-ok-strong); }
 .erp-teacher .erp-tile.is-marks .erp-tile-icon { color: var(--erp-info-strong); }
 .erp-teacher .erp-tile.is-attendance .erp-tile-label,
 .erp-teacher .erp-tile.is-marks .erp-tile-label { padding-left: 1.5rem; }
 .erp-teacher .erp-day-date .erp-pill.is-school-day {
-  background: var(--erp-accent-wash); color: var(--erp-accent-strong); border-color: transparent;
+  background: var(--erp-ok-wash); color: var(--erp-ok-strong); border-color: transparent;
 }
-.erp-teacher .erp-assign-group.is-class .erp-assign-rows { background: var(--erp-accent-wash); }
+.erp-teacher .erp-assign-group.is-class .erp-assign-rows { background: var(--erp-ok-wash); }
 .erp-teacher .erp-assign-group.is-subjects .erp-assign-rows { background: var(--erp-info-wash); }
 .erp-teacher .erp-remarks .erp-assign-rows { background: var(--erp-day-remark-wash); }
 .erp-teacher .erp-assign-group .erp-assign-row + .erp-assign-row,
@@ -444,7 +444,7 @@ body.erp { min-height: 100vh; }
 }
 .erp-teacher .erp-day-quiet {
   display: inline-flex; align-items: center; min-height: 2.75rem;
-  color: var(--erp-accent-strong); font-size: var(--erp-text-sm);
+  color: var(--erp-brand-strong); font-size: var(--erp-text-sm);
 }
 @media (max-width: 991.98px) {
   body.has-tabbar .erp-content {
@@ -478,8 +478,8 @@ body.erp { min-height: 100vh; }
   color: var(--erp-ink); text-decoration: none; text-align: left; font: inherit;
 }
 .erp-account-panel a:hover, .erp-account-panel .erp-menu-item:hover { background: var(--erp-paper); }
-.erp-account-panel [aria-current="true"] { font-weight: 600; color: var(--erp-accent); }
-.erp-check { color: var(--erp-accent); font-weight: 700; }
+.erp-account-panel [aria-current="true"] { font-weight: 600; color: var(--erp-brand); }
+.erp-check { color: var(--erp-ok); font-weight: 700; }
 
 /* ---------- Auth pages ---------- */
 
@@ -534,7 +534,7 @@ body.has-tabbar .erp-messages {
   background: var(--erp-paper); color: var(--erp-ink-soft); border: 1px solid var(--erp-rule);
 }
 .erp-pill.is-submitted, .erp-pill.is-present, .erp-pill.is-accepted {
-  background: var(--erp-accent-wash); color: var(--erp-accent); border-color: transparent;
+  background: var(--erp-ok-wash); color: var(--erp-ok); border-color: transparent;
 }
 .erp-pill.is-draft, .erp-pill.is-pending {
   background: var(--erp-warn-wash); color: var(--erp-warn); border-color: transparent;
@@ -557,7 +557,7 @@ body.has-tabbar .erp-messages {
 .erp-page-header-copy { min-width: 0; max-width: 52rem; }
 .erp-page-eyebrow {
   margin: 0 0 var(--erp-space-1);
-  color: var(--erp-accent);
+  color: var(--erp-brand);
   font-size: var(--erp-text-xs);
   font-weight: 700;
   letter-spacing: .06em;
@@ -786,7 +786,7 @@ body.has-tabbar .erp-messages {
 .erp-roster-name { grid-column: 2; grid-row: 1; font-weight: 600; }
 .erp-initials {
   grid-column: 1; grid-row: 1; width: 2.25rem; height: 2.25rem; border-radius: 50%;
-  display: grid; place-items: center; background: var(--erp-accent-wash); color: var(--erp-accent);
+  display: grid; place-items: center; background: var(--erp-brand-wash); color: var(--erp-brand);
   font-weight: 700;
 }
 .erp-toggles { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
@@ -795,7 +795,7 @@ body.has-tabbar .erp-messages {
   display: grid; place-items: center; min-height: 44px; border-radius: 8px; cursor: pointer;
   border: 1px solid var(--erp-rule); background: var(--erp-paper); font-weight: 600; margin: 0;
 }
-.erp-toggles input:focus-visible + .erp-toggle { outline: 3px solid var(--erp-accent); outline-offset: 2px; }
+.erp-toggles input:focus-visible + .erp-toggle { outline: 3px solid var(--erp-action); outline-offset: 2px; }
 .erp-toggles input:checked + .erp-toggle.is-present {
   background: var(--erp-action); border-color: var(--erp-action); color: #fff;
 }
@@ -918,7 +918,7 @@ body.has-tabbar .erp-messages {
 /* Overview stat cards (the admin landing page's action queues). */
 .erp-stat-grid { display: grid; gap: var(--erp-space-4); grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }
 .erp-stat-card { background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius); padding: var(--erp-space-4); display: flex; flex-direction: column; gap: var(--erp-space-2); }
-.erp-stat-card--attention { border-left: 4px solid var(--erp-accent); }
+.erp-stat-card--attention { border-left: 4px solid var(--erp-brand); }
 .erp-stat-label { font-size: var(--erp-text-sm); font-weight: 600; color: var(--erp-ink-soft); margin: 0; }
 .erp-stat-value { font-size: 2.25rem; font-weight: 700; margin: 0; line-height: 1; color: var(--erp-ink); }
 .erp-stat-card--clear .erp-stat-value { color: var(--erp-ink-soft); }
@@ -1000,12 +1000,12 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
   border: 1px solid var(--erp-rule);
   border-radius: var(--erp-radius-sm);
   background: var(--erp-surface);
-  color: var(--erp-accent);
+  color: var(--erp-action);
   font-size: var(--erp-text-sm);
   white-space: nowrap;
   text-decoration: none;
 }
-.erp-section-nav a:hover { background: var(--erp-accent-wash); }
+.erp-section-nav a:hover { background: var(--erp-action-wash); }
 @media (min-width: 768px) {
   .erp-section-nav { overflow-x: visible; contain: none; }
   .erp-section-nav ul { flex-wrap: wrap; }
@@ -1024,9 +1024,9 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
   white-space: nowrap;
 }
 .erp-portal-nav a.active {
-  color: var(--erp-accent);
+  color: var(--erp-brand);
   font-weight: 600;
-  box-shadow: inset 0 -2px 0 var(--erp-accent);
+  box-shadow: inset 0 -2px 0 var(--erp-brand);
 }
 
 /* Guardian portal home: child-centred dashboard cards (G-07). */
@@ -1079,7 +1079,7 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
   background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
   padding: var(--erp-space-3) var(--erp-space-4); display: flex; flex-direction: column; gap: .15rem;
 }
-.erp-stat-attendance { background: var(--erp-accent-wash); border-color: transparent; }
+.erp-stat-attendance { background: var(--erp-ok-wash); border-color: transparent; }
 .erp-stat-report { background: var(--erp-info-wash); border-color: transparent; }
 .erp-stat-label { margin: 0; font-size: var(--erp-text-xs); font-weight: 600; letter-spacing: .03em; text-transform: uppercase; color: var(--erp-ink-soft); }
 .erp-stat-value { margin: 0; font-size: 1.8rem; font-weight: 700; line-height: 1.2; color: var(--erp-ink); }
@@ -1087,7 +1087,7 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 .erp-stat-note, .erp-stat-empty { margin: 0; font-size: var(--erp-text-sm); color: var(--erp-ink-soft); }
 .erp-stat-link {
   display: inline-flex; align-items: center; min-height: 44px; margin-top: auto;
-  font-weight: 600; font-size: var(--erp-text-sm); color: var(--erp-accent-strong);
+  font-weight: 600; font-size: var(--erp-text-sm); color: var(--erp-action-strong);
 }
 
 .erp-details { margin-top: var(--erp-space-5); max-width: 40rem; }
@@ -1120,7 +1120,7 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 .erp-switcher-toggle:focus-visible, .erp-switcher-list a:focus-visible { outline: 3px solid var(--erp-info); outline-offset: 2px; }
 .erp-switcher-label { font-size: var(--erp-text-xs); color: var(--erp-ink-soft); }
 .erp-switcher-current { font-weight: 700; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.erp-switcher-action { font-size: var(--erp-text-sm); font-weight: 600; color: var(--erp-accent-strong); }
+.erp-switcher-action { font-size: var(--erp-text-sm); font-weight: 600; color: var(--erp-action-strong); }
 .erp-switcher-panel {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 1060; background: var(--erp-surface);
   border-radius: 12px 12px 0 0; padding: var(--erp-space-4) var(--erp-space-4) calc(var(--erp-space-4) + env(safe-area-inset-bottom));
@@ -1134,7 +1134,7 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
   border-radius: var(--erp-radius-sm); color: var(--erp-ink); text-decoration: none; font-weight: 600;
 }
 .erp-switcher-list a:hover { background: var(--erp-paper); }
-.erp-switcher-list a.active { background: var(--erp-accent-wash); color: var(--erp-accent-strong); }
+.erp-switcher-list a.active { background: var(--erp-brand-wash); color: var(--erp-brand-strong); }
 .erp-switcher-tick { font-size: var(--erp-text-xs); font-weight: 600; }
 @media (min-width: 768px) {
   .erp-switcher[open]::before { background: transparent; }
@@ -1145,7 +1145,7 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
   }
 }
 
-.erp-back { display: inline-flex; align-items: center; min-height: 44px; font-size: var(--erp-text-sm); font-weight: 600; color: var(--erp-accent-strong); text-decoration: none; }
+.erp-back { display: inline-flex; align-items: center; min-height: 44px; font-size: var(--erp-text-sm); font-weight: 600; color: var(--erp-action-strong); text-decoration: none; }
 .erp-back:hover { text-decoration: underline; }
 
 /* ---------- U4-2: Guardian attendance calendar ---------- */
@@ -1153,7 +1153,7 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 .erp-att-years label { font-size: var(--erp-text-sm); font-weight: 600; }
 .erp-att-years .form-select { width: auto; min-height: 44px; }
 .erp-att-years .btn { min-height: 44px; }
-.erp-att-summary { background: var(--erp-accent-wash); border-radius: var(--erp-radius); padding: var(--erp-space-3) var(--erp-space-4); margin-bottom: var(--erp-space-4); max-width: 32rem; }
+.erp-att-summary { background: var(--erp-ok-wash); border-radius: var(--erp-radius); padding: var(--erp-space-3) var(--erp-space-4); margin-bottom: var(--erp-space-4); max-width: 32rem; }
 .erp-att-counts { display: flex; gap: var(--erp-space-5); margin: var(--erp-space-2) 0; }
 .erp-att-counts dt { font-size: var(--erp-text-xs); font-weight: 600; color: var(--erp-ink-soft); }
 .erp-att-counts dd { margin: 0; font-size: 1.25rem; font-weight: 700; }
@@ -1162,7 +1162,7 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 .erp-att-month-label { margin: 0; font-size: var(--erp-text-lg); font-weight: 700; }
 .erp-att-step {
   display: inline-grid; place-items: center; min-width: 44px; min-height: 44px; border-radius: var(--erp-radius-sm);
-  font-size: 1.25rem; color: var(--erp-accent-strong); text-decoration: none; background: var(--erp-surface); border: 1px solid var(--erp-rule);
+  font-size: 1.25rem; color: var(--erp-action-strong); text-decoration: none; background: var(--erp-surface); border: 1px solid var(--erp-rule);
 }
 .erp-att-step:hover { background: var(--erp-paper); }
 .erp-att-step:focus-visible { outline: 3px solid var(--erp-info); outline-offset: 2px; }
@@ -1223,7 +1223,7 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 .erp-rc-table thead th { border-top: 0; font-size: var(--erp-table-head-size); font-weight: var(--erp-table-head-weight); letter-spacing: var(--erp-table-head-tracking); text-transform: uppercase; color: var(--erp-ink-soft); }
 .erp-rc-table tbody th { font-weight: 700; }
 .erp-rc-table tbody tr:nth-child(even) { background: var(--erp-paper); }
-.erp-rc-remark { max-width: 46rem; margin: var(--erp-space-5) 0 var(--erp-space-3); background: var(--erp-accent-wash); border-radius: var(--erp-radius); padding: var(--erp-space-3) var(--erp-space-4); }
+.erp-rc-remark { max-width: 46rem; margin: var(--erp-space-5) 0 var(--erp-space-3); background: var(--erp-brand-wash); border-radius: var(--erp-radius); padding: var(--erp-space-3) var(--erp-space-4); }
 .erp-rc-remark-title { margin: 0 0 var(--erp-space-1); font-size: var(--erp-text-base); font-weight: 700; }
 .erp-rc-remark p { margin: 0; overflow-wrap: anywhere; }
 .erp-rc-note { max-width: 46rem; }
@@ -1310,7 +1310,7 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
   .erp-sidebar .nav-link { position: relative; }
   .erp-sidebar .nav-link.active::before {
     content: ""; position: absolute; left: -.5rem; top: .35rem; bottom: .35rem; width: 3px;
-    border-radius: 0 3px 3px 0; background: var(--erp-accent);
+    border-radius: 0 3px 3px 0; background: var(--erp-brand);
   }
   .erp-stat-grid { grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }
 }
