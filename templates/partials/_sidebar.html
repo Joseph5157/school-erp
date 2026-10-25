@@ -5,6 +5,14 @@
         <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#erp-sidebar" aria-label="Close menu"></button>
     </div>
     <div class="offcanvas-body d-block">
+        {% if year_choices|length > 1 %}
+        <div class="erp-year-drawer d-lg-none">
+            <span class="erp-nav-heading">Academic year</span>
+            <ul class="nav flex-column">
+                {% for c in year_choices %}<li class="nav-item"><a class="nav-link" href="{{ c.url }}"{% if c.selected %} aria-current="true"{% endif %}>{{ c.name }}</a></li>{% endfor %}
+            </ul>
+        </div>
+        {% endif %}
         {% for group in office_nav %}
         <details class="erp-nav-group"{% if group.open %} open{% endif %} data-erp-nav-group="{{ group.title }}"{% if group.title == "Home" or group.open %} data-erp-nav-pinned{% endif %}>
             <summary class="erp-nav-heading">{{ group.title }}{% if group.badge %}<span class="erp-nav-badge">{{ group.badge }}<span class="visually-hidden"> waiting in this group</span></span>{% endif %}</summary>
