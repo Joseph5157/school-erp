@@ -634,6 +634,12 @@ body.has-tabbar .erp-messages {
 }
 
 .erp-form { max-width: var(--erp-reading-width); }
+.erp-form-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 1rem; }
+.erp-form-grid > :not(.erp-field) { grid-column: 1 / -1; }
+.erp-field--full { grid-column: 1 / -1; }
+@media (min-width: 992px) {
+  .erp-form.erp-form-grid { max-width: 60rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 .erp-form-intro { margin-bottom: var(--erp-space-5); color: var(--erp-ink-soft); }
 .erp-required-legend {
   margin-bottom: var(--erp-space-4);

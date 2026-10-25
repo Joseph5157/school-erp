@@ -514,6 +514,32 @@ class FormTests(AssessmentFixture, TestCase):
         self.assertRegex(page, r'<input[^>]*name="maximum_marks"[^>]*disabled')
         self.assertNotRegex(page, r'<input[^>]*name="name"[^>]*disabled')
 
+    def test_form_grid_layout_and_field_set(self):
+        page = html(self.client.get(self.create_url))
+        self.assertRegex(page, r'<form[^>]*class="erp-form erp-form-grid"')
+        self.assertEqual(page.count("erp-field--full"), 2)
+        for name in ("offering", "name"):
+            self.assertRegex(page, rf'class="erp-field erp-field--full"[^>]*>\s*<label for="id_{name}"')
+        rendered = re.findall(r'<(?:input|select|textarea)[^>]*name="([^"]+)"', page)
+        rendered = [n for n in rendered if n != "csrfmiddlewaretoken"]
+        self.assertEqual(sorted(rendered), sorted(self.form_field_names()))
+        order = [page.index(f'for="id_{n}"') for n in
+                 ("term", "section", "offering", "name", "assessment_date", "maximum_marks", "pass_mark")]
+        self.assertEqual(order, sorted(order))
+        self.assertGreater(page.index("erp-form-actions"), page.index('id="id_pass_mark_helptext"'))
+        self.assertLess(page.index("erp-required-legend"), order[0])
+
+    def form_field_names(self):
+        from core.forms import AssessmentForm
+        return list(AssessmentForm(academic_year=self.year).fields)
+
+    def test_locked_form_renders_all_fields_in_grid(self):
+        page = html(self.client.get(reverse("core:assessment-update", args=[self.draft.pk])))
+        self.assertIn("erp-form-grid", page)
+        self.assertEqual(page.count("erp-field--full"), 2)
+        for name in self.form_field_names():
+            self.assertEqual(len(re.findall(rf'<(?:input|select|textarea)[^>]*name="{name}"', page)), 1, name)
+
     def test_finalized_assessment_cannot_be_edited(self):
         response = self.client.get(reverse("core:assessment-update", args=[self.final.pk]))
         self.assertRedirects(response, self.final_url)

@@ -9,11 +9,17 @@
 {% if assessment.is_locked %}
 <div class="erp-note-text" role="note"><strong>Locked:</strong> results already exist, so the Term, Subject, Section, date and maximum marks are locked.</div>
 {% endif %}
-<form method="post" class="erp-form">
+<form method="post" class="erp-form erp-form-grid">
     {% csrf_token %}
     {% include "partials/_form_required_legend.html" %}
     {% include "partials/_form_error_summary.html" with form=form only %}
-    {% for field in form %}{% include "partials/_form_field.html" with field=field only %}{% endfor %}
+    {% include "partials/_form_field.html" with field=form.term only %}
+    {% include "partials/_form_field.html" with field=form.section only %}
+    {% include "partials/_form_field.html" with field=form.offering extra_class="erp-field--full" only %}
+    {% include "partials/_form_field.html" with field=form.name extra_class="erp-field--full" only %}
+    {% include "partials/_form_field.html" with field=form.assessment_date only %}
+    {% include "partials/_form_field.html" with field=form.maximum_marks only %}
+    {% include "partials/_form_field.html" with field=form.pass_mark only %}
     <div class="erp-form-actions">
         <button type="submit" class="btn btn-primary">Save assessment</button>
         <a class="btn btn-link" href="{% if assessment %}{% url 'core:assessment-detail' assessment.pk %}{% else %}{% url 'core:academic-year-assessments' academic_year.pk %}{% endif %}">Cancel</a>
