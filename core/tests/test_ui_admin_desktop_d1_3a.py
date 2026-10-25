@@ -113,15 +113,37 @@ class GuardianListTests(D13AFixture, TestCase):
         )
         self.assertIn(LONG_NAME, content)
         self.assertIn("555-0100", content)
-        self.assertNotIn("erp-toolbar", content)  # no decorative search/sort/pagination
-        self.assertNotIn("erp-table-footer", content)
+        self.assertNotIn("erp-toolbar", content)  # no decorative search toolbar
 
-    def test_all_rows_shown_beyond_a_page(self):
+    def test_paginates_25_per_page_with_count_footer(self):
         for i in range(30):
             Guardian.objects.create(full_name=f"Carer {i:02d}")
         response = self.client.get(self.guardians_url)
-        self.assertEqual(len(response.context["guardians"]), 33)
-        self.assertEqual(response.content.decode().count("Carer "), 30)
+        self.assertEqual(len(response.context["guardians"]), 25)
+        self.assertIn("Showing 1–25 of 33", response.content.decode())
+        page2 = self.client.get(self.guardians_url, {"page": 2})
+        self.assertEqual(len(page2.context["guardians"]), 8)
+        self.assertIn("Showing 26–33 of 33", page2.content.decode())
+
+    def test_name_sort_toggles_and_page_resets(self):
+        for i in range(30):
+            Guardian.objects.create(full_name=f"Carer {i:02d}")
+        content = self.client.get(self.guardians_url, {"page": 2}).content.decode()
+        self.assertIn('href="?sort=-name"', content)
+        self.assertIn('aria-sort="ascending"', content)
+        desc = self.client.get(self.guardians_url, {"sort": "-name"})
+        names = [g.full_name for g in desc.context["guardians"]]
+        self.assertEqual(names, sorted(names, reverse=True))
+        self.assertIn('aria-sort="descending"', desc.content.decode())
+        self.assertNotIn("page=", desc.content.decode().split("<thead")[1].split("</thead>")[0])
+
+    def test_out_of_range_page_clamps_and_bad_sort_ignored(self):
+        for i in range(30):
+            Guardian.objects.create(full_name=f"Carer {i:02d}")
+        response = self.client.get(self.guardians_url, {"page": 99, "sort": "bogus"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["guardians"].number, 2)
+        self.assertEqual(self.client.get(self.guardians_url, {"page": "x"}).status_code, 200)
 
     def test_create_action_moves_to_header_under_add_permission(self):
         create = reverse("core:guardian-create")

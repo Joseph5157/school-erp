@@ -2198,10 +2198,21 @@ def applicant_guardian_create(request, pk):
     )
 
 
+GUARDIAN_COLUMNS = (
+    Column("Name", "name", ("full_name",)),
+    Column("Phone"),
+    Column("Email"),
+)
+
+
 @administrator_required("core.view_guardian")
 def guardian_list(request):
-    guardians = Guardian.objects.all()
-    return render(request, "core/guardian_list.html", {"guardians": guardians})
+    table = build_table(request, Guardian.objects.all(), GUARDIAN_COLUMNS, "name")
+    return render(
+        request,
+        "core/guardian_list.html",
+        {"guardians": table.page, "table": table},
+    )
 
 
 @administrator_required("core.add_guardian")
