@@ -79,3 +79,25 @@ class ButtonTokenTests(SimpleTestCase):
         outline = self.rule(".btn-outline-secondary")
         self.assertIn("var(--erp-ink)", outline)
         self.assertIn("var(--erp-ink-soft)", outline)
+
+    def test_plain_search_bars_match_button_height(self):
+        fields = r":where\(\.form-control:not\(\.form-control-sm\):not\(textarea\), \.form-select:not\(\.form-select-sm\)\)"
+        self.assertRegex(
+            self.css,
+            r"\.erp-toolbar " + fields + r",\s*\.erp-term-remarks-filter " + fields
+            + r" \{\s*min-height: var\(--erp-btn-height\);\s*\}",
+        )
+        template = Path(settings.BASE_DIR) / "core" / "templates" / "core" / "term_remarks.html"
+        self.assertIn("erp-term-remarks-filter", template.read_text(encoding="utf-8"))
+
+    def test_assessment_form_footer_gap_is_tightened(self):
+        self.assertIn(
+            ".erp-form-grid > .erp-form-actions { margin-top: var(--erp-space-2); }", self.css
+        )
+
+    def test_timetable_filter_submits_are_outline_secondary(self):
+        base = Path(settings.BASE_DIR) / "core" / "templates" / "core"
+        for name, label in (("timetable_grid.html", "Show timetable"), ("timetable_issues.html", "Show report")):
+            with self.subTest(template=name):
+                text = (base / name).read_text(encoding="utf-8")
+                self.assertIn(f'class="btn btn-outline-secondary">{label}', text)

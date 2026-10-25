@@ -6,7 +6,7 @@
     {% include "partials/_form_error_summary.html" with form=date_form action_text="showing the timetable" %}
     {% include "partials/_form_field.html" with field=date_form.date only %}
     <div class="erp-form-actions">
-        <button type="submit" class="btn btn-outline-primary">Show timetable</button>
+        <button type="submit" class="btn btn-outline-secondary">Show timetable</button>
     </div>
 </form>
 <p class="text-muted">Showing the timetable in force on <strong>{{ schedule_date|date:"l j M Y" }}</strong>. A change you make applies from the date you choose; earlier dates keep their history.</p>

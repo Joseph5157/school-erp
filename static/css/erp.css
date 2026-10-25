@@ -637,6 +637,8 @@ body.has-tabbar .erp-messages {
 .erp-form-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 1rem; }
 .erp-form-grid > :not(.erp-field) { grid-column: 1 / -1; }
 .erp-field--full { grid-column: 1 / -1; }
+/* Grid items do not collapse margins: keep the footer gap at 24px after the last field's 1rem. */
+.erp-form-grid > .erp-form-actions { margin-top: var(--erp-space-2); }
 @media (min-width: 992px) {
   .erp-form.erp-form-grid { max-width: 60rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
@@ -728,6 +730,11 @@ body.has-tabbar .erp-messages {
   .btn { min-height: var(--erp-btn-height); }
   .btn-sm { min-height: var(--erp-btn-height-sm); }
   .btn-link { min-height: 0; }
+  /* Plain Bootstrap search bars: inputs match the 40px buttons beside them. */
+  .erp-toolbar :where(.form-control:not(.form-control-sm):not(textarea), .form-select:not(.form-select-sm)),
+  .erp-term-remarks-filter :where(.form-control:not(.form-control-sm):not(textarea), .form-select:not(.form-select-sm)) {
+    min-height: var(--erp-btn-height);
+  }
   .erp-field :where(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select) {
     min-height: var(--erp-btn-height);
     /* 24px line + 2 x .4rem padding + 2px border = 38.8px, so the 40px min-height governs. */
