@@ -20,7 +20,7 @@
 {% endif %}
 <div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Assessments for {{ academic_year.name }}" tabindex="0">
-<table class="table erp-assessment-table">
+<table class="table erp-assessment-table erp-assessment-list-table">
     {% include "partials/_table_head.html" with table=table caption="Assessments for "|add:academic_year.name only %}
     <tbody>
         {% for assessment in assessments %}

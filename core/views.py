@@ -540,9 +540,19 @@ def _assessments():
 ASSESSMENT_COLUMNS = (
     Column("Assessment"),
     Column("Status"),
-    Column("Subject", "subject", ("subject_order",)),
+    Column(
+        "Subject",
+        "subject",
+        ("subject_order", "assessment_date"),
+        ("-subject_order", "assessment_date"),
+    ),
     Column("Section"),
-    Column("Date", "date", ("assessment_date", "subject_order")),
+    Column(
+        "Date",
+        "date",
+        ("assessment_date", "subject_order"),
+        ("-assessment_date", "subject_order"),
+    ),
     Column("Term"),
     Column("Max"),
     Column("Pass"),

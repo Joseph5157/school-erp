@@ -233,6 +233,20 @@ class PaginationTests(AssessmentFixture, TestCase):
                 subjects = [a.subject_order for a in response.context["assessments"]]
                 self.assertEqual(subjects, sorted(subjects, reverse=reverse_order))
 
+    def test_tiebreaks_stay_ascending_when_sorting(self):
+        by_subject = list(self.client.get(self.list_url, {"sort": "-subject"}).context["assessments"])
+        for a, b in zip(by_subject, by_subject[1:]):
+            if a.subject_order == b.subject_order:
+                self.assertLessEqual(a.assessment_date, b.assessment_date)
+        asc = list(self.client.get(self.list_url, {"sort": "subject"}).context["assessments"])
+        for a, b in zip(asc, asc[1:]):
+            if a.subject_order == b.subject_order:
+                self.assertLessEqual(a.assessment_date, b.assessment_date)
+        by_date = list(self.client.get(self.list_url, {"sort": "-date"}).context["assessments"])
+        for a, b in zip(by_date, by_date[1:]):
+            if a.assessment_date == b.assessment_date:
+                self.assertLessEqual(a.subject_order, b.subject_order)
+
     def test_invalid_filter_still_shows_errors_with_pagination(self):
         response = self.client.get(self.list_url, {"term": "999999", "status": "NOPE"})
         page = html(response)
@@ -261,9 +275,17 @@ class PaginationTests(AssessmentFixture, TestCase):
         self.assertEqual([re.sub(r"<[^>]+>|\s+", "", h) for h in heads][6:], ["Max", "Pass"])
         css = (settings.BASE_DIR / "static" / "css" / "erp.css").read_text(encoding="utf-8")
         self.assertIn(
-            ".erp-panel .erp-assessment-table > thead > tr > th:nth-child(n+7) { text-align: end; }", css
+            ".erp-panel .erp-assessment-list-table > thead > tr > th:nth-child(n+7) { text-align: end; }", css
         )
-        self.assertIn('class="table erp-assessment-table"', page)
+        self.assertIn('class="table erp-assessment-table erp-assessment-list-table"', page)
+        self.assertNotIn("th:nth-child(n+7)", css.replace("erp-assessment-list-table > thead > tr > th:nth-child(n+7)", ""))
+
+    def test_detail_results_table_is_not_covered_by_the_list_alignment_rule(self):
+        page = html(self.client.get(self.final_url))  # Midterm has no pass mark; Quiz 1 does
+        draft_page = html(self.client.get(self.draft_url))
+        for body in (page, draft_page):
+            self.assertIn("erp-assessment-table", body)
+            self.assertNotIn("erp-assessment-list-table", body)
         _, nobody = self.client_with()
         self.assertEqual(nobody.get(self.list_url).status_code, 403)
 

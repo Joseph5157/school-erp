@@ -375,7 +375,7 @@ class PaginationTests(Base, TestCase):
     def test_oldest_first_by_default_and_created_sort_reverses(self):
         first = self.client.get(URL).context["rows"][0]["notification"]
         self.assertEqual(first.pk, self.seed.pk)
-        newest = Notification.objects.order_by("-created_at", "-pk").first()
+        newest = Notification.objects.order_by("-created_at", "pk").first()
         reversed_first = self.client.get(URL, {"sort": "-created"}).context["rows"][0]["notification"]
         self.assertEqual(reversed_first.pk, newest.pk)
 
