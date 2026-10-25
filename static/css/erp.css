@@ -158,6 +158,10 @@ body.erp { min-height: 100vh; }
 }
 .erp-brand { font-weight: 700; color: var(--erp-ink); text-decoration: none; white-space: nowrap; }
 .erp-brand-logo { height: 28px; width: auto; max-width: 96px; object-fit: contain; margin-right: .5rem; vertical-align: middle; }
+/* Hamburger button: icon only, label via aria-label; square 40px (44px on phones) */
+.erp-menu-btn { display: inline-flex; align-items: center; justify-content: center; width: 2.5rem; padding: 0; flex: 0 0 auto; }
+@media (min-width: 768px) { .btn.erp-menu-btn { min-height: var(--erp-btn-height); } }
+@media (max-width: 767.98px) { .erp-menu-btn { width: 2.75rem; } }
 .erp-topbar-school {
   flex: 0 1 auto; min-width: 0; max-width: 16rem;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
