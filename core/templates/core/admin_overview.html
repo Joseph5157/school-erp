@@ -7,7 +7,7 @@
 {% if attention_cards %}
 <section aria-labelledby="attention-title">
     <h2 class="erp-section-title" id="attention-title">Needs attention</h2>
-    <div class="erp-stat-grid">
+    <div class="erp-stat-grid erp-stat-grid--attention">
         {% for card in attention_cards %}{% include "partials/_stat_card.html" with card=card primary=forloop.first only %}{% endfor %}
     </div>
 </section>
@@ -19,7 +19,7 @@
     <h2 class="erp-clear-title" id="clear-title">Nothing waiting</h2>
     <ul class="erp-clear-list">
         {% for card in clear_cards %}
-        <li><a href="{{ card.url }}">{{ card.title }}</a>{% if card.detail %}<span class="erp-clear-detail"> {{ card.detail }}</span>{% endif %}</li>
+        <li><a href="{{ card.url }}">{{ card.title }}</a></li>
         {% endfor %}
     </ul>
 </section>
