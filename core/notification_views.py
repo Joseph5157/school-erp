@@ -10,6 +10,13 @@ from core import notifications
 from core.authorization import administrator_required
 from core.forms import ContactConsentForm
 from core.models import Guardian, Notification, School
+from core.tables import Column, build_table
+
+QUEUE_COLUMNS = (
+    Column("Guardian"),
+    Column("Message"),
+    Column("Created", "created", ("created_at",)),
+)
 
 
 @administrator_required("core.add_guardiancontactconsent")
@@ -29,13 +36,15 @@ def guardian_consent_record(request, pk):
 
 @administrator_required("core.send_notification")
 def to_send(request):
+    # to_send() also skips consent-blocked rows, so it runs on every request.
+    table = build_table(request, notifications.to_send(), QUEUE_COLUMNS, "created")
     rows = [
         {
             "notification": notification,
             "text": notifications.render(notification),
             "link": notifications.whatsapp_link(notification),
         }
-        for notification in notifications.to_send()
+        for notification in table.page
     ]
     sent_today = (
         Notification.objects.filter(marked_sent_at__date=timezone.localdate())
@@ -45,6 +54,7 @@ def to_send(request):
     mode = notifications.school_mode()
     return render(request, "core/notifications_to_send.html", {
         "rows": rows,
+        "table": table,
         "sent_today": sent_today,
         "portal_only": mode == School.NotificationMode.PORTAL_ONLY,
         "portal_address_missing": (

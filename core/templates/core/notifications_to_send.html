@@ -2,7 +2,7 @@
 {% load i18n %}
 {% block title %}Message queue{% endblock %}
 {% block content %}
-{% blocktrans asvar counts_text with waiting=rows|length sent=sent_today|length %}{{ waiting }} waiting · {{ sent }} sent today{% endblocktrans %}
+{% blocktrans asvar counts_text with waiting=table.paginator.count sent=sent_today|length %}{{ waiting }} waiting · {{ sent }} sent today{% endblocktrans %}
 {% include "partials/_page_header.html" with eyebrow="Daily" title="Message queue" purpose=counts_text only %}
 <p class="erp-note-text">The ERP never sends messages itself. Open each message in WhatsApp from your own phone, then choose Mark as sent.</p>
 
@@ -50,6 +50,7 @@
 {% empty %}
 {% include "partials/_empty.html" with title="Nothing to send." text="Messages appear here when the school prepares them." %}
 {% endfor %}
+{% if rows %}{% include "partials/_table_footer.html" with table=table only %}{% endif %}
 </section>
 
 {% if sent_today %}

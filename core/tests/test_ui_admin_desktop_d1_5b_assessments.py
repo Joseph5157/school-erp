@@ -12,6 +12,7 @@ import re
 from datetime import date
 from unittest import mock
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.test import TestCase
@@ -91,7 +92,7 @@ class ListTests(AssessmentFixture, TestCase):
         self.assertIn('role="region" aria-label="Assessments for 2026-27" tabindex="0"', page)
         self.assertIn("<caption", page)
         self.assertEqual(
-            re.findall(r'<th scope="col"[^>]*>([^<]+)</th>', page),
+            [re.sub(r"<[^>]+>|\s+", "", h) for h in re.findall(r'<th scope="col"[^>]*>(.*?)</th>', page, re.S)],
             ["Assessment", "Status", "Subject", "Section", "Date", "Term", "Max", "Pass"],
         )
         self.assertRegex(page, r"erp-status--draft[^>]*><span[^>]*>Status: </span>Draft")
@@ -161,6 +162,132 @@ class ListTests(AssessmentFixture, TestCase):
         self.assertEqual(response.context["academic_year"], self.year)
         self.assertEqual(len(response.context["assessments"]), 2)
         self.assertFalse(response.context["form"].is_bound)
+
+
+class PaginationTests(AssessmentFixture, TestCase):
+    """UI-07: the list pages at 25, keeps the filters in its links, sorts by date and subject."""
+
+    EXTRA = 25  # plus the two fixture assessments = 27 (26 drafts)
+
+    def setUp(self):
+        self.build()
+        for i in range(self.EXTRA):
+            self.unique_assessment(f"Bulk {i:02d}", on=date(2026, 7, 16 + (i % 10)))
+        self.total = self.EXTRA + 2
+
+    def names(self, response):
+        return [a.name for a in response.context["assessments"]]
+
+    def test_first_page_has_25_and_second_has_the_rest(self):
+        first = self.client.get(self.list_url)
+        self.assertEqual(len(first.context["assessments"]), 25)
+        self.assertIn(f"Showing 1–25 of {self.total}", html(first))
+        second = self.client.get(self.list_url, {"page": 2})
+        self.assertEqual(len(second.context["assessments"]), self.total - 25)
+        self.assertIn(f"Showing 26–{self.total} of {self.total}", html(second))
+        self.assertFalse(set(self.names(first)) & set(self.names(second)))
+
+    def test_bad_page_and_sort_values_never_error(self):
+        for bad in ("99", "0", "abc", "-3"):
+            with self.subTest(page=bad):
+                self.assertEqual(self.client.get(self.list_url, {"page": bad}).status_code, 200)
+        self.assertIn(f"of {self.total}", html(self.client.get(self.list_url, {"page": "99"})))
+        self.assertEqual(self.client.get(self.list_url, {"sort": "bogus"}).status_code, 200)
+
+    def test_filters_survive_page_and_sort_links(self):
+        params = {"status": "DRAFT", "term": self.term1.pk, "section": self.six_a.pk}
+        page = html(self.client.get(self.list_url, params))
+        links = re.findall(r'href="(\?[^"]*)"', page)
+        self.assertTrue(links)
+        paging = [u for u in links if "page=2" in u]
+        sorting = [u for u in links if "sort=-date" in u]  # Date is the active ascending sort
+        self.assertTrue(paging and sorting)
+        for url in paging + sorting:
+            for key, value in params.items():
+                self.assertIn(f"{key}={value}", url)
+        # Following the sort link keeps the filtered set and the form carries the sort.
+        sorted_page = self.client.get(self.list_url + sorting[0].replace("&amp;", "&"))
+        self.assertEqual(sorted_page.status_code, 200)
+        self.assertIn('<input type="hidden" name="sort"', html(sorted_page))
+        self.assertNotIn("Midterm", html(sorted_page))
+
+    def test_date_sort_toggles(self):
+        asc = self.client.get(self.list_url, {"sort": "date"}).context["assessments"]
+        desc = self.client.get(self.list_url, {"sort": "-date"}).context["assessments"]
+        self.assertEqual(
+            [a.assessment_date for a in asc], sorted(a.assessment_date for a in asc)
+        )
+        self.assertEqual(
+            [a.assessment_date for a in desc],
+            sorted((a.assessment_date for a in desc), reverse=True),
+        )
+        page = html(self.client.get(self.list_url))
+        self.assertRegex(page, r'aria-sort="ascending"\s*>\s*<a class="erp-sort-link" href="[^"]*sort=-date"')
+        self.assertIn('class="erp-sort-link"', page)
+
+    def test_subject_sort_is_accepted(self):
+        for token, reverse_order in (("subject", False), ("-subject", True)):
+            with self.subTest(sort=token):
+                response = self.client.get(self.list_url, {"sort": token})
+                self.assertEqual(response.status_code, 200)
+                subjects = [a.subject_order for a in response.context["assessments"]]
+                self.assertEqual(subjects, sorted(subjects, reverse=reverse_order))
+
+    def test_tiebreaks_stay_ascending_when_sorting(self):
+        by_subject = list(self.client.get(self.list_url, {"sort": "-subject"}).context["assessments"])
+        for a, b in zip(by_subject, by_subject[1:]):
+            if a.subject_order == b.subject_order:
+                self.assertLessEqual(a.assessment_date, b.assessment_date)
+        asc = list(self.client.get(self.list_url, {"sort": "subject"}).context["assessments"])
+        for a, b in zip(asc, asc[1:]):
+            if a.subject_order == b.subject_order:
+                self.assertLessEqual(a.assessment_date, b.assessment_date)
+        by_date = list(self.client.get(self.list_url, {"sort": "-date"}).context["assessments"])
+        for a, b in zip(by_date, by_date[1:]):
+            if a.assessment_date == b.assessment_date:
+                self.assertLessEqual(a.subject_order, b.subject_order)
+
+    def test_invalid_filter_still_shows_errors_with_pagination(self):
+        response = self.client.get(self.list_url, {"term": "999999", "status": "NOPE"})
+        page = html(response)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("The filters were not applied; showing all assessments.", page)
+        self.assertIn('id="form-error-summary"', page)
+        self.assertEqual(len(response.context["assessments"]), 25)
+
+    def test_empty_state_and_permission_unchanged(self):
+        page = html(self.client.get(self.list_url, {"status": "FINALIZED", "term": self.term1.pk}))
+        self.assertIn("No assessments match these filters.", page)
+        self.assertEqual(page.count("No assessments match these filters."), 1)
+        self.assertEqual(page.count("Clear filters"), 1)
+        self.assertNotIn("No results", page)
+        self.assertNotIn("erp-table-footer", page)
+        other_year = AcademicYear.objects.create(
+            name="2027-28", start_date=date(2027, 6, 1), end_date=date(2028, 3, 31)
+        )
+        bare = html(self.client.get(reverse("core:academic-year-assessments", args=[other_year.pk])))
+        self.assertNotIn("No results", bare)
+        self.assertNotIn("Clear filters", bare)
+
+    def test_max_and_pass_headers_are_right_aligned_by_scoped_css(self):
+        page = html(self.client.get(self.list_url))
+        heads = re.findall(r'<th scope="col"[^>]*>(.*?)</th>', page, re.S)
+        self.assertEqual([re.sub(r"<[^>]+>|\s+", "", h) for h in heads][6:], ["Max", "Pass"])
+        css = (settings.BASE_DIR / "static" / "css" / "erp.css").read_text(encoding="utf-8")
+        self.assertIn(
+            ".erp-panel .erp-assessment-list-table > thead > tr > th:nth-child(n+7) { text-align: end; }", css
+        )
+        self.assertIn('class="table erp-assessment-table erp-assessment-list-table"', page)
+        self.assertNotIn("th:nth-child(n+7)", css.replace("erp-assessment-list-table > thead > tr > th:nth-child(n+7)", ""))
+
+    def test_detail_results_table_is_not_covered_by_the_list_alignment_rule(self):
+        page = html(self.client.get(self.final_url))  # Midterm has no pass mark; Quiz 1 does
+        draft_page = html(self.client.get(self.draft_url))
+        for body in (page, draft_page):
+            self.assertIn("erp-assessment-table", body)
+            self.assertNotIn("erp-assessment-list-table", body)
+        _, nobody = self.client_with()
+        self.assertEqual(nobody.get(self.list_url).status_code, 403)
 
 
 class DetailTests(AssessmentFixture, TestCase):
