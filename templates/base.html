@@ -11,7 +11,7 @@
     <a class="visually-hidden-focusable" href="#main">Skip to content</a>
     <header class="erp-topbar">
         {% if office_nav %}
-        <button class="btn btn-outline-secondary btn-sm d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#erp-sidebar" aria-controls="erp-sidebar">Menu</button>
+        <button class="btn btn-outline-secondary btn-sm erp-menu-btn d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#erp-sidebar" aria-controls="erp-sidebar" aria-label="Menu"><svg class="erp-hamburger" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
         {% endif %}
         <a class="erp-brand" href="{% url 'home' %}">{% if brand_logo %}<img class="erp-brand-logo" src="{{ brand_logo.url }}" alt="{{ brand_logo.school_name }} logo" height="28">{% endif %}School ERP</a>
         {% if school_name %}<span class="erp-topbar-school d-none d-md-inline">{{ school_name }}</span>{% endif %}
