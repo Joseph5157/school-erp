@@ -195,6 +195,7 @@ body.erp { min-height: 100vh; }
 .erp-sidebar .nav-link:hover { background: var(--erp-paper); }
 .erp-sidebar .nav-link.active { background: var(--erp-brand-wash); color: var(--erp-brand); font-weight: 600; }
 .erp-sidebar .nav-link { display: flex; align-items: center; gap: var(--erp-space-2); }
+.erp-nav-icon { flex: none; width: 1rem; height: 1rem; }
 .erp-nav-badge {
   margin-left: auto; padding: 0 var(--erp-space-2); border-radius: var(--erp-radius-sm);
   background: var(--erp-warn-wash); color: var(--erp-warn);
