@@ -169,6 +169,34 @@ body.erp { min-height: 100vh; }
   padding: .1rem .55rem; border: 1px solid var(--erp-rule); border-radius: 999px;
   background: var(--erp-paper); color: var(--erp-ink-soft); font-size: var(--erp-text-sm);
 }
+/* Year menu (UI-04): the chip becomes a JS-free details dropdown when there are 2+ years */
+.erp-year-menu { position: relative; flex: 0 0 auto; }
+.erp-year-menu > summary {
+  list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: .3rem; color: var(--erp-ink-soft);
+}
+.erp-year-menu > summary::-webkit-details-marker { display: none; }
+.erp-year-menu > summary::after {
+  content: ""; width: .4rem; height: .4rem; flex: 0 0 auto;
+  border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor;
+  transform: translateY(-.1rem) rotate(45deg);
+}
+.erp-year-menu[open] > summary::after { transform: translateY(.1rem) rotate(-135deg); }
+.erp-year-panel {
+  position: absolute; left: 0; top: calc(100% + .4rem); z-index: 1040;
+  list-style: none; margin: 0; padding: .35rem;
+  min-width: 10rem; max-width: calc(100vw - 2rem); max-height: min(20rem, 70vh); overflow-y: auto;
+  background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius-sm);
+  box-shadow: 0 8px 24px rgba(24, 33, 43, .12);
+}
+.erp-year-panel a {
+  display: block; padding: .45rem .75rem; border-radius: 6px; white-space: nowrap;
+  color: var(--erp-ink); text-decoration: none;
+}
+.erp-year-panel a:hover { background: var(--erp-paper); }
+.erp-year-panel [aria-current="true"] { font-weight: 600; color: var(--erp-brand); }
+.erp-year-drawer { margin-bottom: .75rem; padding-bottom: .5rem; border-bottom: 1px solid var(--erp-rule); }
+.erp-year-drawer .nav-link { padding: .3rem .75rem; }
+.erp-year-drawer [aria-current="true"] { font-weight: 600; color: var(--erp-brand); }
 .erp-topbar-links { gap: .25rem; min-width: 0; overflow-x: auto; }
 .erp-topbar-links a {
   padding: .4rem .6rem; border-radius: 6px; color: var(--erp-ink);

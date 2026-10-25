@@ -15,7 +15,18 @@
         {% endif %}
         <a class="erp-brand" href="{% url 'home' %}">{% if brand_logo %}<img class="erp-brand-logo" src="{{ brand_logo.url }}" alt="{{ brand_logo.school_name }} logo" height="28">{% endif %}School ERP</a>
         {% if school_name %}<span class="erp-topbar-school d-none d-md-inline">{{ school_name }}</span>{% endif %}
-        {% if current_year_name %}<span class="erp-topbar-year d-none d-md-inline"><span class="visually-hidden">Academic year </span>{{ current_year_name }}</span>{% endif %}
+        {% if current_year_name %}
+        {% if year_choices|length > 1 %}
+        <details class="erp-year-menu d-none d-md-block">
+            <summary><span class="erp-topbar-year d-none d-md-inline"><span class="visually-hidden">Academic year </span>{% for c in year_choices %}{% if c.selected %}{{ c.name }}{% endif %}{% endfor %}</span></summary>
+            <ul class="erp-year-panel">
+                {% for c in year_choices %}<li><a href="{{ c.url }}"{% if c.selected %} aria-current="true"{% endif %}>{{ c.name }}</a></li>{% endfor %}
+            </ul>
+        </details>
+        {% else %}
+        <span class="erp-topbar-year d-none d-md-inline"><span class="visually-hidden">Academic year </span>{{ current_year_name }}</span>
+        {% endif %}
+        {% endif %}
         {% if current_area == 'teacher' %}
         <nav class="erp-topbar-links d-none d-lg-flex" aria-label="Teaching">
             {% for tab in teacher_tabs %}<a href="{{ tab.url }}"{% if tab.active %} class="active" aria-current="page"{% endif %}>{{ tab.label }}</a>{% endfor %}
@@ -32,6 +43,7 @@
     <main id="main" class="erp-main">
         <div class="erp-content">
             {% include "partials/_breadcrumbs.html" %}
+            {% if year_is_scoped_page and not viewing_year_is_current %}{% include "partials/_year_note.html" %}{% endif %}
             {% block content %}{% endblock %}
         </div>
     </main>
