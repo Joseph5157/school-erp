@@ -8,7 +8,7 @@
     {% include "partials/_form_field.html" with field=form.start %}
     {% include "partials/_form_field.html" with field=form.end %}
     <div class="erp-form-actions">
-        <button type="submit" class="btn btn-primary">Show summary</button>
+        <button type="submit" class="btn btn-outline-secondary">Show summary</button>
         {% if perms.core.issue_document %}<a class="btn btn-link" href="{% url 'core:document-index' %}">Back</a>{% endif %}
     </div>
 </form>
