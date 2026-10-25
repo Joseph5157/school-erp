@@ -41,5 +41,5 @@
 </table>
 </div>
 </div>
-{% include "partials/_table_footer.html" with table=table only %}
+{% if table.paginator.count %}{% include "partials/_table_footer.html" with table=table only %}{% endif %}
 {% endblock %}

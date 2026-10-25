@@ -1309,6 +1309,8 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 .erp-band-list { margin: 0; padding: 0; list-style: none; }
 .erp-panel .erp-grading-table th.erp-num, .erp-panel .erp-grading-table td.erp-num,
 .erp-panel .erp-assessment-table th.erp-num, .erp-panel .erp-assessment-table td.erp-num { text-align: end; font-variant-numeric: tabular-nums; }
+/* UI-07: the shared table head emits no erp-num class, so right-align the Max and Pass headers (7th and 8th columns). */
+.erp-panel .erp-assessment-table > thead > tr > th:nth-child(n+7) { text-align: end; }
 @media (min-width: 576px) {
   .erp-toolbar--inline.erp-grading-toolbar > .erp-field { flex: 0 1 12rem; }
 }

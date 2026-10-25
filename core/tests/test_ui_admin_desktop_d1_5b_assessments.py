@@ -12,6 +12,7 @@ import re
 from datetime import date
 from unittest import mock
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.test import TestCase
@@ -199,7 +200,7 @@ class PaginationTests(AssessmentFixture, TestCase):
         links = re.findall(r'href="(\?[^"]*)"', page)
         self.assertTrue(links)
         paging = [u for u in links if "page=2" in u]
-        sorting = [u for u in links if "sort=" in u]
+        sorting = [u for u in links if "sort=-date" in u]  # Date is the active ascending sort
         self.assertTrue(paging and sorting)
         for url in paging + sorting:
             for key, value in params.items():
@@ -225,9 +226,12 @@ class PaginationTests(AssessmentFixture, TestCase):
         self.assertIn('class="erp-sort-link"', page)
 
     def test_subject_sort_is_accepted(self):
-        for token in ("subject", "-subject"):
+        for token, reverse_order in (("subject", False), ("-subject", True)):
             with self.subTest(sort=token):
-                self.assertEqual(self.client.get(self.list_url, {"sort": token}).status_code, 200)
+                response = self.client.get(self.list_url, {"sort": token})
+                self.assertEqual(response.status_code, 200)
+                subjects = [a.subject_order for a in response.context["assessments"]]
+                self.assertEqual(subjects, sorted(subjects, reverse=reverse_order))
 
     def test_invalid_filter_still_shows_errors_with_pagination(self):
         response = self.client.get(self.list_url, {"term": "999999", "status": "NOPE"})
@@ -240,7 +244,26 @@ class PaginationTests(AssessmentFixture, TestCase):
     def test_empty_state_and_permission_unchanged(self):
         page = html(self.client.get(self.list_url, {"status": "FINALIZED", "term": self.term1.pk}))
         self.assertIn("No assessments match these filters.", page)
-        self.assertIn("No results", page)
+        self.assertEqual(page.count("No assessments match these filters."), 1)
+        self.assertEqual(page.count("Clear filters"), 1)
+        self.assertNotIn("No results", page)
+        self.assertNotIn("erp-table-footer", page)
+        other_year = AcademicYear.objects.create(
+            name="2027-28", start_date=date(2027, 6, 1), end_date=date(2028, 3, 31)
+        )
+        bare = html(self.client.get(reverse("core:academic-year-assessments", args=[other_year.pk])))
+        self.assertNotIn("No results", bare)
+        self.assertNotIn("Clear filters", bare)
+
+    def test_max_and_pass_headers_are_right_aligned_by_scoped_css(self):
+        page = html(self.client.get(self.list_url))
+        heads = re.findall(r'<th scope="col"[^>]*>(.*?)</th>', page, re.S)
+        self.assertEqual([re.sub(r"<[^>]+>|\s+", "", h) for h in heads][6:], ["Max", "Pass"])
+        css = (settings.BASE_DIR / "static" / "css" / "erp.css").read_text(encoding="utf-8")
+        self.assertIn(
+            ".erp-panel .erp-assessment-table > thead > tr > th:nth-child(n+7) { text-align: end; }", css
+        )
+        self.assertIn('class="table erp-assessment-table"', page)
         _, nobody = self.client_with()
         self.assertEqual(nobody.get(self.list_url).status_code, 403)
 
