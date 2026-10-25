@@ -158,6 +158,17 @@ body.erp { min-height: 100vh; }
 }
 .erp-brand { font-weight: 700; color: var(--erp-ink); text-decoration: none; white-space: nowrap; }
 .erp-brand-logo { height: 28px; width: auto; max-width: 96px; object-fit: contain; margin-right: .5rem; vertical-align: middle; }
+.erp-topbar-school {
+  flex: 0 1 auto; min-width: 0; max-width: 16rem;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding-left: .75rem; border-left: 1px solid var(--erp-rule);
+  color: var(--erp-ink-soft); font-size: var(--erp-text-sm);
+}
+.erp-topbar-year {
+  flex: 0 0 auto; white-space: nowrap;
+  padding: .1rem .55rem; border: 1px solid var(--erp-rule); border-radius: 999px;
+  background: var(--erp-paper); color: var(--erp-ink-soft); font-size: var(--erp-text-sm);
+}
 .erp-topbar-links { gap: .25rem; min-width: 0; overflow-x: auto; }
 .erp-topbar-links a {
   padding: .4rem .6rem; border-radius: 6px; color: var(--erp-ink);
