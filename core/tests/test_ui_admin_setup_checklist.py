@@ -20,9 +20,10 @@ def by_key(steps):
 
 
 def client_page_orders_cards_first(client):
-    """True when the Overview prints the attention cards before the setup checklist."""
+    """True when the Overview prints the attention block (cards or the all-clear line) before the checklist."""
     content = client.get(reverse("core:admin-overview")).content.decode()
-    return content.index("erp-stat-card") < content.index("erp-setup-title")
+    top = min(i for i in (content.find('id="attention-title"'), content.find("erp-all-clear")) if i >= 0)
+    return top < content.index("erp-setup-title")
 
 
 class SetupStepsStructureTests(AuthorizationClientsMixin, TestCase):

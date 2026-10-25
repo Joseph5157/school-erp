@@ -833,11 +833,15 @@ def admin_overview(request):
     next_key = next((step["key"] for step in steps if not step["done"]), None)
     for step in steps:
         step["is_next"] = step["key"] == next_key
+    cards = dashboard.overview_cards(request.user)
+    attention_cards, clear_cards = dashboard.split_cards(cards)
     return render(
         request,
         "core/admin_overview.html",
         {
-            "cards": dashboard.overview_cards(request.user),
+            "cards": cards,
+            "attention_cards": attention_cards,
+            "clear_cards": clear_cards,
             "setup_steps": steps,
             "setup_complete": setup_checklist.setup_complete(steps),
             # Until the foundation exists there is nothing operational to show, so setup leads;

@@ -877,6 +877,12 @@ body.has-tabbar .erp-messages {
 .erp-stat-summary { margin: 0; color: var(--erp-ink-soft); font-size: var(--erp-text-sm); }
 
 /* "Set up your school" checklist card on the Overview page. */
+.erp-section-title { font-size: 1rem; margin: 0 0 var(--erp-space-3); }
+.erp-all-clear { margin: 0 0 var(--erp-space-4); padding: var(--erp-space-3) var(--erp-space-4); border-radius: var(--erp-radius); background: var(--erp-ok-wash); color: var(--erp-ok-strong); font-size: var(--erp-text-sm); font-weight: 600; }
+.erp-clear-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--erp-space-2) var(--erp-space-4); margin: var(--erp-space-4) 0; color: var(--erp-ink-soft); font-size: var(--erp-text-sm); }
+.erp-clear-title { font-size: var(--erp-text-sm); font-weight: 600; margin: 0; }
+.erp-clear-list { display: flex; flex-wrap: wrap; gap: var(--erp-space-1) var(--erp-space-4); list-style: none; margin: 0; padding: 0; }
+.erp-clear-detail { color: var(--erp-ink-soft); }
 .erp-setup { background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius); padding: var(--erp-space-4); margin-bottom: var(--erp-space-4); }
 .erp-setup-head { display: flex; flex-wrap: wrap; gap: var(--erp-space-2) var(--erp-space-4); align-items: baseline; justify-content: space-between; margin-bottom: var(--erp-space-3); }
 .erp-setup-title { font-size: 1rem; margin: 0 0 var(--erp-space-1); }

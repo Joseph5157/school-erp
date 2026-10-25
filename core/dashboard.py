@@ -105,6 +105,14 @@ _CARDS = (
 )
 
 
+def split_cards(cards):
+    """(attention, clear): cards with something waiting first-class, zero cards for a compact row.
+
+    Each group keeps the order of `_CARDS`.
+    """
+    return [c for c in cards if c["count"]], [c for c in cards if not c["count"]]
+
+
 def overview_cards(user):
     today = core_models.business_today()  # looked up late so tests can pin it
     return [build(today) for build, perm in _CARDS if user.has_perm(perm)]
