@@ -10,13 +10,20 @@ from django.test import TestCase
 from django.urls import reverse
 
 from core.models import Applicant, School, Section, SectionClassTeacher, Student
-from core.setup_checklist import setup_complete, setup_steps
+from core.setup_checklist import foundation_incomplete, setup_complete, setup_steps
 from core.tests.phase4_fixtures import Phase4Fixture
 from core.tests.test_authorization import AuthorizationClientsMixin
 
 
 def by_key(steps):
     return {step["key"]: step for step in steps}
+
+
+def client_page_orders_cards_first(client):
+    """True when the Overview prints the attention block (cards or the all-clear line) before the checklist."""
+    content = client.get(reverse("core:admin-overview")).content.decode()
+    top = min(i for i in (content.find('id="attention-title"'), content.find("erp-all-clear")) if i >= 0)
+    return top < content.index("erp-setup-title")
 
 
 class SetupStepsStructureTests(AuthorizationClientsMixin, TestCase):
@@ -117,6 +124,15 @@ class SetupChecklistRenderingTests(Phase4Fixture, TestCase):
         self.assign(self.rao, self.maths, self.six_a)
         self.assign(self.iyer, self.maths, self.six_b)
         self.assign(self.rao, self.sanskrit, self.six_b)
+
+    def test_foundation_is_complete_with_open_gap_steps_so_cards_lead(self):
+        steps = setup_steps()
+        self.assertFalse(foundation_incomplete(steps))
+        self.assertTrue(client_page_orders_cards_first(self.client))
+
+    def test_foundation_incomplete_when_a_has_at_least_one_step_is_missing(self):
+        School.objects.all().delete()
+        self.assertTrue(foundation_incomplete(setup_steps()))
 
     def test_checklist_hides_when_every_step_is_done(self):
         self.complete_setup()

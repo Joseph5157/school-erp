@@ -1,4 +1,5 @@
 from datetime import date
+from unittest import mock
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
@@ -8,7 +9,7 @@ from django.urls import resolve, reverse
 from core import models as core_models
 from core.authorization import user_areas
 from core.breadcrumbs import breadcrumb_context
-from core.dashboard import overview_cards
+from core.dashboard import overview_cards, split_cards
 from core.models import (
     TEACHERS_GROUP_NAME,
     Applicant,
@@ -86,6 +87,34 @@ class OverviewCardTests(AuthorizationClientsMixin, AttendanceFixtureMixin, TestC
 
         self.assertEqual(data["count"], 1)
         self.assertEqual(data["url"], reverse("core:applicant-list") + "?status=PENDING")
+
+    def test_split_puts_waiting_cards_first_and_keeps_order_in_each_group(self):
+        Applicant.objects.create(full_name="Pending One")
+        cards = overview_cards(self.admin_user)
+        attention, clear = split_cards(cards)
+        self.assertEqual([c["key"] for c in attention], ["applicants"])
+        self.assertTrue(all(c["count"] == 0 for c in clear))
+        self.assertEqual(
+            [c["key"] for c in clear], [c["key"] for c in cards if c["key"] != "applicants"],
+        )
+
+    def test_page_shows_waiting_card_in_full_and_zero_cards_as_links(self):
+        Applicant.objects.create(full_name="Pending One")
+        response = self.administrator.get(reverse("core:admin-overview"))
+        self.assertContains(response, "Needs attention")
+        self.assertContains(response, "erp-stat-card--attention", count=1)
+        self.assertContains(response, 'class="erp-clear-row"')
+        content = response.content.decode()
+        clear_html = content[content.index('class="erp-clear-row"'):]
+        self.assertIn(f'href="{reverse("core:report-missing-attendance")}', clear_html)
+        self.assertNotIn("Applicants awaiting decision", clear_html)
+        self.assertEqual(content.count("btn btn-primary btn-sm mt-auto"), 1)
+
+    def test_page_says_all_clear_when_every_card_is_zero(self):
+        response = self.administrator.get(reverse("core:admin-overview"))
+        self.assertContains(response, "Nothing needs attention today.")
+        self.assertNotContains(response, "erp-stat-card--attention")
+        self.assertContains(response, 'class="erp-clear-row"')
 
     def test_applicants_card_clear_when_none_pending(self):
         data = card(overview_cards(self.admin_user), "applicants")
@@ -189,6 +218,28 @@ class OverviewSetupStateTests(AuthorizationClientsMixin, TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Set up your school")
         self.assertContains(response, reverse("core:academic-year-list"))
+
+    def test_brand_new_school_shows_setup_before_cards(self):
+        content = self.administrator.get(reverse("core:admin-overview")).content.decode()
+        self.assertLess(content.index("Set up your school"), content.index("Applicants awaiting decision"))
+
+    def test_cards_precede_checklist_once_the_foundation_exists(self):
+        # foundation_incomplete has its own unit tests; here only the page order is under test.
+        with mock.patch("core.views.setup_checklist.foundation_incomplete", return_value=False):
+            content = self.administrator.get(reverse("core:admin-overview")).content.decode()
+        self.assertLess(content.index("Applicants awaiting decision"), content.index("Set up your school"))
+
+    def test_checklist_lists_only_open_steps_and_folds_the_done_ones(self):
+        School.objects.create(name="Greenwood High")
+        response = self.administrator.get(reverse("core:admin-overview"))
+        content = response.content.decode()
+        self.assertContains(response, 'class="erp-setup-done"')
+        self.assertContains(response, " completed steps</summary>")
+        done_html = content[content.index('class="erp-setup-done"'):]
+        open_html = content[content.index('class="erp-setup-list"'):content.index('class="erp-setup-done"')]
+        self.assertIn("School profile", done_html)
+        self.assertNotIn("School profile", open_html)
+        self.assertEqual(open_html.count("btn-primary"), 1)  # only the next step is filled
 
 
 class BreadcrumbMapTests(TestCase):

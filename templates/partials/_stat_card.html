@@ -1,10 +1,7 @@
+{# Attention card: only rendered for a non-zero count; zero counts go to the compact "Nothing waiting" row. #}
 <article class="erp-stat-card erp-stat-card--{{ card.tone }}">
-    <h2 class="erp-stat-label">{{ card.title }}</h2>
+    <h3 class="erp-stat-label">{{ card.title }}</h3>
     <p class="erp-stat-value">{{ card.count }}</p>
-    {% if card.count %}
     <p class="erp-stat-summary">{{ card.summary }}{% if card.detail %} {{ card.detail }}{% endif %}</p>
-    {% else %}
-    <p class="erp-stat-summary">Nothing waiting.{% if card.detail %} {{ card.detail }}{% endif %}</p>
-    {% endif %}
-    <a class="btn btn-outline-primary btn-sm mt-auto align-self-start" href="{{ card.url }}">Open<span class="visually-hidden"> {{ card.title }}</span></a>
+    <a class="btn {% if primary %}btn-primary{% else %}btn-outline-primary{% endif %} btn-sm mt-auto align-self-start" href="{{ card.url }}">Open<span class="visually-hidden"> {{ card.title }}</span></a>
 </article>

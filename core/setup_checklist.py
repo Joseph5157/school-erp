@@ -132,6 +132,18 @@ def setup_steps(today=None):
     ]
 
 
+_FOUNDATION_KEYS = ("school", "academic-year", "classes", "subjects", "teachers")
+
+
+def foundation_incomplete(steps):
+    """True while a "has at least one" step is missing, so nothing operational can exist yet.
+
+    The two gap steps (assignments, student placement) are vacuously done on an empty
+    school, so counting finished steps cannot tell a new school from an established one.
+    """
+    return any(not step["done"] for step in steps if step["key"] in _FOUNDATION_KEYS)
+
+
 def setup_complete(steps):
     """True when every step is done, so the Overview can hide the checklist."""
     return all(step["done"] for step in steps)
