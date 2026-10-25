@@ -9,6 +9,7 @@
 <p class="erp-note-text" role="status">The filters were not applied; showing all assessments.</p>
 {% endif %}
 <form method="get" class="erp-toolbar erp-toolbar--inline erp-assessment-toolbar" aria-label="Filter assessments">
+    {% if table.sort_param %}<input type="hidden" name="sort" value="{{ table.sort_param }}">{% endif %}
     {% include "partials/_form_field.html" with field=form.term only %}
     {% include "partials/_form_field.html" with field=form.section only %}
     {% include "partials/_form_field.html" with field=form.status only %}
@@ -20,19 +21,7 @@
 <div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Assessments for {{ academic_year.name }}" tabindex="0">
 <table class="table erp-assessment-table">
-    <caption class="visually-hidden">Assessments for {{ academic_year.name }}, by date, with their status, maximum marks and pass mark.</caption>
-    <thead>
-        <tr>
-            <th scope="col">Assessment</th>
-            <th scope="col">Status</th>
-            <th scope="col">Subject</th>
-            <th scope="col">Section</th>
-            <th scope="col">Date</th>
-            <th scope="col">Term</th>
-            <th scope="col" class="erp-num">Max</th>
-            <th scope="col" class="erp-num">Pass</th>
-        </tr>
-    </thead>
+    {% include "partials/_table_head.html" with table=table caption="Assessments for "|add:academic_year.name only %}
     <tbody>
         {% for assessment in assessments %}
         <tr>
@@ -52,4 +41,5 @@
 </table>
 </div>
 </div>
+{% include "partials/_table_footer.html" with table=table only %}
 {% endblock %}

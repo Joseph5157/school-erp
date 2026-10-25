@@ -537,6 +537,18 @@ def _assessments():
     )
 
 
+ASSESSMENT_COLUMNS = (
+    Column("Assessment"),
+    Column("Status"),
+    Column("Subject", "subject", ("subject_order",)),
+    Column("Section"),
+    Column("Date", "date", ("assessment_date", "subject_order")),
+    Column("Term"),
+    Column("Max"),
+    Column("Pass"),
+)
+
+
 @administrator_required("core.view_assessment")
 def academic_year_assessments(request, pk):
     academic_year = get_object_or_404(AcademicYear, pk=pk)
@@ -549,14 +561,19 @@ def academic_year_assessments(request, pk):
             assessments = assessments.filter(section=form.cleaned_data["section"])
         if form.cleaned_data.get("status"):
             assessments = assessments.filter(status=form.cleaned_data["status"])
+    table = build_table(
+        request,
+        assessments.annotate(subject_order=Assessment.subject_display_expression()),
+        ASSESSMENT_COLUMNS,
+        "date",
+    )
     return render(
         request,
         "core/assessment_list.html",
         {
             "academic_year": academic_year,
-            "assessments": assessments.annotate(
-                subject_order=Assessment.subject_display_expression()
-            ).order_by("assessment_date", "subject_order"),
+            "assessments": table.page,
+            "table": table,
             "form": form,
         },
     )
