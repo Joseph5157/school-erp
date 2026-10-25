@@ -335,3 +335,74 @@ class AccessAndNavigationTests(Base, TestCase):
             reverse("core:notification-dismiss", args=[Notification.objects.first().pk]),
             {"reason": "x"}, follow=True)
         self.assertEqual(re.findall(ACTIVE_LINK, html(followed)), [URL])
+
+
+class PaginationTests(Base, TestCase):
+    """UI-07: the queue pages at 25, renders only the current page, and still skips opted-out guardians."""
+
+    TOTAL = 27
+
+    def setUp(self):
+        super().setUp()
+        self.register()
+        [seed] = list(notifications.to_send())
+        self.seed = seed
+        for i in range(self.TOTAL - 1):
+            Notification.objects.create(
+                guardian=seed.guardian, student=seed.student, type=seed.type, template=seed.template,
+                parameters=seed.parameters, channel_mode=seed.channel_mode,
+                status=Notification.Status.PREPARED, idempotency_key=f"bulk:{i}")
+
+    def test_first_page_has_25_rows_and_the_count_footer(self):
+        response = self.client.get(URL)
+        page = html(response)
+        self.assertEqual(len(response.context["rows"]), 25)
+        self.assertEqual(queue_section(page).count('<li class="erp-queue-row">'), 25)
+        self.assertIn(f"Showing 1–25 of {self.TOTAL}", page)
+        self.assertIn(f"{self.TOTAL} waiting · 0 sent today", page)
+
+    def test_second_page_has_the_rest_and_bad_page_clamps(self):
+        page = html(self.client.get(URL, {"page": 2}))
+        self.assertEqual(queue_section(page).count('<li class="erp-queue-row">'), self.TOTAL - 25)
+        self.assertIn(f"Showing 26–{self.TOTAL} of {self.TOTAL}", page)
+        for bad in ("99", "0", "abc", "-3"):
+            with self.subTest(page=bad):
+                response = self.client.get(URL, {"page": bad})
+                self.assertEqual(response.status_code, 200)
+        self.assertIn(f"of {self.TOTAL}", html(self.client.get(URL, {"page": "99"})))
+        self.assertEqual(self.client.get(URL, {"sort": "bogus"}).status_code, 200)
+
+    def test_oldest_first_by_default_and_created_sort_reverses(self):
+        first = self.client.get(URL).context["rows"][0]["notification"]
+        self.assertEqual(first.pk, self.seed.pk)
+        newest = Notification.objects.order_by("-created_at", "-pk").first()
+        reversed_first = self.client.get(URL, {"sort": "-created"}).context["rows"][0]["notification"]
+        self.assertEqual(reversed_first.pk, newest.pk)
+
+    def test_only_the_current_page_is_rendered(self):
+        from unittest import mock
+        with mock.patch.object(
+                notifications, "whatsapp_link", wraps=notifications.whatsapp_link) as render:
+            self.client.get(URL)
+        self.assertEqual(render.call_count, 25)
+
+    def test_consent_blocked_rows_are_still_skipped_on_page_load(self):
+        GuardianContactConsent.objects.create(
+            guardian=self.seed.guardian, status=GuardianContactConsent.Status.OPTED_OUT,
+            source=GuardianContactConsent.Source.PAPER_FORM, recorded_by=self.admin)
+        response = self.client.get(URL)
+        self.assertEqual(len(response.context["rows"]), 0)
+        self.assertIn("Nothing to send.", html(response))
+        self.assertNotIn("Showing", html(response))
+        self.assertFalse(Notification.objects.filter(status=Notification.Status.PREPARED).exists())
+
+    def test_sent_today_section_is_unchanged_and_mark_sent_returns_to_queue(self):
+        response = self.client.post(
+            reverse("core:notification-mark-sent", args=[self.seed.pk]), follow=True)
+        self.assertRedirects(response, URL)
+        page = html(response)
+        self.assertIn(f"{self.TOTAL - 1} waiting · 1 sent today", page)
+        self.assertIn("Sent today</h2>", page)
+
+    def test_permission_is_unchanged(self):
+        self.assertEqual(self.teacher().get(URL).status_code, 403)
