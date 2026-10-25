@@ -840,6 +840,9 @@ def admin_overview(request):
             "cards": dashboard.overview_cards(request.user),
             "setup_steps": steps,
             "setup_complete": setup_checklist.setup_complete(steps),
+            # Until the foundation exists there is nothing operational to show, so setup leads;
+            # after that the attention cards do.
+            "setup_first": setup_checklist.foundation_incomplete(steps),
             "setup_done": done_count,
             "setup_total": len(steps),
         },

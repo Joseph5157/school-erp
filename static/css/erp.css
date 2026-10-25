@@ -888,6 +888,9 @@ body.has-tabbar .erp-messages {
 .erp-setup-step { display: flex; align-items: center; gap: var(--erp-space-3); padding: var(--erp-space-3) 0; border-bottom: 1px solid var(--erp-rule); flex-wrap: wrap; }
 .erp-setup-step:last-child { border-bottom: 0; padding-bottom: 0; }
 .erp-setup-step--done .erp-setup-label { color: var(--erp-ink-soft); }
+.erp-setup-done { margin-top: var(--erp-space-3); border-top: 1px solid var(--erp-rule); padding-top: var(--erp-space-3); }
+.erp-setup-done > summary { cursor: pointer; color: var(--erp-ink-soft); font-size: var(--erp-text-sm); font-weight: 600; }
+.erp-setup-done .erp-setup-list { margin-top: var(--erp-space-2); }
 .erp-setup-check { width: 1.25rem; height: 1.25rem; flex: 0 0 auto; display: inline-grid; place-items: center; border-radius: 50%; background: var(--erp-ok-wash); color: var(--erp-ok-strong); font-size: .8rem; font-weight: 700; line-height: 1; }
 .erp-setup-check--todo { background: var(--erp-surface); color: transparent; border: 1px solid var(--erp-rule); }
 .erp-setup-label { font-size: var(--erp-text-sm); flex: 1 1 auto; min-width: 0; }

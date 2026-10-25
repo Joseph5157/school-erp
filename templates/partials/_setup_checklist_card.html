@@ -1,4 +1,4 @@
-{# Setup checklist card: progress bar + one row per step; collapses when done. #}
+{# Setup checklist card: progress bar + the steps still to do; completed steps fold into a <details>. #}
 {% if not setup_complete %}
 <section class="erp-setup" aria-labelledby="setup-title">
     <header class="erp-setup-head">
@@ -12,19 +12,27 @@
         <div class="progress-bar" style="width: {% widthratio setup_done setup_total 100 %}%"></div>
     </div>
     <ol class="erp-setup-list">
-        {% for step in setup_steps %}
-        <li class="erp-setup-step{% if step.done %} erp-setup-step--done{% endif %}">
-            {% if step.done %}
-            <span class="erp-setup-check" aria-hidden="true">✓</span>
-            <span class="erp-setup-label">{{ step.label }}</span>
-            {% else %}
+        {% for step in setup_steps %}{% if not step.done %}
+        <li class="erp-setup-step">
             <span class="erp-setup-check erp-setup-check--todo" aria-hidden="true"></span>
             <span class="erp-setup-label">{{ step.label }}<span class="erp-setup-gap">{{ step.problem }}</span></span>
             <a class="btn {% if step.is_next %}btn-primary{% else %}btn-outline-secondary{% endif %} btn-sm erp-setup-action" href="{{ step.url }}">{{ step.action }}<span class="visually-hidden">: {{ step.label }}</span></a>
-            {% endif %}
         </li>
-        {% endfor %}
+        {% endif %}{% endfor %}
     </ol>
+    {% if setup_done %}
+    <details class="erp-setup-done">
+        <summary>Show {{ setup_done }} completed step{{ setup_done|pluralize }}</summary>
+        <ul class="erp-setup-list">
+            {% for step in setup_steps %}{% if step.done %}
+            <li class="erp-setup-step erp-setup-step--done">
+                <span class="erp-setup-check" aria-hidden="true">✓</span>
+                <span class="erp-setup-label">{{ step.label }}</span>
+            </li>
+            {% endif %}{% endfor %}
+        </ul>
+    </details>
+    {% endif %}
 </section>
 {% else %}
 <p class="erp-setup-complete"><span class="erp-setup-check" aria-hidden="true">✓</span>School setup complete</p>

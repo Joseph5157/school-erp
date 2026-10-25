@@ -1,4 +1,5 @@
 from datetime import date
+from unittest import mock
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
@@ -189,6 +190,28 @@ class OverviewSetupStateTests(AuthorizationClientsMixin, TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Set up your school")
         self.assertContains(response, reverse("core:academic-year-list"))
+
+    def test_brand_new_school_shows_setup_before_cards(self):
+        content = self.administrator.get(reverse("core:admin-overview")).content.decode()
+        self.assertLess(content.index("Set up your school"), content.index("Applicants awaiting decision"))
+
+    def test_cards_precede_checklist_once_the_foundation_exists(self):
+        # foundation_incomplete has its own unit tests; here only the page order is under test.
+        with mock.patch("core.views.setup_checklist.foundation_incomplete", return_value=False):
+            content = self.administrator.get(reverse("core:admin-overview")).content.decode()
+        self.assertLess(content.index("Applicants awaiting decision"), content.index("Set up your school"))
+
+    def test_checklist_lists_only_open_steps_and_folds_the_done_ones(self):
+        School.objects.create(name="Greenwood High")
+        response = self.administrator.get(reverse("core:admin-overview"))
+        content = response.content.decode()
+        self.assertContains(response, 'class="erp-setup-done"')
+        self.assertContains(response, " completed steps</summary>")
+        done_html = content[content.index('class="erp-setup-done"'):]
+        open_html = content[content.index('class="erp-setup-list"'):content.index('class="erp-setup-done"')]
+        self.assertIn("School profile", done_html)
+        self.assertNotIn("School profile", open_html)
+        self.assertEqual(open_html.count("btn-primary"), 1)  # only the next step is filled
 
 
 class BreadcrumbMapTests(TestCase):

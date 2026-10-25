@@ -2,7 +2,7 @@
 {% block title %}Overview{% endblock %}
 {% block content %}
 {% include "partials/_page_header.html" with eyebrow="School administration" title="Overview" purpose="What needs attention today." only %}
-{% include "partials/_setup_checklist_card.html" %}
+{% if setup_first %}{% include "partials/_setup_checklist_card.html" %}{% endif %}
 {% if cards %}
 <div class="erp-stat-grid">
     {% for card in cards %}{% include "partials/_stat_card.html" with card=card only %}{% endfor %}
@@ -10,4 +10,5 @@
 {% elif setup_complete %}
 <p class="text-muted">Nothing to show for your role.</p>
 {% endif %}
+{% if not setup_first %}{% include "partials/_setup_checklist_card.html" %}{% endif %}
 {% endblock %}
