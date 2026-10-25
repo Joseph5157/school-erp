@@ -43,6 +43,13 @@
   --erp-text-base: 1rem;
   --erp-text-lg: 1.25rem;
   --erp-text-title: clamp(1.65rem, 1.35rem + 1vw, 2.2rem);
+  /* Table-only type and spacing (UI-14): shared by the panel tables and report-card tables. */
+  --erp-table-head-size: .8125rem;
+  --erp-table-head-weight: 600;
+  --erp-table-head-tracking: .04em;
+  --erp-table-pad-y: .75rem;
+  --erp-table-pad-x: 1rem;
+  --erp-table-head-pad-y: .75rem;
   --erp-line-tight: 1.2;
   --erp-line-body: 1.55;
   --erp-focus-color: #0b6e4f;
@@ -1172,7 +1179,7 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 .erp-rc-values dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
 .erp-rc-table { width: 100%; border-collapse: collapse; margin-top: var(--erp-space-2); }
 .erp-rc-table th, .erp-rc-table td { padding: .6rem .75rem; text-align: left; border-top: 1px solid var(--erp-rule); }
-.erp-rc-table thead th { border-top: 0; font-size: var(--erp-text-xs); font-weight: 600; letter-spacing: .03em; text-transform: uppercase; color: var(--erp-ink-soft); }
+.erp-rc-table thead th { border-top: 0; font-size: var(--erp-table-head-size); font-weight: var(--erp-table-head-weight); letter-spacing: var(--erp-table-head-tracking); text-transform: uppercase; color: var(--erp-ink-soft); }
 .erp-rc-table tbody th { font-weight: 700; }
 .erp-rc-table tbody tr:nth-child(even) { background: var(--erp-paper); }
 .erp-rc-remark { max-width: 46rem; margin: var(--erp-space-5) 0 var(--erp-space-3); background: var(--erp-accent-wash); border-radius: var(--erp-radius); padding: var(--erp-space-3) var(--erp-space-4); }
@@ -1220,11 +1227,11 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 /* Data table: scannable header, row hover, no outer rules (the panel draws them). */
 .erp-panel .table { margin-bottom: 0; --bs-table-bg: transparent; }
 .erp-panel .table > thead th {
-  padding: .7rem var(--erp-space-4); background: var(--erp-paper); border-bottom: 1px solid var(--erp-rule);
-  font-size: var(--erp-text-xs); font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  padding: var(--erp-table-head-pad-y) var(--erp-table-pad-x); background: var(--erp-paper); border-bottom: 1px solid var(--erp-rule);
+  font-size: var(--erp-table-head-size); font-weight: var(--erp-table-head-weight); letter-spacing: var(--erp-table-head-tracking); text-transform: uppercase;
   color: var(--erp-ink-soft); white-space: nowrap;
 }
-.erp-panel .table > tbody td, .erp-panel .table > tbody th { padding: .75rem var(--erp-space-4); vertical-align: middle; border-color: var(--erp-rule); }
+.erp-panel .table > tbody td, .erp-panel .table > tbody th { padding: var(--erp-table-pad-y) var(--erp-table-pad-x); vertical-align: middle; border-color: var(--erp-rule); }
 .erp-panel .table > tbody > tr:last-child > * { border-bottom: 0; }
 /* Hover only where a pointer can hover; on touch a tapped row would stay tinted. */
 @media (hover: hover) { .erp-panel .table > tbody > tr:hover > * { background: var(--erp-paper); } }
