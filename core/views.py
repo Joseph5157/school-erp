@@ -867,6 +867,7 @@ def admin_overview(request):
         "core/admin_overview.html",
         {
             "cards": cards,
+            "glance_cards": dashboard.glance_cards(request.user),
             "attention_cards": attention_cards,
             "clear_cards": clear_cards,
             "setup_steps": steps,

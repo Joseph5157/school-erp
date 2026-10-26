@@ -3,5 +3,5 @@
     <h3 class="erp-stat-label">{{ card.title }}</h3>
     <p class="erp-stat-value">{{ card.count }}</p>
     <p class="erp-stat-summary">{{ card.summary }}{% if card.detail %} {{ card.detail }}{% endif %}</p>
-    <a class="btn {% if primary %}btn-primary{% else %}btn-outline-primary{% endif %} btn-sm mt-auto align-self-start" href="{{ card.url }}">Open<span class="visually-hidden"> {{ card.title }}</span></a>
+    {% if card.url %}<a class="btn {% if primary %}btn-primary{% else %}btn-outline-primary{% endif %} btn-sm mt-auto align-self-start" href="{{ card.url }}">Open<span class="visually-hidden"> {{ card.title }}</span></a>{% endif %}
 </article>

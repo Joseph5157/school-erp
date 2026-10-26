@@ -970,6 +970,9 @@ body.has-tabbar .erp-messages {
 
 /* "Set up your school" checklist card on the Overview page. */
 .erp-stat-grid.erp-stat-grid--attention { grid-template-columns: repeat(auto-fill, minmax(15rem, 22rem)); }
+.erp-stat-grid.erp-stat-grid--glance { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: var(--erp-space-4); }
+.erp-stat-grid--glance .erp-stat-value { font-size: 1.75rem; }
+@media (min-width: 62rem) { .erp-stat-grid.erp-stat-grid--glance { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
 .erp-all-clear { margin: 0 0 var(--erp-space-4); padding: var(--erp-space-3) var(--erp-space-4); border-radius: var(--erp-radius); background: var(--erp-ok-wash); color: var(--erp-ok-strong); font-size: var(--erp-text-sm); font-weight: 600; }
 .erp-clear-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--erp-space-2) var(--erp-space-4); margin: var(--erp-space-4) 0; color: var(--erp-ink-soft); font-size: var(--erp-text-sm); }
 .erp-clear-title { font-size: var(--erp-text-sm); font-weight: 600; margin: 0; }
