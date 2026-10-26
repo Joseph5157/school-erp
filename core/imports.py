@@ -404,6 +404,9 @@ def validate(sheets, academic_year, enrollment_start_date):
         elif len(full_name) > 255:
             error(SHEET_STUDENTS, row, "Full name", "Full name is longer than 255 characters.")
             ok = False
+        elif not full_name.isascii() or not full_name.isprintable():
+            error(SHEET_STUDENTS, row, "Full name", "Enter the name in English (Latin letters) only.")
+            ok = False
 
         date_of_birth = None
         if record.get("date_of_birth"):

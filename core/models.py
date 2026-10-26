@@ -11,6 +11,11 @@ from django.db.models import F, Value
 from django.db.models.functions import Coalesce, NullIf, Upper
 from django.utils import timezone
 
+ENGLISH_NAME_VALIDATOR = RegexValidator(
+    r"^[\x20-\x7E]+\Z",
+    "Enter the name in English (Latin letters) only.",
+)
+
 
 def _as_date(value):
     """Normalise a date-like value (date or ISO string) to a `datetime.date`.
@@ -410,7 +415,7 @@ class Applicant(models.Model):
         ACCEPTED = "ACCEPTED", "Accepted"
         REJECTED = "REJECTED", "Rejected"
 
-    full_name = models.CharField(max_length=255)
+    full_name = models.CharField(max_length=255, validators=[ENGLISH_NAME_VALIDATOR])
     date_of_birth = models.DateField(null=True, blank=True)
     email = models.EmailField(blank=True)
     phone = models.CharField(max_length=50, blank=True)
@@ -629,11 +634,11 @@ class Student(models.Model):
     applicant = models.OneToOneField(
         Applicant, on_delete=models.PROTECT, related_name="student"
     )
-    full_name = models.CharField(max_length=255)
+    full_name = models.CharField(max_length=255, validators=[ENGLISH_NAME_VALIDATOR])
     date_of_birth = models.DateField(null=True, blank=True)
     email = models.EmailField(blank=True)
     phone = models.CharField(max_length=50, blank=True)
-    status = models.CharField(max_length=10, choices=Status.choices, default=Status.ACTIVE)
+    status =models.CharField(max_length=10, choices=Status.choices, default=Status.ACTIVE)
     status_changed_at = models.DateTimeField(null=True, blank=True)
     admission_number = models.CharField(
         max_length=30,
