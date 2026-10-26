@@ -222,7 +222,7 @@ class Command(BaseCommand):
         cells = colour_edges(edges)
 
         created = 0
-        for row, cell in zip(owners, cells):
+        for row, cell in zip(owners, cells, strict=True):
             TimetableSlot.create(
                 period=periods[cell // len(WEEKDAYS)], weekday=cell % len(WEEKDAYS),
                 section=row.section, offering=row.offering, start_date=self.year.start_date,

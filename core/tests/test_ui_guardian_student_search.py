@@ -2,11 +2,10 @@
 
 from datetime import date
 
-from django.test import TestCase
-from django.urls import reverse
-
 from django.db import connection
+from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
+from django.urls import reverse
 
 from core.models import Applicant, ApplicantGuardian, Guardian, Student, StudentGuardian
 from core.tests.phase4_fixtures import Phase4Fixture
@@ -129,10 +128,13 @@ class GuardianStudentSearchTests(AuthorizationClientsMixin, Phase4Fixture, TestC
         self.assertLess(content.index("Asha Rao"), content.index("Aaa Younger"))
 
     def test_dash_only_when_guardian_has_neither(self):
-        Guardian.objects.create(full_name="Lonely Guardian")
+        # Give the guardian an email so an empty email cell cannot render "-";
+        # only the Children cell can.
+        Guardian.objects.create(full_name="Lonely Guardian", email="lonely@example.com")
         response = self.administrator.get(self.guardians_url, {"q": "Lonely"})
         self.assertNotContains(response, "(Applicant")
-        self.assertContains(response, "<td>-</td>", html=False)
+        self.assertContains(response, "lonely@example.com")
+        self.assertContains(response, "<td>-</td>", count=1, html=False)
 
     def test_applicant_who_became_a_student_is_not_listed_twice(self):
         # family() students were accepted applicants; give one a guardian link
