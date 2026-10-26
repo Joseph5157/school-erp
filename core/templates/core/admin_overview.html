@@ -3,6 +3,12 @@
 {% block content %}
 {% include "partials/_page_header.html" with eyebrow="School administration" title="Overview" purpose="What needs attention today." only %}
 {% if setup_first %}{% include "partials/_setup_checklist_card.html" %}{% endif %}
+<section aria-labelledby="glance-title">
+    <h2 class="erp-section-title" id="glance-title">School at a glance</h2>
+    <div class="erp-stat-grid erp-stat-grid--glance">
+        {% for card in glance_cards %}{% include "partials/_stat_card.html" with card=card only %}{% endfor %}
+    </div>
+</section>
 {% if cards %}
 {% if attention_cards %}
 <section aria-labelledby="attention-title">

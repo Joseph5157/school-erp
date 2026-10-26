@@ -5,14 +5,22 @@ count and the destination cannot disagree. A card is omitted when the user
 lacks the permission the destination page requires.
 """
 
-from django.db.models import Min
+from django.contrib.auth import get_user_model
+from django.db.models import Count, Min, Q
 from django.urls import reverse
 
 from core import guardian_access, nav_badges, reports
 from core import models as core_models
 from core.models import (
+    TEACHERS_GROUP_NAME,
     AcademicEnrollment,
     Applicant,
+    AttendanceEntry,
+    AttendanceRegister,
+    AttendanceStatus,
+    ClassGrade,
+    GuardianAccount,
+    Student,
 )
 
 
@@ -116,3 +124,53 @@ def split_cards(cards):
 def overview_cards(user):
     today = core_models.business_today()  # looked up late so tests can pin it
     return [build(today) for build, perm in _CARDS if user.has_perm(perm)]
+
+
+def _glance_card(key, title, count, summary, url, user, perm):
+    # The headline figure is shown to every administrator; only the link needs the permission.
+    return {
+        "key": key, "title": title, "count": count, "summary": summary,
+        "url": url if user.has_perm(perm) else "", "detail": "", "tone": "glance",
+    }
+
+
+def glance_cards(user):
+    """School-at-a-glance headline figures (read-only; a handful of aggregate queries)."""
+    today = core_models.business_today()
+    teachers = (
+        get_user_model().objects.filter(groups__name=TEACHERS_GROUP_NAME, is_active=True).count()
+    )
+    taken = AttendanceEntry.objects.filter(
+        register__date=today, register__status=AttendanceRegister.Status.SUBMITTED
+    ).aggregate(
+        total=Count("pk"), present=Count("pk", filter=Q(status=AttendanceStatus.PRESENT)),
+    )
+    attendance = f"{round(100 * taken['present'] / taken['total'])}%" if taken["total"] else "-"
+    return [
+        _glance_card(
+            "students", "Active students",
+            Student.objects.filter(status=Student.Status.ACTIVE).count(),
+            "Students currently enrolled with the school.",
+            reverse("core:student-list"), user, "core.view_student",
+        ),
+        _glance_card(
+            "teachers", "Teachers", teachers, "Active teacher logins.",
+            reverse("core:teacher-list"), user, "accounts.manage_teacher_accounts",
+        ),
+        _glance_card(
+            "classes", "Classes", ClassGrade.objects.count(), "Classes set up for the school.",
+            reverse("core:class-grade-list"), user, "core.view_classgrade",
+        ),
+        _glance_card(
+            "guardians", "Guardians with portal access",
+            GuardianAccount.objects.filter(revoked_at__isnull=True).count(),
+            "Guardians who can sign in to the portal.",
+            reverse("core:guardian-list"), user, "core.view_guardian",
+        ),
+        _glance_card(
+            "attendance", "Attendance today", attendance,
+            "present across registers submitted today." if taken["total"]
+            else "No register submitted today.",
+            reverse("core:attendance-register-list"), user, "core.view_attendanceregister",
+        ),
+    ]

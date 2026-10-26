@@ -2,10 +2,12 @@
 
 from datetime import date
 
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
-from core.models import Applicant, Guardian, Student, StudentGuardian
+from core.models import Applicant, ApplicantGuardian, Guardian, Student, StudentGuardian
 from core.tests.phase4_fixtures import Phase4Fixture
 from core.tests.test_authorization import AuthorizationClientsMixin
 
@@ -90,3 +92,66 @@ class GuardianStudentSearchTests(AuthorizationClientsMixin, Phase4Fixture, TestC
     def test_guardian_search_with_no_match_says_so(self):
         response = self.administrator.get(self.guardians_url, {"q": "zzzz"})
         self.assertContains(response, "No guardians match this search")
+
+    # --- guardians of applicants -------------------------------------------
+
+    def applicant_guardian(self, applicant_name, guardian_name, relationship="FATHER"):
+        applicant = Applicant.objects.create(full_name=applicant_name)
+        guardian = Guardian.objects.create(full_name=guardian_name)
+        ApplicantGuardian.objects.create(
+            applicant=applicant, guardian=guardian, relationship_type=relationship
+        )
+        return applicant, guardian
+
+    def test_applicant_only_guardian_shows_applicant_with_label_and_link(self):
+        applicant, _ = self.applicant_guardian("Aarav Rao", "Vikram Rao")
+        response = self.administrator.get(self.guardians_url, {"q": "Vikram"})
+        self.assertContains(response, "Aarav Rao")
+        self.assertContains(response, "(Applicant, Father)")
+        self.assertContains(
+            response, reverse("core:applicant-detail", args=[applicant.pk])
+        )
+
+    def test_guardian_search_finds_parent_by_applicant_name(self):
+        self.applicant_guardian("Aarav Rao", "Vikram Rao")
+        response = self.administrator.get(self.guardians_url, {"q": "Aarav"})
+        self.assertEqual(self.names(response, "guardians"), ["Vikram Rao"])
+
+    def test_students_are_listed_before_applicants(self):
+        applicant = Applicant.objects.create(full_name="Aaa Younger")
+        father = Guardian.objects.get(full_name="Rajesh Rao")
+        ApplicantGuardian.objects.create(
+            applicant=applicant, guardian=father, relationship_type="FATHER"
+        )
+        response = self.administrator.get(self.guardians_url, {"q": "Rajesh"})
+        content = response.content.decode()
+        self.assertLess(content.index("Asha Rao"), content.index("Aaa Younger"))
+
+    def test_dash_only_when_guardian_has_neither(self):
+        # Give the guardian an email so an empty email cell cannot render "-";
+        # only the Children cell can.
+        Guardian.objects.create(full_name="Lonely Guardian", email="lonely@example.com")
+        response = self.administrator.get(self.guardians_url, {"q": "Lonely"})
+        self.assertNotContains(response, "(Applicant")
+        self.assertContains(response, "lonely@example.com")
+        self.assertContains(response, "<td>-</td>", count=1, html=False)
+
+    def test_applicant_who_became_a_student_is_not_listed_twice(self):
+        # family() students were accepted applicants; give one a guardian link
+        # as the admissions workflow does, and expect only the student entry.
+        father = Guardian.objects.get(full_name="Rajesh Rao")
+        ApplicantGuardian.objects.create(
+            applicant=self.asha.applicant, guardian=father, relationship_type="FATHER"
+        )
+        response = self.administrator.get(self.guardians_url, {"q": "Rajesh"})
+        self.assertNotContains(response, "(Applicant")
+
+    def test_guardian_list_query_count_does_not_grow_with_guardians(self):
+        self.administrator.get(self.guardians_url)  # warm caches
+        with CaptureQueriesContext(connection) as one:
+            self.administrator.get(self.guardians_url)
+        for i in range(5):
+            self.applicant_guardian(f"Child{i} Nair", f"Parent{i} Nair")
+        with CaptureQueriesContext(connection) as many:
+            self.administrator.get(self.guardians_url)
+        self.assertEqual(len(many), len(one))
