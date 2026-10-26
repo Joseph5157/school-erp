@@ -100,6 +100,7 @@ from core.models import (
     AcademicTerm,
     AcademicYear,
     Applicant,
+    ApplicantGuardian,
     Assessment,
     AssessmentTeacherAssignment,
     AttendanceEntry,
@@ -2248,6 +2249,11 @@ def guardian_list(request):
                     guardian=OuterRef("pk"), student__full_name__icontains=query
                 )
             )
+            | Exists(
+                ApplicantGuardian.objects.filter(
+                    guardian=OuterRef("pk"), applicant__full_name__icontains=query
+                )
+            )
         )
     guardians = guardians.prefetch_related(
         Prefetch(
@@ -2256,7 +2262,16 @@ def guardian_list(request):
                 "student__full_name"
             ),
             to_attr="child_links",
-        )
+        ),
+        # Applicants not yet admitted as students; progressed ones already
+        # appear above through their StudentGuardian links.
+        Prefetch(
+            "applicant_links",
+            queryset=ApplicantGuardian.objects.filter(applicant__student__isnull=True)
+            .select_related("applicant")
+            .order_by("applicant__full_name"),
+            to_attr="applicant_child_links",
+        ),
     )
     table = build_table(request, guardians, GUARDIAN_COLUMNS, "name")
     return render(

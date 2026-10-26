@@ -23,7 +23,7 @@
         {% for guardian in guardians %}
         <tr>
             <td><a href="{% url 'core:guardian-detail' guardian.pk %}">{{ guardian.full_name }}</a></td>
-            <td>{% for link in guardian.child_links %}<div><a href="{% url 'core:student-detail' link.student.pk %}">{{ link.student.full_name }}</a> <span class="text-muted">({{ link.get_relationship_type_display }})</span></div>{% empty %}-{% endfor %}</td>
+            <td>{% for link in guardian.child_links %}<div><a href="{% url 'core:student-detail' link.student.pk %}">{{ link.student.full_name }}</a> <span class="text-muted">({{ link.get_relationship_type_display }})</span></div>{% endfor %}{% for link in guardian.applicant_child_links %}<div><a href="{% url 'core:applicant-detail' link.applicant.pk %}">{{ link.applicant.full_name }}</a> <span class="text-muted">(Applicant, {{ link.get_relationship_type_display }})</span></div>{% endfor %}{% if not guardian.child_links and not guardian.applicant_child_links %}-{% endif %}</td>
             <td class="text-nowrap">{{ guardian.phone|default:"-" }}</td>
             <td>{{ guardian.email|default:"-" }}</td>
         </tr>
