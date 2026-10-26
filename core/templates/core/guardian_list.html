@@ -2,7 +2,18 @@
 {% block title %}Guardians{% endblock %}
 {% block content %}
 {% if perms.core.add_guardian %}{% url 'core:guardian-create' as guardian_create_url %}{% endif %}
-{% include "partials/_page_header.html" with eyebrow="People" title="Guardians" purpose="Parents and carers linked to students, and their portal access." primary_url=guardian_create_url primary_label="Create Guardian" only %}
+{% include "partials/_page_header.html" with eyebrow="People" title="Guardians" purpose="Parents and carers linked to students, and their portal access. Search by parent or student name, phone or email." primary_url=guardian_create_url primary_label="Create Guardian" only %}
+<form method="get" class="erp-toolbar" role="search" aria-label="Search guardians">
+    {% if table.sort_param %}<input type="hidden" name="sort" value="{{ table.sort_param }}">{% endif %}
+    <div class="row g-2 align-items-end">
+        <div class="col-12 col-md-6 col-lg-5">
+            <label for="guardian-search" class="form-label">Search guardians</label>
+            <input type="search" id="guardian-search" name="q" value="{{ query }}" class="form-control" placeholder="Parent or student name, phone, or email">
+        </div>
+        <div class="col-auto"><button type="submit" class="btn btn-outline-secondary">Search</button></div>
+        {% if query %}<div class="col-auto"><a class="btn btn-link" href="{% url 'core:guardian-list' %}">Clear search</a></div>{% endif %}
+    </div>
+</form>
 {% if perms.core.view_guardianaccessreview %}<p class="small"><a href="{% url 'core:guardian-access-reviews' %}">Guardian access reviews</a>{% if perms.accounts.clear_login_lockout %} &middot; <a href="{% url 'core:login-lockouts' %}">Sign-in lockouts</a>{% endif %}</p>{% endif %}
 <div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Guardians" tabindex="0">
@@ -12,12 +23,13 @@
         {% for guardian in guardians %}
         <tr>
             <td><a href="{% url 'core:guardian-detail' guardian.pk %}">{{ guardian.full_name }}</a></td>
+            <td>{% for link in guardian.child_links %}<div><a href="{% url 'core:student-detail' link.student.pk %}">{{ link.student.full_name }}</a> <span class="text-muted">({{ link.get_relationship_type_display }})</span></div>{% empty %}-{% endfor %}</td>
             <td class="text-nowrap">{{ guardian.phone|default:"-" }}</td>
             <td>{{ guardian.email|default:"-" }}</td>
         </tr>
         {% empty %}
         <tr>
-            <td colspan="3">No Guardians yet.{% if perms.core.add_guardian %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:guardian-create' %}">Add guardian</a>{% endif %}</td>
+            <td colspan="4">{% if query %}No guardians match this search. <a href="{% url 'core:guardian-list' %}">Clear search</a>{% else %}No Guardians yet.{% if perms.core.add_guardian %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:guardian-create' %}">Add guardian</a>{% endif %}{% endif %}</td>
         </tr>
         {% endfor %}
     </tbody>

@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Students{% endblock %}
 {% block content %}
-{% include "partials/_page_header.html" with eyebrow="People" title="Students" purpose="Search by name, email or phone; filter by class and status." only %}
+{% include "partials/_page_header.html" with eyebrow="People" title="Students" purpose="Search by student or parent name, email or phone; filter by class and status." only %}
 <form method="get" class="erp-toolbar" role="search" aria-label="Filter students">
     {% if table.sort_param %}<input type="hidden" name="sort" value="{{ table.sort_param }}">{% endif %}
     <div class="row g-2 align-items-end">
         <div class="col-12 col-md-5 col-lg-4">
             <label for="student-search" class="form-label">Search students</label>
-            <input type="search" id="student-search" name="q" value="{{ query }}" class="form-control" placeholder="Name, email, or phone">
+            <input type="search" id="student-search" name="q" value="{{ query }}" class="form-control" placeholder="Student or parent name, email, or phone">
         </div>
         <div class="col-6 col-md-3 col-lg-2">
             <label for="student-status" class="form-label">Status</label>
@@ -67,7 +67,7 @@
             </td>
             <td>{{ student.current_class|default:"-" }}</td>
             <td>{{ student.current_section|default:"-" }}</td>
-            <td>{{ student.guardian_name|default:"-" }}</td>
+            <td>{% for link in student.guardian_rows %}<div>{{ link.guardian.full_name }} <span class="text-muted">({{ link.get_relationship_type_display }})</span></div>{% empty %}-{% endfor %}</td>
             <td>{% include "partials/_status_badge.html" with label=student.get_status_display tone=student.status|lower only %}</td>
         </tr>
         {% empty %}

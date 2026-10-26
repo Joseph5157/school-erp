@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
-from django.db.models import Count, Exists, OuterRef, Q, Subquery
+from django.db.models import Count, Exists, OuterRef, Prefetch, Q, Subquery
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -2227,6 +2227,7 @@ def applicant_guardian_create(request, pk):
 
 GUARDIAN_COLUMNS = (
     Column("Name", "name", ("full_name",)),
+    Column("Children"),
     Column("Phone"),
     Column("Email"),
 )
@@ -2234,11 +2235,33 @@ GUARDIAN_COLUMNS = (
 
 @administrator_required("core.view_guardian")
 def guardian_list(request):
-    table = build_table(request, Guardian.objects.all(), GUARDIAN_COLUMNS, "name")
+    query = request.GET.get("q", "").strip()
+    guardians = Guardian.objects.all()
+    if query:
+        guardians = guardians.filter(
+            Q(full_name__icontains=query)
+            | Q(phone__icontains=query)
+            | Q(email__icontains=query)
+            | Exists(
+                StudentGuardian.objects.filter(
+                    guardian=OuterRef("pk"), student__full_name__icontains=query
+                )
+            )
+        )
+    guardians = guardians.prefetch_related(
+        Prefetch(
+            "student_links",
+            queryset=StudentGuardian.objects.select_related("student").order_by(
+                "student__full_name"
+            ),
+            to_attr="child_links",
+        )
+    )
+    table = build_table(request, guardians, GUARDIAN_COLUMNS, "name")
     return render(
         request,
         "core/guardian_list.html",
-        {"guardians": table.page, "table": table},
+        {"guardians": table.page, "table": table, "query": query},
     )
 
 
@@ -2818,12 +2841,19 @@ def student_list(request):
             Q(full_name__icontains=query)
             | Q(email__icontains=query)
             | Q(phone__icontains=query)
+            | Exists(
+                StudentGuardian.objects.filter(student=OuterRef("pk")).filter(
+                    Q(guardian__full_name__icontains=query)
+                    | Q(guardian__phone__icontains=query)
+                    | Q(guardian__email__icontains=query)
+                )
+            )
         )
     if status:
         students = students.filter(status=status)
 
-    # Current-year placement and one guardian name, resolved in the page query
-    # (subqueries) rather than per row.
+    # Current-year placement resolved in the page query (subqueries) rather
+    # than per row; guardians are prefetched for the page.
     active_enrollments = AcademicEnrollment.objects.filter(
         student=OuterRef("pk"),
         status=AcademicEnrollment.Status.ACTIVE,
@@ -2832,11 +2862,14 @@ def student_list(request):
     students = students.annotate(
         current_class=Subquery(active_enrollments.values("class_grade__name")[:1]),
         current_section=Subquery(active_enrollments.values("section__name")[:1]),
-        guardian_name=Subquery(
-            StudentGuardian.objects.filter(student=OuterRef("pk"))
-            .values("guardian__full_name")
-            .order_by("guardian__full_name")[:1]
-        ),
+    ).prefetch_related(
+        Prefetch(
+            "guardian_links",
+            queryset=StudentGuardian.objects.select_related("guardian").order_by(
+                "relationship_type", "guardian__full_name"
+            ),
+            to_attr="guardian_rows",
+        )
     )
 
     if chip == "new":
