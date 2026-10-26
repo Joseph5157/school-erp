@@ -107,13 +107,13 @@ class GuardianListTests(D13AFixture, TestCase):
     def test_shell_and_rows_in_supplied_order(self):
         response = self.client.get(self.guardians_url)
         content = response.content.decode()
-        self.assert_panel_shell(content, "Guardians", 3)
+        self.assert_panel_shell(content, "Guardians", 4)
         self.assertEqual(
             [g.pk for g in response.context["guardians"]], [g.pk for g in Guardian.objects.all()]
         )
         self.assertIn(LONG_NAME, content)
         self.assertIn("555-0100", content)
-        self.assertNotIn("erp-toolbar", content)  # no decorative search toolbar
+        self.assertIn('id="guardian-search"', content)  # working search by parent or child
 
     def test_paginates_25_per_page_with_count_footer(self):
         for i in range(30):

@@ -180,10 +180,11 @@ class StudentListFilterTests(AuthorizationClientsMixin, Phase4Fixture, TestCase)
         response = self.administrator.get(self.url)
         row = response.context["students"][0]
         self.assertEqual((row.current_class, row.current_section), ("Grade 6", "A"))
-        self.assertEqual(row.guardian_name, "Rajesh Rao")
+        self.assertEqual(row.guardian_rows[0].guardian.full_name, "Rajesh Rao")
         self.assertContains(response, "Asha Rao")
         self.assertContains(response, "A-001")
         self.assertContains(response, "Rajesh Rao")
+        self.assertContains(response, "(Father)")
         self.assertContains(response, "Active")
 
     # --- filters combined with sorting and pagination ----------------------
