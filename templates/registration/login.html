@@ -1,35 +1,80 @@
 {% extends "base.html" %}
 {% block title %}Log in{% endblock %}
 {% block content %}
-<div class="erp-auth">
-    <h1>Log in</h1>
-    <p class="text-secondary">Use the username the school gave you.</p>
-    {% if form.non_field_errors %}
-    <div class="alert alert-danger" id="login-error" role="alert">{% for error in form.non_field_errors %}{{ error }}{% endfor %}</div>
-    {% endif %}
-    <form method="post" novalidate>
-        {% csrf_token %}
-        <div class="mb-3">
-            <label class="form-label" for="{{ form.username.id_for_label }}">Username</label>
-            <input type="text" class="form-control form-control-lg{% if form.username.errors %} is-invalid{% endif %}"
-                   name="{{ form.username.html_name }}" id="{{ form.username.id_for_label }}"
-                   value="{{ form.username.value|default_if_none:'' }}"
-                   {% if form.username.errors %}aria-invalid="true" aria-describedby="id_username_error" {% endif %}autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus>
-            {% for error in form.username.errors %}<div class="text-danger small mt-1" id="id_username_error" role="alert">{{ error }}</div>{% endfor %}
-        </div>
-        <div class="mb-4">
-            <label class="form-label" for="{{ form.password.id_for_label }}">Password</label>
-            <div class="erp-password">
-                <input type="password" class="form-control form-control-lg{% if form.password.errors %} is-invalid{% endif %}"
-                       name="{{ form.password.html_name }}" id="{{ form.password.id_for_label }}"
-                       {% if form.password.errors %}aria-invalid="true" aria-describedby="id_password_error" {% endif %}autocomplete="current-password" required>
-                <button type="button" class="btn btn-link" data-erp-toggle-password aria-controls="{{ form.password.id_for_label }}" hidden>Show</button>
+<div class="erp-login">
+    <div class="erp-auth erp-login-form">
+        <p class="erp-login-eyebrow">Welcome back</p>
+        <h1>Log in</h1>
+        <p class="text-secondary">Use the username the school gave you.</p>
+        {% if form.non_field_errors %}
+        <div class="alert alert-danger" id="login-error" role="alert">{% for error in form.non_field_errors %}{{ error }}{% endfor %}</div>
+        {% endif %}
+        <form method="post" novalidate>
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="form-label" for="{{ form.username.id_for_label }}">Username</label>
+                <input type="text" class="form-control form-control-lg{% if form.username.errors %} is-invalid{% endif %}"
+                       name="{{ form.username.html_name }}" id="{{ form.username.id_for_label }}"
+                       value="{{ form.username.value|default_if_none:'' }}"
+                       {% if form.username.errors %}aria-invalid="true" aria-describedby="id_username_error" {% endif %}autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus>
+                {% for error in form.username.errors %}<div class="text-danger small mt-1" id="id_username_error" role="alert">{{ error }}</div>{% endfor %}
             </div>
-            {% for error in form.password.errors %}<div class="text-danger small mt-1" id="id_password_error" role="alert">{{ error }}</div>{% endfor %}
+            <div class="mb-4">
+                <label class="form-label" for="{{ form.password.id_for_label }}">Password</label>
+                <div class="erp-password">
+                    <input type="password" class="form-control form-control-lg{% if form.password.errors %} is-invalid{% endif %}"
+                           name="{{ form.password.html_name }}" id="{{ form.password.id_for_label }}"
+                           {% if form.password.errors %}aria-invalid="true" aria-describedby="id_password_error" {% endif %}autocomplete="current-password" required>
+                    <button type="button" class="btn btn-link" data-erp-toggle-password aria-controls="{{ form.password.id_for_label }}" hidden>Show</button>
+                </div>
+                {% for error in form.password.errors %}<div class="text-danger small mt-1" id="id_password_error" role="alert">{{ error }}</div>{% endfor %}
+            </div>
+            {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+            <button type="submit" class="btn btn-primary btn-lg w-100">Log in</button>
+        </form>
+        <p class="small text-secondary mt-3 mb-0">Forgot your password? Ask the school office to reset it.</p>
+    </div>
+    {# Desktop-only showcase panel. Static copy only: the login page must not query school data. #}
+    <aside class="erp-login-showcase" aria-label="About School ERP">
+        <p class="erp-login-help">Need help? Ask the school office.</p>
+        {# Decorative: books, apple, pencil and graduation cap. #}
+        <svg class="erp-login-art" viewBox="0 0 300 260" aria-hidden="true" focusable="false">
+            <circle cx="150" cy="130" r="118" fill="rgba(255,255,255,.05)"/>
+            <ellipse cx="150" cy="234" rx="112" ry="9" fill="rgba(0,0,0,.2)"/>
+            <rect x="52" y="194" width="196" height="36" rx="6" fill="#e9b949"/>
+            <rect x="62" y="201" width="178" height="22" rx="3" fill="#fffaf0"/>
+            <path d="M70 208h160M70 215h160" stroke="#eadfc6" stroke-width="2"/>
+            <rect x="68" y="160" width="170" height="34" rx="6" fill="#cfe6da"/>
+            <rect x="76" y="166" width="154" height="22" rx="3" fill="#ffffff"/>
+            <rect x="92" y="160" width="14" height="34" fill="#1f6b52"/>
+            <rect x="80" y="130" width="148" height="30" rx="6" fill="#f28c6b"/>
+            <rect x="88" y="136" width="132" height="18" rx="3" fill="#fff4ee"/>
+            <circle cx="168" cy="113" r="18" fill="#e4573d"/>
+            <path d="M168 96c0-6 2-10 6-13" stroke="#5b3a1e" stroke-width="3" fill="none" stroke-linecap="round"/>
+            <path d="M172 92c8-6 16-4 18 0-6 5-13 5-18 0z" fill="#7cc49b"/>
+            <circle cx="161" cy="107" r="4" fill="rgba(255,255,255,.45)"/>
+            <g transform="translate(246 70) rotate(22)">
+                <rect x="0" y="0" width="16" height="118" rx="2" fill="#f6c445"/>
+                <rect x="5" y="0" width="6" height="118" fill="#f0b429"/>
+                <rect x="0" y="-12" width="16" height="12" rx="3" fill="#f4a3b5"/>
+                <rect x="0" y="-2" width="16" height="5" fill="#c9ced3"/>
+                <path d="M0 118l8 18 8-18z" fill="#f7deb0"/>
+                <path d="M5 129l3 7 3-7z" fill="#18212b"/>
+            </g>
+            <g transform="translate(48 52)">
+                <path d="M0 18 32 4l32 14-32 14z" fill="#ffffff"/>
+                <path d="M14 24v12c0 5 36 5 36 0V24l-18 8z" fill="#e3efe9"/>
+                <path d="M60 20v16" stroke="#e9b949" stroke-width="3" stroke-linecap="round"/>
+                <circle cx="60" cy="38" r="3.5" fill="#e9b949"/>
+            </g>
+            <path d="M232 34l3 8 8 3-8 3-3 8-3-8-8-3 8-3z" fill="#e9b949"/>
+            <path d="M30 150l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" fill="#cfe6da"/>
+            <circle cx="262" cy="200" r="4" fill="#cfe6da"/>
+        </svg>
+        <div class="erp-login-pitch">
+            <h2>Your whole school, in one place</h2>
+            <p>Attendance, results and notices for the office, teachers and families.</p>
         </div>
-        {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
-        <button type="submit" class="btn btn-primary btn-lg w-100">Log in</button>
-    </form>
-    <p class="small text-secondary mt-3 mb-0">Forgot your password? Ask the school office to reset it.</p>
+    </aside>
 </div>
 {% endblock %}
