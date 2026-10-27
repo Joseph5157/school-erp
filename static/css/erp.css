@@ -540,6 +540,56 @@ body.erp { min-height: 100vh; }
 }
 .erp-auth .form-text ul { padding-left: 1.1rem; margin: .35rem 0 0; }
 
+/* Login: phones keep the single card; from 992px a split screen with a brand showcase panel. */
+.erp-login-eyebrow {
+  margin: 0 0 .25rem; color: var(--erp-brand); font-size: var(--erp-text-sm); font-weight: 600;
+}
+.erp-login-showcase { display: none; }
+@media (min-width: 992px) {
+  .erp-login {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    max-width: 72rem; min-height: min(40rem, calc(100vh - var(--erp-topbar-h) - 5rem));
+    margin: 1.5rem auto 0; overflow: hidden;
+    background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: 16px;
+    box-shadow: 0 12px 40px rgba(24, 33, 43, .08);
+  }
+  .erp-login .erp-login-form {
+    align-self: center; justify-self: center; width: 100%; max-width: 26rem;
+    margin: 0; padding: 3rem 1.5rem; border: 0; background: none;
+  }
+  .erp-login-form h1 { font-size: 2rem; }
+  .erp-login-showcase {
+    position: relative; display: flex; flex-direction: column; justify-content: space-between;
+    gap: 2rem; padding: 2rem 2.5rem 2.75rem; overflow: hidden;
+    background: var(--erp-brand-strong); color: #fff;
+  }
+  /* Two soft rings for depth, as in the reference design. */
+  .erp-login-showcase::before, .erp-login-showcase::after {
+    content: ""; position: absolute; border-radius: 50%; pointer-events: none;
+    border: 1px solid rgba(255, 255, 255, .08); background: rgba(255, 255, 255, .03);
+  }
+  .erp-login-showcase::before { width: 30rem; height: 30rem; top: -12rem; right: -10rem; }
+  .erp-login-showcase::after { width: 18rem; height: 18rem; bottom: -8rem; left: -6rem; }
+  .erp-login-showcase > * { position: relative; }
+  .erp-login-help { align-self: flex-end; margin: 0; font-size: var(--erp-text-sm); color: rgba(255, 255, 255, .8); }
+  .erp-login-preview {
+    align-self: center; width: min(100%, 22rem); padding: 1.25rem 1.35rem;
+    background: var(--erp-surface); color: var(--erp-ink); border-radius: 14px;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, .25);
+  }
+  .erp-login-preview-title { margin: 0 0 .85rem; font-weight: 700; font-size: 1.05rem; }
+  .erp-login-preview ul { display: grid; gap: .75rem; margin: 0; padding: 0; list-style: none; }
+  .erp-login-preview li { display: flex; align-items: flex-start; gap: .7rem; font-size: var(--erp-text-sm); color: var(--erp-ink-soft); }
+  .erp-login-preview b { display: block; color: var(--erp-ink); font-weight: 600; }
+  .erp-login-icon {
+    flex: 0 0 auto; display: grid; place-items: center; width: 2.25rem; height: 2.25rem;
+    border-radius: 8px; background: var(--erp-brand-wash); color: var(--erp-brand);
+  }
+  .erp-login-pitch { text-align: center; }
+  .erp-login-pitch h2 { margin: 0 0 .5rem; font-size: 1.5rem; font-weight: 700; color: #fff; }
+  .erp-login-pitch p { max-width: 24rem; margin: 0 auto; color: rgba(255, 255, 255, .8); }
+}
+
 /* ---------- Components ---------- */
 
 .erp-empty {
