@@ -37,14 +37,40 @@
     {# Desktop-only showcase panel. Static copy only: the login page must not query school data. #}
     <aside class="erp-login-showcase" aria-label="About School ERP">
         <p class="erp-login-help">Need help? Ask the school office.</p>
-        <div class="erp-login-preview" aria-hidden="true">
-            <p class="erp-login-preview-title">Today at school</p>
-            <ul>
-                <li><span class="erp-login-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M20 6 9 17l-5-5"/></svg></span><span><b>Attendance</b>Registers marked by class</span></li>
-                <li><span class="erp-login-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span><span><b>Results</b>Report cards in one place</span></li>
-                <li><span class="erp-login-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1zM16 8a5 5 0 0 1 0 8"/></svg></span><span><b>Notices</b>News from the school office</span></li>
-            </ul>
-        </div>
+        {# Decorative: books, apple, pencil and graduation cap. #}
+        <svg class="erp-login-art" viewBox="0 0 300 260" aria-hidden="true" focusable="false">
+            <circle cx="150" cy="130" r="118" fill="rgba(255,255,255,.05)"/>
+            <ellipse cx="150" cy="234" rx="112" ry="9" fill="rgba(0,0,0,.2)"/>
+            <rect x="52" y="194" width="196" height="36" rx="6" fill="#e9b949"/>
+            <rect x="62" y="201" width="178" height="22" rx="3" fill="#fffaf0"/>
+            <path d="M70 208h160M70 215h160" stroke="#eadfc6" stroke-width="2"/>
+            <rect x="68" y="160" width="170" height="34" rx="6" fill="#cfe6da"/>
+            <rect x="76" y="166" width="154" height="22" rx="3" fill="#ffffff"/>
+            <rect x="92" y="160" width="14" height="34" fill="#1f6b52"/>
+            <rect x="80" y="130" width="148" height="30" rx="6" fill="#f28c6b"/>
+            <rect x="88" y="136" width="132" height="18" rx="3" fill="#fff4ee"/>
+            <circle cx="168" cy="113" r="18" fill="#e4573d"/>
+            <path d="M168 96c0-6 2-10 6-13" stroke="#5b3a1e" stroke-width="3" fill="none" stroke-linecap="round"/>
+            <path d="M172 92c8-6 16-4 18 0-6 5-13 5-18 0z" fill="#7cc49b"/>
+            <circle cx="161" cy="107" r="4" fill="rgba(255,255,255,.45)"/>
+            <g transform="translate(246 70) rotate(22)">
+                <rect x="0" y="0" width="16" height="118" rx="2" fill="#f6c445"/>
+                <rect x="5" y="0" width="6" height="118" fill="#f0b429"/>
+                <rect x="0" y="-12" width="16" height="12" rx="3" fill="#f4a3b5"/>
+                <rect x="0" y="-2" width="16" height="5" fill="#c9ced3"/>
+                <path d="M0 118l8 18 8-18z" fill="#f7deb0"/>
+                <path d="M5 129l3 7 3-7z" fill="#18212b"/>
+            </g>
+            <g transform="translate(48 52)">
+                <path d="M0 18 32 4l32 14-32 14z" fill="#ffffff"/>
+                <path d="M14 24v12c0 5 36 5 36 0V24l-18 8z" fill="#e3efe9"/>
+                <path d="M60 20v16" stroke="#e9b949" stroke-width="3" stroke-linecap="round"/>
+                <circle cx="60" cy="38" r="3.5" fill="#e9b949"/>
+            </g>
+            <path d="M232 34l3 8 8 3-8 3-3 8-3-8-8-3 8-3z" fill="#e9b949"/>
+            <path d="M30 150l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" fill="#cfe6da"/>
+            <circle cx="262" cy="200" r="4" fill="#cfe6da"/>
+        </svg>
         <div class="erp-login-pitch">
             <h2>Your whole school, in one place</h2>
             <p>Attendance, results and notices for the office, teachers and families.</p>

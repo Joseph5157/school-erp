@@ -572,19 +572,7 @@ body.erp { min-height: 100vh; }
   .erp-login-showcase::after { width: 18rem; height: 18rem; bottom: -8rem; left: -6rem; }
   .erp-login-showcase > * { position: relative; }
   .erp-login-help { align-self: flex-end; margin: 0; font-size: var(--erp-text-sm); color: rgba(255, 255, 255, .8); }
-  .erp-login-preview {
-    align-self: center; width: min(100%, 22rem); padding: 1.25rem 1.35rem;
-    background: var(--erp-surface); color: var(--erp-ink); border-radius: 14px;
-    box-shadow: 0 18px 40px rgba(0, 0, 0, .25);
-  }
-  .erp-login-preview-title { margin: 0 0 .85rem; font-weight: 700; font-size: 1.05rem; }
-  .erp-login-preview ul { display: grid; gap: .75rem; margin: 0; padding: 0; list-style: none; }
-  .erp-login-preview li { display: flex; align-items: flex-start; gap: .7rem; font-size: var(--erp-text-sm); color: var(--erp-ink-soft); }
-  .erp-login-preview b { display: block; color: var(--erp-ink); font-weight: 600; }
-  .erp-login-icon {
-    flex: 0 0 auto; display: grid; place-items: center; width: 2.25rem; height: 2.25rem;
-    border-radius: 8px; background: var(--erp-brand-wash); color: var(--erp-brand);
-  }
+  .erp-login-art { align-self: center; width: min(100%, 24rem); height: auto; }
   .erp-login-pitch { text-align: center; }
   .erp-login-pitch h2 { margin: 0 0 .5rem; font-size: 1.5rem; font-weight: 700; color: #fff; }
   .erp-login-pitch p { max-width: 24rem; margin: 0 auto; color: rgba(255, 255, 255, .8); }
