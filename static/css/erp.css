@@ -546,6 +546,8 @@ body.erp { min-height: 100vh; }
 }
 .erp-login-showcase { display: none; }
 @media (min-width: 992px) {
+  /* .erp-content is only centred in the admin shell; centre it here too so the card stays mid-screen past 96rem. */
+  .erp-content:has(> .erp-login) { margin-inline: auto; }
   .erp-login {
     display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     max-width: 72rem; min-height: min(40rem, calc(100vh - var(--erp-topbar-h) - 5rem));
