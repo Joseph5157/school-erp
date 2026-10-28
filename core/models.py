@@ -28,6 +28,20 @@ def _as_date(value):
     return models.DateField().to_python(value)
 
 
+def _overlapping(instance, **scope):
+    """Other rows of the instance's model in `scope` whose date range meets the instance's."""
+    start_date = _as_date(instance.start_date)
+    end_date = _as_date(instance.end_date)
+    others = type(instance).objects.filter(**scope).filter(
+        models.Q(end_date__isnull=True) | models.Q(end_date__gte=start_date)
+    )
+    if end_date is not None:
+        others = others.filter(start_date__lte=end_date)
+    if instance.pk is not None:
+        others = others.exclude(pk=instance.pk)
+    return others
+
+
 def business_today():
     """Today's local business date (per settings.TIME_ZONE).
 
@@ -1006,16 +1020,7 @@ class AcademicEnrollment(models.Model):
 
     def overlapping_enrollments(self):
         """Other enrollments of this Student whose effective range meets this one."""
-        start_date = _as_date(self.start_date)
-        end_date = _as_date(self.end_date)
-        others = AcademicEnrollment.objects.filter(student_id=self.student_id).filter(
-            models.Q(end_date__isnull=True) | models.Q(end_date__gte=start_date)
-        )
-        if end_date is not None:
-            others = others.filter(start_date__lte=end_date)
-        if self.pk is not None:
-            others = others.exclude(pk=self.pk)
-        return others
+        return _overlapping(self, student_id=self.student_id)
 
     def is_effective_on(self, on_date):
         on_date = _as_date(on_date)
@@ -2101,16 +2106,7 @@ class AssessmentTeacherAssignment(models.Model):
 
     def overlapping(self):
         """Other assignments for this offering + Section whose range meets this one."""
-        start_date = _as_date(self.start_date)
-        end_date = _as_date(self.end_date)
-        others = AssessmentTeacherAssignment.objects.filter(
-            offering_id=self.offering_id, section_id=self.section_id
-        ).filter(models.Q(end_date__isnull=True) | models.Q(end_date__gte=start_date))
-        if end_date is not None:
-            others = others.filter(start_date__lte=end_date)
-        if self.pk is not None:
-            others = others.exclude(pk=self.pk)
-        return others
+        return _overlapping(self, offering_id=self.offering_id, section_id=self.section_id)
 
     # --- state ---
 
@@ -2321,18 +2317,9 @@ class SectionClassTeacher(models.Model):
 
     def overlapping(self):
         """Other assignments for this Section in this year whose range meets this one."""
-        start_date = _as_date(self.start_date)
-        end_date = _as_date(self.end_date)
-        others = SectionClassTeacher.objects.filter(
-            section_id=self.section_id, academic_year_id=self.academic_year_id
-        ).filter(
-            models.Q(end_date__isnull=True) | models.Q(end_date__gte=start_date)
+        return _overlapping(
+            self, section_id=self.section_id, academic_year_id=self.academic_year_id
         )
-        if end_date is not None:
-            others = others.filter(start_date__lte=end_date)
-        if self.pk is not None:
-            others = others.exclude(pk=self.pk)
-        return others
 
     # --- state ---
 

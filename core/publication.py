@@ -229,12 +229,6 @@ def guardian_visible_many(publications):
     return visible
 
 
-def current_publication(student, term):
-    return TermPublication.objects.filter(
-        student=student, term=term, status__in=TermPublication.CURRENT_STATUSES
-    ).first()
-
-
 # --- preview -----------------------------------------------------------------
 
 PUBLISH, REPUBLISH, INCOMPLETE = "publish", "republish", "incomplete"
