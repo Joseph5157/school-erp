@@ -23,11 +23,18 @@ def render_pdf(template_name, context):
     if os.name == "nt" and os.path.isdir(_MSYS2_BIN):
         os.environ.setdefault("WEASYPRINT_DLL_DIRECTORIES", _MSYS2_BIN)
     from weasyprint import CSS, HTML  # lazy: needs system libraries (Pango)
+    from weasyprint.text.fonts import FontConfiguration
 
-    fonts = CSS(string=_FONT_CSS.format(
+    # @font-face rules in a CSS object only take effect with a shared FontConfiguration;
+    # without it WeasyPrint silently falls back to the system's fonts.
+    font_config = FontConfiguration()
+
+    fonts = CSS(font_config=font_config, string=_FONT_CSS.format(
         regular=(FONT_DIR / "NotoSans-Regular.ttf").as_uri(),
         bold=(FONT_DIR / "NotoSans-Bold.ttf").as_uri(),
         telugu=(FONT_DIR / "NotoSansTelugu-Regular.ttf").as_uri(),
     ))
     html = render_to_string(template_name, context)
-    return HTML(string=html, base_url=str(settings.BASE_DIR)).write_pdf(stylesheets=[fonts])
+    return HTML(string=html, base_url=str(settings.BASE_DIR)).write_pdf(
+        stylesheets=[fonts], font_config=font_config
+    )
