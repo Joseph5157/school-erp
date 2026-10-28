@@ -104,6 +104,7 @@ Current status:
 - [docs/PHASE_6_GUARDIAN_PORTAL_PLAN.md](docs/PHASE_6_GUARDIAN_PORTAL_PLAN.md) — Phase 6 gate-by-gate plan, completion record and release notes
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — engineering principles, security, architecture guidance, and source-of-truth hierarchy
 - [docs/ROADMAP.md](docs/ROADMAP.md) — directional roadmap across future phases
+- [docs/OPERATIONS.md](docs/OPERATIONS.md) — running a production installation: crash logs and error emails
 - [docs/ECC_EVALUATION.md](docs/ECC_EVALUATION.md) — ECC experiment goals and evaluation framework
 - [docs/adr/README.md](docs/adr/README.md) — ADR purpose and process
 
