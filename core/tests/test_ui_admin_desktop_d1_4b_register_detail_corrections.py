@@ -14,7 +14,11 @@ from django.urls import reverse
 from django.utils import timezone
 
 from core.models import (
-    AttendanceCorrection, AttendanceEntry, AttendanceRegister, AttendanceStatus, Section,
+    AttendanceCorrection,
+    AttendanceEntry,
+    AttendanceRegister,
+    AttendanceStatus,
+    Section,
 )
 from core.tests.phase4_fixtures import Phase4Fixture
 
@@ -125,7 +129,7 @@ class DraftDetailTests(DetailFixture, TestCase):
         # Logout form + the one capture form. (The shared partial's two-line {# #} comment renders
         # literally, adding a stray "<form id=...>" text outside this gate's scope.)
         self.assertEqual(content.count('<form method="post"'), 2)
-        self.assertEqual(content.count('action="%s"' % capture), 1)
+        self.assertEqual(content.count(f'action="{capture}"'), 1)
         self.assertNotContains(response, "Submitted attendance")
 
     def test_submit_button_needs_change_register_but_save_draft_does_not(self):

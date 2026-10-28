@@ -45,9 +45,9 @@ class ListTests(Base, TestCase):
         page = html(self.administrator.get(LIST))
         self.assertRegex(page, r'<h1 class="erp-page-title">Announcements</h1>')
         self.assertEqual(page.count("<h1"), 1)
-        self.assertIn('<a class="btn btn-primary" href="%s">New notice</a>' % CREATE, page)
+        self.assertIn(f'<a class="btn btn-primary" href="{CREATE}">New notice</a>', page)
         self.assertIn("No notices yet.", page)
-        self.assertIn('<br><a class="btn btn-outline-primary btn-sm mt-2" href="%s">Publish a notice</a>' % CREATE, page)
+        self.assertIn(f'<br><a class="btn btn-outline-primary btn-sm mt-2" href="{CREATE}">Publish a notice</a>', page)
         self.assertIn('role="region" aria-label="Announcements" tabindex="0"', page)
         self.assertIn("<caption", page)
         self.assertEqual(page.count('scope="col"'), 4)
@@ -57,7 +57,7 @@ class ListTests(Base, TestCase):
         gone = self.notice(title="Old news")
         announcements.withdraw(gone, actor=self.admin, reason="Wrong date")
         page = html(self.administrator.get(LIST))
-        self.assertRegex(page, r'<th scope="row"[^>]*><a href="%s">Sports Day</a></th>' % self.detail_url(live))
+        self.assertRegex(page, rf'<th scope="row"[^>]*><a href="{self.detail_url(live)}">Sports Day</a></th>')
         self.assertRegex(page, r"erp-status--published\"><span class=\"visually-hidden\">Status: </span>Live")
         self.assertRegex(page, r"erp-status--revoked\"><span class=\"visually-hidden\">Status: </span>Withdrawn")
         self.assertEqual(page.count('scope="row"'), 2)
@@ -149,7 +149,7 @@ class PreviewTests(Base, TestCase):
         forms = [f for f in self.forms(page) if f[0] == CREATE]
         self.assertEqual(len(forms), 2)
         expected = ["csrfmiddlewaretoken", "title", "body", "audience", "class_grade", "section"]
-        for (_, body), extra in zip(forms, ("confirm", "edit")):
+        for (_, body), extra in zip(forms, ("confirm", "edit"), strict=False):
             self.assertEqual(re.findall(r'name="([^"]+)"', body), expected + [extra])
             self.assertIn(f'<input type="hidden" name="{extra}" value="1">', body)
             self.assertIn('<input type="hidden" name="title" value="Sports Day">', body)
@@ -223,13 +223,12 @@ class DetailTests(Base, TestCase):
         self.assertIn("Prepare WhatsApp messages", page)
         self.assertIn("Nothing is sent from here.", page)
         self.assertIn("Guardians stop seeing it at once.", page)
-        self.assertIn('<a href="%s">All announcements</a>' % LIST, page)
+        self.assertIn(f'<a href="{LIST}">All announcements</a>', page)
 
     def test_withdraw_form_has_a_visible_label_and_the_same_field(self):
         notice = self.notice()
         page = html(self.administrator.get(self.detail_url(notice)))
-        form = re.search(r'<form method="post" action="%s"[^>]*>(.*?)</form>' %
-                         reverse("core:announcement-withdraw", args=[notice.pk]), page, re.S).group(1)
+        form = re.search(r'<form method="post" action="{}"[^>]*>(.*?)</form>'.format(reverse("core:announcement-withdraw", args=[notice.pk])), page, re.S).group(1)
         self.assertRegex(form, r'<label for="withdraw-reason">Reason for withdrawing')
         self.assertNotIn("visually-hidden\" for", form)
         self.assertIn('id="withdraw-reason" name="reason" maxlength="200"', form)

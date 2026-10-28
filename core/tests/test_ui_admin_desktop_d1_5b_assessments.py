@@ -19,7 +19,14 @@ from django.test import TestCase
 from django.urls import resolve, reverse
 
 from core.breadcrumbs import breadcrumb_context
-from core.models import AcademicYear, Assessment, ResultCorrection, ResultStatus, Section, StudentResult
+from core.models import (
+    AcademicYear,
+    Assessment,
+    ResultCorrection,
+    ResultStatus,
+    Section,
+    StudentResult,
+)
 from core.tests.phase4_fixtures import Phase4Fixture
 
 User = get_user_model()
@@ -235,15 +242,15 @@ class PaginationTests(AssessmentFixture, TestCase):
 
     def test_tiebreaks_stay_ascending_when_sorting(self):
         by_subject = list(self.client.get(self.list_url, {"sort": "-subject"}).context["assessments"])
-        for a, b in zip(by_subject, by_subject[1:]):
+        for a, b in zip(by_subject, by_subject[1:], strict=False):
             if a.subject_order == b.subject_order:
                 self.assertLessEqual(a.assessment_date, b.assessment_date)
         asc = list(self.client.get(self.list_url, {"sort": "subject"}).context["assessments"])
-        for a, b in zip(asc, asc[1:]):
+        for a, b in zip(asc, asc[1:], strict=False):
             if a.subject_order == b.subject_order:
                 self.assertLessEqual(a.assessment_date, b.assessment_date)
         by_date = list(self.client.get(self.list_url, {"sort": "-date"}).context["assessments"])
-        for a, b in zip(by_date, by_date[1:]):
+        for a, b in zip(by_date, by_date[1:], strict=False):
             if a.assessment_date == b.assessment_date:
                 self.assertLessEqual(a.subject_order, b.subject_order)
 

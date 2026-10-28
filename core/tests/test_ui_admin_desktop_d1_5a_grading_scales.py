@@ -207,7 +207,7 @@ class FormPageTests(ScaleFixture, TestCase):
         page = html(self.client.get(self.update_url))
         self.assertIn('class="erp-page-title">Edit grading scale</h1>', page)
         self.assertIn('value="Standard"', page)
-        self.assertRegex(page, r'value="%d"[^>]*checked' % self.grade6.pk)
+        self.assertRegex(page, rf'value="{self.grade6.pk}"[^>]*checked')
         self.assertIn(f'href="{self.list_url}"', page)
 
     def test_blank_name_shows_summary_and_associated_error(self):
