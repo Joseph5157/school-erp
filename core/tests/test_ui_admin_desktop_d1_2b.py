@@ -85,7 +85,8 @@ class ClassTeacherMappingTests(D12BFixture, TestCase):
         cell = self.history_cell(content)
         for row in (self.past, self.current, self.planned):
             self.assertIn(reverse("core:class-teacher-end", args=[row.pk]), cell)
-        delete = lambda row: reverse("core:class-teacher-delete", args=[row.pk])
+        def delete(row):
+            return reverse("core:class-teacher-delete", args=[row.pk])
         self.assertNotIn(delete(self.past), cell)
         self.assertNotIn(delete(self.current), cell)
         self.assertIn(f'<form method="post" action="{delete(self.planned)}"', cell)

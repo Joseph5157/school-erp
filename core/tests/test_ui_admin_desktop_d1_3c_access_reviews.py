@@ -160,7 +160,7 @@ class DecisionFormTests(AccessReviewsD13CBase, TestCase):
         self.assertIn(" required", re.search(r"<select[^>]*>", body).group(0))
         self.assertIn('<option value="">Choose', select.group(1))
         values = re.findall(r'<option value="([^"]+)">([^<]+)</option>', select.group(1))
-        self.assertEqual(values, [(v, l) for v, l in response.context["decisions"]])
+        self.assertEqual(values, [(v, label) for v, label in response.context["decisions"]])
         note = re.search(r"<input[^>]*name=\"note\"[^>]*>", body).group(0)
         self.assertIn('type="text"', note)
         self.assertIn('maxlength="200"', note)
@@ -224,9 +224,9 @@ class DecisionFormTests(AccessReviewsD13CBase, TestCase):
         panel = self.panel(content, "pending-reviews-heading")
         cells = re.findall(r"<td>\s*<span class=\"erp-row-context[^>]*>.*?</td>", panel)
         self.assertEqual(len(cells), 2)
-        for cell, (student, guardian) in zip(sorted(cells), sorted([("Asha Rao", "Meena Rao"), ("Ravi Nair", "Sunil Nair")])):
-            self.assertRegex(cell, r'<span class="erp-row-context text-break">Student: %s</span>' % student)
-            self.assertRegex(cell, r'<span class="erp-row-context text-break">Guardian: %s</span>' % guardian)
+        for cell, (student, guardian) in zip(sorted(cells), sorted([("Asha Rao", "Meena Rao"), ("Ravi Nair", "Sunil Nair")]), strict=False):
+            self.assertRegex(cell, rf'<span class="erp-row-context text-break">Student: {student}</span>')
+            self.assertRegex(cell, rf'<span class="erp-row-context text-break">Guardian: {guardian}</span>')
             # label sits above the form, outside it
             self.assertLess(cell.index("Guardian: "), cell.index("<form"))
         self.assertNotIn("aria-label=\"Student:", content)

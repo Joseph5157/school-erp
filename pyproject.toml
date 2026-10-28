@@ -5,3 +5,5 @@ exclude = [".venv", "migrations"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+# Long lines are tolerated (formatting is not enforced); see docs on lint baseline.
+ignore = ["E501"]

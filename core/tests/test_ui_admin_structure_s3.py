@@ -97,7 +97,7 @@ class SidebarPageTests(AuthorizationClientsMixin, TestCase):
         self.year = make_year("2026-27", datetime.date(2026, 6, 1), datetime.date(2027, 3, 31))
 
     def active(self, response):
-        return [l["label"] for g in response.context["office_nav"] for l in g["links"] if l["active"]]
+        return [link["label"] for g in response.context["office_nav"] for link in g["links"] if link["active"]]
 
     def test_year_scoped_pages_highlight_their_sidebar_link(self):
         y = self.year.pk

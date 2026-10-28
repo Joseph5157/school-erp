@@ -163,8 +163,8 @@ class SharedShellTests(Fixture, TestCase):
                 self.assertEqual(page.count("<h1"), 1)
                 self.assertNotIn('class="h3 mb-3"', page)
                 self.assertEqual([c["label"] for c in response.context["breadcrumbs"]], trail)
-                links = [l for g in response.context["office_nav"] for l in g["links"] if l["active"]]
-                self.assertEqual([l["label"] for l in links], [active])
+                links = [link for g in response.context["office_nav"] for link in g["links"] if link["active"]]
+                self.assertEqual([link["label"] for link in links], [active])
 
     def test_forms_keep_their_post_target_csrf_and_cancel_link(self):
         for name in ("school-update", "calendar-day-create", "term-create", "term-update", "class-grade-create",
