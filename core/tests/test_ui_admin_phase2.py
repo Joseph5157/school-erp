@@ -78,6 +78,14 @@ class OverviewCardTests(AuthorizationClientsMixin, AttendanceFixtureMixin, TestC
         super().setUp()
         self.build_attendance_fixture()
 
+    def pin_today_before_year(self):
+        """The fixture's year runs 2026-06-01 to 2027-04-30; tests that expect an empty Overview
+        pin "today" before it so they do not depend on the real date (a school day with no
+        register adds an attention card)."""
+        patcher = mock.patch.object(core_models, "business_today", return_value=date(2026, 5, 1))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def test_applicants_card_counts_only_pending(self):
         Applicant.objects.create(full_name="Pending One")
         accepted = Applicant.objects.create(full_name="Done")
@@ -89,6 +97,7 @@ class OverviewCardTests(AuthorizationClientsMixin, AttendanceFixtureMixin, TestC
         self.assertEqual(data["url"], reverse("core:applicant-list") + "?status=PENDING")
 
     def test_split_puts_waiting_cards_first_and_keeps_order_in_each_group(self):
+        self.pin_today_before_year()
         Applicant.objects.create(full_name="Pending One")
         cards = overview_cards(self.admin_user)
         attention, clear = split_cards(cards)
@@ -99,6 +108,7 @@ class OverviewCardTests(AuthorizationClientsMixin, AttendanceFixtureMixin, TestC
         )
 
     def test_page_shows_waiting_card_in_full_and_zero_cards_as_links(self):
+        self.pin_today_before_year()
         Applicant.objects.create(full_name="Pending One")
         response = self.administrator.get(reverse("core:admin-overview"))
         self.assertContains(response, "Needs attention")
@@ -111,6 +121,7 @@ class OverviewCardTests(AuthorizationClientsMixin, AttendanceFixtureMixin, TestC
         self.assertEqual(content.count("btn btn-primary btn-sm mt-auto"), 1)
 
     def test_page_says_all_clear_when_every_card_is_zero(self):
+        self.pin_today_before_year()
         response = self.administrator.get(reverse("core:admin-overview"))
         self.assertContains(response, "Nothing needs attention today.")
         self.assertNotContains(response, "erp-stat-card--attention")

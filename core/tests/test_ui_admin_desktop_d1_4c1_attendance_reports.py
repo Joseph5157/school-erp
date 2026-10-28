@@ -281,6 +281,8 @@ class ReportsIndexTests(ReportsFixture, TestCase):
         content = self.client.get(self.index).content.decode().lower()
         # The sidebar's decorative nav icons (UI-16) are not charts.
         content = re.sub(r"<svg class=\"erp-nav-icon\".*?</svg>", "", content, flags=re.S)
+        # So is the mobile menu button's hamburger icon.
+        content = re.sub(r"<svg class=\"erp-hamburger\".*?</svg>", "", content, flags=re.S)
         for banned in ("<canvas", "<svg", "erp-stat"):
             self.assertNotIn(banned, content)
 
