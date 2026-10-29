@@ -219,3 +219,63 @@ if TESTING:
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+
+# Crash reporting: errors are written to the console (Railway logs) and every
+# unhandled 500 is emailed to DJANGO_ADMINS (comma-separated addresses). Each
+# installation sets ERP_INSTANCE_NAME (e.g. "st-marys") so the email subject
+# says which school it came from. config.error_reporting masks form data,
+# cookies and traceback variables so no personal data is emailed.
+ERP_INSTANCE_NAME = os.environ.get("ERP_INSTANCE_NAME", "local").strip() or "local"
+ADMINS = [
+    (address.strip(), address.strip())
+    for address in os.environ.get("DJANGO_ADMINS", "").split(",")
+    if address.strip()
+]
+EMAIL_SUBJECT_PREFIX = f"[school-erp {ERP_INSTANCE_NAME}] "
+DEFAULT_EXCEPTION_REPORTER_FILTER = "config.error_reporting.PrivacyExceptionReporterFilter"
+
+# Outgoing mail over SMTP. Without EMAIL_HOST, mail is printed to the console.
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
+if EMAIL_HOST:
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+    EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+    EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+    EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True") == "True"
+    EMAIL_TIMEOUT = 10
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+SERVER_EMAIL = os.environ.get("SERVER_EMAIL", EMAIL_HOST_USER if EMAIL_HOST else "root@localhost")
+DEFAULT_FROM_EMAIL = SERVER_EMAIL
+
+# Railway shows anything written to stdout/stderr. Tests stay quiet unless
+# DJANGO_LOG_LEVEL is set explicitly.
+LOG_LEVEL = os.environ.get("DJANGO_LOG_LEVEL", "CRITICAL" if TESTING else "INFO").upper()
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "plain": {"format": "{asctime} {levelname} {name} {message}", "style": "{"},
+    },
+    "filters": {
+        "require_debug_false": {"()": "django.utils.log.RequireDebugFalse"},
+    },
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "formatter": "plain", "level": LOG_LEVEL},
+        "mail_admins": {
+            "class": "django.utils.log.AdminEmailHandler",
+            "level": "ERROR",
+            "filters": ["require_debug_false"],
+            "include_html": False,
+        },
+    },
+    "root": {"handlers": ["console"], "level": "INFO"},
+    "loggers": {
+        # Replaces Django's defaults (console only under DEBUG, mail_admins
+        # for everything) so records just propagate to the root console.
+        "django": {"handlers": [], "level": "INFO", "propagate": True},
+        # Unhandled exceptions (500s); propagates to the console as well.
+        "django.request": {"handlers": ["mail_admins"], "level": "INFO", "propagate": True},
+    },
+}
