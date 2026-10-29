@@ -49,3 +49,79 @@ After setting the variables, from the Railway service shell:
 ```
 python manage.py sendtestemail --admins
 ```
+
+## Backups
+
+Railway backs up the Postgres volume on a schedule. Each installation needs
+this switched on once; a new Railway Postgres service has no backups.
+
+The commands below use the Railway CLI (5.35 or later). Replace the IDs with
+the installation's project, environment and **Postgres** service IDs (not the
+web service):
+
+```
+PG="-p <project-id> -e <environment-id> -s <postgres-service-id>"
+```
+
+### Switch on scheduled backups
+
+```
+railway postgres $PG pitr schedule set --daily --weekly
+railway postgres $PG pitr backup create --name first-manual-<date>
+railway postgres $PG pitr schedule list
+```
+
+Daily backups are kept for 6 days and weekly backups for 27 days. Manual
+backups never expire, so delete old ones (`pitr backup delete <id>`) once
+newer backups exist. Backups are billed on the space they add, at volume
+rates.
+
+### Check backups exist
+
+```
+railway postgres $PG pitr backup list
+```
+
+Each row shows the backup ID, when it was taken and its size. The size can
+show `-` or `0` for a minute after a backup is taken.
+
+### Restore from a backup
+
+A restore replaces the live database with the backup. **Everything written
+after the backup was taken is lost**, so take a manual backup first if the
+current data might still be needed.
+
+1. Note a few row counts so you can compare afterwards (Railway web service
+   shell, `python manage.py shell`):
+
+   ```python
+   from core.models import Student, StudentResult
+   print(Student.objects.count(), StudentResult.objects.count())
+   ```
+
+2. Find the backup ID with `pitr backup list`, then restore:
+
+   ```
+   railway postgres $PG pitr backup restore <backup-id> --yes
+   ```
+
+   Railway copies the backup into a new volume, mounts it on the Postgres
+   service and redeploys it straight away. Expect about a minute of downtime.
+
+3. Check the counts again and sign in to the site.
+
+The old volume is unmounted, not deleted. If the restore went wrong, it can be
+mounted back on the Postgres service from the Railway dashboard. Delete it
+once the restored data has been confirmed, as it is still billed.
+
+The daily and weekly schedule carries over to the new volume.
+
+Restore tested on staging on 2026-10-29: row counts matched and a table
+created after the backup was gone.
+
+### Not yet set up
+
+- Point-in-time recovery (`railway postgres pitr enable`), which can restore
+  to any moment in the last ~4 weeks into a new service. Only covers time after
+  it is switched on.
+- A copy of the database outside Railway (for example a nightly `pg_dump`).
