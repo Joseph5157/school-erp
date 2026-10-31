@@ -388,3 +388,27 @@
     if (!switcher.contains(event.target) || event.target === switcher) close();
   });
 })();
+
+// Install button (PWA): shown only when the browser offers a usable install prompt, and only on
+// the install help page. Everywhere else the browser's own install affordance is left alone.
+(function () {
+  var button = document.querySelector("[data-erp-install]");
+  if (!button) return;
+  var offered = null;
+  window.addEventListener("beforeinstallprompt", function (event) {
+    event.preventDefault();
+    offered = event;
+    button.hidden = false;
+  });
+  button.addEventListener("click", function () {
+    if (!offered) return;
+    var prompt = offered;
+    offered = null;
+    button.hidden = true;
+    prompt.prompt();
+  });
+  window.addEventListener("appinstalled", function () {
+    offered = null;
+    button.hidden = true;
+  });
+})();

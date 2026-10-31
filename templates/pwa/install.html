@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Install {{ app_name }}{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Install {{ app_name }}</h1>
+<p class="text-secondary">
+    Add {{ app_name }} to your home screen or desktop to open it like an app. It is the same website: you sign in the
+    same way, and it needs an internet connection for every page. Nothing is saved on your device for offline use.
+</p>
+
+<div class="mb-4">
+    <button type="button" class="btn btn-primary" data-erp-install hidden>Install {{ app_name }}</button>
+</div>
+
+<section class="mb-4" aria-labelledby="install-android">
+    <h2 class="h5" id="install-android">Android (Chrome)</h2>
+    <ol>
+        <li>Open the browser menu (three dots).</li>
+        <li>Choose <strong>Install app</strong> or <strong>Add to Home screen</strong>.</li>
+        <li>Confirm. The {{ app_name }} icon appears with your other apps.</li>
+    </ol>
+</section>
+
+<section class="mb-4" aria-labelledby="install-ios">
+    <h2 class="h5" id="install-ios">iPhone and iPad (Safari)</h2>
+    <ol>
+        <li>Open this site in <strong>Safari</strong>. Other iPhone browsers may not offer this.</li>
+        <li>Tap the <strong>Share</strong> button.</li>
+        <li>Choose <strong>Add to Home Screen</strong>, then tap <strong>Add</strong>.</li>
+    </ol>
+</section>
+
+<section class="mb-4" aria-labelledby="install-desktop">
+    <h2 class="h5" id="install-desktop">Computer (Chrome or Edge)</h2>
+    <ol>
+        <li>Look for the install icon at the right end of the address bar, or open the browser menu.</li>
+        <li>Choose <strong>Install {{ app_name }}</strong> (Chrome) or <strong>Apps &rarr; Install this site as an app</strong> (Edge).</li>
+    </ol>
+</section>
+
+<p class="text-secondary small">
+    To remove it, uninstall it like any other app: press and hold the icon on a phone, or use the app's menu on a computer.
+</p>
+{% endblock %}

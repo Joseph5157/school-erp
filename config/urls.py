@@ -21,10 +21,14 @@ from django.urls import include, path
 
 from accounts import views as account_views
 from accounts.forms import ThrottledAuthenticationForm
+from accounts.middleware import MANIFEST_PATH
+from core import pwa_views
 from core import views as core_views
 
 urlpatterns = [
     path("", core_views.home, name="home"),
+    path(MANIFEST_PATH.lstrip("/"), pwa_views.manifest, name="pwa-manifest"),
+    path("install/", pwa_views.install_help, name="pwa-install"),
     path("admin/", admin.site.urls),
     path(
         "accounts/login/",
