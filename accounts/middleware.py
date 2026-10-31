@@ -16,6 +16,9 @@ from django.urls import Resolver404, resolve, reverse
 
 # The logo is shown in the header of the password-change page itself.
 ALLOWED_WHILE_CHANGE_REQUIRED = {"password_change", "logout", "school-logo"}
+# A literal, not reverse(): this runs on every request, including under a test URLconf that has no
+# such route. config/urls.py routes this same path; a test keeps the two in step.
+MANIFEST_PATH = "/manifest.webmanifest"
 STARTED_KEY = "_auth_started_at"
 SEEN_KEY = "_auth_last_seen"
 
@@ -39,6 +42,10 @@ class AccountSecurityMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
+        if request.path_info == MANIFEST_PATH:
+            # Public install metadata (PWA Gate 1). Exactly this path, before request.user is read:
+            # it neither moves the idle clock nor redirects a forced password change.
+            return self.get_response(request)
         user = request.user
         if user.is_authenticated:
             now = time.time()

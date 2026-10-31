@@ -1,0 +1,6 @@
+{% load static %}{# Install metadata shared by both shells (PWA Gate 1). Online-only: no service worker. #}
+<link rel="manifest" href="{% url 'pwa-manifest' %}">
+<meta name="theme-color" content="#ffffff">
+<link rel="apple-touch-icon" href="{% static 'pwa/apple-touch-icon.png' %}">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="School ERP">
