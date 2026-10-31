@@ -20,8 +20,8 @@ from django.contrib.auth import views as auth_views
 from django.urls import include, path
 
 from accounts import views as account_views
-from accounts.middleware import MANIFEST_PATH
 from accounts.forms import ThrottledAuthenticationForm
+from accounts.middleware import MANIFEST_PATH
 from core import pwa_views
 from core import views as core_views
 

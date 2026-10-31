@@ -25,8 +25,13 @@ the Teacher, Guardian or Administrator workflows.
    icon URLs inside a `.json` file. A view calls `static()` so production hashed names are used.
 2. **A narrow middleware bypass is needed.** WhiteNoise sits before `AccountSecurityMiddleware`, so static icons never
    reach it, but a view does. For a signed-in user the manifest would refresh `_auth_last_seen` and, during a forced
-   password change, be redirected. `AccountSecurityMiddleware.__call__` therefore returns early for exactly
-   `reverse("pwa-manifest")`, before `request.user` is read. No other path changes.
+   password change, be redirected. `AccountSecurityMiddleware.__call__` therefore returns early when
+   `request.path_info` equals the literal `MANIFEST_PATH = "/manifest.webmanifest"` (defined in
+   `accounts/middleware.py`), before `request.user` is read. No other path changes. It is a literal rather than
+   `reverse("pwa-manifest")` because the middleware runs on every request, including under test URLconfs that have no
+   such route, where `reverse()` raises and turns the request into a 500. `config/urls.py` builds the route from the
+   same constant, and `test_route_matches_the_path_the_middleware_lets_through` asserts that
+   `reverse("pwa-manifest") == MANIFEST_PATH`, so the route and the bypass cannot drift apart.
 3. **The manifest must work whether or not a session cookie is sent.** The `<link rel="manifest">` has no
    `crossorigin` attribute, but same-origin requests can still carry cookies, so omitting it is not what guarantees
    this. The guarantee is that the manifest needs no authentication and ignores the session entirely (finding 2).
