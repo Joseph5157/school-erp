@@ -279,7 +279,8 @@ body.erp { min-height: 100vh; }
    The state is a class on <html>, set in <head> from localStorage so it applies before first paint.
    Hidden means visibility: hidden, so its links leave the tab order and the accessibility tree.
    Phones and tablets keep the off-canvas drawer and never see this button. */
-.erp-sidebar-toggle { display: none; }
+/* .btn.erp-sidebar-toggle (not just the class) so the phone .btn flex rule can never reveal it. */
+.btn.erp-sidebar-toggle { display: none; }
 @media (min-width: 992px) {
   .erp-sidebar-toggle:not([hidden]) {
     display: inline-flex; align-items: center; justify-content: center;
@@ -824,8 +825,9 @@ body.has-tabbar .erp-messages {
   .erp-form-actions .btn-warning,
   .erp-form-actions .btn-danger { flex: 1 1 100%; }
   .erp-form-actions .is-destructive { margin-left: 0; }
-  .erp-field :where(input:not([type="checkbox"]):not([type="radio"]), select, textarea),
-  .btn { min-height: 2.75rem; }
+  .erp-field :where(input:not([type="checkbox"]):not([type="radio"]), select, textarea) { min-height: 2.75rem; }
+  /* 44px phone buttons: centre the label vertically (it used to sit at the top of the taller box). */
+  .btn { min-height: 2.75rem; display: inline-flex; align-items: center; justify-content: center; }
 }
 
 /* Buttons (UI-15): radius is global; desktop heights line buttons up with 40px fields. */
@@ -1022,18 +1024,28 @@ body.has-tabbar .erp-messages {
 
 /* "Set up your school" checklist card on the Overview page. */
 .erp-stat-grid.erp-stat-grid--attention { grid-template-columns: repeat(auto-fill, minmax(15rem, 22rem)); }
-.erp-stat-grid.erp-stat-grid--glance { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: var(--erp-space-4); }
+.erp-stat-grid.erp-stat-grid--glance { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 0; }
 .erp-stat-grid--glance .erp-stat-value { font-size: 1.75rem; }
 @media (min-width: 62rem) { .erp-stat-grid.erp-stat-grid--glance { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
-/* Overview attendance analytics (Gate A): phone-first, server-rendered SVG, no chart library. */
-.erp-analytics { margin: 0 0 var(--erp-space-5); }
+/* Glance tiles: the whole tile is the link (a small chevron hints at it); no separate Open button. */
+.erp-glance-tile { position: relative; gap: var(--erp-space-1); color: var(--erp-ink); text-decoration: none; }
+a.erp-glance-tile:hover, a.erp-glance-tile:focus-visible { border-color: var(--erp-action); color: var(--erp-ink); }
+.erp-glance-tile .erp-stat-label { padding-right: var(--erp-space-4); }
+.erp-glance-go { position: absolute; top: var(--erp-space-3); right: var(--erp-space-3); font-size: 1.25rem; line-height: 1; color: var(--erp-ink-soft); }
+@media (max-width: 61.98rem) {
+  /* Two per row; an odd last tile (the fifth) takes the whole row instead of sitting alone. */
+  .erp-stat-grid--glance > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+/* Overview attendance analytics (Gate A): phone-first, server-rendered SVG, no chart library.
+   Sections are spaced by the next section title's top margin, so no bottom margins stack up. */
+.erp-analytics { margin: 0; }
 .erp-today-strip { display: flex; gap: var(--erp-space-3); overflow-x: auto; margin: 0 calc(var(--erp-space-4) * -1) var(--erp-space-4); padding: 0 var(--erp-space-4) var(--erp-space-1); scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
 .erp-today-tile { flex: 0 0 auto; min-width: 7.5rem; scroll-snap-align: start; display: flex; flex-direction: column; gap: var(--erp-space-1); padding: var(--erp-space-3) var(--erp-space-4); background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius); }
 .erp-today-tile--warn { border-color: var(--erp-warn); background: var(--erp-warn-wash); }
 .erp-today-value { font-size: 1.75rem; font-weight: 700; line-height: 1; color: var(--erp-ink); }
 .erp-today-value small { font-size: var(--erp-text-sm); font-weight: 600; color: var(--erp-ink-soft); }
 .erp-today-label { font-size: var(--erp-text-xs); font-weight: 600; color: var(--erp-ink-soft); }
-.erp-today-none { margin: 0; color: var(--erp-ink-soft); font-size: var(--erp-text-sm); }
+.erp-today-none { margin: 0; padding: var(--erp-space-2) var(--erp-space-3); border: 1px dashed var(--erp-rule); border-radius: var(--erp-radius-sm); background: var(--erp-surface); color: var(--erp-ink-soft); font-size: var(--erp-text-sm); }
 .erp-analytics-card { background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius); padding: var(--erp-space-4); margin-bottom: var(--erp-space-4); }
 .erp-analytics-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--erp-space-3); margin-bottom: var(--erp-space-3); }
 .erp-analytics-title { font-size: 1rem; font-weight: 600; margin: 0; }
@@ -1078,11 +1090,12 @@ body.has-tabbar .erp-messages {
 .erp-heat-legend { display: flex; flex-wrap: wrap; align-items: center; gap: var(--erp-space-2); margin: var(--erp-space-3) 0 0; font-size: var(--erp-text-xs); color: var(--erp-ink-soft); }
 .erp-heat-legend .erp-heat-cell { width: 1rem; min-height: 1rem; }
 .erp-absentee-list { list-style: none; margin: var(--erp-space-3) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--erp-space-2); }
-.erp-absentee { display: grid; grid-template-columns: 1fr auto; gap: 0 var(--erp-space-3); padding: var(--erp-space-3); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius-sm); color: var(--erp-ink); text-decoration: none; min-height: 2.75rem; }
-.erp-absentee:hover, .erp-absentee:focus-visible { border-color: var(--erp-action); }
-.erp-absentee-name { font-weight: 600; overflow-wrap: anywhere; }
-.erp-absentee-days { grid-row: span 2; align-self: center; font-size: var(--erp-text-sm); font-weight: 700; color: var(--erp-bad); white-space: nowrap; }
-.erp-absentee-class { font-size: var(--erp-text-sm); color: var(--erp-ink-soft); }
+/* One compact row per student: name with the class under it on the left, a red "N days absent" pill on the right. */
+.erp-absentee { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0 var(--erp-space-3); padding: var(--erp-space-2) var(--erp-space-3); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius-sm); color: var(--erp-ink); text-decoration: none; min-height: 2.75rem; }
+.erp-absentee:hover, .erp-absentee:focus-visible { border-color: var(--erp-action); color: var(--erp-ink); }
+.erp-absentee-name { grid-column: 1; grid-row: 1; font-weight: 600; overflow-wrap: anywhere; }
+.erp-absentee-days { grid-column: 2; grid-row: 1 / 3; padding: .15rem .6rem; border-radius: 999px; background: var(--erp-bad-wash); color: var(--erp-bad); font-size: var(--erp-text-xs); font-weight: 700; white-space: nowrap; }
+.erp-absentee-class { grid-column: 1; grid-row: 2; font-size: var(--erp-text-xs); color: var(--erp-ink-soft); }
 /* Gate C: period chip + sheet (a <details>, so it needs no JS) and the marks card sub-heading. */
 .erp-analytics-subtitle { font-size: var(--erp-text-sm); font-weight: 600; margin: var(--erp-space-4) 0 var(--erp-space-2); }
 .erp-period { margin: 0 0 var(--erp-space-4); }
@@ -1103,7 +1116,7 @@ body.has-tabbar .erp-messages {
   /* "Option B" (docs/ui-reviews/desktop-overview-options.html): a title row with period links, a hero
      trend card with the heatmap beside it, then by class / absentees / marks as three equal cards.
      Cards keep their DOM (phone) order; `order` only rearranges them on desktop. */
-  .erp-analytics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--erp-space-4); }
+  .erp-analytics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--erp-space-4); margin-top: var(--erp-space-5); }
   .erp-analytics > * { grid-column: 1 / -1; margin: 0; }
   .erp-analytics > .erp-analytics-card { grid-column: auto; }
   .erp-analytics > .erp-analytics-card--trend { grid-column: span 2; order: 1; }
@@ -1148,7 +1161,16 @@ body.has-tabbar .erp-messages {
 .erp-all-clear { margin: 0 0 var(--erp-space-4); padding: var(--erp-space-3) var(--erp-space-4); border-radius: var(--erp-radius); background: var(--erp-ok-wash); color: var(--erp-ok-strong); font-size: var(--erp-text-sm); font-weight: 600; }
 .erp-clear-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--erp-space-2) var(--erp-space-4); margin: var(--erp-space-4) 0; color: var(--erp-ink-soft); font-size: var(--erp-text-sm); }
 .erp-clear-title { font-size: var(--erp-text-sm); font-weight: 600; margin: 0; }
-.erp-clear-list { display: flex; flex-wrap: wrap; gap: var(--erp-space-1) var(--erp-space-4); list-style: none; margin: 0; padding: 0; }
+.erp-clear-list { display: flex; flex-wrap: wrap; gap: var(--erp-space-2); list-style: none; margin: 0; padding: 0; }
+/* "Nothing waiting" links as chips: a real tap target instead of a 20px line of text. */
+.erp-clear-list a { display: inline-flex; align-items: center; min-height: 2rem; padding: 0 var(--erp-space-3); border: 1px solid var(--erp-rule); border-radius: 999px; background: var(--erp-surface); color: var(--erp-ink); font-weight: 600; text-decoration: none; }
+.erp-clear-list a:hover, .erp-clear-list a:focus-visible { border-color: var(--erp-action); color: var(--erp-action-strong); }
+@media (max-width: 767.98px) {
+  .erp-clear-list a { min-height: 2.75rem; }
+  .erp-glance-tile .erp-stat-summary { display: none; }
+  .erp-stat-grid.erp-stat-grid--glance { gap: var(--erp-space-3); }
+  .erp-glance-tile { padding: var(--erp-space-3) var(--erp-space-4); }
+}
 .erp-setup { background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius); padding: var(--erp-space-4); margin-bottom: var(--erp-space-4); }
 .erp-setup-head { display: flex; flex-wrap: wrap; gap: var(--erp-space-2) var(--erp-space-4); align-items: baseline; justify-content: space-between; margin-bottom: var(--erp-space-3); }
 .erp-setup-title { font-size: 1rem; margin: 0 0 var(--erp-space-1); }
