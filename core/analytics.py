@@ -9,12 +9,25 @@ A day with no submitted data is omitted, never drawn as 0%.
 import datetime
 from dataclasses import dataclass
 
-from django.db.models import Count, Q
+from django.db.models import Avg, Count, DecimalField, ExpressionWrapper, F, Q
 
 from core import reports
-from core.models import AcademicEnrollment, AttendanceRegister, AttendanceStatus, business_today
+from core.models import (
+    AcademicEnrollment,
+    AcademicTerm,
+    Assessment,
+    AttendanceRegister,
+    AttendanceStatus,
+    ResultStatus,
+    StudentResult,
+    business_today,
+)
 
 DEFAULT_PERIOD_DAYS = 14
+# Gate C: the longest custom range accepted, so a typo cannot ask for decades of registers.
+MAX_CUSTOM_DAYS = 366
+# Gate C: score bands, highest first, as (minimum percentage, label).
+MARK_BANDS = ((80, "80% and above"), (60, "60–79%"), (40, "40–59%"), (0, "Below 40%"))
 # Gate B: a student is a "frequent absentee" at this many absent days in the period.
 ABSENTEE_THRESHOLD_DAYS = 3
 ABSENTEE_LIST_LIMIT = 10
@@ -41,6 +54,78 @@ def previous_period(period):
     """The same-length window immediately before `period` (no gap, no overlap)."""
     end = period.start - datetime.timedelta(days=1)
     return Period(start=end - datetime.timedelta(days=period.days - 1), end=end)
+
+
+def current_term(today):
+    """The term running today, or None (between terms, or no terms configured)."""
+    return (
+        AcademicTerm.objects.filter(start_date__lte=today, end_date__gte=today)
+        .order_by("start_date")
+        .first()
+    )
+
+
+def _parse_date(value):
+    try:
+        return datetime.date.fromisoformat((value or "").strip())
+    except ValueError:
+        return None
+
+
+def _custom_label(start, end, today):
+    if start.year == end.year == today.year:
+        return f"{start.day} {start:%b} – {end.day} {end:%b}"
+    return f"{start.day} {start:%b %Y} – {end.day} {end:%b %Y}"
+
+
+def resolve_period(params, today):
+    """Turn the Overview's GET params into one safe Period.
+
+    `period` is 14d (default), month, term or custom (`from` / `to`, ISO dates). Anything
+    unusable falls back to the default 14 days; a bad *custom* or *term* request also carries a
+    `notice` so the page can say why. The end is never after today.
+    """
+    term = current_term(today)
+    default = default_period(today)
+    key = params.get("period") or "14d"
+    raw_from, raw_to = params.get("from") or "", params.get("to") or ""
+    choice = {
+        "key": "14d",
+        "period": default,
+        "label": f"last {default.days} days",
+        "notice": None,
+        "term": term,
+        "custom_from": raw_from if key == "custom" else "",
+        "custom_to": raw_to if key == "custom" else "",
+    }
+
+    def fall_back(reason):
+        choice["notice"] = f"{reason} Showing the last {DEFAULT_PERIOD_DAYS} days instead."
+        return choice
+
+    def use(chosen_key, period, label):
+        choice.update(key=chosen_key, period=period, label=label)
+        return choice
+
+    if key == "month":
+        return use("month", Period(start=today.replace(day=1), end=today), "this month")
+    if key == "term":
+        if term is None:
+            return fall_back("No term is running today.")
+        return use("term", Period(start=term.start_date, end=min(term.end_date, today)), term.name)
+    if key == "custom":
+        start, end = _parse_date(raw_from), _parse_date(raw_to)
+        if start is None or end is None:
+            return fall_back("Choose both dates.")
+        if start > today:
+            return fall_back("The start date is in the future.")
+        if start > end:
+            return fall_back("The start date must be on or before the end date.")
+        end = min(end, today)
+        if (end - start).days + 1 > MAX_CUSTOM_DAYS:
+            return fall_back("Choose a range of at most one year.")
+        return use("custom", Period(start=start, end=end), _custom_label(start, end, today))
+    return choice
 
 
 def _entries(period):
@@ -270,16 +355,110 @@ def trend_chart(points, *, width, height, pad=8):
     }
 
 
-def overview_context(today=None, *, include_absentees=False):
-    """Everything the Overview attendance section renders, school-wide.
+def _shares(counts):
+    """Whole-number percentages of `counts` that always add up to 100 (largest remainder)."""
+    total = sum(counts)
+    if not total:
+        return [0] * len(counts)
+    exact = [count * 100 / total for count in counts]
+    shares = [int(value) for value in exact]
+    order = sorted(range(len(counts)), key=lambda i: exact[i] - shares[i], reverse=True)
+    for i in order[: 100 - sum(shares)]:
+        shares[i] += 1
+    return shares
+
+
+def marks_snapshot(today):
+    """Average and score bands for the latest term that has finalized, marked results.
+
+    Only FINALIZED assessments count. A score is turned into a percentage of its own
+    assessment's maximum, so tests out of different totals compare fairly. An ABSENT result is
+    never a zero: it is left out of every average and band and only reported as a count.
+    Returns None when no started term has any finalized marked result.
+    """
+    term = (
+        AcademicTerm.objects.filter(
+            start_date__lte=today,
+            assessments__status=Assessment.Status.FINALIZED,
+            assessments__results__status=ResultStatus.MARKED,
+        )
+        .order_by("-start_date", "-display_order")
+        .distinct()
+        .first()
+    )
+    if term is None:
+        return None
+    percent = ExpressionWrapper(
+        F("score") * 100 / F("assessment__maximum_marks"),
+        output_field=DecimalField(max_digits=9, decimal_places=4),
+    )
+    results = StudentResult.objects.filter(
+        assessment__term=term, assessment__status=Assessment.Status.FINALIZED
+    ).annotate(percent=percent)
+    marked = results.filter(status=ResultStatus.MARKED)
+    rows = (
+        marked.order_by()
+        .values("assessment__section__class_grade_id", "assessment__section__class_grade__name")
+        .annotate(average=Avg("percent"), results=Count("id"))
+    )
+    classes = sorted(
+        (
+            {
+                "class_name": row["assessment__section__class_grade__name"],
+                "average": round(float(row["average"]), 1),
+                "results": row["results"],
+            }
+            for row in rows
+        ),
+        key=lambda r: (r["average"], r["class_name"]),
+    )
+    minimums = [minimum for minimum, _ in MARK_BANDS]
+    aggregate = results.aggregate(
+        absent=Count("id", filter=Q(status=ResultStatus.ABSENT)),
+        **{
+            f"band_{i}": Count(
+                "id",
+                filter=Q(status=ResultStatus.MARKED, percent__gte=minimum)
+                & (Q(percent__lt=minimums[i - 1]) if i else Q()),
+            )
+            for i, minimum in enumerate(minimums)
+        },
+    )
+    counts = [aggregate[f"band_{i}"] for i in range(len(MARK_BANDS))]
+    return {
+        "term": term,
+        "classes": classes,
+        "bands": [
+            {"label": label, "count": count, "share": share}
+            for (_, label), count, share in zip(MARK_BANDS, counts, _shares(counts), strict=True)
+        ],
+        "total": sum(counts),
+        "absent": aggregate["absent"],
+    }
+
+
+def overview_context(today=None, *, include_absentees=False, include_marks=False, params=None):
+    """Everything the Overview analytics render, school-wide.
 
     Student names are personal data, so the absentee list is only built when the caller says
     the user may view students; otherwise `absentees` is None and the section is not shown.
+    Marks are only built for callers who may view results. `params` (the GET query) picks the
+    attendance period; the heatmap, today strip and marks snapshot are independent of it.
     """
     today = business_today() if today is None else today
-    period = default_period(today)
+    choice = resolve_period(params or {}, today)
+    period = choice["period"]
     points = daily_trend(period)
     return {
+        "choice": choice["key"],
+        "label": choice["label"],
+        "notice": choice["notice"],
+        "term": choice["term"],
+        "custom_from": choice["custom_from"],
+        "custom_to": choice["custom_to"],
+        "show_marks": include_marks,
+        "marks": marks_snapshot(today) if include_marks else None,
+        "today": today,
         "absentees": frequent_absentees(period) if include_absentees else None,
         "absentee_threshold": ABSENTEE_THRESHOLD_DAYS,
         "heatmap": attendance_heatmap(today),

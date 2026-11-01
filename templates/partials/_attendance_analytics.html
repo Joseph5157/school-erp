@@ -1,7 +1,27 @@
 {# Overview attendance analytics (Gate A). School-wide, submitted registers only; see core/analytics.py. #}
 {% with a=attendance_analytics %}
 <section class="erp-analytics" aria-labelledby="analytics-title">
-    <h2 class="erp-section-title" id="analytics-title">Attendance, last {{ a.period_days }} days</h2>
+    <h2 class="erp-section-title" id="analytics-title">Attendance, {{ a.label }}</h2>
+
+    {# Plain GET form inside <details>: works without JS, and the chosen period is in the URL. #}
+    <details class="erp-period"{% if a.notice %} open{% endif %}>
+        <summary class="erp-period-chip">{{ a.label|capfirst }} <span aria-hidden="true">&#9662;</span><span class="visually-hidden">: change period</span></summary>
+        <form class="erp-period-sheet" method="get" action="{% url 'core:admin-overview' %}">
+            <fieldset class="erp-period-options">
+                <legend class="visually-hidden">Attendance period</legend>
+                <label class="erp-period-option"><input type="radio" name="period" value="14d"{% if a.choice == "14d" %} checked{% endif %}> Last 14 days</label>
+                <label class="erp-period-option"><input type="radio" name="period" value="month"{% if a.choice == "month" %} checked{% endif %}> This month</label>
+                {% if a.term %}<label class="erp-period-option"><input type="radio" name="period" value="term"{% if a.choice == "term" %} checked{% endif %}> This term ({{ a.term.name }})</label>{% endif %}
+                <label class="erp-period-option"><input type="radio" name="period" value="custom"{% if a.choice == "custom" %} checked{% endif %}> Custom range</label>
+            </fieldset>
+            <div class="erp-period-dates">
+                <label>From <input class="form-control" type="date" name="from" value="{{ a.custom_from }}" max="{{ a.today|date:'Y-m-d' }}"></label>
+                <label>To <input class="form-control" type="date" name="to" value="{{ a.custom_to }}" max="{{ a.today|date:'Y-m-d' }}"></label>
+            </div>
+            <button class="btn btn-primary" type="submit">Apply</button>
+        </form>
+    </details>
+    {% if a.notice %}<p class="erp-analytics-empty" role="status">{{ a.notice }}</p>{% endif %}
 
     <div class="erp-today-strip" role="list" aria-label="Today's attendance">
         {% if a.strip.expected %}
@@ -85,7 +105,7 @@
     {% if a.absentees is not None %}
     <article class="erp-analytics-card">
         <h3 class="erp-analytics-title">Frequent absentees</h3>
-        <p class="erp-analytics-sub">Absent {{ a.absentee_threshold }} or more days in the last {{ a.period_days }} days.</p>
+        <p class="erp-analytics-sub">Absent {{ a.absentee_threshold }} or more days, {{ a.label }}.</p>
         {% if a.absentees.rows %}
         <ul class="erp-absentee-list">
             {% for r in a.absentees.rows %}
@@ -99,6 +119,42 @@
         {% if a.absentees.total > a.absentees.rows|length %}<p class="erp-analytics-sub">Showing {{ a.absentees.rows|length }} of {{ a.absentees.total }}.</p>{% endif %}
         {% else %}
         <p class="erp-analytics-sub">No student was absent {{ a.absentee_threshold }} or more days in this period.</p>
+        {% endif %}
+    </article>
+    {% endif %}
+
+    {% if a.show_marks %}
+    <article class="erp-analytics-card">
+        <h3 class="erp-analytics-title">Marks snapshot</h3>
+        {% if a.marks %}
+        <p class="erp-analytics-sub">{{ a.marks.term.name }}. Finalized assessments only, as a percentage of each test's maximum.</p>
+        <ul class="erp-class-bars">
+            {% for row in a.marks.classes %}
+            <li class="erp-class-row">
+                <span class="erp-class-name">{{ row.class_name }}</span>
+                <progress class="erp-class-bar" max="100" value="{{ row.average|stringformat:'.1f' }}" aria-label="{{ row.class_name }} average">{{ row.average|floatformat:1 }}%</progress>
+                <span class="erp-class-pct">{{ row.average|floatformat:1 }}%</span>
+            </li>
+            {% endfor %}
+        </ul>
+        <p class="erp-analytics-sub">Class average, lowest first.</p>
+        <h4 class="erp-analytics-subtitle">Score bands</h4>
+        <ul class="erp-class-bars">
+            {% for band in a.marks.bands %}
+            <li class="erp-class-row">
+                <span class="erp-class-name">{{ band.label }}</span>
+                <progress class="erp-class-bar" max="100" value="{{ band.share }}" aria-label="{{ band.label }}">{{ band.share }}%</progress>
+                <span class="erp-class-pct">{{ band.count }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        <p class="erp-analytics-sub">{{ a.marks.total }} result{{ a.marks.total|pluralize }} marked{% if a.marks.absent %}; {{ a.marks.absent }} absent (not counted as zero){% endif %}.</p>
+        <ul class="visually-hidden erp-visually-hidden-data">
+            {% for row in a.marks.classes %}<li>{{ row.class_name }}: average {{ row.average|floatformat:1 }}% over {{ row.results }} result{{ row.results|pluralize }}</li>{% endfor %}
+            {% for band in a.marks.bands %}<li>{{ band.label }}: {{ band.count }} result{{ band.count|pluralize }}</li>{% endfor %}
+        </ul>
+        {% else %}
+        <p class="erp-analytics-sub">No finalized results yet.</p>
         {% endif %}
     </article>
     {% endif %}
