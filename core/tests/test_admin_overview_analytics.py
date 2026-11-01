@@ -233,6 +233,94 @@ class TrendChartTests(TestCase):
         self.assertIsNone(analytics.trend_chart([], width=300, height=100))
 
 
+class FrequentAbsenteesTests(AnalyticsFixture, TestCase):
+    """Gate B: a student is listed once absent on at least N submitted days in the period."""
+
+    def setUp(self):
+        super().setUp()
+        self.period = analytics.default_period(TODAY)  # 2026-07-01 .. 2026-07-14
+
+    def absent_days(self, s2_days, s1_days=()):
+        for d in sorted(set(s2_days) | set(s1_days)):
+            self.day(
+                datetime.date(2026, 7, d),
+                {self.s1: A if d in s1_days else P, self.s2: A if d in s2_days else P},
+            )
+
+    def test_default_threshold_is_three_absent_days(self):
+        self.assertEqual(analytics.ABSENTEE_THRESHOLD_DAYS, 3)
+
+    def test_lists_only_students_at_or_over_the_threshold(self):
+        self.absent_days(s2_days=(1, 2, 3), s1_days=(2, 3))  # Wed, Thu, Fri
+        result = analytics.frequent_absentees(self.period)
+        self.assertEqual([r["name"] for r in result["rows"]], ["Meena Das"])
+        self.assertEqual(result["rows"][0]["absent_days"], 3)
+        self.assertEqual(result["rows"][0]["class_name"], "Grade 1")
+        self.assertEqual(result["total"], 1)
+
+    def test_draft_registers_do_not_count(self):
+        self.absent_days(s2_days=(1, 2))
+        self.day(datetime.date(2026, 7, 3), {self.s1: P, self.s2: A}, submit=False)
+        self.assertEqual(analytics.frequent_absentees(self.period)["rows"], [])
+
+    def test_absences_outside_the_period_do_not_count(self):
+        self.day(datetime.date(2026, 6, 17), {self.s1: P, self.s2: A})
+        self.day(datetime.date(2026, 6, 18), {self.s1: P, self.s2: A})
+        self.absent_days(s2_days=(1,))
+        self.assertEqual(analytics.frequent_absentees(self.period)["rows"], [])
+
+    def test_most_absent_first_and_limit_keeps_the_true_total(self):
+        self.absent_days(s2_days=(1, 2, 3, 6), s1_days=(1, 2, 3))
+        result = analytics.frequent_absentees(self.period, limit=1)
+        self.assertEqual([r["name"] for r in result["rows"]], ["Meena Das"])
+        self.assertEqual(result["total"], 2)
+
+    def test_row_carries_the_student_id_for_the_detail_link(self):
+        self.absent_days(s2_days=(1, 2, 3))
+        row = analytics.frequent_absentees(self.period)["rows"][0]
+        self.assertEqual(row["student_id"], self.s2.student_id)
+
+    def test_threshold_is_adjustable(self):
+        self.absent_days(s2_days=(1,))
+        self.assertEqual(len(analytics.frequent_absentees(self.period, threshold=1)["rows"]), 1)
+
+
+class HeatmapTests(AnalyticsFixture, TestCase):
+    def cells(self):
+        weeks = analytics.attendance_heatmap(TODAY)
+        return weeks, {c["date"]: c for week in weeks for c in week}
+
+    def test_grid_is_whole_monday_to_sunday_weeks(self):
+        weeks, cells = self.cells()
+        self.assertEqual(len(weeks), 5)  # Mon 15 Jun .. Sun 19 Jul covers the 28 days to today
+        self.assertTrue(all(len(week) == 7 for week in weeks))
+        self.assertEqual(weeks[0][0]["date"], datetime.date(2026, 6, 15))
+        self.assertEqual(weeks[0][0]["date"].weekday(), 0)
+
+    def test_cells_outside_the_28_day_window_are_marked_outside(self):
+        _, cells = self.cells()
+        self.assertEqual(cells[datetime.date(2026, 6, 15)]["state"], "outside")  # before window
+        self.assertEqual(cells[datetime.date(2026, 7, 15)]["state"], "outside")  # future
+
+    def test_data_days_get_a_tier_by_percentage(self):
+        self.day(datetime.date(2026, 7, 1), {self.s1: P, self.s2: P})
+        self.day(datetime.date(2026, 7, 2), {self.s1: P, self.s2: A})
+        _, cells = self.cells()
+        self.assertEqual(cells[datetime.date(2026, 7, 1)]["state"], "data")
+        self.assertEqual(cells[datetime.date(2026, 7, 1)]["tier"], "t4")
+        self.assertEqual(cells[datetime.date(2026, 7, 2)]["tier"], "t1")
+
+    def test_school_day_without_a_submitted_register_is_no_data_not_zero(self):
+        self.day(datetime.date(2026, 7, 6), {self.s1: P, self.s2: P}, submit=False)  # DRAFT
+        _, cells = self.cells()
+        self.assertEqual(cells[datetime.date(2026, 7, 6)]["state"], "no_data")
+        self.assertEqual(cells[datetime.date(2026, 7, 7)]["state"], "no_data")
+
+    def test_sunday_is_not_a_school_day(self):
+        _, cells = self.cells()
+        self.assertEqual(cells[datetime.date(2026, 7, 5)]["state"], "not_school")
+
+
 class OverviewAnalyticsViewTests(AnalyticsFixture, TestCase):
     url = reverse("core:admin-overview")
 
@@ -263,17 +351,59 @@ class OverviewAnalyticsViewTests(AnalyticsFixture, TestCase):
         self.assertNotContains(response, "Late")
 
     def test_query_count_stays_bounded(self):
-        self.day(datetime.date(2026, 7, 1), {self.s1: P, self.s2: P})
-        self.day(datetime.date(2026, 7, 2), {self.s1: P, self.s2: A})
-        with CaptureQueriesContext(connection) as ctx:
-            self.administrator.get(self.url)
-        before = len(ctx)
-        # More days of data must not add queries (no per-row loops).
-        for d in (3, 6, 7, 8):
+        # One frequent absentee (s2: 3 days) before; two (s1 joins) and more days after.
+        for d in (1, 2, 3):
             self.day(datetime.date(2026, 7, d), {self.s1: P, self.s2: A})
         with CaptureQueriesContext(connection) as ctx:
             self.administrator.get(self.url)
+        before = len(ctx)
+        # More days and more absentee rows must not add queries (no per-row loops).
+        for d in (6, 7, 8):
+            self.day(datetime.date(2026, 7, d), {self.s1: A, self.s2: A})
+        with CaptureQueriesContext(connection) as ctx:
+            self.administrator.get(self.url)
         self.assertEqual(len(ctx), before)
+
+    def make_frequent_absentee(self):
+        for d in (1, 2, 3):
+            self.day(datetime.date(2026, 7, d), {self.s1: P, self.s2: A})
+
+    def test_absentee_cards_link_to_the_student(self):
+        self.make_frequent_absentee()
+        response = self.administrator.get(self.url)
+        self.assertContains(response, "Frequent absentees")
+        self.assertContains(response, "Meena Das")
+        self.assertContains(
+            response, reverse("core:student-detail", args=[self.s2.student_id])
+        )
+        self.assertContains(response, "3 days absent")
+
+    def test_absentee_empty_state_names_the_threshold(self):
+        response = self.administrator.get(self.url)
+        self.assertContains(response, "Frequent absentees")
+        self.assertContains(response, "No student was absent 3 or more days")
+
+    def test_absentee_list_is_hidden_without_permission_to_view_students(self):
+        from django.contrib.auth import get_user_model
+        from django.contrib.auth.models import Permission
+
+        self.make_frequent_absentee()
+        user = get_user_model().objects.create_user(username="overview-only", password="pass-12345")
+        user.user_permissions.add(Permission.objects.get(codename="view_school"))
+        client = self.client_class()
+        client.login(username="overview-only", password="pass-12345")
+        response = client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Frequent absentees")
+        self.assertNotContains(response, "Meena Das")
+
+    def test_heatmap_renders_with_a_text_alternative(self):
+        self.day(datetime.date(2026, 7, 1), {self.s1: P, self.s2: P})
+        response = self.administrator.get(self.url)
+        self.assertContains(response, "erp-heat")
+        self.assertContains(response, "erp-heat-cell--t4")
+        self.assertContains(response, "erp-heat-cell--not_school")
+        self.assertContains(response, "erp-visually-hidden-data")
 
     def test_non_administrators_are_still_denied(self):
         response = self.non_admin.get(self.url)

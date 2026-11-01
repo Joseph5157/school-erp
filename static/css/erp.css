@@ -1029,6 +1029,26 @@ body.has-tabbar .erp-messages {
 .erp-class-bar::-webkit-progress-bar { background: var(--erp-rule); border-radius: 999px; }
 .erp-class-bar::-webkit-progress-value { background: var(--erp-action); border-radius: 999px; }
 .erp-class-bar::-moz-progress-bar { background: var(--erp-action); border-radius: 999px; }
+/* Gate B: attendance heatmap (28 days, Mon-Sun weeks) and frequent-absentee cards. */
+.erp-heat { display: flex; flex-direction: column; gap: 4px; margin-top: var(--erp-space-3); }
+.erp-heat-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.erp-heat-head span { text-align: center; font-size: var(--erp-text-xs); font-weight: 600; color: var(--erp-ink-soft); }
+.erp-heat-cell { display: inline-grid; place-items: center; min-height: 2.25rem; border-radius: var(--erp-radius-sm); font-size: var(--erp-text-xs); font-weight: 600; color: var(--erp-ink); border: 1px solid transparent; }
+.erp-heat-cell--t4 { background: var(--erp-ok); color: #fff; }
+.erp-heat-cell--t3 { background: color-mix(in srgb, var(--erp-ok) 60%, #fff); color: var(--erp-ink); }
+.erp-heat-cell--t2 { background: var(--erp-ok-wash); color: var(--erp-ink); }
+.erp-heat-cell--t1 { background: var(--erp-bad); color: #fff; }
+.erp-heat-cell--no_data { background: repeating-linear-gradient(45deg, var(--erp-surface), var(--erp-surface) 4px, var(--erp-rule) 4px, var(--erp-rule) 6px); border-color: var(--erp-rule); color: var(--erp-ink-soft); }
+.erp-heat-cell--not_school { background: var(--erp-paper); color: var(--erp-ink-soft); opacity: .7; }
+.erp-heat-cell--outside { visibility: hidden; }
+.erp-heat-legend { display: flex; flex-wrap: wrap; align-items: center; gap: var(--erp-space-2); margin: var(--erp-space-3) 0 0; font-size: var(--erp-text-xs); color: var(--erp-ink-soft); }
+.erp-heat-legend .erp-heat-cell { width: 1rem; min-height: 1rem; }
+.erp-absentee-list { list-style: none; margin: var(--erp-space-3) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--erp-space-2); }
+.erp-absentee { display: grid; grid-template-columns: 1fr auto; gap: 0 var(--erp-space-3); padding: var(--erp-space-3); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius-sm); color: var(--erp-ink); text-decoration: none; min-height: 2.75rem; }
+.erp-absentee:hover, .erp-absentee:focus-visible { border-color: var(--erp-action); }
+.erp-absentee-name { font-weight: 600; overflow-wrap: anywhere; }
+.erp-absentee-days { grid-row: span 2; align-self: center; font-size: var(--erp-text-sm); font-weight: 700; color: var(--erp-bad); white-space: nowrap; }
+.erp-absentee-class { font-size: var(--erp-text-sm); color: var(--erp-ink-soft); }
 .erp-all-clear { margin: 0 0 var(--erp-space-4); padding: var(--erp-space-3) var(--erp-space-4); border-radius: var(--erp-radius); background: var(--erp-ok-wash); color: var(--erp-ok-strong); font-size: var(--erp-text-sm); font-weight: 600; }
 .erp-clear-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--erp-space-2) var(--erp-space-4); margin: var(--erp-space-4) 0; color: var(--erp-ink-soft); font-size: var(--erp-text-sm); }
 .erp-clear-title { font-size: var(--erp-text-sm); font-weight: 600; margin: 0; }

@@ -12,9 +12,13 @@ from dataclasses import dataclass
 from django.db.models import Count, Q
 
 from core import reports
-from core.models import AttendanceRegister, AttendanceStatus, business_today
+from core.models import AcademicEnrollment, AttendanceRegister, AttendanceStatus, business_today
 
 DEFAULT_PERIOD_DAYS = 14
+# Gate B: a student is a "frequent absentee" at this many absent days in the period.
+ABSENTEE_THRESHOLD_DAYS = 3
+ABSENTEE_LIST_LIMIT = 10
+HEATMAP_DAYS = 28
 # A change smaller than this many percentage points is reported as "steady".
 STEADY_BAND = 1.0
 
@@ -145,6 +149,87 @@ def class_comparison(period):
     return result
 
 
+def frequent_absentees(period, threshold=ABSENTEE_THRESHOLD_DAYS, limit=ABSENTEE_LIST_LIMIT):
+    """Students absent on at least `threshold` reportable days in the period, most absent first.
+
+    Returns `{"rows": [...], "total": n}`; `total` is the true count even when `limit` trims
+    the rows. The class shown is the student's current ACTIVE enrollment. Constant queries.
+    """
+    grouped = (
+        _entries(period)
+        .filter(status=AttendanceStatus.ABSENT)
+        .order_by()
+        .values("academic_enrollment__student_id", "academic_enrollment__student__full_name")
+        .annotate(absent_days=Count("id"))
+        .filter(absent_days__gte=threshold)
+        .order_by("-absent_days", "academic_enrollment__student__full_name")
+    )
+    total = grouped.count()
+    page = list(grouped[:limit])
+    class_by_student = {
+        e.student_id: e.class_grade.name
+        for e in AcademicEnrollment.objects.filter(
+            student_id__in=[r["academic_enrollment__student_id"] for r in page],
+            status=AcademicEnrollment.Status.ACTIVE,
+        ).select_related("class_grade")
+    }
+    rows = [
+        {
+            "student_id": r["academic_enrollment__student_id"],
+            "name": r["academic_enrollment__student__full_name"],
+            "absent_days": r["absent_days"],
+            "class_name": class_by_student.get(r["academic_enrollment__student_id"], ""),
+        }
+        for r in page
+    ]
+    return {"rows": rows, "total": total}
+
+
+def _heat_tier(percentage):
+    if percentage >= 95:
+        return "t4"
+    if percentage >= 90:
+        return "t3"
+    if percentage >= 80:
+        return "t2"
+    return "t1"
+
+
+def attendance_heatmap(today, days=HEATMAP_DAYS):
+    """Calendar grid of whole Monday-Sunday weeks covering the `days` up to `today`.
+
+    Each cell is one of: `data` (submitted attendance, with a tier), `no_data` (a school day
+    with nothing submitted - never shown as 0%), `not_school` (not an instructional day), or
+    `outside` (before the window or in the future, padding the week).
+    """
+    start = today - datetime.timedelta(days=days - 1)
+    grid_start = start - datetime.timedelta(days=start.weekday())
+    grid_end = today + datetime.timedelta(days=6 - today.weekday())
+    points = {p["date"]: p for p in daily_trend(Period(start=start, end=today))}
+    school_days = {on_date for on_date, _section, _year in reports.expected_registers(start, today)}
+
+    weeks, week = [], []
+    day = grid_start
+    while day <= grid_end:
+        cell = {"date": day, "tier": None, "percentage": None}
+        if day < start or day > today:
+            cell["state"] = "outside"
+        elif day in points:
+            cell["state"] = "data"
+            cell["percentage"] = points[day]["percentage"]
+            cell["tier"] = _heat_tier(points[day]["percentage"])
+        elif day in school_days:
+            cell["state"] = "no_data"
+        else:
+            cell["state"] = "not_school"
+        week.append(cell)
+        if len(week) == 7:
+            weeks.append(week)
+            week = []
+        day += datetime.timedelta(days=1)
+    return weeks
+
+
 def trend_chart(points, *, width, height, pad=8):
     """Scale trend points into SVG coordinates (no JS, no chart library).
 
@@ -185,12 +270,19 @@ def trend_chart(points, *, width, height, pad=8):
     }
 
 
-def overview_context(today=None):
-    """Everything the Overview attendance section renders, school-wide."""
+def overview_context(today=None, *, include_absentees=False):
+    """Everything the Overview attendance section renders, school-wide.
+
+    Student names are personal data, so the absentee list is only built when the caller says
+    the user may view students; otherwise `absentees` is None and the section is not shown.
+    """
     today = business_today() if today is None else today
     period = default_period(today)
     points = daily_trend(period)
     return {
+        "absentees": frequent_absentees(period) if include_absentees else None,
+        "absentee_threshold": ABSENTEE_THRESHOLD_DAYS,
+        "heatmap": attendance_heatmap(today),
         "period": period,
         "period_days": period.days,
         "strip": today_strip(today),
