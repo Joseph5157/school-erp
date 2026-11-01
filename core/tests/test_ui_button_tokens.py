@@ -51,7 +51,11 @@ class ButtonTokenTests(SimpleTestCase):
         # 24px line + 2 x .4rem + 2px border is under 40px, so the min-height is what sets the height.
         self.assertIn("padding-block: .4rem;", desktop)
         self.assertIn("textarea { min-height: 7rem;", self.css)
-        self.assertRegex(self.css, r"\n\s*\.btn \{ min-height: 2\.75rem; \}\s*\n\}")
+        # Phones keep 44px buttons, with the label centred in that height (phone polish).
+        self.assertRegex(
+            self.css,
+            r"\n\s*\.btn \{ min-height: 2\.75rem; display: inline-flex; align-items: center; justify-content: center; \}\s*\n\}",
+        )
 
     def test_bare_inline_toolbar_field_basis(self):
         rule = self.rule(".erp-toolbar--inline > .erp-field")
