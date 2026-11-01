@@ -1,0 +1,68 @@
+{# Overview attendance analytics (Gate A). School-wide, submitted registers only; see core/analytics.py. #}
+{% with a=attendance_analytics %}
+<section class="erp-analytics" aria-labelledby="analytics-title">
+    <h2 class="erp-section-title" id="analytics-title">Attendance, last {{ a.period_days }} days</h2>
+
+    <div class="erp-today-strip" role="list" aria-label="Today's attendance">
+        {% if a.strip.expected %}
+        <div class="erp-today-tile" role="listitem"><span class="erp-today-value">{{ a.strip.present }}</span><span class="erp-today-label">Present today</span></div>
+        <div class="erp-today-tile{% if a.strip.absent %} erp-today-tile--warn{% endif %}" role="listitem"><span class="erp-today-value">{{ a.strip.absent }}</span><span class="erp-today-label">Absent today</span></div>
+        <div class="erp-today-tile" role="listitem"><span class="erp-today-value">{{ a.strip.submitted }}<small>/{{ a.strip.expected }}</small></span><span class="erp-today-label">Registers submitted</span></div>
+        <div class="erp-today-tile{% if a.strip.not_taken %} erp-today-tile--warn{% endif %}" role="listitem"><span class="erp-today-value">{{ a.strip.not_taken }}</span><span class="erp-today-label">Not yet submitted</span></div>
+        {% else %}
+        <p class="erp-today-none" role="listitem">No school day today.</p>
+        {% endif %}
+    </div>
+
+    {% if a.chart %}
+    <article class="erp-analytics-card">
+        <header class="erp-analytics-head">
+            <div>
+                <h3 class="erp-analytics-title">Daily attendance</h3>
+                <p class="erp-analytics-sub">Average {{ a.summary.current|floatformat:1 }}%</p>
+            </div>
+            <p class="erp-trend-badge erp-trend-badge--{{ a.summary.status }}">
+                {% if a.summary.status == "improving" %}Up {{ a.summary.delta_abs|floatformat:1 }} pts
+                {% elif a.summary.status == "worsening" %}Down {{ a.summary.delta_abs|floatformat:1 }} pts
+                {% elif a.summary.status == "steady" %}Steady
+                {% else %}No comparison yet{% endif %}
+            </p>
+        </header>
+        <svg class="erp-trend" viewBox="0 0 {{ a.chart.width }} {{ a.chart.height }}" role="img"
+             aria-label="Daily attendance percentage from {{ a.points.0.date|date:'j M' }}. Average {{ a.summary.current|floatformat:1 }} percent. Axis starts at {{ a.chart.y_min }} percent.">
+            <line class="erp-trend-grid" x1="0" x2="{{ a.chart.width }}" y1="8" y2="8"/>
+            <line class="erp-trend-grid" x1="0" x2="{{ a.chart.width }}" y1="{{ a.chart.height|add:'-8' }}" y2="{{ a.chart.height|add:'-8' }}"/>
+            {% if a.chart.dots|length > 1 %}<polygon class="erp-trend-area" points="{{ a.chart.area }}"/>{% endif %}
+            <polyline class="erp-trend-line" points="{{ a.chart.line }}"/>
+            {% for dot in a.chart.dots %}<circle class="erp-trend-dot" cx="{{ dot.x }}" cy="{{ dot.y }}" r="3.5"/>{% endfor %}
+        </svg>
+        <p class="erp-trend-axis"><span>{{ a.chart.y_max }}% top</span><span>{{ a.chart.y_min }}% bottom</span></p>
+        <p class="erp-analytics-sub">
+            Best day {{ a.summary.peak.date|date:"j M" }} ({{ a.summary.peak.percentage|floatformat:0 }}%).
+            Lowest {{ a.summary.lowest.date|date:"j M" }} ({{ a.summary.lowest.percentage|floatformat:0 }}%).
+        </p>
+        <ul class="visually-hidden erp-visually-hidden-data">
+            {% for p in a.points %}<li>{{ p.date|date:"j M" }}: {{ p.percentage|floatformat:1 }}% ({{ p.present }} present, {{ p.absent }} absent)</li>{% endfor %}
+        </ul>
+    </article>
+
+    {% if a.classes %}
+    <article class="erp-analytics-card">
+        <h3 class="erp-analytics-title">By class</h3>
+        <ul class="erp-class-bars">
+            {% for row in a.classes %}
+            <li class="erp-class-row">
+                <span class="erp-class-name">{{ row.class_name }}</span>
+                <progress class="erp-class-bar" max="100" value="{{ row.percentage|stringformat:'.1f' }}" aria-label="{{ row.class_name }} attendance">{{ row.percentage|floatformat:1 }}%</progress>
+                <span class="erp-class-pct">{{ row.percentage|floatformat:0 }}%</span>
+            </li>
+            {% endfor %}
+        </ul>
+        <p class="erp-analytics-sub">Lowest attendance first.</p>
+    </article>
+    {% endif %}
+    {% else %}
+    <p class="erp-analytics-empty">No submitted attendance in this period yet.</p>
+    {% endif %}
+</section>
+{% endwith %}

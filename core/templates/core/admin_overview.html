@@ -9,6 +9,7 @@
         {% for card in glance_cards %}{% include "partials/_stat_card.html" with card=card only %}{% endfor %}
     </div>
 </section>
+{% include "partials/_attendance_analytics.html" %}
 {% if cards %}
 {% if attention_cards %}
 <section aria-labelledby="attention-title">
