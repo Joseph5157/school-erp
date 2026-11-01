@@ -33,6 +33,16 @@
   --erp-info: #1d5fa8;
   --erp-info-strong: #174e8a;
   --erp-info-wash: #e6eef8;
+  /* Chart colours (data, not brand). Validated with the dataviz palette checker on white cards:
+     attendance blue + marks orange pass colour-blind separation and 3:1 contrast; the heatmap is
+     one blue hue light->dark; red is kept for "under 80%" (a status, always with its legend label). */
+  --erp-viz-attendance: #2a78d6;
+  --erp-viz-marks: #eb6834;
+  --erp-viz-heat-1: #86b6ef;
+  --erp-viz-heat-2: #3987e5;
+  --erp-viz-heat-3: #1c5cab;
+  --erp-viz-low: #d03b3b;
+  --erp-viz-grid: #e1e0d9;
 
   /* Back-compatible alias for the original "critical" token name. */
   --erp-crit: var(--erp-bad);
@@ -1033,10 +1043,13 @@ body.has-tabbar .erp-messages {
 .erp-trend-badge--improving { background: var(--erp-ok-wash); color: var(--erp-ok-strong); }
 .erp-trend-badge--worsening { background: var(--erp-bad-wash); color: var(--erp-bad); }
 .erp-trend { display: block; width: 100%; height: auto; }
-.erp-trend-grid { stroke: var(--erp-rule); stroke-width: 1; }
-.erp-trend-area { fill: var(--erp-action-wash); stroke: none; }
-.erp-trend-line { fill: none; stroke: var(--erp-action); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
-.erp-trend-dot { fill: var(--erp-surface); stroke: var(--erp-action); stroke-width: 2; }
+.erp-trend-grid { stroke: var(--erp-viz-grid); stroke-width: 1; }
+.erp-trend-area { fill: var(--erp-viz-attendance); fill-opacity: .12; stroke: none; }
+.erp-trend-line { fill: none; stroke: var(--erp-viz-attendance); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.erp-trend-dot { fill: var(--erp-surface); stroke: var(--erp-viz-attendance); stroke-width: 2; }
+/* A transparent, larger hit area so the value tooltip is easy to reach with a mouse. */
+.erp-trend-hit { fill: transparent; }
+.erp-trend-point:hover .erp-trend-dot { fill: var(--erp-viz-attendance); }
 .erp-trend-axis { display: flex; justify-content: space-between; margin: var(--erp-space-1) 0 0; font-size: var(--erp-text-xs); color: var(--erp-ink-soft); }
 .erp-class-bars { list-style: none; margin: var(--erp-space-3) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--erp-space-3); }
 .erp-class-row { display: grid; grid-template-columns: minmax(4.5rem, 6.5rem) 1fr 2.75rem; align-items: center; gap: var(--erp-space-3); }
@@ -1044,17 +1057,21 @@ body.has-tabbar .erp-messages {
 .erp-class-pct { font-size: var(--erp-text-sm); font-weight: 700; text-align: end; }
 .erp-class-bar { width: 100%; height: .75rem; appearance: none; border: 0; border-radius: 999px; background: var(--erp-rule); overflow: hidden; }
 .erp-class-bar::-webkit-progress-bar { background: var(--erp-rule); border-radius: 999px; }
-.erp-class-bar::-webkit-progress-value { background: var(--erp-action); border-radius: 999px; }
-.erp-class-bar::-moz-progress-bar { background: var(--erp-action); border-radius: 999px; }
+.erp-class-bar::-webkit-progress-value { background: var(--erp-viz-attendance); border-radius: 999px; }
+.erp-class-bar::-moz-progress-bar { background: var(--erp-viz-attendance); border-radius: 999px; }
+/* Marks are a different measure from attendance, so they get their own colour. */
+.erp-class-bar--marks::-webkit-progress-value { background: var(--erp-viz-marks); }
+.erp-class-bar--marks::-moz-progress-bar { background: var(--erp-viz-marks); }
 /* Gate B: attendance heatmap (28 days, Mon-Sun weeks) and frequent-absentee cards. */
 .erp-heat { display: flex; flex-direction: column; gap: 4px; margin-top: var(--erp-space-3); }
 .erp-heat-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
 .erp-heat-head span { text-align: center; font-size: var(--erp-text-xs); font-weight: 600; color: var(--erp-ink-soft); }
 .erp-heat-cell { display: inline-grid; place-items: center; min-height: 2.25rem; border-radius: var(--erp-radius-sm); font-size: var(--erp-text-xs); font-weight: 600; color: var(--erp-ink); border: 1px solid transparent; }
-.erp-heat-cell--t4 { background: var(--erp-ok); color: #fff; }
-.erp-heat-cell--t3 { background: color-mix(in srgb, var(--erp-ok) 60%, #fff); color: var(--erp-ink); }
-.erp-heat-cell--t2 { background: var(--erp-ok-wash); color: var(--erp-ink); }
-.erp-heat-cell--t1 { background: var(--erp-bad); color: #fff; }
+.erp-heat-cell--t4 { background: var(--erp-viz-heat-3); color: #fff; }
+.erp-heat-cell--t3 { background: var(--erp-viz-heat-2); color: #fff; }
+.erp-heat-cell--t2 { background: var(--erp-viz-heat-1); color: var(--erp-ink); }
+.erp-heat-cell--t1 { background: var(--erp-viz-low); color: #fff; }
+.erp-heat-cell[title] { cursor: default; }
 .erp-heat-cell--no_data { background: repeating-linear-gradient(45deg, var(--erp-surface), var(--erp-surface) 4px, var(--erp-rule) 4px, var(--erp-rule) 6px); border-color: var(--erp-rule); color: var(--erp-ink-soft); }
 .erp-heat-cell--not_school { background: var(--erp-paper); color: var(--erp-ink-soft); opacity: .7; }
 .erp-heat-cell--outside { visibility: hidden; }
@@ -1504,8 +1521,10 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 @media (min-width: 992px) {
   /* Fluid working area for heavy tables; long-form pages keep their own reading widths. */
   .erp-content { max-width: 96rem; }
-  /* Admin shell only (has-sidebar): a centred 1440px canvas. Teacher and Guardian keep the 96rem width. */
-  body.has-sidebar .erp-content { max-width: 90rem; margin-inline: auto; }
+  /* Admin shell only (has-sidebar): content starts beside the sidebar and uses the full width, so wide
+     screens no longer show an empty band between the two. Forms and long text keep their own reading
+     widths. Teacher and Guardian (no sidebar) keep the 96rem width. */
+  body.has-sidebar .erp-content { max-width: none; margin-inline: 0; }
   .erp-page-header { margin-bottom: var(--erp-space-4); border-bottom-color: transparent; padding-bottom: 0; }
   .erp-page-title { font-size: 1.75rem; }
   .erp-topbar { padding-inline: var(--erp-space-5); }

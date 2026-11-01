@@ -827,6 +827,24 @@ class DesktopLayoutTests(AnalyticsFixture, TestCase):
         for area in ("trend", "heat", "classes", "absent"):
             self.assertIn(f"erp-analytics-card--{area}", html)
 
+    def test_trend_dots_and_heat_cells_name_their_value_on_hover(self):
+        self.with_data()
+        html = self.administrator.get(self.url).content.decode()
+        self.assertIn("<title>1 Jul: 50.0%</title>", html)  # trend dot
+        self.assertRegex(html, r'class="erp-heat-cell erp-heat-cell--t1" title="1 Jul: 50\.0%"')
+
+    def test_marks_use_their_own_colour_not_the_attendance_one(self):
+        html = self.administrator.get(self.url).content.decode()
+        self.assertNotIn("erp-class-bar--marks", html)  # no marks permission/data here
+        from pathlib import Path
+
+        from django.conf import settings
+
+        css = (Path(settings.BASE_DIR) / "static" / "css" / "erp.css").read_text(encoding="utf-8")
+        for token in ("--erp-viz-attendance:", "--erp-viz-marks:", "--erp-viz-heat-1:", "--erp-viz-low:"):
+            self.assertIn(token, css)
+        self.assertIn(".erp-class-bar--marks::-webkit-progress-value", css)
+
     def test_desktop_grid_lives_only_in_the_desktop_media_query(self):
         from pathlib import Path
 
