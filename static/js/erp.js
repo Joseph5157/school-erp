@@ -65,6 +65,16 @@
     });
   })();
 
+  // Overview period sheet: entering a date picks "Custom range", so the dates are not silently ignored.
+  // Without JS the person ticks Custom range themselves, as the sheet already shows.
+  document.querySelectorAll(".erp-period-sheet").forEach(function (sheet) {
+    var custom = sheet.querySelector('input[name="period"][value="custom"]');
+    if (!custom) return;
+    sheet.querySelectorAll('input[type="date"]').forEach(function (input) {
+      input.addEventListener("change", function () { if (input.value) custom.checked = true; });
+    });
+  });
+
   // Success and info messages close after 6 seconds; warnings and errors stay until dismissed.
   var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   document.querySelectorAll("[data-erp-autohide]").forEach(function (alert) {

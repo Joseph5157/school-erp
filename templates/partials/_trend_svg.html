@@ -1,0 +1,9 @@
+{# One daily-attendance trend chart. `c` is a chart from analytics.trend_chart; `kind` is "phone" or "wide" (CSS shows one per screen width). #}
+<svg class="erp-trend erp-trend--{{ kind }}" viewBox="0 0 {{ c.width }} {{ c.height }}" role="img"
+     aria-label="Daily attendance percentage from {{ a.points.0.date|date:'j M' }}. Average {{ a.summary.current|floatformat:1 }} percent. Axis starts at {{ c.y_min }} percent.">
+    <line class="erp-trend-grid" x1="0" x2="{{ c.width }}" y1="8" y2="8"/>
+    <line class="erp-trend-grid" x1="0" x2="{{ c.width }}" y1="{{ c.height|add:'-8' }}" y2="{{ c.height|add:'-8' }}"/>
+    {% if c.dots|length > 1 %}<polygon class="erp-trend-area" points="{{ c.area }}"/>{% endif %}
+    <polyline class="erp-trend-line" points="{{ c.line }}"/>
+    {% for dot in c.dots %}<circle class="erp-trend-dot" cx="{{ dot.x }}" cy="{{ dot.y }}" r="3.5"/>{% endfor %}
+</svg>
