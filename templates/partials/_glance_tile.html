@@ -1,0 +1,6 @@
+{# "School at a glance" figure: the whole tile is the link (no separate Open button). Without permission to open it, it is a plain tile. #}
+{% if card.url %}<a class="erp-glance-tile erp-stat-card erp-stat-card--{{ card.tone }}" href="{{ card.url }}">{% else %}<div class="erp-glance-tile erp-stat-card erp-stat-card--{{ card.tone }}">{% endif %}
+    <span class="erp-stat-label">{{ card.title }}</span>
+    <span class="erp-stat-value">{{ card.count }}</span>
+    <span class="erp-stat-summary">{{ card.summary }}{% if card.detail %} {{ card.detail }}{% endif %}</span>
+{% if card.url %}<span class="erp-glance-go" aria-hidden="true">&rsaquo;</span></a>{% else %}</div>{% endif %}
