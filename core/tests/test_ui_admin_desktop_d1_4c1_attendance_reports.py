@@ -283,6 +283,8 @@ class ReportsIndexTests(ReportsFixture, TestCase):
         content = re.sub(r"<svg class=\"erp-nav-icon\".*?</svg>", "", content, flags=re.S)
         # So is the mobile menu button's hamburger icon.
         content = re.sub(r"<svg class=\"erp-hamburger\".*?</svg>", "", content, flags=re.S)
+        # And the desktop show/hide sidebar button's panel icon.
+        content = re.sub(r"<svg class=\"erp-sidebar-icon\".*?</svg>", "", content, flags=re.S)
         for banned in ("<canvas", "<svg", "erp-stat"):
             self.assertNotIn(banned, content)
 
