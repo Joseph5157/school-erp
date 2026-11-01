@@ -16,6 +16,7 @@ from django.views.decorators.http import condition, require_POST
 
 from accounts.models import SecurityEvent
 from core import (
+    analytics,
     assessment_reports,
     assignments,
     dashboard,
@@ -878,6 +879,7 @@ def admin_overview(request):
             "setup_first": setup_checklist.foundation_incomplete(steps),
             "setup_done": done_count,
             "setup_total": len(steps),
+            "attendance_analytics": analytics.overview_context(),
         },
     )
 
