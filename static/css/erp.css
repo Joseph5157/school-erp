@@ -264,6 +264,23 @@ body.erp { min-height: 100vh; }
   .erp-content { padding-block-start: 1.5rem; padding-inline: 2rem; }
 }
 
+/* ---------- Desktop sidebar collapse ---------- */
+/* The top-bar button (desktop only) hides the fixed sidebar completely and gives its width to the page.
+   The state is a class on <html>, set in <head> from localStorage so it applies before first paint.
+   Hidden means visibility: hidden, so its links leave the tab order and the accessibility tree.
+   Phones and tablets keep the off-canvas drawer and never see this button. */
+.erp-sidebar-toggle { display: none; }
+@media (min-width: 992px) {
+  .erp-sidebar-toggle:not([hidden]) {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 2.5rem; min-height: var(--erp-btn-height); padding: 0; flex: 0 0 auto;
+  }
+  html.erp-nav-ready body.has-sidebar .erp-sidebar { transition: transform .2s ease-out, visibility .2s; }
+  html.erp-nav-ready body.has-sidebar .erp-main { transition: margin-left .2s ease-out; }
+  html.erp-nav-collapsed body.has-sidebar .erp-sidebar { transform: translateX(-100%); visibility: hidden; }
+  html.erp-nav-collapsed body.has-sidebar .erp-main { margin-left: 0; }
+}
+
 .erp-tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 1030;
   background: var(--erp-surface); border-top: 1px solid var(--erp-rule);

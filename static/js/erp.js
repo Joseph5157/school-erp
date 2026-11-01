@@ -39,6 +39,32 @@
     if (active && active.scrollIntoView) active.scrollIntoView({ block: "nearest" });
   })();
 
+  // Desktop sidebar: the top-bar button hides or shows it and remembers the choice in this browser.
+  // The saved state was already applied in <head>; this only wires the button. Without JS or storage
+  // the button stays hidden and the sidebar stays open.
+  (function () {
+    var button = document.querySelector("[data-erp-sidebar-toggle]");
+    if (!button || !document.getElementById("erp-sidebar")) return;
+    var root = document.documentElement;
+    var key = "erp.nav.collapsed";
+    function sync() {
+      var collapsed = root.classList.contains("erp-nav-collapsed");
+      button.setAttribute("aria-expanded", collapsed ? "false" : "true");
+      button.title = collapsed ? "Show menu" : "Hide menu";
+    }
+    sync();
+    button.hidden = false;
+    button.addEventListener("click", function () {
+      var collapsed = root.classList.toggle("erp-nav-collapsed");
+      try { window.localStorage.setItem(key, collapsed ? "1" : "0"); } catch (error) { /* storage unavailable */ }
+      sync();
+    });
+    // Animate only user clicks, never the page load (two frames: after the first paint).
+    window.requestAnimationFrame(function () {
+      window.requestAnimationFrame(function () { root.classList.add("erp-nav-ready"); });
+    });
+  })();
+
   // Success and info messages close after 6 seconds; warnings and errors stay until dismissed.
   var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   document.querySelectorAll("[data-erp-autohide]").forEach(function (alert) {
