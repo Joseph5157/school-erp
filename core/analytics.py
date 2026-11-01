@@ -468,5 +468,7 @@ def overview_context(today=None, *, include_absentees=False, include_marks=False
         "points": points,
         "summary": trend_summary(period, points),
         "chart": trend_chart(points, width=320, height=120),
+        # Desktop draws its own, wider and flatter chart; scaling the phone one up made it huge.
+        "chart_wide": trend_chart(points, width=720, height=200),
         "classes": class_comparison(period),
     }

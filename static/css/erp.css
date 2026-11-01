@@ -1077,6 +1077,57 @@ body.has-tabbar .erp-messages {
 .erp-period-option { display: flex; align-items: center; gap: var(--erp-space-3); min-height: 2.75rem; font-size: var(--erp-text-sm); }
 .erp-period-dates { display: grid; grid-template-columns: 1fr 1fr; gap: var(--erp-space-3); font-size: var(--erp-text-xs); font-weight: 600; color: var(--erp-ink-soft); }
 .erp-period-dates .form-control { min-height: 2.75rem; margin-top: var(--erp-space-1); }
+
+/* Desktop-only Overview pieces stay out of the phone layout entirely. */
+.erp-period-seg, .erp-period-chip-custom, .erp-trend-stats, .erp-trend--wide, .erp-trend-desk-note, .erp-class-callouts { display: none; }
+
+/* ---------- Desktop Overview grid ---------- */
+@media (min-width: 992px) {
+  /* "Option B" (docs/ui-reviews/desktop-overview-options.html): a title row with period links, a hero
+     trend card with the heatmap beside it, then by class / absentees / marks as three equal cards.
+     Cards keep their DOM (phone) order; `order` only rearranges them on desktop. */
+  .erp-analytics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--erp-space-4); }
+  .erp-analytics > * { grid-column: 1 / -1; margin: 0; }
+  .erp-analytics > .erp-analytics-card { grid-column: auto; }
+  .erp-analytics > .erp-analytics-card--trend { grid-column: span 2; order: 1; }
+  .erp-analytics > .erp-analytics-card--heat { order: 2; }
+  .erp-analytics > .erp-analytics-card--classes { order: 3; }
+  .erp-analytics > .erp-analytics-card--absent { order: 4; }
+  .erp-analytics > .erp-analytics-card--marks { order: 5; }
+
+  .erp-analytics-top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--erp-space-3); }
+  .erp-analytics-top .erp-section-title { margin: 0; }
+  .erp-period-controls { display: flex; align-items: center; gap: var(--erp-space-2); }
+  .erp-period-seg { display: inline-flex; gap: .1rem; padding: .2rem; border: 1px solid var(--erp-rule); border-radius: 999px; background: var(--erp-surface); }
+  .erp-period-seg a { padding: .35rem .9rem; border-radius: 999px; font-size: var(--erp-text-sm); font-weight: 600; color: var(--erp-ink-soft); text-decoration: none; white-space: nowrap; }
+  .erp-period-seg a:hover { background: var(--erp-paper); color: var(--erp-ink); }
+  .erp-period-seg a[aria-current="page"] { background: var(--erp-action); color: #fff; }
+  .erp-period { position: relative; margin: 0; }
+  .erp-period-chip { min-height: 2.5rem; }
+  .erp-period-chip-label { display: none; }
+  .erp-period-chip-custom { display: inline; }
+  .erp-period--active > .erp-period-chip { border-color: var(--erp-action); background: var(--erp-action-wash); color: var(--erp-action-strong); }
+  .erp-period-sheet { position: absolute; right: 0; top: calc(100% + .5rem); z-index: 20; width: 22rem; margin: 0; box-shadow: 0 8px 24px rgba(24, 33, 43, .12); }
+
+  .erp-today-strip { margin: 0; padding: 0; overflow: visible; }
+  .erp-today-tile { flex: 1 1 0; }
+
+  .erp-trend--phone, .erp-trend-phone-note { display: none; }
+  .erp-trend--wide, .erp-trend-desk-note { display: block; }
+  .erp-trend-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--erp-space-2); margin: 0 0 var(--erp-space-3); }
+  .erp-trend-stats > div { padding: var(--erp-space-2) var(--erp-space-3); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius-sm); }
+  .erp-trend-stats dt { font-size: .7rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--erp-ink-soft); }
+  .erp-trend-stats dd { margin: 0; font-size: 1.35rem; font-weight: 700; line-height: 1.3; }
+  .erp-trend-stats dd small { margin-left: var(--erp-space-1); font-size: var(--erp-text-xs); font-weight: 600; color: var(--erp-ink-soft); }
+
+  .erp-class-callouts { display: grid; grid-template-columns: 1fr 1fr; gap: var(--erp-space-2); margin: var(--erp-space-3) 0 0; }
+  .erp-class-callouts > div { padding: var(--erp-space-2) var(--erp-space-3); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius-sm); }
+  .erp-class-callouts dt { font-size: .7rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--erp-ink-soft); }
+  .erp-class-callouts dd { margin: 0; font-weight: 700; }
+
+  .erp-absentee-list { gap: var(--erp-space-1); }
+  .erp-absentee { padding: var(--erp-space-2) var(--erp-space-3); min-height: 0; }
+}
 .erp-all-clear { margin: 0 0 var(--erp-space-4); padding: var(--erp-space-3) var(--erp-space-4); border-radius: var(--erp-radius); background: var(--erp-ok-wash); color: var(--erp-ok-strong); font-size: var(--erp-text-sm); font-weight: 600; }
 .erp-clear-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--erp-space-2) var(--erp-space-4); margin: var(--erp-space-4) 0; color: var(--erp-ink-soft); font-size: var(--erp-text-sm); }
 .erp-clear-title { font-size: var(--erp-text-sm); font-weight: 600; margin: 0; }

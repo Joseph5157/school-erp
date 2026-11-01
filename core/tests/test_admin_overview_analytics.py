@@ -5,6 +5,7 @@ Tue 2026-07-14, so these tests do not depend on the real calendar.
 """
 
 import datetime
+import re
 from decimal import Decimal
 from unittest import mock
 
@@ -337,7 +338,7 @@ class OverviewAnalyticsViewTests(AnalyticsFixture, TestCase):
         response = self.administrator.get(self.url)
         self.assertContains(response, "Attendance, last 14 days")
         self.assertContains(response, "No submitted attendance in this period yet.")
-        self.assertNotContains(response, '<svg class="erp-trend"')
+        self.assertNotContains(response, '<svg class="erp-trend ')
 
     def test_renders_strip_trend_and_class_bars_with_data(self):
         self.day(datetime.date(2026, 7, 1), {self.s1: P, self.s2: P})
@@ -345,7 +346,7 @@ class OverviewAnalyticsViewTests(AnalyticsFixture, TestCase):
         self.day(TODAY, {self.s1: P, self.s2: A})
         response = self.administrator.get(self.url)
         self.assertContains(response, "erp-today-strip")
-        self.assertContains(response, '<svg class="erp-trend"')
+        self.assertContains(response, '<svg class="erp-trend erp-trend--phone"')
         self.assertContains(response, "Grade 1")
         self.assertContains(response, "erp-class-bar")
 
@@ -753,3 +754,85 @@ class MarksSnapshotViewTests(MarksFixture, TestCase):
         with CaptureQueriesContext(connection) as ctx:
             self.administrator.get(self.url)
         self.assertEqual(len(ctx), before)
+
+
+# --- Desktop layout ("Option B" card grid, docs/ui-reviews/desktop-overview-options.html) ---
+
+
+class DesktopLayoutTests(AnalyticsFixture, TestCase):
+    """Desktop gets its own pieces; the phone pieces stay in the page (CSS picks by width)."""
+
+    url = reverse("core:admin-overview")
+
+    def with_data(self):
+        for d in (1, 2, 3):
+            self.day(datetime.date(2026, 7, d), {self.s1: P, self.s2: A})
+        self.day(datetime.date(2026, 7, 6), {self.s1: P, self.s2: P})
+
+    def test_a_wide_chart_is_built_for_desktop_next_to_the_phone_chart(self):
+        self.with_data()
+        context = analytics.overview_context(TODAY)
+        self.assertEqual((context["chart"]["width"], context["chart"]["height"]), (320, 120))
+        self.assertEqual((context["chart_wide"]["width"], context["chart_wide"]["height"]), (720, 200))
+        html = self.administrator.get(self.url).content.decode()
+        self.assertIn('class="erp-trend erp-trend--phone"', html)
+        self.assertIn('class="erp-trend erp-trend--wide"', html)
+
+    def test_no_data_means_no_wide_chart_either(self):
+        self.assertIsNone(analytics.overview_context(TODAY)["chart_wide"])
+
+    def test_period_quick_links_mark_the_current_choice(self):
+        html = self.administrator.get(self.url, {"period": "month"}).content.decode()
+        self.assertIn('class="erp-period-seg"', html)
+        self.assertRegex(html, r'<a[^>]*href="[^"]*\?period=month"[^>]*aria-current="page"')
+        self.assertRegex(html, r'<a[^>]*href="[^"]*\?period=14d"')
+        self.assertNotRegex(html, r'<a[^>]*href="[^"]*\?period=14d"[^>]*aria-current')
+        self.assertNotIn("?period=term", html)  # no term runs today in this fixture
+
+    def test_trend_card_shows_headline_numbers(self):
+        self.with_data()
+        html = self.administrator.get(self.url).content.decode()
+        stats = re.search(r'<dl class="erp-trend-stats">(.*?)</dl>', html, re.S).group(1)
+        for label in ("Average", "Best day", "Lowest day", "Absentees"):
+            self.assertIn(label, stats)
+
+    def test_absentee_count_is_left_out_without_permission_to_view_students(self):
+        from django.contrib.auth import get_user_model
+        from django.contrib.auth.models import Permission
+
+        self.with_data()
+        user = get_user_model().objects.create_user(username="desk-only", password="pass-12345")
+        user.user_permissions.add(Permission.objects.get(codename="view_school"))
+        client = self.client_class()
+        client.login(username="desk-only", password="pass-12345")
+        stats = re.search(
+            r'<dl class="erp-trend-stats">(.*?)</dl>', client.get(self.url).content.decode(), re.S
+        ).group(1)
+        self.assertNotIn("Absentees", stats)
+
+    def test_heatmap_card_names_the_lowest_and_best_class(self):
+        grade = ClassGrade.objects.create(name="Grade 2")
+        section = Section.objects.create(class_grade=grade, name="A")
+        s3 = self.enroll_student("Ravi Jain", grade, section)
+        self.day(datetime.date(2026, 7, 1), {self.s1: P, self.s2: A})  # Grade 1: 50%
+        self.day(datetime.date(2026, 7, 1), {s3: P}, class_grade=grade, section=section)  # 100%
+        html = self.administrator.get(self.url).content.decode()
+        callouts = re.search(r'<dl class="erp-class-callouts">(.*?)</dl>', html, re.S).group(1)
+        self.assertRegex(callouts, r"Lowest class.*Grade 1.*50%")
+        self.assertRegex(callouts, r"Best class.*Grade 2.*100%")
+
+    def test_cards_are_tagged_for_the_desktop_grid(self):
+        self.with_data()
+        html = self.administrator.get(self.url).content.decode()
+        for area in ("trend", "heat", "classes", "absent"):
+            self.assertIn(f"erp-analytics-card--{area}", html)
+
+    def test_desktop_grid_lives_only_in_the_desktop_media_query(self):
+        from pathlib import Path
+
+        from django.conf import settings
+
+        css = (Path(settings.BASE_DIR) / "static" / "css" / "erp.css").read_text(encoding="utf-8")
+        block = css.split("/* ---------- Desktop Overview grid ---------- */", 1)[1]
+        self.assertTrue(block.lstrip().startswith("@media (min-width: 992px)"))
+        self.assertIn(".erp-analytics { display: grid;", block)

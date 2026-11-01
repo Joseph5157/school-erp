@@ -1,11 +1,20 @@
 {# Overview attendance analytics (Gate A). School-wide, submitted registers only; see core/analytics.py. #}
 {% with a=attendance_analytics %}
 <section class="erp-analytics" aria-labelledby="analytics-title">
+    <div class="erp-analytics-top">
     <h2 class="erp-section-title" id="analytics-title">Attendance, {{ a.label }}</h2>
 
+    <div class="erp-period-controls">
+    {# Desktop: one-click periods as plain links (shown from 992px). Phones use the chip and sheet below. #}
+    {% url 'core:admin-overview' as overview_url %}
+    <nav class="erp-period-seg" aria-label="Attendance period">
+        <a href="{{ overview_url }}?period=14d"{% if a.choice == "14d" %} aria-current="page"{% endif %}>Last 14 days</a>
+        <a href="{{ overview_url }}?period=month"{% if a.choice == "month" %} aria-current="page"{% endif %}>This month</a>
+        {% if a.term %}<a href="{{ overview_url }}?period=term"{% if a.choice == "term" %} aria-current="page"{% endif %}>This term</a>{% endif %}
+    </nav>
     {# Plain GET form inside <details>: works without JS, and the chosen period is in the URL. #}
-    <details class="erp-period"{% if a.notice %} open{% endif %}>
-        <summary class="erp-period-chip">{{ a.label|capfirst }} <span aria-hidden="true">&#9662;</span><span class="visually-hidden">: change period</span></summary>
+    <details class="erp-period{% if a.choice == 'custom' %} erp-period--active{% endif %}"{% if a.notice %} open{% endif %}>
+        <summary class="erp-period-chip"><span class="erp-period-chip-label">{{ a.label|capfirst }}</span><span class="erp-period-chip-custom">{% if a.choice == "custom" %}{{ a.label }}{% else %}Custom range{% endif %}</span> <span aria-hidden="true">&#9662;</span><span class="visually-hidden">: change period</span></summary>
         <form class="erp-period-sheet" method="get" action="{% url 'core:admin-overview' %}">
             <fieldset class="erp-period-options">
                 <legend class="visually-hidden">Attendance period</legend>
@@ -21,6 +30,8 @@
             <button class="btn btn-primary" type="submit">Apply</button>
         </form>
     </details>
+    </div>
+    </div>
     {% if a.notice %}<p class="erp-analytics-empty" role="status">{{ a.notice }}</p>{% endif %}
 
     <div class="erp-today-strip" role="list" aria-label="Today's attendance">
@@ -35,11 +46,12 @@
     </div>
 
     {% if a.chart %}
-    <article class="erp-analytics-card">
+    <article class="erp-analytics-card erp-analytics-card--trend">
         <header class="erp-analytics-head">
             <div>
                 <h3 class="erp-analytics-title">Daily attendance</h3>
-                <p class="erp-analytics-sub">Average {{ a.summary.current|floatformat:1 }}%</p>
+                <p class="erp-analytics-sub erp-trend-phone-note">Average {{ a.summary.current|floatformat:1 }}%</p>
+                <p class="erp-analytics-sub erp-trend-desk-note">Submitted registers only, {{ a.label }}</p>
             </div>
             <p class="erp-trend-badge erp-trend-badge--{{ a.summary.status }}">
                 {% if a.summary.status == "improving" %}Up {{ a.summary.delta_abs|floatformat:1 }} pts
@@ -48,16 +60,17 @@
                 {% else %}No comparison yet{% endif %}
             </p>
         </header>
-        <svg class="erp-trend" viewBox="0 0 {{ a.chart.width }} {{ a.chart.height }}" role="img"
-             aria-label="Daily attendance percentage from {{ a.points.0.date|date:'j M' }}. Average {{ a.summary.current|floatformat:1 }} percent. Axis starts at {{ a.chart.y_min }} percent.">
-            <line class="erp-trend-grid" x1="0" x2="{{ a.chart.width }}" y1="8" y2="8"/>
-            <line class="erp-trend-grid" x1="0" x2="{{ a.chart.width }}" y1="{{ a.chart.height|add:'-8' }}" y2="{{ a.chart.height|add:'-8' }}"/>
-            {% if a.chart.dots|length > 1 %}<polygon class="erp-trend-area" points="{{ a.chart.area }}"/>{% endif %}
-            <polyline class="erp-trend-line" points="{{ a.chart.line }}"/>
-            {% for dot in a.chart.dots %}<circle class="erp-trend-dot" cx="{{ dot.x }}" cy="{{ dot.y }}" r="3.5"/>{% endfor %}
-        </svg>
+        {# Desktop headline numbers (hidden on phones, which show the sentence below instead). #}
+        <dl class="erp-trend-stats">
+            <div><dt>Average</dt><dd>{{ a.summary.current|floatformat:1 }}%</dd></div>
+            <div><dt>Best day</dt><dd>{{ a.summary.peak.percentage|floatformat:0 }}%<small>{{ a.summary.peak.date|date:"j M" }}</small></dd></div>
+            <div><dt>Lowest day</dt><dd>{{ a.summary.lowest.percentage|floatformat:0 }}%<small>{{ a.summary.lowest.date|date:"j M" }}</small></dd></div>
+            {% if a.absentees is not None %}<div><dt>Absentees</dt><dd>{{ a.absentees.total }}<small>{{ a.absentee_threshold }}+ days</small></dd></div>{% endif %}
+        </dl>
+        {% include "partials/_trend_svg.html" with c=a.chart kind="phone" %}
+        {% include "partials/_trend_svg.html" with c=a.chart_wide kind="wide" %}
         <p class="erp-trend-axis"><span>{{ a.chart.y_max }}% top</span><span>{{ a.chart.y_min }}% bottom</span></p>
-        <p class="erp-analytics-sub">
+        <p class="erp-analytics-sub erp-trend-phone-note">
             Best day {{ a.summary.peak.date|date:"j M" }} ({{ a.summary.peak.percentage|floatformat:0 }}%).
             Lowest {{ a.summary.lowest.date|date:"j M" }} ({{ a.summary.lowest.percentage|floatformat:0 }}%).
         </p>
@@ -67,7 +80,7 @@
     </article>
 
     {% if a.classes %}
-    <article class="erp-analytics-card">
+    <article class="erp-analytics-card erp-analytics-card--classes">
         <h3 class="erp-analytics-title">By class</h3>
         <ul class="erp-class-bars">
             {% for row in a.classes %}
@@ -82,7 +95,7 @@
     </article>
     {% endif %}
 
-    <article class="erp-analytics-card">
+    <article class="erp-analytics-card erp-analytics-card--heat">
         <h3 class="erp-analytics-title">Attendance heatmap</h3>
         <p class="erp-analytics-sub">Last 4 weeks. Greener is higher; red is under 80%.
         <div class="erp-heat" role="img" aria-label="Attendance heatmap for the last 4 weeks, Monday to Sunday. Greener is higher attendance; red is under 80 percent. Days with no submitted register are hatched; non-school days are blank.">
@@ -97,13 +110,20 @@
         <ul class="visually-hidden erp-visually-hidden-data">
             {% for week in a.heatmap %}{% for cell in week %}{% if cell.state == "data" %}<li>{{ cell.date|date:"j M" }}: {{ cell.percentage|floatformat:1 }}%</li>{% endif %}{% endfor %}{% endfor %}
         </ul>
+        {% if a.classes|length > 1 %}{% with low=a.classes.0 high=a.classes|last %}
+        {# Desktop only: the two ends of the class comparison, next to the heatmap. #}
+        <dl class="erp-class-callouts">
+            <div><dt>Lowest class</dt><dd>{{ low.class_name }}, {{ low.percentage|floatformat:0 }}%</dd></div>
+            <div><dt>Best class</dt><dd>{{ high.class_name }}, {{ high.percentage|floatformat:0 }}%</dd></div>
+        </dl>
+        {% endwith %}{% endif %}
     </article>
     {% else %}
     <p class="erp-analytics-empty">No submitted attendance in this period yet.</p>
     {% endif %}
 
     {% if a.absentees is not None %}
-    <article class="erp-analytics-card">
+    <article class="erp-analytics-card erp-analytics-card--absent">
         <h3 class="erp-analytics-title">Frequent absentees</h3>
         <p class="erp-analytics-sub">Absent {{ a.absentee_threshold }} or more days, {{ a.label }}.</p>
         {% if a.absentees.rows %}
@@ -124,7 +144,7 @@
     {% endif %}
 
     {% if a.show_marks %}
-    <article class="erp-analytics-card">
+    <article class="erp-analytics-card erp-analytics-card--marks">
         <h3 class="erp-analytics-title">Marks snapshot</h3>
         {% if a.marks %}
         <p class="erp-analytics-sub">{{ a.marks.term.name }}. Finalized assessments only, as a percentage of each test's maximum.</p>
