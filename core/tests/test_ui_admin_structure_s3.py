@@ -132,12 +132,15 @@ class SidebarPageTests(AuthorizationClientsMixin, TestCase):
 
 
 class ContentCanvasTests(TestCase):
-    def test_1440_cap_is_scoped_to_the_admin_shell(self):
+    def test_admin_content_sits_beside_the_sidebar_and_fills_the_width(self):
+        # Was a centred 90rem (1440px) canvas; on wide screens that left an empty band between the
+        # sidebar and the page. Admin content now starts next to the sidebar and uses the width.
         from pathlib import Path
 
         from django.conf import settings
 
         css = (Path(settings.BASE_DIR) / "static" / "css" / "erp.css").read_text(encoding="utf-8")
-        self.assertIn("body.has-sidebar .erp-content { max-width: 90rem; margin-inline: auto; }", css)
+        self.assertIn("body.has-sidebar .erp-content { max-width: none; margin-inline: 0; }", css)
+        self.assertNotIn("body.has-sidebar .erp-content { max-width: 90rem; margin-inline: auto; }", css)
         # Teacher and Guardian pages (no sidebar) keep the original desktop width.
         self.assertIn("  .erp-content { max-width: 96rem; }", css)

@@ -66,7 +66,8 @@ class AdminDesktopD0Tests(AuthorizationClientsMixin, TestCase):
         block = self.ui_d0_css()
         desktop = block[block.index("@media (min-width: 992px)"):]
         shared = block[: block.index("@media (min-width: 992px)")]
-        self.assertIn("max-width: 90rem", desktop)
+        # The admin canvas width rule is desktop-only (now full width beside the sidebar, was 90rem).
+        self.assertIn("body.has-sidebar .erp-content { max-width: none", desktop)
         self.assertIn(".erp-sidebar .nav-link.active::before", desktop)
         # Panel, toolbar and table patterns apply at every width on purpose.
         for selector in (".erp-panel {", ".erp-toolbar {", ".erp-panel .table > thead th", ".erp-years-table td.text-nowrap"):

@@ -5,5 +5,5 @@
     <line class="erp-trend-grid" x1="0" x2="{{ c.width }}" y1="{{ c.height|add:'-8' }}" y2="{{ c.height|add:'-8' }}"/>
     {% if c.dots|length > 1 %}<polygon class="erp-trend-area" points="{{ c.area }}"/>{% endif %}
     <polyline class="erp-trend-line" points="{{ c.line }}"/>
-    {% for dot in c.dots %}<circle class="erp-trend-dot" cx="{{ dot.x }}" cy="{{ dot.y }}" r="3.5"/>{% endfor %}
+    {% for dot in c.dots %}<g class="erp-trend-point"><title>{{ dot.date|date:"j M" }}: {{ dot.percentage|floatformat:1 }}%</title><circle class="erp-trend-hit" cx="{{ dot.x }}" cy="{{ dot.y }}" r="10"/><circle class="erp-trend-dot" cx="{{ dot.x }}" cy="{{ dot.y }}" r="4"/></g>{% endfor %}
 </svg>
