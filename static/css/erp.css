@@ -1049,6 +1049,17 @@ body.has-tabbar .erp-messages {
 .erp-absentee-name { font-weight: 600; overflow-wrap: anywhere; }
 .erp-absentee-days { grid-row: span 2; align-self: center; font-size: var(--erp-text-sm); font-weight: 700; color: var(--erp-bad); white-space: nowrap; }
 .erp-absentee-class { font-size: var(--erp-text-sm); color: var(--erp-ink-soft); }
+/* Gate C: period chip + sheet (a <details>, so it needs no JS) and the marks card sub-heading. */
+.erp-analytics-subtitle { font-size: var(--erp-text-sm); font-weight: 600; margin: var(--erp-space-4) 0 var(--erp-space-2); }
+.erp-period { margin: 0 0 var(--erp-space-4); }
+.erp-period-chip { display: inline-flex; align-items: center; gap: var(--erp-space-2); min-height: 2.75rem; padding: 0 var(--erp-space-4); border: 1px solid var(--erp-rule); border-radius: 999px; background: var(--erp-surface); color: var(--erp-ink); font-size: var(--erp-text-sm); font-weight: 600; cursor: pointer; list-style: none; }
+.erp-period-chip::-webkit-details-marker { display: none; }
+.erp-period[open] .erp-period-chip { border-color: var(--erp-action); }
+.erp-period-sheet { display: flex; flex-direction: column; gap: var(--erp-space-3); margin-top: var(--erp-space-3); padding: var(--erp-space-4); background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius); }
+.erp-period-options { display: flex; flex-direction: column; gap: var(--erp-space-1); margin: 0; padding: 0; border: 0; }
+.erp-period-option { display: flex; align-items: center; gap: var(--erp-space-3); min-height: 2.75rem; font-size: var(--erp-text-sm); }
+.erp-period-dates { display: grid; grid-template-columns: 1fr 1fr; gap: var(--erp-space-3); font-size: var(--erp-text-xs); font-weight: 600; color: var(--erp-ink-soft); }
+.erp-period-dates .form-control { min-height: 2.75rem; margin-top: var(--erp-space-1); }
 .erp-all-clear { margin: 0 0 var(--erp-space-4); padding: var(--erp-space-3) var(--erp-space-4); border-radius: var(--erp-radius); background: var(--erp-ok-wash); color: var(--erp-ok-strong); font-size: var(--erp-text-sm); font-weight: 600; }
 .erp-clear-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--erp-space-2) var(--erp-space-4); margin: var(--erp-space-4) 0; color: var(--erp-ink-soft); font-size: var(--erp-text-sm); }
 .erp-clear-title { font-size: var(--erp-text-sm); font-weight: 600; margin: 0; }

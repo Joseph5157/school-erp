@@ -5,20 +5,29 @@ Tue 2026-07-14, so these tests do not depend on the real calendar.
 """
 
 import datetime
+from decimal import Decimal
 from unittest import mock
 
 from django.db import connection
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
+from django.utils import timezone
 
 from core import analytics
 from core.models import (
+    AcademicSubjectOffering,
+    AcademicTerm,
+    AcademicYear,
     Applicant,
+    Assessment,
     AttendanceRegister,
     AttendanceStatus,
     ClassGrade,
+    ResultStatus,
     Section,
+    StudentResult,
+    Subject,
 )
 from core.tests.test_authorization import AttendanceFixtureMixin, AuthorizationClientsMixin
 
@@ -409,3 +418,338 @@ class OverviewAnalyticsViewTests(AnalyticsFixture, TestCase):
         response = self.non_admin.get(self.url)
         self.assertEqual(response.status_code, 403)
         self.assertNotContains(response, "Attendance, last 14 days", status_code=403)
+
+
+# --- Gate C: period filter -------------------------------------------------------------
+
+
+class ResolvePeriodTests(TestCase):
+    """`resolve_period` turns GET params into a safe Period; bad input falls back to 14 days."""
+
+    def setUp(self):
+        year = AcademicYear.objects.create(
+            name="2026-27", start_date=datetime.date(2026, 6, 1), end_date=datetime.date(2027, 4, 30)
+        )
+        self.term = AcademicTerm.objects.create(
+            academic_year=year, name="Term 1", start_date=datetime.date(2026, 6, 1),
+            end_date=datetime.date(2026, 9, 30), display_order=1,
+        )
+
+    def resolve(self, **params):
+        return analytics.resolve_period(params, TODAY)
+
+    def assertFallsBack(self, choice, notice_part=None):
+        self.assertEqual(choice["key"], "14d")
+        self.assertEqual(choice["period"], analytics.default_period(TODAY))
+        if notice_part:
+            self.assertIn(notice_part, choice["notice"])
+
+    def test_default_is_14_days_without_a_notice(self):
+        choice = self.resolve()
+        self.assertFallsBack(choice)
+        self.assertEqual(choice["label"], "last 14 days")
+        self.assertIsNone(choice["notice"])
+
+    def test_unknown_choice_falls_back_quietly(self):
+        choice = self.resolve(period="bogus")
+        self.assertFallsBack(choice)
+        self.assertIsNone(choice["notice"])
+
+    def test_this_month_runs_from_the_first_to_today(self):
+        choice = self.resolve(period="month")
+        self.assertEqual(choice["key"], "month")
+        self.assertEqual(choice["period"].start, datetime.date(2026, 7, 1))
+        self.assertEqual(choice["period"].end, TODAY)
+        self.assertEqual(choice["label"], "this month")
+
+    def test_this_term_is_the_term_running_today_capped_at_today(self):
+        choice = self.resolve(period="term")
+        self.assertEqual(choice["key"], "term")
+        self.assertEqual(choice["period"].start, datetime.date(2026, 6, 1))
+        self.assertEqual(choice["period"].end, TODAY)  # the term ends later; never the future
+        self.assertEqual(choice["label"], "Term 1")
+        self.assertEqual(choice["term"], self.term)
+
+    def test_this_term_without_a_running_term_falls_back_with_a_notice(self):
+        self.term.delete()
+        choice = self.resolve(period="term")
+        self.assertFallsBack(choice, "No term is running")
+        self.assertIsNone(choice["term"])
+
+    def test_a_finished_term_is_not_the_current_term(self):
+        AcademicTerm.objects.filter(pk=self.term.pk).update(end_date=datetime.date(2026, 6, 30))
+        self.assertIsNone(self.resolve()["term"])
+
+    def test_custom_range(self):
+        choice = self.resolve(period="custom", **{"from": "2026-07-03", "to": "2026-07-10"})
+        self.assertEqual(choice["key"], "custom")
+        self.assertEqual(choice["period"].start, datetime.date(2026, 7, 3))
+        self.assertEqual(choice["period"].end, datetime.date(2026, 7, 10))
+        self.assertEqual(choice["label"], "3 Jul – 10 Jul")
+        self.assertEqual((choice["custom_from"], choice["custom_to"]), ("2026-07-03", "2026-07-10"))
+
+    def test_custom_end_in_the_future_is_capped_at_today(self):
+        choice = self.resolve(period="custom", **{"from": "2026-07-03", "to": "2026-12-31"})
+        self.assertEqual(choice["period"].end, TODAY)
+
+    def test_custom_start_in_the_future_falls_back(self):
+        self.assertFallsBack(
+            self.resolve(period="custom", **{"from": "2026-08-01", "to": "2026-08-10"}),
+            "future",
+        )
+
+    def test_custom_reversed_range_falls_back(self):
+        self.assertFallsBack(
+            self.resolve(period="custom", **{"from": "2026-07-10", "to": "2026-07-03"}),
+            "before",
+        )
+
+    def test_custom_missing_or_invalid_dates_fall_back(self):
+        self.assertFallsBack(self.resolve(period="custom"), "dates")
+        self.assertFallsBack(
+            self.resolve(period="custom", **{"from": "nope", "to": "2026-07-03"}), "dates"
+        )
+
+    def test_custom_range_longer_than_a_year_falls_back(self):
+        self.assertFallsBack(
+            self.resolve(period="custom", **{"from": "2025-01-01", "to": "2026-07-10"}), "year"
+        )
+
+
+class PeriodFilterViewTests(AnalyticsFixture, TestCase):
+    url = reverse("core:admin-overview")
+
+    def test_default_view_offers_the_period_choices(self):
+        response = self.administrator.get(self.url)
+        self.assertContains(response, "erp-period")
+        self.assertContains(response, 'value="14d"')
+        self.assertContains(response, 'value="month"')
+        self.assertContains(response, 'value="custom"')
+
+    def test_this_term_choice_is_offered_only_when_a_term_runs_today(self):
+        self.assertNotContains(self.administrator.get(self.url), 'value="term"')
+        AcademicTerm.objects.create(
+            academic_year=self.year, name="Term 1", start_date=datetime.date(2026, 6, 1),
+            end_date=datetime.date(2026, 9, 30), display_order=1,
+        )
+        self.assertContains(self.administrator.get(self.url), 'value="term"')
+
+    def test_this_month_changes_the_window_and_the_title(self):
+        # 2026-06-30 is inside the default 14 days' *previous* window but outside "this month".
+        self.day(datetime.date(2026, 6, 30), {self.s1: A, self.s2: A})
+        self.day(datetime.date(2026, 7, 2), {self.s1: P, self.s2: P})
+        response = self.administrator.get(self.url, {"period": "month"})
+        context = response.context["attendance_analytics"]
+        self.assertEqual(context["period"].start, datetime.date(2026, 7, 1))
+        self.assertEqual([p["date"] for p in context["points"]], [datetime.date(2026, 7, 2)])
+        self.assertContains(response, "Attendance, this month")
+
+    def test_custom_range_drives_the_chart(self):
+        self.day(datetime.date(2026, 7, 3), {self.s1: P, self.s2: A})
+        self.day(datetime.date(2026, 7, 9), {self.s1: P, self.s2: P})
+        response = self.administrator.get(
+            self.url, {"period": "custom", "from": "2026-07-03", "to": "2026-07-05"}
+        )
+        points = response.context["attendance_analytics"]["points"]
+        self.assertEqual([p["date"] for p in points], [datetime.date(2026, 7, 3)])
+        self.assertContains(response, "3 Jul")
+
+    def test_invalid_custom_range_shows_a_notice_and_the_default_window(self):
+        response = self.administrator.get(
+            self.url, {"period": "custom", "from": "2026-07-10", "to": "2026-07-03"}
+        )
+        self.assertContains(response, "Showing the last 14 days instead")
+        self.assertEqual(response.context["attendance_analytics"]["period_days"], 14)
+
+    def test_absentees_follow_the_selected_period(self):
+        for d in (1, 2, 3):
+            self.day(datetime.date(2026, 7, d), {self.s1: P, self.s2: A})
+        shorter = self.administrator.get(
+            self.url, {"period": "custom", "from": "2026-07-02", "to": "2026-07-14"}
+        )
+        self.assertEqual(shorter.context["attendance_analytics"]["absentees"]["rows"], [])
+        self.assertEqual(
+            len(self.administrator.get(self.url).context["attendance_analytics"]["absentees"]["rows"]),
+            1,
+        )
+
+    def test_period_choice_does_not_change_the_query_count_between_options(self):
+        self.day(datetime.date(2026, 7, 2), {self.s1: P, self.s2: A})
+        counts = []
+        for params in ({}, {"period": "month"}, {"period": "custom", "from": "2026-07-01", "to": "2026-07-05"}):
+            with CaptureQueriesContext(connection) as ctx:
+                self.administrator.get(self.url, params)
+            counts.append(len(ctx))
+        self.assertLessEqual(max(counts) - min(counts), 2)  # term lookup / marks term lookup only
+
+
+# --- Gate C: marks snapshot ------------------------------------------------------------
+
+
+class MarksFixture(AnalyticsFixture):
+    def setUp(self):
+        super().setUp()
+        self.term_a = AcademicTerm.objects.create(
+            academic_year=self.year, name="Term 1", start_date=datetime.date(2026, 6, 1),
+            end_date=datetime.date(2026, 6, 30), display_order=1,
+        )
+        self.term_b = AcademicTerm.objects.create(
+            academic_year=self.year, name="Term 2", start_date=datetime.date(2026, 7, 1),
+            end_date=datetime.date(2026, 9, 30), display_order=2,
+        )
+        self.maths = Subject.objects.create(name="Mathematics")
+
+    def assessment(self, scores, *, name="Unit Test", term=None, class_grade=None, section=None,
+                   maximum="20", finalize=True):
+        """An assessment with `{enrollment: score}` results; a score of None is ABSENT."""
+        class_grade = class_grade or self.class_grade
+        term = term or self.term_b
+        offering, _ = AcademicSubjectOffering.objects.get_or_create(
+            academic_year=self.year, class_grade=class_grade, subject=self.maths
+        )
+        assessment = Assessment(
+            term=term, offering=offering, section=section or self.section, name=name,
+            assessment_date=term.start_date, maximum_marks=Decimal(maximum),
+        )
+        assessment.full_clean()
+        assessment.save()
+        for enrollment, score in scores.items():
+            StudentResult.objects.create(
+                assessment=assessment, academic_enrollment=enrollment, entered_by=self.admin_user,
+                status=ResultStatus.ABSENT if score is None else ResultStatus.MARKED,
+                score=None if score is None else Decimal(str(score)),
+            )
+        if finalize:
+            Assessment.objects.filter(pk=assessment.pk).update(
+                status=Assessment.Status.FINALIZED, finalized_by=self.admin_user,
+                finalized_at=timezone.now(), subject_label=self.maths.name,
+            )
+        return assessment
+
+    def second_class(self):
+        grade = ClassGrade.objects.create(name="Grade 2")
+        section = Section.objects.create(class_grade=grade, name="A")
+        return grade, section, self.enroll_student("Ravi Jain", grade, section)
+
+
+class MarksSnapshotTests(MarksFixture, TestCase):
+    def test_no_assessments_gives_no_snapshot(self):
+        self.assertIsNone(analytics.marks_snapshot(TODAY))
+
+    def test_draft_assessments_are_not_official(self):
+        self.assessment({self.s1: 15}, finalize=False)
+        self.assertIsNone(analytics.marks_snapshot(TODAY))
+
+    def test_average_is_a_percentage_of_the_maximum_per_class(self):
+        self.assessment({self.s1: 15, self.s2: 10})  # 75% and 50%
+        snapshot = analytics.marks_snapshot(TODAY)
+        self.assertEqual(snapshot["term"], self.term_b)
+        self.assertEqual(
+            [(r["class_name"], r["average"], r["results"]) for r in snapshot["classes"]],
+            [("Grade 1", 62.5, 2)],
+        )
+
+    def test_different_maximums_are_normalised(self):
+        self.assessment({self.s1: 18}, maximum="30", name="Out of 30")  # 60%
+        self.assessment({self.s1: 20}, maximum="20", name="Out of 20")  # 100%
+        snapshot = analytics.marks_snapshot(TODAY)
+        self.assertEqual(snapshot["classes"][0]["average"], 80.0)
+
+    def test_an_absent_result_is_never_a_zero(self):
+        self.assessment({self.s1: 16, self.s2: None})
+        snapshot = analytics.marks_snapshot(TODAY)
+        self.assertEqual(snapshot["classes"][0]["average"], 80.0)  # not 40.0
+        self.assertEqual(snapshot["classes"][0]["results"], 1)
+        self.assertEqual(snapshot["absent"], 1)
+
+    def test_draft_results_do_not_leak_into_a_finalized_average(self):
+        self.assessment({self.s1: 20, self.s2: 20}, name="Final one")
+        self.assessment({self.s1: 0, self.s2: 0}, name="Still draft", finalize=False)
+        self.assertEqual(analytics.marks_snapshot(TODAY)["classes"][0]["average"], 100.0)
+
+    def test_classes_are_listed_lowest_average_first(self):
+        grade, section, s3 = self.second_class()
+        self.assessment({self.s1: 18}, name="G1")
+        self.assessment({s3: 8}, name="G2", class_grade=grade, section=section)
+        names = [r["class_name"] for r in analytics.marks_snapshot(TODAY)["classes"]]
+        self.assertEqual(names, ["Grade 2", "Grade 1"])
+
+    def test_score_bands_count_results_and_sum_to_the_total(self):
+        # 100%, 80%, 60%, 35%, and 59.9% which belongs in 40-59.
+        self.assessment({self.s1: 20, self.s2: 16}, name="A")
+        self.assessment({self.s1: 12, self.s2: 7}, name="B")
+        self.assessment({self.s1: 11.98}, name="C")
+        snapshot = analytics.marks_snapshot(TODAY)
+        counts = {band["label"]: band["count"] for band in snapshot["bands"]}
+        self.assertEqual(
+            counts,
+            {"80% and above": 2, "60–79%": 1, "40–59%": 1, "Below 40%": 1},
+        )
+        self.assertEqual(sum(counts.values()), snapshot["total"])
+        self.assertEqual(sum(band["share"] for band in snapshot["bands"]), 100)
+
+    def test_the_latest_term_with_finalized_results_is_used(self):
+        self.assessment({self.s1: 10}, name="Old", term=self.term_a)
+        self.assertEqual(analytics.marks_snapshot(TODAY)["term"], self.term_a)
+        self.assessment({self.s1: 20}, name="New", term=self.term_b)
+        snapshot = analytics.marks_snapshot(TODAY)
+        self.assertEqual(snapshot["term"], self.term_b)
+        self.assertEqual(snapshot["classes"][0]["average"], 100.0)  # term A not mixed in
+
+    def test_a_term_that_has_not_started_is_ignored(self):
+        future = AcademicTerm.objects.create(
+            academic_year=self.year, name="Term 3", start_date=datetime.date(2026, 10, 1),
+            end_date=datetime.date(2026, 12, 31), display_order=3,
+        )
+        self.assessment({self.s1: 20}, name="Early", term=future)
+        self.assertIsNone(analytics.marks_snapshot(TODAY))
+
+
+class MarksSnapshotViewTests(MarksFixture, TestCase):
+    url = reverse("core:admin-overview")
+
+    def test_renders_term_class_average_and_bands(self):
+        self.assessment({self.s1: 15, self.s2: 10})
+        response = self.administrator.get(self.url)
+        self.assertContains(response, "Marks snapshot")
+        self.assertContains(response, "Term 2")
+        self.assertContains(response, "Grade 1")
+        self.assertContains(response, "62.5%")
+        self.assertContains(response, "80% and above")
+        self.assertContains(response, "erp-visually-hidden-data")
+
+    def test_empty_state_is_honest(self):
+        response = self.administrator.get(self.url)
+        self.assertContains(response, "Marks snapshot")
+        self.assertContains(response, "No finalized results yet.")
+
+    def test_hidden_without_permission_to_view_results(self):
+        from django.contrib.auth import get_user_model
+        from django.contrib.auth.models import Permission
+
+        self.assessment({self.s1: 15})
+        user = get_user_model().objects.create_user(username="no-marks", password="pass-12345")
+        user.user_permissions.add(Permission.objects.get(codename="view_school"))
+        client = self.client_class()
+        client.login(username="no-marks", password="pass-12345")
+        response = client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Marks snapshot")
+
+    def test_marks_do_not_follow_the_attendance_period(self):
+        self.assessment({self.s1: 15})
+        response = self.administrator.get(self.url, {"period": "custom", "from": "2026-07-03", "to": "2026-07-04"})
+        self.assertContains(response, "Marks snapshot")
+        self.assertContains(response, "75.0%")
+
+    def test_more_results_do_not_add_queries(self):
+        self.assessment({self.s1: 15}, name="First")
+        with CaptureQueriesContext(connection) as ctx:
+            self.administrator.get(self.url)
+        before = len(ctx)
+        grade, section, s3 = self.second_class()
+        self.assessment({self.s2: 9}, name="Second")
+        self.assessment({s3: 12}, name="Third", class_grade=grade, section=section)
+        with CaptureQueriesContext(connection) as ctx:
+            self.administrator.get(self.url)
+        self.assertEqual(len(ctx), before)
