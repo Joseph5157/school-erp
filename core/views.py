@@ -879,7 +879,9 @@ def admin_overview(request):
             "setup_first": setup_checklist.foundation_incomplete(steps),
             "setup_done": done_count,
             "setup_total": len(steps),
-            "attendance_analytics": analytics.overview_context(),
+            "attendance_analytics": analytics.overview_context(
+                include_absentees=request.user.has_perm("core.view_student")
+            ),
         },
     )
 

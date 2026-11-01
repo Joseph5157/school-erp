@@ -61,8 +61,46 @@
         <p class="erp-analytics-sub">Lowest attendance first.</p>
     </article>
     {% endif %}
+
+    <article class="erp-analytics-card">
+        <h3 class="erp-analytics-title">Attendance heatmap</h3>
+        <p class="erp-analytics-sub">Last 4 weeks. Greener is higher; red is under 80%.
+        <div class="erp-heat" role="img" aria-label="Attendance heatmap for the last 4 weeks, Monday to Sunday. Greener is higher attendance; red is under 80 percent. Days with no submitted register are hatched; non-school days are blank.">
+            <div class="erp-heat-week erp-heat-head" aria-hidden="true"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
+            {% for week in a.heatmap %}
+            <div class="erp-heat-week" aria-hidden="true">
+                {% for cell in week %}<span class="erp-heat-cell erp-heat-cell--{% if cell.state == 'data' %}{{ cell.tier }}{% else %}{{ cell.state }}{% endif %}">{% if cell.state != 'outside' %}{{ cell.date|date:"j" }}{% endif %}</span>{% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+        <p class="erp-heat-legend" aria-hidden="true"><span class="erp-heat-cell erp-heat-cell--t1"></span> under 80% <span class="erp-heat-cell erp-heat-cell--t4"></span> 95%+ <span class="erp-heat-cell erp-heat-cell--no_data"></span> not submitted</p>
+        <ul class="visually-hidden erp-visually-hidden-data">
+            {% for week in a.heatmap %}{% for cell in week %}{% if cell.state == "data" %}<li>{{ cell.date|date:"j M" }}: {{ cell.percentage|floatformat:1 }}%</li>{% endif %}{% endfor %}{% endfor %}
+        </ul>
+    </article>
     {% else %}
     <p class="erp-analytics-empty">No submitted attendance in this period yet.</p>
+    {% endif %}
+
+    {% if a.absentees is not None %}
+    <article class="erp-analytics-card">
+        <h3 class="erp-analytics-title">Frequent absentees</h3>
+        <p class="erp-analytics-sub">Absent {{ a.absentee_threshold }} or more days in the last {{ a.period_days }} days.</p>
+        {% if a.absentees.rows %}
+        <ul class="erp-absentee-list">
+            {% for r in a.absentees.rows %}
+            <li><a class="erp-absentee" href="{% url 'core:student-detail' r.student_id %}">
+                <span class="erp-absentee-name">{{ r.name }}</span>
+                <span class="erp-absentee-class">{{ r.class_name }}</span>
+                <span class="erp-absentee-days">{{ r.absent_days }} day{{ r.absent_days|pluralize }} absent</span>
+            </a></li>
+            {% endfor %}
+        </ul>
+        {% if a.absentees.total > a.absentees.rows|length %}<p class="erp-analytics-sub">Showing {{ a.absentees.rows|length }} of {{ a.absentees.total }}.</p>{% endif %}
+        {% else %}
+        <p class="erp-analytics-sub">No student was absent {{ a.absentee_threshold }} or more days in this period.</p>
+        {% endif %}
+    </article>
     {% endif %}
 </section>
 {% endwith %}
