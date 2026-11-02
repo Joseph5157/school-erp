@@ -9,7 +9,7 @@
     </ul>
 </nav>
 {% endif %}
-<div class="erp-progress-grid{% if not progress %} erp-progress-grid--months-only{% elif not progress.term %} erp-progress-grid--no-results{% endif %}">
+<div class="erp-progress-grid{% if not progress %} erp-progress-grid--months-only{% endif %}">
     {% if progress %}
     {% if progress.term %}
     <article class="erp-chart-card erp-progress-card erp-progress-card--bullet">

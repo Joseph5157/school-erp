@@ -1199,6 +1199,8 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
 .erp-radar-outline--student { fill: var(--erp-viz-student); fill-opacity: .18; stroke: var(--erp-viz-student); }
 .erp-radar-outline--section { fill: none; stroke: var(--erp-viz-attendance); stroke-dasharray: 4 3; }
 .erp-radar-label { font-size: 11px; fill: var(--erp-ink); }
+/* Twelve months wrap onto two rows instead of scrolling, so the newest month is never off-screen. */
+.erp-progress-card--months .erp-cols { flex-wrap: wrap; row-gap: var(--erp-space-3); }
 @media (min-width: 992px) {
   .erp-progress-grid { grid-template-columns: repeat(12, minmax(0, 1fr)); }
   .erp-progress-card--bullet { grid-column: span 5; }

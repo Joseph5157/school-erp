@@ -221,14 +221,8 @@ def terms_with_results(student, scope=None, today=None):
     )
 
 
-RADAR_LABEL_CHARS = 10  # about 62px of room beside the radar at 280px wide, at 11px text
-
-
-def _short_label(name):
-    """A radar axis label that fits beside the chart; the full name stays in the bullet chart."""
-    if len(name) <= RADAR_LABEL_CHARS:
-        return name
-    return name[: RADAR_LABEL_CHARS - 1].rstrip() + "\u2026"
+# Fixed radar size: wide enough for a 4-axis chart's side labels, narrow enough for a 360px phone card.
+RADAR_SIZE = (292, 180)
 
 
 def _bullet_row(score):
@@ -244,8 +238,12 @@ def _bullet_row(score):
         summary += f", pass mark {pass_display}%"
     if average_display is not None:
         summary += f", section average {average_display}%"
+    title = f"{score.subject_name}: {display}%"
+    if average_display is not None:
+        title += f", section average {average_display}%"
     return {
         "score": score,
+        "title": title,
         "bullet": charts.bullet(score.score, score.pass_percent, score.section_average),
         "display": display,
         "pass_display": pass_display,
@@ -299,12 +297,13 @@ def student_progress_context(student, term_id, scope=None, include_comparison=Tr
                 {"key": "section", "label": "Section average",
                  "values": [s.section_average for s in scores]}
             )
-        radar = charts.radar([_short_label(s.subject_name) for s in scores], outlines)
-        for label, score in zip(radar["labels"], scores, strict=True):
-            label["full"] = score.subject_name
+        radar = charts.radar([s.subject_name for s in scores], outlines, size=RADAR_SIZE)
+        for label, row in zip(radar["labels"], context["bullets"], strict=True):
+            label["full"] = row["score"].subject_name
+            label["title"] = row["title"]
         context["radar"] = radar
         context["radar_values"] = [
-            {"name": s.subject_name, "student": charts.percent_display(s.score),
+            {"name": s.subject_name, "student": charts.percent_display(s.score, s.pass_percent),
              "average": None if s.section_average is None else charts.percent_display(s.section_average)}
             for s in scores
         ]

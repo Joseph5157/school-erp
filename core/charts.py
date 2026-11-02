@@ -169,6 +169,36 @@ def bullet(score, pass_percent, comparison):
     }
 
 
+RADAR_CHAR_PX = 5.8  # average width of a character at the radar's 11px label size
+RADAR_TOP_CHARS = 30  # top and bottom labels centre on the axis, so they have room both ways
+
+
+def _label_lines(text, limit, two_lines):
+    """Break `text` at a word boundary into at most two lines of `limit` characters.
+
+    A line that still will not fit ends with an ellipsis, so only a single word that is too
+    long to show is ever cut.
+    """
+
+    def clip(line):
+        return line if len(line) <= limit else line[: max(limit - 1, 1)].rstrip() + "…"
+
+    if len(text) <= limit or not two_lines:
+        return [clip(text)]
+    first = ""
+    words = text.split()
+    taken = 0
+    for word in words:
+        candidate = f"{first} {word}".strip()
+        if len(candidate) > limit:
+            break
+        first, taken = candidate, taken + 1
+    if not first:  # even the first word is too long
+        return [clip(words[0])] + ([clip(" ".join(words[1:]))] if len(words) > 1 else [])
+    rest = " ".join(words[taken:])
+    return [first, clip(rest)]
+
+
 def radar(axes, outlines, size=(280, 180)):
     """A radar chart. First axis at the top, clockwise. Values are 0-100."""
     if not 3 <= len(axes) <= 8:
@@ -194,7 +224,12 @@ def radar(axes, outlines, size=(280, 180)):
         x, y = point(index, radius + 12)
         dx = x - cx
         anchor = "middle" if abs(dx) < 1 else ("start" if dx > 0 else "end")
-        labels.append({"text": text, "x": _r(x), "y": _r(y), "anchor": anchor})
+        if anchor == "middle":
+            lines = _label_lines(text, RADAR_TOP_CHARS, two_lines=False)
+        else:
+            room = (width - x) if anchor == "start" else x
+            lines = _label_lines(text, int(room / RADAR_CHAR_PX), two_lines=True)
+        labels.append({"text": text, "lines": lines, "x": _r(x), "y": _r(y), "anchor": anchor})
 
     drawn = []
     for outline in outlines:

@@ -200,6 +200,24 @@ class ProgressPageTests(ProgressFixture, TestCase):
         self.assertEqual(len(few), len(many))
 
 
+class QueryCeilingTests(ProgressFixture, TestCase):
+    def test_student_page_stays_under_the_query_ceiling(self):
+        # Measured: 32 queries for an administrator with results (8 subjects, 2 terms, 7
+        # students in the section, attendance in 2 months). The ceiling is that plus 3, so a
+        # per-subject or per-month loop fails it at once.
+        self.subjects(8)
+        self.subjects(1, term=self.term_a, start=20)
+        everyone = [self.s1, self.s2] + [
+            self.enroll_student(f"Pupil {i}", self.class_grade, self.section) for i in range(5)
+        ]
+        self.day(datetime.date(2026, 6, 8), {e: P for e in everyone})
+        self.day(datetime.date(2026, 7, 6), {e: A if e is self.s2 else P for e in everyone})
+        with CaptureQueriesContext(connection) as ctx:
+            response = self.administrator.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertLessEqual(len(ctx), 35, [q["sql"][:80] for q in ctx])
+
+
 class RadarEdgeTests(ProgressFixture, TestCase):
     def test_mixed_section_averages_draw_only_the_student_outline(self):
         # Maths has 5 students (average shown); Art has only 2 (no average). Must not raise.
@@ -228,13 +246,71 @@ class RadarEdgeTests(ProgressFixture, TestCase):
         radar = self.get().context["progress"]["radar"]
         self.assertEqual([o["key"] for o in radar["outlines"]], ["student", "section"])
 
-    def test_long_subject_names_are_shortened_on_the_radar_only(self):
-        for name in ("Environmental Science", "Computer Science", "Art"):
-            self.assessment({self.s1: 12}, subject=Subject.objects.create(name=name), name=name)
+    def test_long_names_wrap_at_a_word_and_stay_distinct(self):
+        names = ["Computer Science", "Computer Applications", "Environmental Science", "Mathematics"]
+        for name in names:
+            subject = self.maths if name == "Mathematics" else Subject.objects.create(name=name)
+            self.assessment({self.s1: 12}, subject=subject, name=name)
         response = self.get()
-        radar = response.context["progress"]["radar"]
-        self.assertTrue(all(len(label["text"]) <= 10 for label in radar["labels"]))
+        labels = response.context["progress"]["radar"]["labels"]
+        by_name = {label["full"]: label["lines"] for label in labels}
+        self.assertEqual(by_name["Mathematics"], ["Mathematics"])
+        self.assertNotEqual(by_name["Computer Science"], by_name["Computer Applications"])
+        self.assertEqual(len({tuple(label["lines"]) for label in labels}), 4)
         self.assertContains(response, "Environmental Science")  # bullet chart and hidden list
+
+    def test_label_title_gives_the_exact_value(self):
+        self.subjects(3, score=12)  # 60%
+        titles = [label["title"] for label in self.get().context["progress"]["radar"]["labels"]]
+        self.assertEqual(titles[0], "Subject 1: 60%")
+        self.assertContains(self.get(), "<title>Subject 1: 60%</title>")
+
+    def test_radar_and_partials_follow_the_rendering_rules(self):
+        self.subjects(4)
+        response = self.get()
+        html = response.content.decode()
+        self.assertRegex(html, r'<svg class="erp-radar"[^>]* role="img"')
+        self.assertIn('<ul class="visually-hidden">', html)
+        self.assertIn("Subject 1: 50%", html.split('<ul class="visually-hidden">')[1])
+        progress = html[html.index('id="progress"'): html.index('id="enrollment-history"')]
+        self.assertNotIn("style=", progress)
+
+    def test_radar_hidden_list_and_bullet_agree_near_the_pass_mark(self):
+        self.assessment(
+            {self.s1: 49.96}, subject=Subject.objects.create(name="Close"), maximum="100",
+            pass_mark=50,
+        )
+        for name in ("Other 1", "Other 2"):
+            self.assessment({self.s1: 15}, subject=Subject.objects.create(name=name), name=name)
+        progress = self.get().context["progress"]
+        self.assertEqual(progress["bullets"][0]["display"], "49.9")
+        self.assertEqual(progress["radar_values"][0]["student"], "49.9")
+
+
+class RadarLabelUnitTests(TestCase):
+    def lines(self, axes, outline_values=None):
+        outlines = [{"key": "student", "label": "S", "values": outline_values or [50] * len(axes)}]
+        radar = charts.radar(axes, outlines, size=(292, 180))
+        return [label["lines"] for label in radar["labels"]], radar
+
+    def test_every_word_survives_when_there_is_room(self):
+        lines, _ = self.lines(["Computer Science", "Computer Applications", "Mathematics"])
+        for name, got in zip(["Computer Science", "Computer Applications", "Mathematics"], lines):
+            self.assertEqual(" ".join(got), name)
+        self.assertEqual(lines[2], ["Mathematics"])
+
+    def test_top_label_is_not_capped_by_the_side_limit(self):
+        lines, _ = self.lines(["Computer Applications", "A", "B"])
+        self.assertEqual(lines[0], ["Computer Applications"])
+
+    def test_a_single_word_that_cannot_fit_gets_an_ellipsis(self):
+        lines, _ = self.lines(["Top", "Supercalifragilisticexpialidocious", "B"])
+        self.assertEqual(len(lines[1]), 1)
+        self.assertTrue(lines[1][0].endswith("…"))
+
+    def test_at_most_two_lines(self):
+        lines, _ = self.lines(["Top", "One Two Three Four Five Six Seven", "B"])
+        self.assertLessEqual(len(lines[1]), 2)
 
 
 class SubjectOrderTests(ProgressFixture, TestCase):
