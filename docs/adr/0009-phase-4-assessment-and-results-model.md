@@ -138,3 +138,7 @@ OPEN (decided in the named gate, not here):
 - `docs/adr/0001-academic-structure-and-enrollment-history.md`
 - `docs/adr/0006-academic-enrollment-effective-dating.md`
 - `docs/adr/0010-phase-4-assessment-teacher-authorization.md`
+
+## Amendment (2026-11-02)
+
+- ADR 0022 allows display-only per-subject averages in analytics charts, a narrow exception to "no weighted term percentage"; see `docs/adr/0022-analytics-subject-averages.md`.
