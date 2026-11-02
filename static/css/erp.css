@@ -1199,15 +1199,26 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
 .erp-radar-outline--student { fill: var(--erp-viz-student); fill-opacity: .18; stroke: var(--erp-viz-student); }
 .erp-radar-outline--section { fill: none; stroke: var(--erp-viz-attendance); stroke-dasharray: 4 3; }
 .erp-radar-label { font-size: 11px; fill: var(--erp-ink); }
-/* Twelve months wrap onto two rows instead of scrolling, so the newest month is never off-screen. */
+/* Months wrap onto as many rows as the card needs (about five per row in the narrow desktop card) instead of scrolling, so the newest month is never off-screen. */
 .erp-progress-card--months .erp-cols { flex-wrap: wrap; row-gap: var(--erp-space-3); }
-@media (min-width: 992px) {
+/* Below 1330px the sidebar leaves a span-4 radar card under 292px, so the cards stack in two rows (bullet, then radar and months). From 1330px they sit 5 / 4 / 3. */
+@media (min-width: 992px) { /* progress */
   .erp-progress-grid { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+  .erp-progress-card--bullet { grid-column: span 12; }
+  .erp-progress-card--radar { grid-column: span 6; }
+  .erp-progress-card--months { grid-column: span 6; }
+  .erp-progress-card--empty { grid-column: span 6; }
+  .erp-progress-grid--months-only .erp-progress-card--months { grid-column: span 6; }
+  .erp-progress-grid--no-months .erp-progress-card--radar { grid-column: span 12; }
+}
+@media (min-width: 1330px) { /* progress */
   .erp-progress-card--bullet { grid-column: span 5; }
   .erp-progress-card--radar { grid-column: span 4; }
   .erp-progress-card--months { grid-column: span 3; }
   .erp-progress-card--empty { grid-column: span 9; }
   .erp-progress-grid--months-only .erp-progress-card--months { grid-column: span 4; }
+  .erp-progress-grid--no-months .erp-progress-card--bullet { grid-column: span 7; }
+  .erp-progress-grid--no-months .erp-progress-card--radar { grid-column: span 5; }
 }
 /* Desktop-only Overview pieces stay out of the phone layout entirely. */
 .erp-period-seg, .erp-period-chip-custom, .erp-trend-stats, .erp-trend--wide, .erp-trend-desk-note, .erp-class-callouts { display: none; }

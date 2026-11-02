@@ -1,7 +1,11 @@
 """Progress section on the admin student page: bullet chart, radar, attendance by month."""
 
 import datetime
+from pathlib import Path
 from unittest import mock
+
+from django.conf import settings
+from django.template.loader import render_to_string
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
@@ -12,7 +16,7 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from core import analytics, charts, marks_analytics
-from core.models import AcademicTerm, Subject
+from core.models import AcademicTerm, AcademicYear, ClassGrade, Section, Subject
 from core.tests.test_admin_overview_analytics import A, P, TODAY, MarksFixture
 
 
@@ -204,7 +208,8 @@ class QueryCeilingTests(ProgressFixture, TestCase):
     def test_student_page_stays_under_the_query_ceiling(self):
         # Measured: 32 queries for an administrator with results (8 subjects, 2 terms, 7
         # students in the section, attendance in 2 months). The ceiling is that plus 3, so a
-        # per-subject or per-month loop fails it at once.
+        # per-subject loop fails it at once; months are pinned by the one-query test in
+        # AttendanceByMonthTests.
         self.subjects(8)
         self.subjects(1, term=self.term_a, start=20)
         everyone = [self.s1, self.s2] + [
@@ -253,7 +258,7 @@ class RadarEdgeTests(ProgressFixture, TestCase):
             self.assessment({self.s1: 12}, subject=subject, name=name)
         response = self.get()
         labels = response.context["progress"]["radar"]["labels"]
-        by_name = {label["full"]: label["lines"] for label in labels}
+        by_name = {label["title"].split(":")[0]: label["lines"] for label in labels}
         self.assertEqual(by_name["Mathematics"], ["Mathematics"])
         self.assertNotEqual(by_name["Computer Science"], by_name["Computer Applications"])
         self.assertEqual(len({tuple(label["lines"]) for label in labels}), 4)
@@ -263,7 +268,9 @@ class RadarEdgeTests(ProgressFixture, TestCase):
         self.subjects(3, score=12)  # 60%
         titles = [label["title"] for label in self.get().context["progress"]["radar"]["labels"]]
         self.assertEqual(titles[0], "Subject 1: 60%")
-        self.assertContains(self.get(), "<title>Subject 1: 60%</title>")
+        html = self.get().content.decode()
+        radar_svg = html[html.index('<svg class="erp-radar"'): html.index("</svg>", html.index('<svg class="erp-radar"'))]
+        self.assertIn("<title>Subject 1: 60%</title>", radar_svg)
 
     def test_radar_and_partials_follow_the_rendering_rules(self):
         self.subjects(4)
@@ -285,6 +292,96 @@ class RadarEdgeTests(ProgressFixture, TestCase):
         progress = self.get().context["progress"]
         self.assertEqual(progress["bullets"][0]["display"], "49.9")
         self.assertEqual(progress["radar_values"][0]["student"], "49.9")
+
+
+    def test_wrapped_labels_render_as_tspans_in_the_radar_svg(self):
+        for name in ("Computer Science", "Computer Applications", "Environmental Science", "Mathematics"):
+            subject = self.maths if name == "Mathematics" else Subject.objects.create(name=name)
+            self.assessment({self.s1: 12}, subject=subject, name=name)
+        html = self.get().content.decode()
+        radar_svg = html[html.index('<svg class="erp-radar"'): html.index("</svg>", html.index('<svg class="erp-radar"'))]
+        self.assertIn("<tspan", radar_svg)
+        self.assertRegex(radar_svg, r">Science</tspan>")  # the second line of a wrapped label
+
+    def test_radar_card_names_the_term(self):
+        self.subjects(3)
+        self.assertContains(self.get(), "Subjects at a glance, Term 2")
+
+    def test_radar_block_works_for_any_subset_of_scores(self):
+        self.subjects(5)
+        scores = marks_analytics.student_subject_scores(self.s1.student, self.term_b)
+        block = marks_analytics.radar_block(scores[:3], "Ravi Rao")
+        self.assertEqual(len(block["radar"]["labels"]), 3)
+        self.assertEqual([v["name"] for v in block["values"]], [s.subject_name for s in scores[:3]])
+        self.assertEqual([label["title"].split(":")[0] for label in block["radar"]["labels"]],
+                         [s.subject_name for s in scores[:3]])
+        self.assertIsNone(marks_analytics.radar_block(scores[:2], "Ravi Rao"))
+
+    def test_radar_default_size_fits_a_phone_card(self):
+        radar = charts.radar(list("abc"), [{"key": "s", "label": "S", "values": [1, 2, 3]}])
+        self.assertEqual((radar["width"], radar["height"]), (292, 180))
+
+
+class ProgressCssAndPartialTests(ProgressFixture, TestCase):
+    CSS = (Path(settings.BASE_DIR) / "static" / "css" / "erp.css").read_text(encoding="utf-8")
+
+    def test_month_columns_wrap_instead_of_scrolling(self):
+        self.assertIn(
+            ".erp-progress-card--months .erp-cols { flex-wrap: wrap;", self.CSS
+        )
+
+    def test_five_four_three_split_only_from_1330px(self):
+        wide = self.CSS[self.CSS.index("@media (min-width: 1330px) { /* progress */"):]
+        wide = wide[: wide.index("\n}")]
+        self.assertIn(".erp-progress-card--bullet { grid-column: span 5; }", wide)
+        self.assertIn(".erp-progress-card--radar { grid-column: span 4; }", wide)
+        self.assertIn(".erp-progress-card--months { grid-column: span 3; }", wide)
+        mid = self.CSS[self.CSS.index("@media (min-width: 992px) { /* progress */"):]
+        mid = mid[: mid.index("\n}")]
+        self.assertIn(".erp-progress-card--bullet { grid-column: span 12; }", mid)
+        self.assertIn(".erp-progress-card--radar { grid-column: span 6; }", mid)
+        self.assertIn(".erp-progress-card--months { grid-column: span 6; }", mid)
+
+    def test_months_card_is_left_out_when_the_caller_passes_none(self):
+        self.subjects(3)
+        progress = marks_analytics.student_progress_context(self.s1.student, None)
+        html = render_to_string("partials/_student_progress.html", {"progress": progress})
+        self.assertNotIn("Attendance by month", html)
+        self.assertNotIn("No attendance recorded", html)
+        self.assertIn("erp-progress-grid--no-months", html)
+        with_empty = render_to_string(
+            "partials/_student_progress.html", {"progress": progress, "attendance_months": []}
+        )
+        self.assertIn("No attendance recorded yet this year.", with_empty)
+
+
+class AttendanceByMonthTests(ProgressFixture, TestCase):
+    def test_another_academic_year_is_excluded(self):
+        self.day(datetime.date(2026, 6, 8), {self.s1: P, self.s2: P})
+        other = AcademicYear.objects.create(
+            name="2027-2028", start_date="2027-06-01", end_date="2028-04-30"
+        )
+        self.assertEqual(analytics.student_attendance_by_month(self.s1.student, other, TODAY), [])
+
+    def test_two_enrollments_in_one_year_sum_into_the_month(self):
+        grade2 = ClassGrade.objects.create(name="Grade 2")
+        section2 = Section.objects.create(class_grade=grade2, name="A")
+        self.day(datetime.date(2026, 6, 8), {self.s1: P, self.s2: P})
+        second = self.s1.student.enroll(
+            academic_year=self.year, class_grade=grade2, section=section2, start_date="2026-06-20"
+        )
+        self.day(datetime.date(2026, 6, 22), {second: A}, class_grade=grade2, section=section2)
+        months = analytics.student_attendance_by_month(self.s1.student, self.year, TODAY)
+        self.assertEqual([(m["label"], m["present"], m["absent"]) for m in months], [("Jun", 1, 1)])
+
+    def test_one_query_whatever_the_number_of_months(self):
+        self.day(datetime.date(2026, 6, 8), {self.s1: P, self.s2: P})
+        with self.assertNumQueries(1):
+            analytics.student_attendance_by_month(self.s1.student, self.year, TODAY)
+        self.day(datetime.date(2026, 7, 6), {self.s1: P, self.s2: P})
+        self.day(datetime.date(2026, 7, 7), {self.s1: A, self.s2: P})
+        with self.assertNumQueries(1):
+            analytics.student_attendance_by_month(self.s1.student, self.year, TODAY)
 
 
 class RadarLabelUnitTests(TestCase):

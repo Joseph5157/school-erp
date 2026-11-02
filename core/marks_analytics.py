@@ -221,10 +221,6 @@ def terms_with_results(student, scope=None, today=None):
     )
 
 
-# Fixed radar size: wide enough for a 4-axis chart's side labels, narrow enough for a 360px phone card.
-RADAR_SIZE = (292, 180)
-
-
 def _bullet_row(score):
     display = charts.percent_display(score.score, score.pass_percent)
     pass_display = None if score.pass_percent is None else charts.percent_display(score.pass_percent)
@@ -250,6 +246,37 @@ def _bullet_row(score):
         "average_display": average_display,
         "summary": summary,
     }
+
+
+def radar_block(scores, student_name, rows=None, outlines=None):
+    """A radar and its screen-reader value list for any list of 3 to 8 `SubjectScore`s, else None.
+
+    `rows` are the matching `_bullet_row`s (built here when omitted); each radar label gets the
+    exact value as its `title`. `outlines` replaces the default pair: the student's scores, plus
+    the section average only when every axis has one (a small section hides its own).
+    """
+    if not 3 <= len(scores) <= 8:
+        return None
+    rows = [_bullet_row(score) for score in scores] if rows is None else rows
+    if outlines is None:
+        outlines = [{"key": "student", "label": student_name, "values": [s.score for s in scores]}]
+        if all(s.section_average is not None for s in scores):
+            outlines.append(
+                {"key": "section", "label": "Section average",
+                 "values": [s.section_average for s in scores]}
+            )
+    radar = charts.radar([s.subject_name for s in scores], outlines)
+    for label, row in zip(radar["labels"], rows, strict=True):
+        label["title"] = row["title"]
+    values = [
+        {
+            "name": s.subject_name,
+            "student": charts.percent_display(s.score, s.pass_percent),
+            "average": None if s.section_average is None else charts.percent_display(s.section_average),
+        }
+        for s in scores
+    ]
+    return {"radar": radar, "values": values}
 
 
 def student_progress_context(student, term_id, scope=None, include_comparison=True):
@@ -288,25 +315,9 @@ def student_progress_context(student, term_id, scope=None, include_comparison=Tr
     elif len(scores) > 8:
         context["radar_note"] = "With more than 8 subjects a radar chart is too crowded; the bars show each one."
     else:
-        outlines = [
-            {"key": "student", "label": student.full_name, "values": [s.score for s in scores]}
-        ]
-        # The section outline only when every axis has an average: a small section hides its own.
-        if all(s.section_average is not None for s in scores):
-            outlines.append(
-                {"key": "section", "label": "Section average",
-                 "values": [s.section_average for s in scores]}
-            )
-        radar = charts.radar([s.subject_name for s in scores], outlines, size=RADAR_SIZE)
-        for label, row in zip(radar["labels"], context["bullets"], strict=True):
-            label["full"] = row["score"].subject_name
-            label["title"] = row["title"]
-        context["radar"] = radar
-        context["radar_values"] = [
-            {"name": s.subject_name, "student": charts.percent_display(s.score, s.pass_percent),
-             "average": None if s.section_average is None else charts.percent_display(s.section_average)}
-            for s in scores
-        ]
+        block = radar_block(scores, student.full_name, context["bullets"])
+        context["radar"] = block["radar"]
+        context["radar_values"] = block["values"]
     return context
 
 

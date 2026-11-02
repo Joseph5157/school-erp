@@ -1,4 +1,4 @@
-{# Student page "Progress" section. `progress` is marks_analytics.student_progress_context() (or None without core.view_studentresult); `attendance_months` is charts.columns() rows. #}
+{# Student page "Progress" section. `progress` is marks_analytics.student_progress_context() (or None without core.view_studentresult); `attendance_months` is charts.columns() rows; leave it out (None) and the months card is not drawn, as for a teacher who may not see attendance. #}
 <section id="progress" aria-labelledby="progress-heading" class="erp-progress">
 <h2 class="h5" id="progress-heading">Progress</h2>
 {% if progress and progress.terms|length > 1 %}
@@ -9,7 +9,7 @@
     </ul>
 </nav>
 {% endif %}
-<div class="erp-progress-grid{% if not progress %} erp-progress-grid--months-only{% endif %}">
+<div class="erp-progress-grid{% if not progress %} erp-progress-grid--months-only{% endif %}{% if attendance_months is None %} erp-progress-grid--no-months{% endif %}">
     {% if progress %}
     {% if progress.term %}
     <article class="erp-chart-card erp-progress-card erp-progress-card--bullet">
@@ -18,7 +18,7 @@
         {% include "partials/charts/_bullet.html" with bullets=progress.bullets has_section_average=progress.has_section_average has_pass_band=progress.has_pass_band only %}
     </article>
     <article class="erp-chart-card erp-progress-card erp-progress-card--radar">
-        <h3 class="erp-chart-head">Subjects at a glance</h3>
+        <h3 class="erp-chart-head">Subjects at a glance, {{ progress.term_name }}</h3>
         {% if progress.radar %}
         {% include "partials/charts/_radar.html" with c=progress.radar values=progress.radar_values only %}
         {% else %}
@@ -32,6 +32,7 @@
     </article>
     {% endif %}
     {% endif %}
+    {% if attendance_months is not None %}
     <article class="erp-chart-card erp-progress-card erp-progress-card--months">
         <h3 class="erp-chart-head">Attendance by month</h3>
         {% if attendance_months %}
@@ -41,5 +42,6 @@
         <p class="erp-analytics-sub">No attendance recorded yet this year.</p>
         {% endif %}
     </article>
+    {% endif %}
 </div>
 </section>

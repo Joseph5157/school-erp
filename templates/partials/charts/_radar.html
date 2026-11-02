@@ -1,4 +1,4 @@
-{# Radar chart. `c` is charts.radar() with "full" and "title" (name and exact value) added to each label; `values` lists every value for screen readers. Fixed size so the text never scales with the card; a narrower card scrolls. Labels may wrap onto two lines (c.labels[].lines). #}
+{# Radar chart. `c` is charts.radar() from marks_analytics.radar_block(), each label carrying a "title" (name and exact value); `values` lists every value for screen readers. Fixed size so the text never scales with the card; a narrower card scrolls. Labels may wrap onto two lines (c.labels[].lines). #}
 <div class="erp-chart-scroll">
     <svg class="erp-radar" width="{{ c.width }}" height="{{ c.height }}" viewBox="0 0 {{ c.width }} {{ c.height }}" role="img" aria-label="Radar chart of {{ c.labels|length }} subject scores out of 100"><title>Radar chart of subject scores out of 100</title>
         {% for g in c.grid %}<polygon class="erp-radar-grid" points="{{ g }}"/>{% endfor %}
