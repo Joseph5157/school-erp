@@ -717,16 +717,16 @@ class MarksSnapshotViewTests(MarksFixture, TestCase):
     def test_renders_term_class_average_and_bands(self):
         self.assessment({self.s1: 15, self.s2: 10})
         response = self.administrator.get(self.url)
-        self.assertContains(response, "Marks snapshot")
+        self.assertContains(response, "Marks by subject")
         self.assertContains(response, "Term 2")
-        self.assertContains(response, "Grade 1")
-        self.assertContains(response, "62.5%")
+        self.assertContains(response, "Mathematics")
+        self.assertContains(response, "63%")
         self.assertContains(response, "80% and above")
         self.assertContains(response, "erp-visually-hidden-data")
 
     def test_empty_state_is_honest(self):
         response = self.administrator.get(self.url)
-        self.assertContains(response, "Marks snapshot")
+        self.assertContains(response, "Marks by subject")
         self.assertContains(response, "No finalized results yet.")
 
     def test_hidden_without_permission_to_view_results(self):
@@ -740,13 +740,77 @@ class MarksSnapshotViewTests(MarksFixture, TestCase):
         client.login(username="no-marks", password="pass-12345")
         response = client.get(self.url)
         self.assertEqual(response.status_code, 200)
-        self.assertNotContains(response, "Marks snapshot")
+        self.assertNotContains(response, "Marks by subject")
+        self.assertNotContains(response, "Score bands")
 
     def test_marks_do_not_follow_the_attendance_period(self):
         self.assessment({self.s1: 15})
         response = self.administrator.get(self.url, {"period": "custom", "from": "2026-07-03", "to": "2026-07-04"})
-        self.assertContains(response, "Marks snapshot")
-        self.assertContains(response, "75.0%")
+        self.assertContains(response, "Marks by subject")
+        self.assertContains(response, "75%")
+
+    def test_marks_by_subject_lists_lowest_first_and_names_the_term(self):
+        science = Subject.objects.create(name="Science")
+        self.assessment({self.s1: 18, self.s2: 16}, name="Maths test")  # 90%, 80%: 85
+        self.assessment({self.s1: 8, self.s2: 12}, name="Sci test", subject=science)  # 50
+        context = analytics.overview_context(TODAY, include_marks=True)
+        self.assertEqual(
+            [(r["label"], r["display"], r["low"]) for r in context["marks_subjects"]],
+            [("Science", "50%", False), ("Mathematics", "85%", False)],
+        )
+        response = self.administrator.get(self.url)
+        self.assertContains(response, "erp-analytics-card--subjects")
+        self.assertContains(response, "Marks by subject, Term 2")
+        content = response.content.decode()
+        self.assertLess(content.index(">Science<"), content.index(">Mathematics<"))
+        self.assertContains(response, "erp-class-bar--marks")
+        self.assertNotContains(response, "erp-class-bar--low")
+
+    def test_score_bands_draw_as_columns_with_counts(self):
+        self.assessment({self.s1: 20, self.s2: 16}, name="A")  # 100, 80
+        self.assessment({self.s1: 12, self.s2: 7}, name="B")  # 60, 35
+        response = self.administrator.get(self.url)
+        self.assertContains(response, "erp-analytics-card--bands")
+        self.assertContains(response, "Score bands, Term 2")
+        content = response.content.decode()
+        card = content[content.index("erp-analytics-card--bands"):]
+        self.assertEqual(card.count('width="24"'), 4)
+        for label in ("80% and above", "60–79%", "40–59%", "Below 40%"):
+            self.assertIn(f'aria-label="{label}: ', card)
+        context = analytics.overview_context(TODAY, include_marks=True)
+        self.assertEqual(
+            [(r["label"], r["display"]) for r in context["marks"]["band_columns"]],
+            [("80% and above", "2"), ("60–79%", "1"), ("40–59%", "0"), ("Below 40%", "1")],
+        )
+        self.assertIn("Finalized only, absent not counted as zero", card)
+
+    def test_band_column_heights_follow_the_share_not_the_count(self):
+        self.assessment({self.s1: 20, self.s2: 20}, name="A")  # both 100%
+        columns = analytics.overview_context(TODAY, include_marks=True)["marks"]["band_columns"]
+        self.assertEqual(columns[0]["value"], 100)
+        self.assertEqual(columns[0]["bar_height"], 120)
+        self.assertEqual(columns[3]["bar_height"], 0)
+
+    def test_marks_cards_need_results_permission(self):
+        from django.contrib.auth import get_user_model
+        from django.contrib.auth.models import Permission
+
+        self.assessment({self.s1: 15})
+        user = get_user_model().objects.create_user(username="no-marks2", password="pass-12345")
+        user.user_permissions.add(Permission.objects.get(codename="view_school"))
+        client = self.client_class()
+        client.login(username="no-marks2", password="pass-12345")
+        response = client.get(self.url)
+        self.assertNotContains(response, "Marks by subject")
+        self.assertNotContains(response, "erp-analytics-card--bands")
+        context = analytics.overview_context(TODAY)
+        self.assertIsNone(context["marks"])
+        self.assertEqual(context["marks_subjects"], [])
+
+    def test_no_results_shows_the_existing_empty_message(self):
+        response = self.administrator.get(self.url)
+        self.assertContains(response, "No finalized results yet.", count=2)
+        self.assertNotContains(response, "erp-cols--marks")
 
     def test_more_results_do_not_add_queries(self):
         self.assessment({self.s1: 15}, name="First")

@@ -491,6 +491,20 @@ def trend_chart(points, *, width, height, pad=8):
     }
 
 
+def _subject_rows(term):
+    """Rows for the horizontal bars: each subject's average, lowest first. Never `low` (red is
+    only for attendance under target)."""
+    return [
+        {
+            "label": row["subject_name"],
+            "value": row["average"],
+            "display": f"{charts.percent_display(row['average'])}%",
+            "low": False,
+        }
+        for row in marks_analytics.subject_averages(term)
+    ]
+
+
 def marks_snapshot(today):
     """Average and score bands for the reporting term (`marks_analytics.reporting_term`).
 
@@ -539,13 +553,21 @@ def marks_snapshot(today):
         },
     )
     counts = [aggregate[f"band_{i}"] for i in range(len(MARK_BANDS))]
+    band_shares = shares(counts)
     return {
         "term": term,
         "classes": classes,
         "bands": [
             {"label": label, "count": count, "share": share}
-            for (_, label), count, share in zip(MARK_BANDS, counts, shares(counts), strict=True)
+            for (_, label), count, share in zip(MARK_BANDS, counts, band_shares, strict=True)
         ],
+        # Columns show the count; the height is the band's share of all marked results.
+        "band_columns": charts.columns(
+            [
+                {"label": label, "value": share, "display": str(count), "low": False}
+                for (_, label), count, share in zip(MARK_BANDS, counts, band_shares, strict=True)
+            ]
+        ),
         "total": sum(counts),
         "absent": aggregate["absent"],
     }
@@ -571,6 +593,7 @@ def overview_context(
     viewer may open it; the registers ring links to the report only when a URL is given.
     """
     today = business_today() if today is None else today
+    marks = marks_snapshot(today) if include_marks else None
     choice = resolve_period(params or {}, today)
     period = choice["period"]
     points = daily_trend(period)
@@ -585,7 +608,8 @@ def overview_context(
         "custom_from": choice["custom_from"],
         "custom_to": choice["custom_to"],
         "show_marks": include_marks,
-        "marks": marks_snapshot(today) if include_marks else None,
+        "marks": marks,
+        "marks_subjects": _subject_rows(marks["term"]) if marks else [],
         "today": today,
         "absentees": frequent_absentees(period) if include_absentees else None,
         "absentee_threshold": ABSENTEE_THRESHOLD_DAYS,

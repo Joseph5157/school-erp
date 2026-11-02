@@ -1187,7 +1187,9 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
   .erp-analytics > .erp-analytics-card--classes { grid-column: span 8; order: 3; }
   .erp-analytics--no-absent > .erp-analytics-card--classes { grid-column: span 12; }
   .erp-analytics > .erp-analytics-card--absent { order: 4; }
-  .erp-analytics > .erp-analytics-card--marks { grid-column: span 12; order: 5; }
+  /* Marks: subjects 7 + bands 5 until the attention card arrives (then 5 beside it, and bands span 12). */
+  .erp-analytics > .erp-analytics-card--subjects { grid-column: span 7; order: 5; }
+  .erp-analytics > .erp-analytics-card--bands { grid-column: span 5; order: 6; }
   /* By class card: spread the columns across the card and centre the chart in its height. The row is at
      least as wide as the card (min-width) but grows with its content, so 25+ classes scroll from the first
      column instead of being clipped on the left. */
