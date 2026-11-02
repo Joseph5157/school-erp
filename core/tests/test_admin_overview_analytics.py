@@ -29,6 +29,7 @@ from core.models import (
     Section,
     StudentResult,
     Subject,
+    TermPublication,
 )
 from core.tests.test_authorization import AttendanceFixtureMixin, AuthorizationClientsMixin
 
@@ -345,7 +346,7 @@ class OverviewAnalyticsViewTests(AnalyticsFixture, TestCase):
         self.day(datetime.date(2026, 7, 2), {self.s1: P, self.s2: A})
         self.day(TODAY, {self.s1: P, self.s2: A})
         response = self.administrator.get(self.url)
-        self.assertContains(response, "erp-today-strip")
+        self.assertContains(response, "erp-donut")
         self.assertContains(response, '<svg class="erp-trend erp-trend--phone"')
         self.assertContains(response, "Grade 1")
         self.assertContains(response, "erp-class-bar")
@@ -854,3 +855,251 @@ class DesktopLayoutTests(AnalyticsFixture, TestCase):
         block = css.split("/* ---------- Desktop Overview grid ---------- */", 1)[1]
         self.assertTrue(block.lstrip().startswith("@media (min-width: 992px)"))
         self.assertIn(".erp-analytics { display: grid;", block)
+
+
+# --- Charts: gauge, donut, rings and class columns ------------------------------------------
+
+
+class OverviewChartCardsTests(AnalyticsFixture, TestCase):
+    url = reverse("core:admin-overview")
+
+    def make_term(self, name="Term 1", start=datetime.date(2026, 6, 1),
+                  end=datetime.date(2026, 9, 30), order=1):
+        return AcademicTerm.objects.create(
+            academic_year=self.year, name=name, start_date=start, end_date=end, display_order=order
+        )
+
+    def login_with(self, username, *codenames):
+        from django.contrib.auth import get_user_model
+        from django.contrib.auth.models import Permission
+
+        user = get_user_model().objects.create_user(username=username, password="pass-12345")
+        user.user_permissions.add(*Permission.objects.filter(codename__in=codenames))
+        client = self.client_class()
+        client.login(username=username, password="pass-12345")
+        return client
+
+    def second_class(self, name="Grade 2", student="Kiran Rao"):
+        grade = ClassGrade.objects.create(name=name)
+        section = Section.objects.create(class_grade=grade, name="A")
+        return grade, section, self.enroll_student(student, grade, section)
+
+    def rings(self, **kwargs):
+        options = {
+            "can_view_results": True, "can_view_publications": True,
+            "missing_attendance_url": None, **kwargs,
+        }
+        return {r["key"]: r for r in analytics.completion_rings(TODAY, **options)}
+
+    def publish(self, enrollment, term, status=TermPublication.Status.PUBLISHED):
+        return TermPublication.objects.create(
+            student=enrollment.student, term=term, placement=enrollment, version=1, status=status,
+            term_label=term.name, academic_year_label="y", class_grade_label="g",
+            section_label="A", fingerprint="x", published_by=self.admin_user,
+        )
+
+    def test_gauge_is_hidden_when_no_term_runs(self):
+        self.day(datetime.date(2026, 7, 1), {self.s1: P, self.s2: A})
+        response = self.administrator.get(self.url)
+        self.assertNotContains(response, "erp-gauge")
+        self.assertIsNone(analytics.term_attendance(TODAY))
+
+    def test_gauge_is_hidden_when_the_term_has_no_attendance(self):
+        self.make_term()
+        self.assertIsNone(analytics.term_attendance(TODAY))
+        self.assertNotContains(self.administrator.get(self.url), "erp-gauge")
+
+    def test_gauge_uses_the_running_term_and_names_the_80_target(self):
+        self.make_term()
+        self.day(datetime.date(2026, 7, 1), {self.s1: P, self.s2: A})
+        self.assertEqual(analytics.ATTENDANCE_TARGET_PERCENT, 80)
+        data = analytics.term_attendance(TODAY)
+        self.assertEqual((data["term"].name, data["percent"]), ("Term 1", 50))
+        response = self.administrator.get(self.url)
+        self.assertContains(response, "erp-gauge")
+        self.assertContains(response, "Target 80%")
+
+    def test_gauge_ignores_a_term_that_has_ended(self):
+        self.make_term(end=datetime.date(2026, 7, 10))
+        self.day(datetime.date(2026, 7, 1), {self.s1: P, self.s2: A})
+        self.assertIsNone(analytics.term_attendance(TODAY))
+
+    def test_donut_shows_todays_counts(self):
+        self.day(TODAY, {self.s1: P, self.s2: A})
+        response = self.administrator.get(self.url)
+        self.assertContains(response, '<svg class="erp-donut"')
+        self.assertContains(response, "Present 1")
+        self.assertContains(response, "Absent 1")
+
+    def test_no_school_day_message_replaces_the_donut(self):
+        sunday = datetime.date(2026, 7, 12)
+        for target in ("core.reports.business_today", "core.analytics.business_today"):
+            patcher = mock.patch(target, return_value=sunday)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        response = self.administrator.get(self.url)
+        self.assertContains(response, "No school day today")
+        self.assertNotContains(response, '<svg class="erp-donut"')
+
+    def test_school_day_with_nothing_submitted_says_no_attendance_yet(self):
+        response = self.administrator.get(self.url)
+        self.assertContains(response, "No attendance yet")
+        self.assertNotContains(response, "No school day today")
+        self.assertNotContains(response, '<svg class="erp-donut"')
+
+    def test_registers_ring_counts_submitted_of_expected(self):
+        self.day(TODAY, {self.s1: P, self.s2: A})
+        self.second_class()  # a second class is expected today but has no register
+        strip = analytics.today_strip(TODAY)
+        self.assertEqual((strip["submitted"], strip["expected"]), (1, 2))
+        ring = self.rings()["registers"]
+        self.assertEqual((ring["chart"]["done"], ring["chart"]["total"]), (1, 2))
+        self.assertIsNone(ring["url"])
+        report = reverse("core:report-missing-attendance")
+        self.assertEqual(self.rings(missing_attendance_url=report)["registers"]["url"], report)
+
+    def test_registers_ring_links_only_for_viewers_who_can_open_the_report(self):
+        self.day(TODAY, {self.s1: P, self.s2: A})
+        report = reverse("core:report-missing-attendance")
+        self.assertContains(self.administrator.get(self.url), f'href="{report}"')
+        overview_only = self.login_with("ov-only", "view_school")
+        self.assertNotContains(overview_only.get(self.url), f'href="{report}"')
+
+    def test_marks_ring_needs_results_permission(self):
+        self.assess(self.make_term(), "Done", datetime.date(2026, 7, 1), True)
+        client = self.login_with("ov-only", "view_school")
+        response = client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Marks entered")
+        self.assertContains(self.administrator.get(self.url), "Marks entered")
+
+    def test_publication_ring_needs_publication_permission(self):
+        self.assess(self.make_term(), "Done", datetime.date(2026, 7, 1), True)
+        client = self.login_with("ov-marks", "view_school", "view_studentresult")
+        response = client.get(self.url)
+        self.assertContains(response, "Marks entered")
+        self.assertNotContains(response, "Results published")
+        self.assertContains(self.administrator.get(self.url), "Results published")
+
+    def assess(self, term, name, on_date, final):
+        offering, _ = AcademicSubjectOffering.objects.get_or_create(
+            academic_year=self.year, class_grade=self.class_grade,
+            subject=Subject.objects.get_or_create(name="Mathematics")[0],
+        )
+        assessment = Assessment(
+            term=term, offering=offering, section=self.section, name=name,
+            assessment_date=on_date, maximum_marks=Decimal("20"),
+        )
+        assessment.full_clean()
+        assessment.save()
+        if final:
+            Assessment.objects.filter(pk=assessment.pk).update(
+                status=Assessment.Status.FINALIZED, finalized_by=self.admin_user,
+                finalized_at=timezone.now(), subject_label="Mathematics",
+            )
+
+    def test_marks_ring_counts_finalized_of_assessments_dated_up_to_today(self):
+        term = self.make_term()
+        self.assess(term, "Done", datetime.date(2026, 7, 1), True)
+        self.assess(term, "Open", datetime.date(2026, 7, 2), False)
+        self.assess(term, "Later", datetime.date(2026, 8, 1), False)  # after today: not counted
+        marks = self.rings()["marks"]
+        self.assertEqual((marks["chart"]["done"], marks["chart"]["total"]), (1, 2))
+
+    def test_marks_ring_is_left_out_when_the_term_has_no_assessments_yet(self):
+        self.make_term()
+        self.assertNotIn("marks", self.rings())
+
+    def test_published_ring_counts_students_and_drops_stale_versions(self):
+        term = self.make_term()
+        self.publish(self.s1, term)
+        self.publish(self.s2, term, status=TermPublication.Status.STALE)
+        published = self.rings()["published"]
+        self.assertEqual((published["chart"]["done"], published["chart"]["total"]), (1, 2))
+
+    def test_rings_between_terms_name_the_term_that_just_ended(self):
+        term = self.make_term("Term 1", end=datetime.date(2026, 7, 10))
+        self.assess(term, "Done", datetime.date(2026, 7, 1), True)
+        rings = self.rings()
+        self.assertEqual(rings["marks"]["term_name"], "Term 1")
+        self.assertIn("Term 1", rings["marks"]["label"])
+        self.assertIn("Term 1", rings["published"]["label"])
+        self.assertNotIn("Term 1", rings["registers"]["label"])
+
+    def test_term_rings_are_hidden_when_no_term_has_started(self):
+        self.make_term("Later", start=datetime.date(2026, 9, 1), end=datetime.date(2026, 12, 1))
+        self.assertEqual(list(self.rings()), ["registers"])
+
+    def test_class_columns_are_in_class_order_not_by_performance(self):
+        d = datetime.date(2026, 7, 2)
+        self.day(d, {self.s1: P, self.s2: A})  # Grade 1: 50%
+        g2, sec2, s_g2 = self.second_class("Grade 2", "Kiran Rao")
+        self.day(d, {s_g2: P}, class_grade=g2, section=sec2)  # Grade 2: 100%
+        g3, sec3, s_g3 = self.second_class("Grade 3", "Mina Rao")
+        self.day(d, {s_g3: A}, class_grade=g3, section=sec3)  # Grade 3: 0%, still last
+        context = analytics.overview_context(TODAY)
+        self.assertEqual([c["label"] for c in context["class_columns"]],
+                         ["Grade 1", "Grade 2", "Grade 3"])
+        self.assertEqual([b["label"] for b in context["class_bars_phone"]],
+                         ["Grade 3", "Grade 1", "Grade 2"])
+
+    def test_class_order_is_natural_so_grade_10_follows_grade_9(self):
+        d = datetime.date(2026, 7, 2)
+        for name, student in (("Grade 10", "Ten Rao"), ("Grade 9", "Nine Rao")):
+            grade, section, enrolment = self.second_class(name, student)
+            self.day(d, {enrolment: P}, class_grade=grade, section=section)
+        labels = [c["label"] for c in analytics.overview_context(TODAY)["class_columns"]]
+        self.assertEqual(labels, ["Grade 9", "Grade 10"])
+
+    def test_class_under_80_is_flagged_low(self):
+        d = datetime.date(2026, 7, 2)
+        self.day(d, {self.s1: P, self.s2: A})
+        g2, sec2, s_g2 = self.second_class()
+        self.day(d, {s_g2: P}, class_grade=g2, section=sec2)
+        columns = {c["label"]: c for c in analytics.overview_context(TODAY)["class_columns"]}
+        self.assertTrue(columns["Grade 1"]["low"])
+        self.assertEqual(columns["Grade 1"]["display"], "50%")
+        self.assertFalse(columns["Grade 2"]["low"])
+
+    def test_phone_bars_are_the_five_lowest_classes(self):
+        d = datetime.date(2026, 7, 2)
+        for i in range(1, 8):
+            grade, section, enrolment = self.second_class(f"Class {i}", f"Pupil {i}")
+            self.day(d, {enrolment: P}, class_grade=grade, section=section)  # 100%
+        self.day(d, {self.s1: A, self.s2: A})  # Grade 1: 0%
+        context = analytics.overview_context(TODAY)
+        self.assertEqual(len(context["class_bars_phone"]), 5)
+        self.assertEqual(context["class_bars_phone"][0]["label"], "Grade 1")
+        self.assertEqual(len(context["class_columns"]), 8)
+
+    def test_class_link_follows_permission_to_open_the_class(self):
+        self.day(datetime.date(2026, 7, 2), {self.s1: P, self.s2: A})
+        detail = reverse("core:class-grade-detail", args=[self.class_grade.pk])
+        everyone = reverse("core:class-grade-list")
+        response = self.administrator.get(self.url)
+        self.assertContains(response, f'href="{detail}"')
+        self.assertContains(response, f'href="{everyone}"')
+        overview_only = self.login_with("ov-only", "view_school")
+        response = overview_only.get(self.url)
+        self.assertContains(response, "Grade 1")
+        self.assertNotContains(response, f'href="{detail}"')
+        self.assertNotContains(response, f'href="{everyone}"')
+
+    def test_class_link_absent_without_permission_to_open_it(self):
+        self.day(datetime.date(2026, 7, 2), {self.s1: P, self.s2: A})
+        html = self.login_with("ov-only", "view_school").get(self.url).content.decode()
+        self.assertNotRegex(html, r'<a[^>]*href="/classes/\d+/"')
+
+    def test_query_count_stays_constant_with_more_classes(self):
+        self.make_term()
+        d = datetime.date(2026, 7, 2)
+        self.day(d, {self.s1: P, self.s2: A})
+        with CaptureQueriesContext(connection) as ctx:
+            self.administrator.get(self.url)
+        before = len(ctx)
+        for i in (2, 3):
+            grade, section, enrolment = self.second_class(f"Grade {i}", f"Pupil {i}")
+            self.day(d, {enrolment: P}, class_grade=grade, section=section)
+        with CaptureQueriesContext(connection) as ctx:
+            self.administrator.get(self.url)
+        self.assertEqual(len(ctx), before)

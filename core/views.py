@@ -882,6 +882,15 @@ def admin_overview(request):
             "attendance_analytics": analytics.overview_context(
                 include_absentees=request.user.has_perm("core.view_student"),
                 include_marks=request.user.has_perm("core.view_studentresult"),
+                include_publications=request.user.has_perm("core.view_termpublication"),
+                # Links appear only where the viewer can open the target (the same permission
+                # as the views' own decorators).
+                include_class_links=request.user.has_perm("core.view_classgrade"),
+                missing_attendance_url=(
+                    reverse("core:report-missing-attendance")
+                    if request.user.has_perm("core.view_attendanceregister")
+                    else None
+                ),
                 params=request.GET,
             ),
         },
