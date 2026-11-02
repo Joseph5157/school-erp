@@ -1,6 +1,7 @@
 """Subject scores for charts (ADR 0022): display-only, FINALIZED + MARKED results only."""
 
 import datetime
+from unittest import mock
 
 from django.db import connection
 from django.db.models import Q
@@ -194,3 +195,53 @@ class SubjectAveragesAndTermsTests(MarksAnalyticsFixture, TestCase):
         extras = self.more_students(4)
         self.assessment({e: 10 for e in [self.s1, *extras]}, subject=self.science, name="S")
         self.assertEqual(count(), before)
+
+
+class PlacementAndPrivacyTests(MarksAnalyticsFixture, TestCase):
+    def move_to_b(self, on):
+        """Move s1 from section A to a new section B, effective `on`."""
+        other = Section.objects.create(class_grade=self.class_grade, name="B")
+        AcademicEnrollment.objects.filter(pk=self.s1.pk).update(
+            status=AcademicEnrollment.Status.COMPLETED, end_date=on - datetime.timedelta(days=1)
+        )
+        moved = AcademicEnrollment.objects.create(
+            student=self.s1.student, academic_year=self.year, class_grade=self.class_grade,
+            section=other, start_date=on,
+        )
+        return other, moved
+
+    def test_a_term_before_the_move_compares_with_the_section_of_that_term(self):
+        in_a = self.more_students(4)
+        self.assessment({self.s1: 20, **{e: 20 for e in in_a}}, term=self.term_a, name="A")
+        other, moved = self.move_to_b(datetime.date(2026, 7, 6))
+        in_b = self.more_students(5, section=other)
+        self.assessment(
+            {moved: 0, **{e: 0 for e in in_b}}, term=self.term_b, section=other, name="B"
+        )
+        # s1 is in B now, but Term 1 ended while they were in A.
+        self.assertEqual(self.score_for(self.s1, term=self.term_a).section_average, 100.0)
+
+    def test_own_score_keeps_results_from_both_enrollments(self):
+        self.assessment({self.s1: 20}, name="old section")
+        other, moved = self.move_to_b(datetime.date(2026, 7, 6))
+        self.assessment({moved: 0}, section=other, name="new section")
+        self.assertEqual(self.score_for(self.s1).score, 50.0)
+
+    def test_five_distinct_students_are_needed_not_five_results(self):
+        extra = self.more_students(1)[0]
+        for name in ("First", "Second"):
+            self.assessment({self.s1: 10, self.s2: 10, extra: 10}, name=name)  # 6 results
+        self.assertIsNone(self.score_for(self.s1).section_average)
+
+    def test_a_pass_mark_of_zero_is_a_real_pass_mark(self):
+        self.assessment({self.s1: 0}, pass_mark=0)
+        score = self.score_for(self.s1)
+        self.assertEqual(score.pass_percent, 0.0)
+        self.assertFalse(score.below_pass)
+
+    def test_no_placement_in_the_term_means_no_section_average(self):
+        self.assessment({self.s1: 10})
+        with mock.patch.object(AcademicTerm, "enrollment_for", return_value=None):
+            score = self.score_for(self.s1)
+        self.assertEqual(score.score, 50.0)
+        self.assertIsNone(score.section_average)
