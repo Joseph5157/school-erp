@@ -1200,6 +1200,28 @@ a.erp-glance-tile:hover, a.erp-glance-tile:focus-visible { border-color: var(--e
 .erp-student-name-copy a { font-weight: 600; }
 .erp-student-admission { display: block; color: var(--erp-ink-soft); font-size: var(--erp-text-xs); }
 
+/* Students list on phones: one card per Student instead of the table (shown below 768px by d-md-none).
+   The name link's ::after covers the card, so the whole card is one tap target. */
+.erp-card-sort { display: flex; flex-wrap: wrap; align-items: center; column-gap: var(--erp-space-4); margin-bottom: var(--erp-space-2); font-size: var(--erp-text-sm); }
+.erp-card-sort-label { color: var(--erp-ink-soft); }
+.erp-card-sort a { display: inline-flex; align-items: center; gap: var(--erp-space-1); min-height: 2.75rem; color: var(--erp-action); }
+.erp-card-sort a[aria-current] { font-weight: 600; color: var(--erp-ink); }
+.erp-student-cards { display: grid; gap: var(--erp-space-2); margin: 0; padding: 0; list-style: none; }
+.erp-student-cards + .erp-table-footer, .erp-student-cards-empty + .erp-table-footer { margin-top: var(--erp-space-4); }
+.erp-student-card {
+  position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: var(--erp-space-3); align-items: center;
+  padding: var(--erp-space-3) var(--erp-space-4);
+  background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
+}
+.erp-student-card:active { background: var(--erp-paper); }
+.erp-student-card-name { min-width: 0; overflow-wrap: anywhere; font-weight: 600; color: var(--erp-ink); text-decoration: none; }
+.erp-student-card-name::after { content: ""; position: absolute; inset: 0; border-radius: var(--erp-radius); }
+.erp-student-card-name:focus-visible { outline: none; }
+.erp-student-card-name:focus-visible::after { outline: 3px solid var(--erp-focus-color); outline-offset: -3px; }
+.erp-student-card-status { grid-column: 3; grid-row: 1; }
+.erp-student-card-details { grid-column: 2 / -1; grid-row: 2; min-width: 0; margin-top: var(--erp-space-1); overflow-wrap: anywhere; color: var(--erp-ink-soft); font-size: var(--erp-text-sm); }
+.erp-student-cards-empty { padding: var(--erp-space-4); background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius); }
+
 .erp-breadcrumb ol { display: flex; flex-wrap: wrap; gap: var(--erp-space-2); list-style: none; padding: 0; margin: 0 0 var(--erp-space-3); font-size: var(--erp-text-sm); color: var(--erp-ink-soft); }
 .erp-breadcrumb li + li::before { content: "/"; margin-right: var(--erp-space-2); }
 .erp-breadcrumb a { color: var(--erp-action); }
