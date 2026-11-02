@@ -50,7 +50,7 @@
     {% endfor %}
 </nav>
 {% if table.paginator.count %}
-<nav class="erp-card-sort d-md-none" aria-label="Sort students">
+<nav class="erp-card-sort d-md-none d-print-none" aria-label="Sort students">
     <span class="erp-card-sort-label" aria-hidden="true">Sort by</span>
     {% for header in table.headers %}{% if header.sortable %}
     <a href="{{ header.url }}"{% if header.aria_sort %} aria-current="true"{% endif %}>
@@ -59,7 +59,8 @@
     {% endif %}{% endfor %}
 </nav>
 {% endif %}
-<div class="d-none d-md-block">
+{# A4 portrait is narrower than the md breakpoint, so printing must pick the table explicitly. #}
+<div class="d-none d-md-block d-print-block">
 <div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Students" tabindex="0">
 <table class="table">
@@ -92,21 +93,22 @@
 </div>
 </div>
 {% if table.paginator.count %}
-<ul class="erp-student-cards d-md-none">
+{# role="list": Safari drops list semantics from a ul with list-style: none. #}
+<ul class="erp-student-cards d-md-none d-print-none" role="list">
     {% for student in table.page %}
     <li class="erp-student-card">
         <span class="erp-initials" aria-hidden="true">{{ student.full_name|slice:":1"|upper }}</span>
         <a class="erp-student-card-name" href="{% url 'core:student-detail' student.pk %}">{{ student.full_name }}</a>
         <span class="erp-student-card-status">{% include "partials/_status_badge.html" with label=student.get_status_display tone=student.status|lower only %}</span>
         <div class="erp-student-card-details">
-            <div>{% if student.admission_number %}{{ student.admission_number }} · {% endif %}{% if student.current_class %}{{ student.current_class }}{% if student.current_section %} · {{ student.current_section }}{% endif %}{% else %}Not in a class{% endif %}</div>
+            <div>{% if student.admission_number %}{{ student.admission_number }} · {% endif %}{% if student.current_class %}{{ student.current_class }}{% if student.current_section %} · {{ student.current_section }}{% endif %}{% elif has_current_year %}Not in a class{% else %}No current year{% endif %}</div>
             {% for link in student.guardian_rows %}<div>{{ link.guardian.full_name }} ({{ link.get_relationship_type_display }})</div>{% empty %}<div>No guardian</div>{% endfor %}
         </div>
     </li>
     {% endfor %}
 </ul>
 {% else %}
-<div class="erp-student-cards-empty d-md-none">{% include "partials/_student_list_empty.html" %}</div>
+<div class="erp-student-cards-empty d-md-none d-print-none">{% include "partials/_student_list_empty.html" %}</div>
 {% endif %}
 {% include "partials/_table_footer.html" with table=table only %}
 {% endblock %}

@@ -2960,6 +2960,7 @@ def student_list(request):
             "section_choices": section_choices,
             "has_filters": has_filters,
             "only_search": only_search,
+            "has_current_year": current_year is not None,
         },
     )
 

@@ -33,7 +33,7 @@ def admit(name):
 
 def cards_in(html):
     """The text of each card, tags removed and whitespace collapsed, keyed by the link target."""
-    region = re.search(r'<ul class="erp-student-cards[^"]*">(.*?)</ul>', html, re.S)
+    region = re.search(r'<ul class="erp-student-cards[^"]*"[^>]*>(.*?)</ul>', html, re.S)
     if region is None:
         return {}
     cards = {}
@@ -86,6 +86,33 @@ class StudentCardContentTests(AuthorizationClientsMixin, TestCase):
         self.assertIn("Not in a class", card)
         self.assertIn("No guardian", card)
 
+    def test_with_no_current_year_a_card_does_not_claim_the_student_is_unplaced(self):
+        AcademicYear.objects.all().delete()
+
+        card = self.card_for(admit("Meera Nair"))
+
+        self.assertNotIn("Not in a class", card)
+        self.assertIn("No current year", card)
+
+    def test_card_list_keeps_list_semantics_for_voiceover(self):
+        admit("Aarav Sharma")
+        html = self.administrator.get(self.url).content.decode()
+
+        self.assertRegex(html, r'<ul class="erp-student-cards[^"]*" role="list">')
+
+    def test_printing_shows_the_table_not_the_cards(self):
+        admit("Aarav Sharma")
+        html = self.administrator.get(self.url).content.decode()
+
+        self.assertRegex(html, r'<div class="d-none d-md-block d-print-block">\s*<div class="erp-panel">')
+        self.assertRegex(html, r'<ul class="erp-student-cards d-md-none d-print-none"')
+        self.assertRegex(html, r'<nav class="erp-card-sort d-md-none d-print-none"')
+
+    def test_printing_an_empty_list_shows_one_empty_message(self):
+        html = self.administrator.get(self.url, {"q": "zzz-no-match"}).content.decode()
+
+        self.assertRegex(html, r'<div class="erp-student-cards-empty d-md-none d-print-none">')
+
     def test_every_student_on_the_page_gets_a_card_and_the_rest_are_on_page_two(self):
         for index in range(30):
             admit(f"Student {index:02d}")
@@ -101,8 +128,8 @@ class StudentCardContentTests(AuthorizationClientsMixin, TestCase):
         admit("Aarav Sharma")
         html = self.administrator.get(self.url).content.decode()
 
-        self.assertRegex(html, r'<div class="d-none d-md-block">\s*<div class="erp-panel">\s*<div class="erp-table-scroll"')
-        self.assertRegex(html, r'<ul class="erp-student-cards d-md-none">')
+        self.assertRegex(html, r'<div class="d-none d-md-block[^"]*">\s*<div class="erp-panel">\s*<div class="erp-table-scroll"')
+        self.assertRegex(html, r'<ul class="erp-student-cards d-md-none[^"]*"')
 
 
 class StudentCardSortTests(AuthorizationClientsMixin, TestCase):
@@ -114,7 +141,7 @@ class StudentCardSortTests(AuthorizationClientsMixin, TestCase):
 
     def sort_nav(self, **params):
         html = self.administrator.get(self.url, params).content.decode()
-        return re.search(r'<nav class="erp-card-sort d-md-none" aria-label="Sort students">(.*?)</nav>', html, re.S).group(1)
+        return re.search(r'<nav class="erp-card-sort[^"]*" aria-label="Sort students">(.*?)</nav>', html, re.S).group(1)
 
     def test_only_columns_that_can_sort_are_offered(self):
         nav = self.sort_nav()
@@ -145,7 +172,7 @@ class StudentCardEmptyStateTests(AuthorizationClientsMixin, TestCase):
         html = self.administrator.get(self.url, params).content.decode()
         self.assertNotIn('<ul class="erp-student-cards', html)
         self.assertNotIn('aria-label="Sort students"', html)  # nothing to sort
-        return re.search(r'<div class="erp-student-cards-empty d-md-none">(.*?)</div>', html, re.S).group(1)
+        return re.search(r'<div class="erp-student-cards-empty[^"]*">(.*?)</div>', html, re.S).group(1)
 
     def test_no_match_offers_clear_filters(self):
         admit("Aarav Sharma")
