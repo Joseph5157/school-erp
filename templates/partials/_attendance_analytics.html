@@ -1,6 +1,6 @@
 {# Overview attendance analytics (Gate A). School-wide, submitted registers only; see core/analytics.py. #}
 {% with a=attendance_analytics %}
-<section class="erp-analytics{% if not a.gauge %} erp-analytics--no-gauge{% endif %}{% if not a.rings %} erp-analytics--no-rings{% endif %}{% if a.absentees is None %} erp-analytics--no-absent{% endif %}{% if not a.chart %} erp-analytics--no-chart{% endif %}{% if a.attention is None %} erp-analytics--no-attention{% elif a.attention.total <= 3 %} erp-analytics--attention-short{% endif %}" aria-labelledby="analytics-title">
+<section class="erp-analytics{% if not a.gauge %} erp-analytics--no-gauge{% endif %}{% if not a.rings %} erp-analytics--no-rings{% endif %}{% if a.absentees is None %} erp-analytics--no-absent{% endif %}{% if not a.chart %} erp-analytics--no-chart{% endif %}{% if a.attention is None %} erp-analytics--no-attention{% elif a.attention.total <= 6 %} erp-analytics--attention-short{% endif %}" aria-labelledby="analytics-title">
     <div class="erp-analytics-top">
     <h2 class="erp-section-title" id="analytics-title">Attendance, {{ a.label }}</h2>
 

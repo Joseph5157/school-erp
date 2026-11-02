@@ -1552,10 +1552,10 @@ class StudentsNeedingAttentionViewTests(MarksFixture, TestCase):
             r'<section class="(erp-analytics[^"]*)"', self.administrator.get(self.url).content.decode()
         ).group(1)
         self.assertIn(short, modifiers())  # no flagged student at all
-        self.flag(3)
-        self.assertIn(short, modifiers())
+        self.flag(6)
+        self.assertIn(short, modifiers())  # six rows still sit full width
         self.flag_more(1)
-        self.assertNotIn(short, modifiers())  # four rows keep the tall card
+        self.assertNotIn(short, modifiers())  # seven rows keep the tall two-row card
 
     def test_a_viewer_without_the_list_gets_no_short_modifier(self):
         client = self.login_with("results-only", "view_school", "view_studentresult")
