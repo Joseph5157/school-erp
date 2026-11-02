@@ -5,19 +5,18 @@ from pathlib import Path
 from unittest import mock
 
 from django.conf import settings
-from django.template.loader import render_to_string
-
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.db import connection
 from django.db.models import Q
+from django.template.loader import render_to_string
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from core import analytics, charts, marks_analytics
 from core.models import AcademicTerm, AcademicYear, ClassGrade, Section, Subject
-from core.tests.test_admin_overview_analytics import A, P, TODAY, MarksFixture
+from core.tests.test_admin_overview_analytics import TODAY, A, MarksFixture, P
 
 
 class ProgressFixture(MarksFixture):
@@ -392,7 +391,7 @@ class RadarLabelUnitTests(TestCase):
 
     def test_every_word_survives_when_there_is_room(self):
         lines, _ = self.lines(["Computer Science", "Computer Applications", "Mathematics"])
-        for name, got in zip(["Computer Science", "Computer Applications", "Mathematics"], lines):
+        for name, got in zip(["Computer Science", "Computer Applications", "Mathematics"], lines, strict=True):
             self.assertEqual(" ".join(got), name)
         self.assertEqual(lines[2], ["Mathematics"])
 
