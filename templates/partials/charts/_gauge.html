@@ -1,0 +1,10 @@
+{# Semicircle gauge with a target tick. `c` is charts.gauge(); `label` is the accessible text. #}
+<svg class="erp-gauge{% if not c.met %} erp-gauge--low{% endif %}" width="200" height="122" viewBox="0 0 200 122" role="img"
+     aria-label="{{ label }}: {{ c.display }} percent, target {{ c.target }}%, {% if c.met %}target met{% else %}below target{% endif %}">
+    <title>{{ label }}: {{ c.display }}% (target {{ c.target }}%)</title>
+    <path class="erp-gauge-track" d="{{ c.track_d }}"/>
+    <path class="erp-gauge-value" d="{{ c.value_d }}"/>
+    <line class="erp-gauge-tick" x1="{{ c.tick.x1 }}" y1="{{ c.tick.y1 }}" x2="{{ c.tick.x2 }}" y2="{{ c.tick.y2 }}"/>
+    <text class="erp-chart-text" x="100" y="96" font-size="28">{{ c.display }}%</text>
+</svg>
+<ul class="visually-hidden erp-visually-hidden-data"><li>{{ label }}: {{ c.display }}%, target {{ c.target }}%, {% if c.met %}met{% else %}not met{% endif %}</li></ul>

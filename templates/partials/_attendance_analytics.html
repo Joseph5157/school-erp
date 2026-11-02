@@ -1,6 +1,6 @@
 {# Overview attendance analytics (Gate A). School-wide, submitted registers only; see core/analytics.py. #}
 {% with a=attendance_analytics %}
-<section class="erp-analytics" aria-labelledby="analytics-title">
+<section class="erp-analytics{% if not a.gauge %} erp-analytics--no-gauge{% endif %}{% if not a.rings %} erp-analytics--no-rings{% endif %}{% if a.absentees is None %} erp-analytics--no-absent{% endif %}" aria-labelledby="analytics-title">
     <div class="erp-analytics-top">
     <h2 class="erp-section-title" id="analytics-title">Attendance, {{ a.label }}</h2>
 
@@ -34,18 +34,69 @@
     </div>
     {% if a.notice %}<p class="erp-analytics-empty" role="status">{{ a.notice }}</p>{% endif %}
 
-    <div class="erp-today-strip" role="list" aria-label="Today's attendance">
-        {% if a.strip.expected %}
-        <div class="erp-today-tile" role="listitem"><span class="erp-today-value">{{ a.strip.present }}</span><span class="erp-today-label">Present today</span></div>
-        <div class="erp-today-tile{% if a.strip.absent %} erp-today-tile--warn{% endif %}" role="listitem"><span class="erp-today-value">{{ a.strip.absent }}</span><span class="erp-today-label">Absent today</span></div>
-        <div class="erp-today-tile" role="listitem"><span class="erp-today-value">{{ a.strip.submitted }}<small>/{{ a.strip.expected }}</small></span><span class="erp-today-label">Registers submitted</span></div>
-        <div class="erp-today-tile{% if a.strip.not_taken %} erp-today-tile--warn{% endif %}" role="listitem"><span class="erp-today-value">{{ a.strip.not_taken }}</span><span class="erp-today-label">Not yet submitted</span></div>
-        {% else %}
-        <p class="erp-today-none" role="listitem">No school day today.</p>
+    {# Row 1: term gauge and today's donut sit side by side (also on phones), then the rings. #}
+    <div class="erp-chart-pair">
+        {% if a.gauge %}
+        <article class="erp-chart-card erp-analytics-card--gauge">
+            <h3 class="erp-chart-head">Attendance, {{ a.term.name }}</h3>
+            {% include "partials/charts/_gauge.html" with c=a.gauge label="Attendance this term" %}
+            <p class="erp-analytics-sub">Target {{ a.attendance_target }}%</p>
+        </article>
         {% endif %}
+        <article class="erp-chart-card erp-analytics-card--donut">
+            <h3 class="erp-chart-head">Today</h3>
+            {% if a.donut %}
+            {% include "partials/charts/_donut.html" with c=a.donut label="Attendance today" %}
+            <ul class="erp-donut-legend" aria-hidden="true">
+                {% for s in a.donut.segments %}<li><span class="erp-donut-key erp-donut-key--{{ s.index }}"></span>{{ s.label }} {{ s.count }}</li>{% endfor %}
+            </ul>
+            {% elif a.strip.expected %}
+            <p class="erp-today-none">No attendance yet.</p>
+            {% else %}
+            <p class="erp-today-none">No school day today.</p>
+            {% endif %}
+        </article>
     </div>
+    {% if a.rings %}
+    <article class="erp-chart-card erp-analytics-card--rings">
+        <h3 class="erp-chart-head">Still to finish</h3>
+        <ul class="erp-rings">
+            {% for r in a.rings %}
+            <li class="erp-ring-item">
+                {% if r.url %}<a class="erp-ring-link" href="{{ r.url }}">{% endif %}
+                {% include "partials/charts/_ring.html" with c=r.chart label=r.label %}
+                <span class="erp-ring-label">{{ r.label }}</span>
+                <span class="erp-ring-count">{{ r.chart.done }} of {{ r.chart.total }}</span>
+                {% if r.url %}</a>{% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+    </article>
+    {% endif %}
 
     {% if a.chart %}
+    {# DOM order = phone order (By class first, as the spec asks); desktop placement comes from the grid `order` values in erp.css. #}
+    {% if a.classes %}
+    <article class="erp-analytics-card erp-analytics-card--classes">
+        <h3 class="erp-analytics-title">By class</h3>
+        {# Desktop: upright columns in class order. Phones: the five lowest as bars. CSS picks by width. #}
+        <div class="erp-class-desk">
+            <p class="erp-analytics-sub">In class order. Red is under {{ a.attendance_target }}%.</p>
+            {% include "partials/charts/_columns.html" with rows=a.class_columns colour="attendance" label="Attendance by class" %}
+        </div>
+        <div class="erp-class-phone">
+            <p class="erp-analytics-sub">{% if a.class_bars_rest %}The {{ a.class_bars_phone|length }} classes with the lowest attendance, {{ a.label }}.{% elif a.classes|length == 1 %}Attendance for the one class with data, {{ a.label }}.{% else %}All {{ a.classes|length }} classes, lowest first, {{ a.label }}.{% endif %}</p>
+            {% include "partials/charts/_bars.html" with rows=a.class_bars_phone colour="attendance" %}
+            {% if a.class_bars_rest %}
+            <details class="erp-class-more">
+                <summary>Show all classes</summary>
+                <p class="erp-analytics-sub">The other {{ a.class_bars_rest|length }} class{{ a.class_bars_rest|length|pluralize:",es" }}, in class order.</p>
+                {% include "partials/charts/_bars.html" with rows=a.class_bars_rest colour="attendance" %}
+            </details>
+            {% endif %}
+        </div>
+    </article>
+    {% endif %}
     <article class="erp-analytics-card erp-analytics-card--trend">
         <header class="erp-analytics-head">
             <div>
@@ -79,22 +130,6 @@
         </ul>
     </article>
 
-    {% if a.classes %}
-    <article class="erp-analytics-card erp-analytics-card--classes">
-        <h3 class="erp-analytics-title">By class</h3>
-        <ul class="erp-class-bars">
-            {% for row in a.classes %}
-            <li class="erp-class-row">
-                <span class="erp-class-name">{{ row.class_name }}</span>
-                <progress class="erp-class-bar" max="100" value="{{ row.percentage|stringformat:'.1f' }}" aria-label="{{ row.class_name }} attendance">{{ row.percentage|floatformat:1 }}%</progress>
-                <span class="erp-class-pct">{{ row.percentage|floatformat:0 }}%</span>
-            </li>
-            {% endfor %}
-        </ul>
-        <p class="erp-analytics-sub">Lowest attendance first.</p>
-    </article>
-    {% endif %}
-
     <article class="erp-analytics-card erp-analytics-card--heat">
         <h3 class="erp-analytics-title">Attendance heatmap</h3>
         <p class="erp-analytics-sub">Last 4 weeks. Darker blue is higher; red is under 80%.
@@ -113,8 +148,8 @@
         {% if a.classes|length > 1 %}{% with low=a.classes.0 high=a.classes|last %}
         {# Desktop only: the two ends of the class comparison, next to the heatmap. #}
         <dl class="erp-class-callouts">
-            <div><dt>Lowest class</dt><dd>{{ low.class_name }}, {{ low.percentage|floatformat:0 }}%</dd></div>
-            <div><dt>Best class</dt><dd>{{ high.class_name }}, {{ high.percentage|floatformat:0 }}%</dd></div>
+            <div><dt>Lowest class</dt><dd>{{ low.class_name }}, {{ low.display }}%</dd></div>
+            <div><dt>Best class</dt><dd>{{ high.class_name }}, {{ high.display }}%</dd></div>
         </dl>
         {% endwith %}{% endif %}
     </article>

@@ -1,0 +1,10 @@
+{# Horizontal bars. `rows` have label, value, display, low and optional url; `colour` is "attendance" or "marks". Width is capped by .erp-class-bars. #}
+<ul class="erp-class-bars">
+    {% for r in rows %}
+    <li class="erp-class-row">
+        <span class="erp-class-name">{% if r.url %}<a class="erp-class-link" href="{{ r.url }}">{{ r.label }}</a>{% else %}{{ r.label }}{% endif %}</span>
+        <progress class="erp-class-bar{% if colour == 'marks' %} erp-class-bar--marks{% endif %}{% if r.low %} erp-class-bar--low{% endif %}" max="100" value="{{ r.value|stringformat:'.1f' }}" aria-label="{{ r.label }}">{{ r.display }}</progress>
+        <span class="erp-class-pct">{{ r.display }}</span>
+    </li>
+    {% endfor %}
+</ul>

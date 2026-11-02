@@ -7,11 +7,14 @@ A day with no submitted data is omitted, never drawn as 0%.
 """
 
 import datetime
+import re
 from dataclasses import dataclass
 
 from django.db.models import Avg, Count, DecimalField, ExpressionWrapper, F, Q
+from django.urls import reverse
 
-from core import reports
+from core import charts, reports
+from core.charts import shares
 from core.models import (
     AcademicEnrollment,
     AcademicTerm,
@@ -19,10 +22,14 @@ from core.models import (
     AttendanceRegister,
     AttendanceStatus,
     ResultStatus,
+    Student,
     StudentResult,
+    TermPublication,
     business_today,
 )
 
+# Attendance under this percentage is "low": the gauge turns red and a class column is flagged.
+ATTENDANCE_TARGET_PERCENT = 80
 DEFAULT_PERIOD_DAYS = 14
 # Gate C: the longest custom range accepted, so a typo cannot ask for decades of registers.
 MAX_CUSTOM_DAYS = 366
@@ -223,6 +230,7 @@ def class_comparison(period):
     )
     result = [
         {
+            "class_grade_id": row["register__class_grade_id"],
             "class_name": row["register__class_grade__name"],
             "present": row["present"],
             "absent": row["absent"],
@@ -230,8 +238,136 @@ def class_comparison(period):
         }
         for row in rows
     ]
+    for row in result:
+        row["display"] = charts.percent_display(row["percentage"], ATTENDANCE_TARGET_PERCENT)
     result.sort(key=lambda r: (r["percentage"], r["class_name"]))
     return result
+
+
+def term_attendance(today):
+    """Attendance for the term running today, for the gauge. None when no term runs or no data."""
+    term = current_term(today)
+    if term is None:
+        return None
+    totals = reports.counts(_entries(Period(start=term.start_date, end=min(term.end_date, today))))
+    if totals["percentage"] is None:
+        return None
+    # The unrounded figure: the gauge turns red and says "met" on it, and shows a rounded display.
+    percent = totals["percentage"]
+    return {
+        "term": term,
+        "percent": percent,
+        "chart": charts.gauge(percent, ATTENDANCE_TARGET_PERCENT),
+    }
+
+
+def ring_term(today):
+    """The most recently started term: the running one, or the one that just ended."""
+    return (
+        AcademicTerm.objects.filter(start_date__lte=today)
+        .order_by("-start_date", "-display_order")
+        .first()
+    )
+
+
+def completion_rings(today, *, can_view_results, can_view_publications,
+                     missing_attendance_url, strip=None):
+    """The "still to finish" rings, each `{key, label, term_name, chart, url}`.
+
+    Registers today shows whenever a school day expects registers; `missing_attendance_url` is
+    the report's bare URL and the ring links to it for today. Marks entered and Results
+    published use `ring_term` and always name that term in the label; they appear only for
+    viewers allowed to see that data. Results published counts students who are ACTIVE and
+    enrolled in the term, once each, with a PUBLISHED result. A correction marks a publication
+    STALE in the database (`publication._mark_stale`), so counting PUBLISHED does not
+    overcount. Constant queries however many students or classes exist.
+    """
+    strip = today_strip(today) if strip is None else strip
+    rings = []
+    registers = charts.ring(strip["submitted"], strip["expected"])
+    if registers is not None:
+        rings.append(
+            {
+                "key": "registers",
+                "label": "Registers today",
+                "term_name": "",
+                "chart": registers,
+                "url": (
+                    f"{missing_attendance_url}?start={today:%Y-%m-%d}&end={today:%Y-%m-%d}"
+                    if missing_attendance_url
+                    else None
+                ),
+            }
+        )
+    term = ring_term(today)
+    if term is None:
+        return rings
+    if can_view_results:
+        totals = Assessment.objects.filter(term=term, assessment_date__lte=today).aggregate(
+            total=Count("id"),
+            finalized=Count("id", filter=Q(status=Assessment.Status.FINALIZED)),
+        )
+        chart = charts.ring(totals["finalized"], totals["total"])
+        if chart is not None:
+            rings.append(
+                {
+                    "key": "marks",
+                    "label": f"Marks entered, {term.name}",
+                    "term_name": term.name,
+                    "chart": chart,
+                    "url": None,
+                }
+            )
+    if can_view_publications:
+        enrolled_ids = (
+            AcademicEnrollment.objects.filter(
+                academic_year_id=term.academic_year_id,
+                start_date__lte=term.end_date,
+                student__status=Student.Status.ACTIVE,
+            )
+            .filter(Q(end_date__isnull=True) | Q(end_date__gte=term.start_date))
+            .values("student_id")
+        )
+        enrolled = enrolled_ids.distinct().count()
+        published = (
+            TermPublication.objects.filter(
+                term=term,
+                status=TermPublication.Status.PUBLISHED,
+                student_id__in=enrolled_ids,
+            )
+            .values("student_id")
+            .distinct()
+            .count()
+        )
+        chart = charts.ring(published, enrolled)
+        if chart is not None:
+            rings.append(
+                {
+                    "key": "published",
+                    "label": f"Results published, {term.name}",
+                    "term_name": term.name,
+                    "chart": chart,
+                    "url": None,
+                }
+            )
+    return rings
+
+
+def _natural_key(name):
+    """Sort "Grade 2" before "Grade 10"."""
+    return [int(part) if part.isdigit() else part.lower() for part in re.split(r"(\d+)", name)]
+
+
+def _class_row(row, with_link):
+    return {
+        "label": row["class_name"],
+        "value": row["percentage"],
+        "display": f"{charts.percent_display(row['percentage'], ATTENDANCE_TARGET_PERCENT)}%",
+        "low": row["percentage"] < ATTENDANCE_TARGET_PERCENT,
+        "url": (
+            reverse("core:class-grade-detail", args=[row["class_grade_id"]]) if with_link else None
+        ),
+    }
 
 
 def frequent_absentees(period, threshold=ABSENTEE_THRESHOLD_DAYS, limit=ABSENTEE_LIST_LIMIT):
@@ -355,19 +491,6 @@ def trend_chart(points, *, width, height, pad=8):
     }
 
 
-def _shares(counts):
-    """Whole-number percentages of `counts` that always add up to 100 (largest remainder)."""
-    total = sum(counts)
-    if not total:
-        return [0] * len(counts)
-    exact = [count * 100 / total for count in counts]
-    shares = [int(value) for value in exact]
-    order = sorted(range(len(counts)), key=lambda i: exact[i] - shares[i], reverse=True)
-    for i in order[: 100 - sum(shares)]:
-        shares[i] += 1
-    return shares
-
-
 def marks_snapshot(today):
     """Average and score bands for the latest term that has finalized, marked results.
 
@@ -430,25 +553,39 @@ def marks_snapshot(today):
         "classes": classes,
         "bands": [
             {"label": label, "count": count, "share": share}
-            for (_, label), count, share in zip(MARK_BANDS, counts, _shares(counts), strict=True)
+            for (_, label), count, share in zip(MARK_BANDS, counts, shares(counts), strict=True)
         ],
         "total": sum(counts),
         "absent": aggregate["absent"],
     }
 
 
-def overview_context(today=None, *, include_absentees=False, include_marks=False, params=None):
+def overview_context(
+    today=None,
+    *,
+    include_absentees=False,
+    include_marks=False,
+    include_publications=False,
+    include_class_links=False,
+    missing_attendance_url=None,
+    params=None,
+):
     """Everything the Overview analytics render, school-wide.
 
     Student names are personal data, so the absentee list is only built when the caller says
     the user may view students; otherwise `absentees` is None and the section is not shown.
     Marks are only built for callers who may view results. `params` (the GET query) picks the
     attendance period; the heatmap, today strip and marks snapshot are independent of it.
+    Class columns and bars link to the class page only when `include_class_links` says the
+    viewer may open it; the registers ring links to the report only when a URL is given.
     """
     today = business_today() if today is None else today
     choice = resolve_period(params or {}, today)
     period = choice["period"]
     points = daily_trend(period)
+    strip = today_strip(today)
+    classes = class_comparison(period)
+    term_gauge = term_attendance(today)
     return {
         "choice": choice["key"],
         "label": choice["label"],
@@ -464,11 +601,33 @@ def overview_context(today=None, *, include_absentees=False, include_marks=False
         "heatmap": attendance_heatmap(today),
         "period": period,
         "period_days": period.days,
-        "strip": today_strip(today),
+        "strip": strip,
+        "attendance_target": ATTENDANCE_TARGET_PERCENT,
+        "gauge": term_gauge["chart"] if term_gauge else None,
+        "donut": charts.donut([("Present", strip["present"]), ("Absent", strip["absent"])]),
+        "rings": completion_rings(
+            today,
+            can_view_results=include_marks,
+            can_view_publications=include_publications,
+            missing_attendance_url=missing_attendance_url,
+            strip=strip,
+        ),
+        "class_columns": charts.columns(
+            [
+                _class_row(row, include_class_links)
+                for row in sorted(classes, key=lambda r: _natural_key(r["class_name"]))
+            ]
+        ),
+        "class_bars_phone": [_class_row(row, include_class_links) for row in classes[:5]],
+        "class_bars_rest": [
+            _class_row(row, include_class_links)
+            for row in sorted(classes[5:], key=lambda r: _natural_key(r["class_name"]))
+        ],
+        "class_links": include_class_links,
         "points": points,
         "summary": trend_summary(period, points),
         "chart": trend_chart(points, width=320, height=120),
         # Desktop draws its own, wider and flatter chart; scaling the phone one up made it huge.
         "chart_wide": trend_chart(points, width=720, height=200),
-        "classes": class_comparison(period),
+        "classes": classes,
     }

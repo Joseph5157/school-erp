@@ -1,0 +1,10 @@
+{# Donut. `c` is charts.donut(); `label` is the accessible text. Zero-count parts are listed but draw nothing. #}
+<svg class="erp-donut" width="{{ c.size }}" height="{{ c.size }}" viewBox="0 0 {{ c.size }} {{ c.size }}" role="img"
+     aria-label="{{ label }}: {% for s in c.segments %}{{ s.label }} {{ s.count }}{% if not forloop.last %}, {% endif %}{% endfor %}">
+    <circle class="erp-donut-track" cx="{{ c.center }}" cy="{{ c.center }}" r="{{ c.radius }}" stroke-width="{{ c.stroke }}"/>
+    {% for s in c.segments %}{% if s.count %}<circle class="erp-donut-seg erp-donut-seg--{{ s.index }}" cx="{{ c.center }}" cy="{{ c.center }}" r="{{ c.radius }}" stroke-width="{{ c.stroke }}" stroke-dasharray="{{ s.dash }} {{ s.gap }}" stroke-dashoffset="{{ s.offset }}" transform="rotate(-90 {{ c.center }} {{ c.center }})"><title>{{ s.label }}: {{ s.count }} ({{ s.share }}%)</title></circle>{% endif %}{% endfor %}
+    <text class="erp-chart-text" x="{{ c.center }}" y="{{ c.center }}" dy=".35em" font-size="18">{{ c.headline_percent }}%</text>
+</svg>
+<ul class="visually-hidden erp-visually-hidden-data">
+    {% for s in c.segments %}<li>{{ s.label }}: {{ s.count }} ({{ s.share }}%)</li>{% endfor %}
+</ul>
