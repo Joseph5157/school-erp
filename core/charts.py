@@ -35,10 +35,12 @@ def ring(done, total, size=76, stroke=8):
     if not total:
         return None
     done = _clamp(done, 0, total)
+    # Rounded, but 100 only when everything is done and 0 only when nothing is.
+    percent = _clamp(round(done * 100 / total), 1 if done > 0 else 0, 100 if done == total else 99)
     radius = (size - stroke) / 2
     circumference = _r(2 * math.pi * radius)
     return {
-        "percent": round(done * 100 / total),
+        "percent": percent,
         "done": done,
         "total": total,
         "size": size,

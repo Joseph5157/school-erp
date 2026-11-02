@@ -11,6 +11,14 @@ class ChartGeometryTests(SimpleTestCase):
         self.assertEqual(charts.ring(0, 8)["percent"], 0)
         self.assertEqual(charts.ring(0, 8)["dash"], 0)
 
+    def test_ring_is_100_only_when_everything_is_done(self):
+        self.assertEqual(charts.ring(199, 200)["percent"], 99)
+
+    def test_ring_is_0_only_when_nothing_is_done(self):
+        r = charts.ring(1, 200)
+        self.assertEqual(r["percent"], 1)
+        self.assertGreater(r["dash"], 0)
+
     def test_ring_full_dash_equals_circumference(self):
         r = charts.ring(8, 8)
         self.assertEqual(r["percent"], 100)
