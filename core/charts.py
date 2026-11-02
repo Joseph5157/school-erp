@@ -163,7 +163,7 @@ def columns(rows, height=120, max_value=100):
 def bullet(score, pass_percent, comparison):
     """0-100 coordinates for a `viewBox="0 0 100 16"` bullet bar."""
     return {
-        "score": score,
+        "score": _clamp(score, 0, 100),
         "pass_width": None if pass_percent is None else _clamp(pass_percent, 0, 100),
         "marker_x": None if comparison is None else _clamp(comparison, 0, 100),
     }

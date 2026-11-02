@@ -1,0 +1,22 @@
+{# Bullet chart, one row per subject in stable subject order (never by score). `bullets` is marks_analytics.student_progress_context()["bullets"]. Each row is one 100x16 SVG that stretches sideways only (its height is fixed), so the tick is non-scaling; rows are capped by .erp-bullet. #}
+<div class="erp-bullet">
+    <ul class="erp-bullet-rows">
+        {% for b in bullets %}
+        <li class="erp-bullet-row">
+            <span class="erp-bullet-name" aria-hidden="true">{{ b.score.subject_name }}</span>
+            <span class="erp-bullet-value" aria-hidden="true">{{ b.display }}%{% if b.score.below_pass %} <span class="erp-bullet-flag">Below pass</span>{% endif %}</span>
+            <svg class="erp-bullet-svg" viewBox="0 0 100 16" preserveAspectRatio="none" role="img" aria-label="{{ b.summary }}"><title>{{ b.summary }}</title>
+                <rect class="erp-bullet-track" x="0" y="0" width="100" height="16"/>
+                {% if b.bullet.pass_width %}<rect class="erp-bullet-pass" x="0" y="0" width="{{ b.bullet.pass_width|stringformat:'.2f' }}" height="16"/>{% endif %}
+                {% if b.bullet.score %}<rect class="erp-bullet-bar" x="0" y="4" width="{{ b.bullet.score|stringformat:'.2f' }}" height="8"/>{% endif %}
+                {% if b.bullet.marker_x is not None %}<line class="erp-bullet-marker" x1="{{ b.bullet.marker_x|stringformat:'.2f' }}" y1="1" x2="{{ b.bullet.marker_x|stringformat:'.2f' }}" y2="15"/>{% endif %}
+            </svg>
+        </li>
+        {% endfor %}
+    </ul>
+    <ul class="erp-chart-legend" aria-hidden="true">
+        <li><span class="erp-key erp-key--student"></span>Score</li>
+        {% if has_section_average %}<li><span class="erp-key erp-key--marker"></span>Section average</li>{% endif %}
+        {% if has_pass_band %}<li><span class="erp-key erp-key--pass"></span>Up to the pass mark</li>{% endif %}
+    </ul>
+</div>

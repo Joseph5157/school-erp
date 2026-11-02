@@ -1,0 +1,45 @@
+{# Student page "Progress" section. `progress` is marks_analytics.student_progress_context() (or None without core.view_studentresult); `attendance_months` is charts.columns() rows. #}
+<section id="progress" aria-labelledby="progress-heading" class="erp-progress">
+<h2 class="h5" id="progress-heading">Progress</h2>
+{% if progress and progress.terms|length > 1 %}
+<nav class="erp-term-pick" aria-label="Term">
+    <ul>
+        {% for t in progress.term_choices %}<li><a href="?term={{ t.id }}#progress"{% if t.selected %} aria-current="true"{% endif %}>{{ t.label }}</a></li>
+        {% endfor %}
+    </ul>
+</nav>
+{% endif %}
+<div class="erp-progress-grid{% if not progress %} erp-progress-grid--months-only{% elif not progress.term %} erp-progress-grid--no-results{% endif %}">
+    {% if progress %}
+    {% if progress.term %}
+    <article class="erp-chart-card erp-progress-card erp-progress-card--bullet">
+        <h3 class="erp-chart-head">Subject scores, {{ progress.term_name }}</h3>
+        <p class="erp-analytics-sub">Average of this student's finalized results in each subject, out of 100.</p>
+        {% include "partials/charts/_bullet.html" with bullets=progress.bullets has_section_average=progress.has_section_average has_pass_band=progress.has_pass_band only %}
+    </article>
+    <article class="erp-chart-card erp-progress-card erp-progress-card--radar">
+        <h3 class="erp-chart-head">Subjects at a glance</h3>
+        {% if progress.radar %}
+        {% include "partials/charts/_radar.html" with c=progress.radar values=progress.radar_values only %}
+        {% else %}
+        <p class="erp-analytics-sub">{{ progress.radar_note }}</p>
+        {% endif %}
+    </article>
+    {% else %}
+    <article class="erp-chart-card erp-progress-card erp-progress-card--empty">
+        <h3 class="erp-chart-head">Subject scores</h3>
+        <p class="erp-analytics-sub">No finalized results yet.</p>
+    </article>
+    {% endif %}
+    {% endif %}
+    <article class="erp-chart-card erp-progress-card erp-progress-card--months">
+        <h3 class="erp-chart-head">Attendance by month</h3>
+        {% if attendance_months %}
+        {% include "partials/charts/_columns.html" with rows=attendance_months colour="attendance" label="Attendance by month" only %}
+        {% if attendance_months_low %}<p class="erp-analytics-sub">Under 80% is shown in red.</p>{% endif %}
+        {% else %}
+        <p class="erp-analytics-sub">No attendance recorded yet this year.</p>
+        {% endif %}
+    </article>
+</div>
+</section>

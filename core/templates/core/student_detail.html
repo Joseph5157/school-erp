@@ -98,6 +98,8 @@
 {% endif %}
 </section>
 
+{% include "partials/_student_progress.html" with progress=progress attendance_months=attendance_months attendance_months_low=attendance_months_low only %}
+
 <section id="enrollment-history" aria-labelledby="enrollment-history-heading">
 <h2 class="h5" id="enrollment-history-heading">Enrollment history</h2>
 <div class="erp-panel mb-4">

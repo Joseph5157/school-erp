@@ -20,9 +20,11 @@ from core import (
     analytics,
     assessment_reports,
     assignments,
+    charts,
     dashboard,
     guardian_access,
     guardian_accounts,
+    marks_analytics,
     publication,
     reports,
     school_logo,
@@ -3045,11 +3047,26 @@ def student_detail(request, pk):
         "academic_year", "class_grade", "section__class_grade"
     )
     current_enrollment = enrollments.filter(status=AcademicEnrollment.Status.ACTIVE).first()
+    today = business_today()
+    progress = None
+    if request.user.has_perm("core.view_studentresult"):
+        progress = marks_analytics.student_progress_context(student, request.GET.get("term"))
+    months = []
+    year = _current_academic_year(today)
+    if year is not None:
+        months = analytics.student_attendance_by_month(student, year, today)
+    for month in months:
+        month["low"] = month["percentage"] < analytics.ATTENDANCE_TARGET_PERCENT
+        month["value"] = month["percentage"]
+        month["display"] = f"{charts.percent_display(month['percentage'], analytics.ATTENDANCE_TARGET_PERCENT)}%"
     return render(
         request,
         "core/student_detail.html",
         {
             "student": student,
+            "progress": progress,
+            "attendance_months": charts.columns(months),
+            "attendance_months_low": any(month["low"] for month in months),
             "guardian_links": guardian_links,
             "current_enrollment": current_enrollment,
             "enrollments": enrollments,
@@ -3057,6 +3074,7 @@ def student_detail(request, pk):
                 ("status-change", "Change status", request.user.has_perm("core.change_student")),
                 ("status-history", "Status history", True),
                 ("placement", "Current placement", True),
+                ("progress", "Progress", True),
                 ("enrollment-history", "Enrollment history", True),
                 ("guardians", "Guardians", True),
             ),
