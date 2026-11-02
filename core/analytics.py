@@ -10,6 +10,7 @@ import datetime
 from dataclasses import dataclass
 
 from django.db.models import Count, DecimalField, ExpressionWrapper, F, Q
+from django.db.models.functions import TruncMonth
 from django.urls import reverse
 
 from core import charts, marks_analytics, reports
@@ -241,6 +242,41 @@ def class_comparison(period):
         row["display"] = charts.percent_display(row["percentage"], ATTENDANCE_TARGET_PERCENT)
     result.sort(key=lambda r: (r["percentage"], r["class_name"]))
     return result
+
+
+def student_attendance_by_month(student, year, today):
+    """One student's attendance per calendar month of `year`, up to `today`, in one query.
+
+    Built on `reports.reportable_entries()`, so only SUBMITTED registers on instructional days
+    count. A month with no such day is left out, never drawn as 0%.
+    """
+    rows = (
+        reports.reportable_entries()
+        .filter(
+            academic_enrollment__student=student,
+            academic_enrollment__academic_year=year,
+            register__date__lte=today,
+        )
+        .order_by()
+        .annotate(month=TruncMonth("register__date"))
+        .values("month")
+        .annotate(
+            present=Count("id", filter=Q(status=AttendanceStatus.PRESENT)),
+            absent=Count("id", filter=Q(status=AttendanceStatus.ABSENT)),
+        )
+        .order_by("month")
+    )
+    return [
+        {
+            "month": row["month"],
+            "label": row["month"].strftime("%b"),
+            "present": row["present"],
+            "absent": row["absent"],
+            "percentage": reports.percentage(row["present"], row["absent"]),
+        }
+        for row in rows
+        if row["present"] + row["absent"]
+    ]
 
 
 def term_attendance(today):

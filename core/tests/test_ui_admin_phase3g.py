@@ -73,7 +73,7 @@ class StudentPageTests(SectionAssertions, AuthorizationClientsMixin, TestCase):
         self.assertIn(NAV, html)
         self.assert_menu_matches_sections(
             html,
-            ["status-change", "status-history", "placement", "enrollment-history", "guardians"],
+            ["status-change", "status-history", "placement", "progress", "enrollment-history", "guardians"],
         )
         for heading in STUDENT_HEADINGS:
             self.assertRegex(html, rf'<h2 class="h5" id="[a-z-]+-heading">{heading}</h2>')
@@ -96,7 +96,7 @@ class StudentPageTests(SectionAssertions, AuthorizationClientsMixin, TestCase):
         self.assertNotIn('href="#status-change"', html)
         self.assertNotIn('id="status-change"', html)
         self.assert_menu_matches_sections(
-            html, ["status-history", "placement", "enrollment-history", "guardians"]
+            html, ["status-history", "placement", "progress", "enrollment-history", "guardians"]
         )
         self.assertNotIn("Change status", html)
 

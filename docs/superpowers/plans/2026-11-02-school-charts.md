@@ -62,7 +62,7 @@
 - `gauge(percent: float | None, target: float) -> dict | None`: 200x122 viewBox semicircle. Keys `percent`, `target`, `track_d`, `value_d`, `tick` (`x1, y1, x2, y2`), `met` (bool).
 - `columns(rows: list[dict], height=120, max_value=100) -> list[dict]`: each input row has `label`, `value`, `display`, optional `url`, `low`. Adds `bar_height` and `bar_y`. A zero value has `bar_height` 0.
 - `bullet(score: float, pass_percent: float | None, comparison: float | None) -> dict`: 0-100 coordinates for a `viewBox="0 0 100 16"`. Keys `score`, `pass_width` (None if no pass mark), `marker_x` (None if no comparison).
-- `radar(axes: list[str], outlines: list[dict], size=(280, 180)) -> dict | None`: returns None unless `3 <= len(axes) <= 8`. Each outline is `{key, label, values}` and at most 2 are allowed (raise `ValueError` for more). Returns `width`, `height`, `grid` (four polygon strings at 25/50/75/100), `spokes`, `labels` (`{text, x, y, anchor}`), `outlines` (`{key, label, points}`). First axis at the top, clockwise.
+- `radar(axes: list[str], outlines: list[dict], size=(292, 180)) -> dict | None`: returns None unless `3 <= len(axes) <= 8`. Each outline is `{key, label, values}` and at most 2 are allowed (raise `ValueError` for more). Returns `width`, `height`, `grid` (four polygon strings at 25/50/75/100), `spokes`, `labels` (`{lines, x, y, anchor}`; `lines` is one or two strings, wrapped at a word boundary), `outlines` (`{key, label, points}`). First axis at the top, clockwise.
 
 - [ ] **Step 1: Write failing tests** in `test_charts.py`:
 

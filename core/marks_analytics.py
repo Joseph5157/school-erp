@@ -29,6 +29,7 @@ from core.models import (
     ResultStatus,
     Student,
     StudentResult,
+    business_today,
 )
 
 # A section average is hidden below this many distinct students, so a small section cannot
@@ -146,8 +147,12 @@ def subject_averages(term):
     )
 
 
-def student_subject_scores(student, term, scope=None):
-    """One `SubjectScore` per subject the student has marks in, in subject name order."""
+def student_subject_scores(student, term, scope=None, include_comparison=True):
+    """One `SubjectScore` per subject the student has marks in, in subject name order.
+
+    The order ignores case ("art" before "Biology"), like the report card's database sort for
+    ordinary names. `include_comparison=False` skips the section average query entirely.
+    """
     own = marked_results(term, scope).filter(academic_enrollment__student=student).order_by()
     scores = {
         row["subject_name"]: float(row["score"])
@@ -163,7 +168,7 @@ def student_subject_scores(student, term, scope=None):
 
     section_averages = {}
     enrollment = term.enrollment_for(student)
-    if enrollment is not None:
+    if include_comparison and enrollment is not None:
         section_rows = (
             marked_results(term, scope)
             .filter(assessment__section_id=enrollment.section_id)
@@ -181,7 +186,7 @@ def student_subject_scores(student, term, scope=None):
         }
 
     result = []
-    for name in sorted(scores):
+    for name in sorted(scores, key=lambda n: (n.casefold(), n)):
         sat, pass_percent = passes.get(name, (None, None))
         result.append(
             SubjectScore(
@@ -195,17 +200,125 @@ def student_subject_scores(student, term, scope=None):
     return result
 
 
-def terms_with_results(student):
-    """Terms in which the student has finalized MARKED results, newest first."""
+def terms_with_results(student, scope=None, today=None):
+    """Terms that have started and hold the student's finalized MARKED results, newest first.
+
+    `scope` (a Q on StudentResult) narrows which results count, for a teacher who may see only
+    some of them. A term that has not started is never offered, as `reporting_term` never picks one.
+    """
+    today = business_today() if today is None else today
     return list(
         AcademicTerm.objects.filter(
             Exists(
                 _counted_results(
                     assessment__term=OuterRef("pk"), academic_enrollment__student=student
-                )
-            )
-        ).order_by("-start_date", "-display_order")
+                ).filter(Q() if scope is None else scope)
+            ),
+            start_date__lte=today,
+        )
+        .select_related("academic_year")
+        .order_by("-start_date", "-display_order")
     )
+
+
+def _bullet_row(score):
+    display = charts.percent_display(score.score, score.pass_percent)
+    pass_display = None if score.pass_percent is None else charts.percent_display(score.pass_percent)
+    average_display = (
+        None if score.section_average is None else charts.percent_display(score.section_average)
+    )
+    summary = f"{score.subject_name}: {display}%"
+    if score.below_pass:
+        summary += f", below the pass mark of {pass_display}%"
+    elif pass_display is not None:
+        summary += f", pass mark {pass_display}%"
+    if average_display is not None:
+        summary += f", section average {average_display}%"
+    title = f"{score.subject_name}: {display}%"
+    if average_display is not None:
+        title += f", section average {average_display}%"
+    return {
+        "score": score,
+        "title": title,
+        "bullet": charts.bullet(score.score, score.pass_percent, score.section_average),
+        "display": display,
+        "pass_display": pass_display,
+        "average_display": average_display,
+        "summary": summary,
+    }
+
+
+def radar_block(scores, student_name, rows=None, outlines=None):
+    """A radar and its screen-reader value list for any list of 3 to 8 `SubjectScore`s, else None.
+
+    `rows` are the matching `_bullet_row`s (built here when omitted); each radar label gets the
+    exact value as its `title`. `outlines` replaces the default pair: the student's scores, plus
+    the section average only when every axis has one (a small section hides its own).
+    """
+    if not 3 <= len(scores) <= 8:
+        return None
+    rows = [_bullet_row(score) for score in scores] if rows is None else rows
+    if outlines is None:
+        outlines = [{"key": "student", "label": student_name, "values": [s.score for s in scores]}]
+        if all(s.section_average is not None for s in scores):
+            outlines.append(
+                {"key": "section", "label": "Section average",
+                 "values": [s.section_average for s in scores]}
+            )
+    radar = charts.radar([s.subject_name for s in scores], outlines)
+    for label, row in zip(radar["labels"], rows, strict=True):
+        label["title"] = row["title"]
+    values = [
+        {
+            "name": s.subject_name,
+            "student": charts.percent_display(s.score, s.pass_percent),
+            "average": None if s.section_average is None else charts.percent_display(s.section_average),
+        }
+        for s in scores
+    ]
+    return {"radar": radar, "values": values}
+
+
+def student_progress_context(student, term_id, scope=None, include_comparison=True):
+    """Everything the student page's Progress section draws, for one term.
+
+    `term_id` is the raw `?term=` text; anything that is not one of the student's own terms with
+    results falls back to the newest, so another student's term is never reachable.
+    """
+    today = business_today()
+    terms = terms_with_results(student, scope, today)
+    term = next((t for t in terms if str(t.pk) == str(term_id).strip()), None) if term_id else None
+    term = term or (terms[0] if terms else None)
+    context = {
+        "term": term,
+        "terms": terms,
+        "term_choices": [
+            {"id": t.pk, "label": term_label(t, today), "selected": t == term} for t in terms
+        ],
+        "term_name": None if term is None else term_label(term, today),
+        "scores": [],
+        "bullets": [],
+        "radar": None,
+        "radar_note": None,
+        "has_section_average": False,
+        "has_pass_band": False,
+    }
+    if term is None:
+        return context
+    scores = student_subject_scores(student, term, scope, include_comparison)
+    context["scores"] = scores
+    context["bullets"] = [_bullet_row(score) for score in scores]
+    context["has_pass_band"] = any(s.pass_percent is not None for s in scores)
+    context["has_section_average"] = any(s.section_average is not None for s in scores)
+    if len(scores) < 3:
+        context["radar_note"] = "A radar chart needs at least 3 subjects; the bars show each one."
+    elif len(scores) > 8:
+        context["radar_note"] = "With more than 8 subjects a radar chart is too crowded; the bars show each one."
+    else:
+        block = radar_block(scores, student.full_name, context["bullets"])
+        context["radar"] = block["radar"]
+        context["radar_values"] = block["values"]
+    return context
 
 
 def _join_names(names):

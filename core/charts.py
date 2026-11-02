@@ -163,14 +163,49 @@ def columns(rows, height=120, max_value=100):
 def bullet(score, pass_percent, comparison):
     """0-100 coordinates for a `viewBox="0 0 100 16"` bullet bar."""
     return {
-        "score": score,
+        "score": _clamp(score, 0, 100),
         "pass_width": None if pass_percent is None else _clamp(pass_percent, 0, 100),
         "marker_x": None if comparison is None else _clamp(comparison, 0, 100),
     }
 
 
-def radar(axes, outlines, size=(280, 180)):
-    """A radar chart. First axis at the top, clockwise. Values are 0-100."""
+RADAR_CHAR_PX = 5.6  # rough width of a character at the radar's 11px label size
+RADAR_LABEL_GAP = 10  # px between the outer ring and a label
+RADAR_TOP_CHARS = 30  # top and bottom labels centre on the axis, so they have room both ways
+
+
+def _label_lines(text, limit, two_lines):
+    """Break `text` at a word boundary into at most two lines of `limit` characters.
+
+    There is no third line. A line that still will not fit ends with an ellipsis: a single word
+    longer than `limit`, or a second line whose remaining words are too long. Only side labels
+    (`two_lines`) wrap; a top or bottom label stays on one line.
+    """
+
+    def clip(line):
+        return line if len(line) <= limit else line[: max(limit - 1, 1)].rstrip() + "…"
+
+    if len(text) <= limit or not two_lines:
+        return [clip(text)]
+    first = ""
+    words = text.split()
+    taken = 0
+    for word in words:
+        candidate = f"{first} {word}".strip()
+        if len(candidate) > limit:
+            break
+        first, taken = candidate, taken + 1
+    if not first:  # even the first word is too long
+        return [clip(words[0])] + ([clip(" ".join(words[1:]))] if len(words) > 1 else [])
+    rest = " ".join(words[taken:])
+    return [first, clip(rest)]
+
+
+def radar(axes, outlines, size=(292, 180)):
+    """A radar chart. First axis at the top, clockwise. Values are 0-100.
+
+    292 wide is the most that fits a 360px phone card, and leaves about 70px beside a 4-axis chart.
+    """
     if not 3 <= len(axes) <= 8:
         return None
     if len(outlines) > 2:
@@ -191,10 +226,15 @@ def radar(axes, outlines, size=(280, 180)):
 
     labels = []
     for index, text in enumerate(axes):
-        x, y = point(index, radius + 12)
+        x, y = point(index, radius + RADAR_LABEL_GAP)
         dx = x - cx
         anchor = "middle" if abs(dx) < 1 else ("start" if dx > 0 else "end")
-        labels.append({"text": text, "x": _r(x), "y": _r(y), "anchor": anchor})
+        if anchor == "middle":
+            lines = _label_lines(text, RADAR_TOP_CHARS, two_lines=False)
+        else:
+            room = (width - x) if anchor == "start" else x
+            lines = _label_lines(text, int(room / RADAR_CHAR_PX), two_lines=True)
+        labels.append({"lines": lines, "x": _r(x), "y": _r(y), "anchor": anchor})
 
     drawn = []
     for outline in outlines:

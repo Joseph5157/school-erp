@@ -43,6 +43,7 @@
   --erp-viz-heat-3: #1c5cab;
   --erp-viz-low: #d03b3b;
   --erp-viz-grid: #e1e0d9;
+  --erp-viz-student: #39424e;
 
   /* Back-compatible alias for the original "critical" token name. */
   --erp-crit: var(--erp-bad);
@@ -1169,6 +1170,56 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
 .erp-period-dates { display: grid; grid-template-columns: 1fr 1fr; gap: var(--erp-space-3); font-size: var(--erp-text-xs); font-weight: 600; color: var(--erp-ink-soft); }
 .erp-period-dates .form-control { min-height: 2.75rem; margin-top: var(--erp-space-1); }
 
+/* Student page Progress: bullet chart + radar + months. Fixed-height SVGs; only the width of a bullet row flexes, capped at 32rem. */
+.erp-progress { margin-bottom: var(--erp-space-5); }
+.erp-progress-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--erp-space-4); }
+.erp-term-pick ul { display: flex; flex-wrap: wrap; gap: var(--erp-space-2); margin: 0 0 var(--erp-space-3); padding: 0; list-style: none; }
+.erp-term-pick a { display: inline-flex; align-items: center; min-height: 2.75rem; padding: 0 var(--erp-space-4); border: 1px solid var(--erp-rule); border-radius: 999px; background: var(--erp-surface); color: var(--erp-ink); font-size: var(--erp-text-sm); font-weight: 600; text-decoration: none; }
+.erp-term-pick a[aria-current="true"] { border-color: var(--erp-action); background: var(--erp-action-wash); color: var(--erp-action-strong); }
+.erp-bullet { max-width: 32rem; }
+.erp-bullet-rows { display: flex; flex-direction: column; gap: var(--erp-space-3); margin: 0; padding: 0; list-style: none; }
+.erp-bullet-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: var(--erp-space-1) var(--erp-space-3); }
+.erp-bullet-name { font-size: var(--erp-text-sm); font-weight: 600; overflow-wrap: anywhere; }
+.erp-bullet-value { font-size: var(--erp-text-sm); font-weight: 700; white-space: nowrap; }
+.erp-bullet-flag { margin-left: var(--erp-space-1); padding: .1rem .5rem; border-radius: 999px; background: var(--erp-bad-wash); color: var(--erp-bad); font-size: var(--erp-text-xs); font-weight: 700; }
+.erp-bullet-svg { grid-column: 1 / -1; display: block; width: 100%; height: 16px; }
+.erp-bullet-track { fill: var(--erp-viz-grid); fill-opacity: .5; }
+.erp-bullet-pass { fill: var(--erp-viz-grid); }
+.erp-bullet-bar { fill: var(--erp-viz-student); }
+.erp-bullet-marker { stroke: var(--erp-viz-attendance); stroke-width: 3; vector-effect: non-scaling-stroke; }
+.erp-chart-legend { display: flex; flex-wrap: wrap; gap: var(--erp-space-1) var(--erp-space-4); margin: var(--erp-space-3) 0 0; padding: 0; list-style: none; font-size: var(--erp-text-xs); color: var(--erp-ink-soft); }
+.erp-key { display: inline-block; width: .8rem; height: .5rem; margin-right: .35rem; border-radius: 2px; }
+.erp-key--student { background: var(--erp-viz-student); }
+.erp-key--section, .erp-key--marker { width: .2rem; height: .9rem; background: var(--erp-viz-attendance); }
+.erp-key--pass { background: var(--erp-viz-grid); }
+.erp-radar { display: block; flex: none; max-width: none; margin: 0 auto; }
+.erp-radar-grid { fill: none; stroke: var(--erp-viz-grid); stroke-width: 1; }
+.erp-radar-spoke { stroke: var(--erp-viz-grid); stroke-width: 1; }
+.erp-radar-outline { stroke-width: 2; stroke-linejoin: round; }
+.erp-radar-outline--student { fill: var(--erp-viz-student); fill-opacity: .18; stroke: var(--erp-viz-student); }
+.erp-radar-outline--section { fill: none; stroke: var(--erp-viz-attendance); stroke-dasharray: 4 3; }
+.erp-radar-label { font-size: 11px; fill: var(--erp-ink); }
+/* Months wrap onto as many rows as the card needs (about five per row in the narrow desktop card) instead of scrolling, so the newest month is never off-screen. */
+.erp-progress-card--months .erp-cols { flex-wrap: wrap; row-gap: var(--erp-space-3); }
+/* Below 1330px the sidebar leaves a span-4 radar card under 292px, so the cards stack in two rows (bullet, then radar and months). From 1330px they sit 5 / 4 / 3. */
+@media (min-width: 992px) { /* progress */
+  .erp-progress-grid { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+  .erp-progress-card--bullet { grid-column: span 12; }
+  .erp-progress-card--radar { grid-column: span 6; }
+  .erp-progress-card--months { grid-column: span 6; }
+  .erp-progress-card--empty { grid-column: span 6; }
+  .erp-progress-grid--months-only .erp-progress-card--months { grid-column: span 6; }
+  .erp-progress-grid--no-months .erp-progress-card--radar { grid-column: span 12; }
+}
+@media (min-width: 1330px) { /* progress */
+  .erp-progress-card--bullet { grid-column: span 5; }
+  .erp-progress-card--radar { grid-column: span 4; }
+  .erp-progress-card--months { grid-column: span 3; }
+  .erp-progress-card--empty { grid-column: span 9; }
+  .erp-progress-grid--months-only .erp-progress-card--months { grid-column: span 4; }
+  .erp-progress-grid--no-months .erp-progress-card--bullet { grid-column: span 7; }
+  .erp-progress-grid--no-months .erp-progress-card--radar { grid-column: span 5; }
+}
 /* Desktop-only Overview pieces stay out of the phone layout entirely. */
 .erp-period-seg, .erp-period-chip-custom, .erp-trend-stats, .erp-trend--wide, .erp-trend-desk-note, .erp-class-callouts { display: none; }
 
