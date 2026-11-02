@@ -191,7 +191,8 @@ class AdminConfigurationTests(OrderFixture, TestCase):
     def test_admin_can_edit_order(self):
         response = self.update(self.telugu, display_order=9)
         self.assertRedirects(
-            response, reverse("core:academic-year-offerings", args=[self.year.pk]))
+            response,
+            reverse("core:academic-year-offerings", args=[self.year.pk]) + f"#grade-{self.grade6.pk}")
         self.telugu.refresh_from_db()
         self.assertEqual(self.telugu.display_order, 9)
 
@@ -224,7 +225,7 @@ class AdminConfigurationTests(OrderFixture, TestCase):
     def test_listing_is_in_report_card_order(self):
         self.order({"Telugu": 1, "English": 2, "Mathematics": 3, "Sanskrit": 4})
         page = self.client.get(reverse("core:academic-year-offerings", args=[self.year.pk]))
-        self.assertEqual([o.subject.name for o in page.context["offerings"]],
+        self.assertEqual([o.subject.name for o in page.context["grade_groups"][0]["offerings"]],
                          ["Telugu", "English", "Mathematics", "Sanskrit"])
         self.assertContains(page, "Report card position")
 

@@ -395,6 +395,80 @@
     refresh();
   });
 
+  // Subjects offered: a link back to a Class/Grade opens its group.
+  if (window.location.hash.indexOf("#grade-") === 0) {
+    var linkedGroup = document.getElementById(window.location.hash.slice(1));
+    if (linkedGroup && linkedGroup.matches("details.erp-offering-group")) {
+      linkedGroup.open = true;
+      linkedGroup.scrollIntoView();
+    }
+  }
+
+  // Subject order modal: arrows always work; dragging is added when the library loaded. Nothing is
+  // saved until Save order, and closing the modal puts the list back. The opener starts hidden, so
+  // without JS or Bootstrap the person uses each Subject's Edit form instead.
+  document.querySelectorAll("[data-erp-reorder]").forEach(function (form) {
+    var modal = form.closest(".modal");
+    var opener = document.querySelector('[data-bs-target="#' + modal.id + '"]');
+    var list = form.querySelector("[data-erp-reorder-list]");
+    var announce = form.querySelector("[data-erp-reorder-announce]");
+    if (!window.bootstrap || !opener) return;
+    opener.hidden = false;
+
+    function items() {
+      return Array.prototype.slice.call(list.children);
+    }
+    var original = items();
+
+    function moveButton(item, direction) {
+      return item.querySelector('[data-erp-reorder-move="' + direction + '"]');
+    }
+    function refresh() {
+      var current = items();
+      current.forEach(function (item, index) {
+        item.querySelector("[data-erp-reorder-number]").textContent = index + 1;
+        moveButton(item, "up").disabled = index === 0;
+        moveButton(item, "down").disabled = index === current.length - 1;
+      });
+    }
+    function say(item) {
+      announce.textContent = item.getAttribute("data-erp-reorder-name") +
+        " is now number " + (items().indexOf(item) + 1) + ".";
+    }
+
+    list.addEventListener("click", function (event) {
+      var button = event.target.closest("[data-erp-reorder-move]");
+      if (!button) return;
+      var direction = button.getAttribute("data-erp-reorder-move");
+      var item = button.closest("li");
+      if (direction === "up") {
+        list.insertBefore(item, item.previousElementSibling);
+      } else {
+        list.insertBefore(item.nextElementSibling, item);
+      }
+      refresh();
+      // Moving the row drops focus, and an end-of-list button is now disabled.
+      (button.disabled ? moveButton(item, direction === "up" ? "down" : "up") : button).focus();
+      say(item);
+    });
+
+    modal.addEventListener("hidden.bs.modal", function () {
+      original.forEach(function (item) { list.appendChild(item); });
+      announce.textContent = "";
+      refresh();
+    });
+
+    if (window.Sortable) {
+      form.querySelectorAll("[data-erp-reorder-handle]").forEach(function (handle) { handle.hidden = false; });
+      window.Sortable.create(list, {
+        handle: "[data-erp-reorder-handle]",
+        animation: reduceMotion ? 0 : 150,
+        onEnd: function (event) { refresh(); say(event.item); },
+      });
+    }
+    refresh();
+  });
+
   // One-shot submit buttons: disable after the first submit so a double click cannot
   // publish twice. The form carries its own hidden confirm input, so nothing is lost.
   document.querySelectorAll("[data-erp-once]").forEach(function (button) {

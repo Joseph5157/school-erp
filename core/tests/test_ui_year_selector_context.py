@@ -22,8 +22,9 @@ User = get_user_model()
 YEAR_PREFIX = "academic-years/<int:pk>/"
 
 # Year-scoped URLs deliberately NOT in the allow-list: {"core:url-name": "one-line reason"}.
-# Empty today: every academic-years/<int:pk>/ route is allow-listed or a section-level page.
-EXCLUDED = {}
+EXCLUDED = {
+    "core:offering-reorder": "POST-only action that also needs a grade pk; there is no page to reopen.",
+}
 
 
 def _year_scoped_view_names():
