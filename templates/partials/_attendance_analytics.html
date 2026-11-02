@@ -75,6 +75,22 @@
     {% endif %}
 
     {% if a.chart %}
+    {# DOM order = phone order (By class first, as the spec asks); desktop placement comes from the grid `order` values in erp.css. #}
+    {% if a.classes %}
+    <article class="erp-analytics-card erp-analytics-card--classes">
+        <h3 class="erp-analytics-title">By class</h3>
+        {# Desktop: upright columns in class order. Phones: the five lowest as bars. CSS picks by width. #}
+        <div class="erp-class-desk">
+            <p class="erp-analytics-sub">In class order. Red is under {{ a.attendance_target }}%.</p>
+            {% include "partials/charts/_columns.html" with rows=a.class_columns colour="attendance" label="Attendance by class" %}
+        </div>
+        <div class="erp-class-phone">
+            <p class="erp-analytics-sub">The {{ a.class_bars_phone|length }} lowest attendance, {{ a.label }}.</p>
+            {% include "partials/charts/_bars.html" with rows=a.class_bars_phone colour="attendance" %}
+            {% if a.class_links %}<a class="erp-all-classes" href="{% url 'core:class-grade-list' %}">All classes</a>{% endif %}
+        </div>
+    </article>
+    {% endif %}
     <article class="erp-analytics-card erp-analytics-card--trend">
         <header class="erp-analytics-head">
             <div>
@@ -108,21 +124,6 @@
         </ul>
     </article>
 
-    {% if a.classes %}
-    <article class="erp-analytics-card erp-analytics-card--classes">
-        <h3 class="erp-analytics-title">By class</h3>
-        {# Desktop: upright columns in class order. Phones: the five lowest as bars. CSS picks by width. #}
-        <div class="erp-class-desk">
-            <p class="erp-analytics-sub">In class order. Red is under {{ a.attendance_target }}%.</p>
-            {% include "partials/charts/_columns.html" with rows=a.class_columns colour="attendance" label="Attendance by class" %}
-        </div>
-        <div class="erp-class-phone">
-            <p class="erp-analytics-sub">The {{ a.class_bars_phone|length }} lowest attendance, {{ a.label }}.</p>
-            {% include "partials/charts/_bars.html" with rows=a.class_bars_phone colour="attendance" %}
-            {% if a.class_links %}<a class="erp-all-classes" href="{% url 'core:class-grade-list' %}">All classes</a>{% endif %}
-        </div>
-    </article>
-    {% endif %}
 
     <article class="erp-analytics-card erp-analytics-card--heat">
         <h3 class="erp-analytics-title">Attendance heatmap</h3>

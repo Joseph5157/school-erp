@@ -1103,3 +1103,39 @@ class OverviewChartCardsTests(AnalyticsFixture, TestCase):
         with CaptureQueriesContext(connection) as ctx:
             self.administrator.get(self.url)
         self.assertEqual(len(ctx), before)
+
+
+class OverviewChartLayoutTests(AnalyticsFixture, TestCase):
+    """Phone order and the By class card's desktop spread, pinned honestly."""
+
+    url = reverse("core:admin-overview")
+
+    def css(self):
+        from pathlib import Path
+
+        from django.conf import settings
+
+        text = (Path(settings.BASE_DIR) / "static" / "css" / "erp.css").read_text(encoding="utf-8")
+        return text.split("/* ---------- Desktop Overview grid ---------- */", 1)[1]
+
+    def test_by_class_comes_before_the_trend_in_the_page_so_phones_show_it_first(self):
+        self.day(datetime.date(2026, 7, 1), {self.s1: P, self.s2: A})
+        html = self.administrator.get(self.url).content.decode()
+        self.assertLess(
+            html.index('class="erp-analytics-card erp-analytics-card--classes"'),
+            html.index('class="erp-analytics-card erp-analytics-card--trend"'),
+        )
+
+    def test_desktop_grid_order_keeps_trend_above_by_class(self):
+        block = self.css()
+        self.assertIn(".erp-analytics > .erp-analytics-card--trend { grid-column: span 8; order: 1; }", block)
+        self.assertIn(".erp-analytics > .erp-analytics-card--classes { grid-column: span 8; order: 3; }", block)
+
+    def test_by_class_columns_spread_without_clipping_on_overflow(self):
+        block = self.css()
+        self.assertTrue(block.lstrip().startswith("@media (min-width: 992px)"))
+        self.assertIn(
+            ".erp-analytics-card--classes .erp-cols { width: max-content; min-width: 100%; justify-content: space-around; }",
+            block,
+        )
+        self.assertIn(".erp-analytics-card--classes .erp-chart-scroll { margin-block: auto; }", block)

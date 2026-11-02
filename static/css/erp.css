@@ -1183,7 +1183,13 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
   .erp-analytics > .erp-analytics-card--classes { grid-column: span 8; order: 3; }
   .erp-analytics > .erp-analytics-card--absent { order: 4; }
   .erp-analytics > .erp-analytics-card--marks { grid-column: span 12; order: 5; }
-  .erp-class-desk { display: block; }
+  /* By class card: spread the columns across the card and centre the chart in its height. The row is at
+     least as wide as the card (min-width) but grows with its content, so 25+ classes scroll from the first
+     column instead of being clipped on the left. */
+  .erp-analytics-card--classes { display: flex; flex-direction: column; }
+  .erp-class-desk { display: flex; flex-direction: column; flex: 1; }
+  .erp-analytics-card--classes .erp-chart-scroll { margin-block: auto; }
+  .erp-analytics-card--classes .erp-cols { width: max-content; min-width: 100%; justify-content: space-around; }
   .erp-class-phone { display: none; }
 
   .erp-analytics-top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--erp-space-3); }
