@@ -1102,7 +1102,10 @@ a.erp-glance-tile:hover, a.erp-glance-tile:focus-visible { border-color: var(--e
 a.erp-ring-link:hover .erp-ring-label { text-decoration: underline; }
 .erp-class-desk { display: none; }
 .erp-class-more { margin-top: var(--erp-space-2); }
-.erp-class-more > summary { display: flex; align-items: center; min-height: 2.75rem; cursor: pointer; color: var(--erp-action); font-size: var(--erp-text-sm); font-weight: 600; }
+.erp-class-more > summary { display: flex; align-items: center; justify-content: space-between; gap: var(--erp-space-2); min-height: 2.75rem; cursor: pointer; color: var(--erp-action); font-size: var(--erp-text-sm); font-weight: 600; }
+.erp-class-more > summary::-webkit-details-marker { display: none; }
+.erp-class-more > summary::after { content: "\25BE"; flex: none; font-size: 1.1em; line-height: 1; transition: transform .15s; }
+.erp-class-more[open] > summary::after { transform: rotate(180deg); }
 .erp-ring, .erp-donut, .erp-gauge { display: block; flex: none; }
 .erp-ring-track, .erp-donut-track { fill: none; stroke: var(--erp-viz-grid); }
 .erp-ring-value { fill: none; stroke: var(--erp-viz-attendance); stroke-linecap: round; }
@@ -1194,6 +1197,8 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
   .erp-analytics > .erp-analytics-card--classes { grid-column: span 8; order: 3; }
   .erp-analytics--no-absent > .erp-analytics-card--classes { grid-column: span 12; }
   .erp-analytics > .erp-analytics-card--absent { order: 4; }
+  /* Without the attendance chart the absentee card would sit alone at span 4. */
+  .erp-analytics--no-chart > .erp-analytics-card--absent { grid-column: span 12; }
   /* Row 4: attention 7 + subjects 5. Row 5: bands across, its columns capped so they do not stretch.
      Without the attention card (viewer lacks view_student) the marks cards pair up 7 + 5 instead. */
   .erp-analytics > .erp-analytics-card--attention { grid-column: span 7; order: 5; }

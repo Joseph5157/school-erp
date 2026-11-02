@@ -33,7 +33,8 @@ D2. `docs/UI_DESIGN_RULES.md` gets one exception to "No totals, weighting, avera
 teacher or guardian result views": the charts on the teacher's student page
 (`my_student_detail`), using only results that teacher may already see. The gradebook, marks
 entry and guardian views keep the rule, so `my_student_detail` is the only teacher result view
-allowed to show these averages.
+allowed to show these averages. Totals, weighting and ranks stay forbidden on teacher and
+guardian views, including those charts.
 
 ## Consequences
 

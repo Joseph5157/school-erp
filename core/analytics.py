@@ -614,7 +614,6 @@ def overview_context(
         "absentees": frequent_absentees(period) if include_absentees else None,
         "absentee_threshold": ABSENTEE_THRESHOLD_DAYS,
         "attention": attention,
-        "class_links": include_class_links,
         "heatmap": attendance_heatmap(today),
         "period": period,
         "period_days": period.days,

@@ -1045,7 +1045,11 @@ class OverviewChartCardsTests(AnalyticsFixture, TestCase):
         ]["url"]
         response = self.administrator.get(link)
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Grade 2")
+        # The section dropdown lists "Grade 2" even on a blank form, so read the report's rows.
+        html = response.content.decode()
+        rows = html[html.index("<tbody>"):html.index("</tbody>")]
+        self.assertIn("Grade 2", rows)
+        self.assertNotIn("Grade 1", rows)  # Grade 1 submitted its register today
 
     def test_marks_ring_needs_results_permission(self):
         self.assess(self.make_term(), "Done", datetime.date(2026, 7, 1), True)
@@ -1524,6 +1528,10 @@ class StudentsNeedingAttentionViewTests(MarksFixture, TestCase):
             self.administrator.get(self.url)
         self.assertEqual(len(after), len(before))
 
+    def test_no_class_link_context_key_is_left_over(self):
+        response = self.administrator.get(self.url)
+        self.assertNotIn("class_links", response.context["attendance_analytics"])
+
 
 class OverviewNoHoleLayoutTests(AnalyticsFixture, TestCase):
     """Desktop rows must stay full whichever cards are missing; the section names what is missing."""
@@ -1548,6 +1556,11 @@ class OverviewNoHoleLayoutTests(AnalyticsFixture, TestCase):
         client.login(username=username, password="pass-12345")
         return client
 
+    def test_section_names_a_missing_attendance_chart(self):
+        self.assertIn("erp-analytics--no-chart", self.modifiers(self.administrator))
+        self.day(datetime.date(2026, 7, 1), {self.s1: P, self.s2: A})
+        self.assertNotIn("erp-analytics--no-chart", self.modifiers(self.administrator))
+
     def test_section_names_a_missing_attention_card(self):
         self.assertNotIn("erp-analytics--no-attention", self.modifiers(self.administrator))
         for name, codenames in (
@@ -1565,6 +1578,13 @@ class OverviewNoHoleLayoutTests(AnalyticsFixture, TestCase):
             ".erp-analytics > .erp-analytics-card--bands { grid-column: span 12; order: 7; }",
             ".erp-analytics--no-attention > .erp-analytics-card--subjects { grid-column: span 7; }",
             ".erp-analytics--no-attention > .erp-analytics-card--bands { grid-column: span 5; }",
+            ".erp-analytics--no-chart > .erp-analytics-card--absent { grid-column: span 12; }",
             ".erp-analytics-card--bands .erp-chart-scroll { max-width: 32rem; }",
         ):
             self.assertIn(rule, block)
+
+    def test_show_all_classes_summary_has_a_visible_open_and_closed_cue(self):
+        css = Path(settings.BASE_DIR, "static", "css", "erp.css").read_text(encoding="utf-8")
+        self.assertIn(".erp-class-more > summary::after {", css)
+        self.assertIn(".erp-class-more[open] > summary::after { transform: rotate(180deg); }", css)
+        self.assertRegex(css, r"\.erp-class-more > summary \{[^}]*min-height: 2\.75rem")

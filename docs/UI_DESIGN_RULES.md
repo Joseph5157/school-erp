@@ -176,7 +176,7 @@ Loading, error, and each kind of empty state are different and must never look a
 
 ## 16. Domain rules the UI must keep
 
-From `docs/UI_REFERENCES.md`, unchanged:
+From `docs/UI_REFERENCES.md`, unchanged except the averages bullet below, which ADR 0022 amended:
 
 - Draft vs submitted attendance; an unopened register is never "present".
 - **Blank marks mean "not marked yet", never zero and never absent.** Wherever a blank can appear (entry, gradebook, results, counts), its meaning must be clear from the surrounding UI: a column header, a legend, a row state or a count such as "5 not marked". The wording may be compact ("Not marked", an empty cell with a legend, or a dash with a visually hidden label) but a blank must never be styled or announced as 0 or Absent. Absent is a separate, explicit state.
