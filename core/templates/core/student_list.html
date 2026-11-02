@@ -49,6 +49,17 @@
     <a href="{{ chip.url }}"{% if chip.active %} class="active" aria-current="page"{% endif %}>{{ chip.label }}</a>
     {% endfor %}
 </nav>
+{% if table.paginator.count %}
+<nav class="erp-card-sort d-md-none" aria-label="Sort students">
+    <span class="erp-card-sort-label" aria-hidden="true">Sort by</span>
+    {% for header in table.headers %}{% if header.sortable %}
+    <a href="{{ header.url }}"{% if header.aria_sort %} aria-current="true"{% endif %}>
+        {{ header.label }}{% if header.aria_sort == "ascending" %} <span aria-hidden="true">&uarr;</span><span class="visually-hidden">, ascending</span>{% elif header.aria_sort == "descending" %} <span aria-hidden="true">&darr;</span><span class="visually-hidden">, descending</span>{% endif %}
+    </a>
+    {% endif %}{% endfor %}
+</nav>
+{% endif %}
+<div class="d-none d-md-block">
 <div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Students" tabindex="0">
 <table class="table">
@@ -72,19 +83,30 @@
         </tr>
         {% empty %}
         <tr>
-            <td colspan="5">
-                {% if has_filters %}
-                No students match these filters.
-                <a class="btn btn-outline-secondary btn-sm mt-2" href="{% url 'core:student-list' %}">Clear filters</a>
-                {% else %}
-                No Students found.{% if perms.core.view_applicant %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:applicant-list' %}">Review applicants</a>{% endif %}
-                {% endif %}
-            </td>
+            <td colspan="5">{% include "partials/_student_list_empty.html" %}</td>
         </tr>
         {% endfor %}
     </tbody>
 </table>
 </div>
 </div>
+</div>
+{% if table.paginator.count %}
+<ul class="erp-student-cards d-md-none">
+    {% for student in table.page %}
+    <li class="erp-student-card">
+        <span class="erp-initials" aria-hidden="true">{{ student.full_name|slice:":1"|upper }}</span>
+        <a class="erp-student-card-name" href="{% url 'core:student-detail' student.pk %}">{{ student.full_name }}</a>
+        <span class="erp-student-card-status">{% include "partials/_status_badge.html" with label=student.get_status_display tone=student.status|lower only %}</span>
+        <div class="erp-student-card-details">
+            <div>{% if student.admission_number %}{{ student.admission_number }} · {% endif %}{% if student.current_class %}{{ student.current_class }}{% if student.current_section %} · {{ student.current_section }}{% endif %}{% else %}Not in a class{% endif %}</div>
+            {% for link in student.guardian_rows %}<div>{{ link.guardian.full_name }} ({{ link.get_relationship_type_display }})</div>{% empty %}<div>No guardian</div>{% endfor %}
+        </div>
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<div class="erp-student-cards-empty d-md-none">{% include "partials/_student_list_empty.html" %}</div>
+{% endif %}
 {% include "partials/_table_footer.html" with table=table only %}
 {% endblock %}

@@ -1,0 +1,6 @@
+{% if has_filters %}
+No students match these filters.
+<a class="btn btn-outline-secondary btn-sm mt-2" href="{% url 'core:student-list' %}">Clear filters</a>
+{% else %}
+No Students found.{% if perms.core.view_applicant %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:applicant-list' %}">Review applicants</a>{% endif %}
+{% endif %}
