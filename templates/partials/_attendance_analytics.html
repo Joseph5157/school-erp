@@ -1,6 +1,6 @@
 {# Overview attendance analytics (Gate A). School-wide, submitted registers only; see core/analytics.py. #}
 {% with a=attendance_analytics %}
-<section class="erp-analytics{% if not a.gauge %} erp-analytics--no-gauge{% endif %}{% if not a.rings %} erp-analytics--no-rings{% endif %}{% if a.absentees is None %} erp-analytics--no-absent{% endif %}" aria-labelledby="analytics-title">
+<section class="erp-analytics{% if not a.gauge %} erp-analytics--no-gauge{% endif %}{% if not a.rings %} erp-analytics--no-rings{% endif %}{% if a.absentees is None %} erp-analytics--no-absent{% endif %}{% if not a.chart %} erp-analytics--no-chart{% endif %}{% if a.attention is None %} erp-analytics--no-attention{% elif a.attention.total <= 6 %} erp-analytics--attention-short{% endif %}" aria-labelledby="analytics-title">
     <div class="erp-analytics-top">
     <h2 class="erp-section-title" id="analytics-title">Attendance, {{ a.label }}</h2>
 
@@ -71,6 +71,33 @@
             </li>
             {% endfor %}
         </ul>
+    </article>
+    {% endif %}
+
+    {% if a.attention is not None %}
+    {# Right after the rings on phones; desktop placement is the grid `order` in erp.css. Marks are from the reporting term, absences from the selected period. #}
+    <article class="erp-analytics-card erp-analytics-card--attention">
+        <h3 class="erp-analytics-title">Students needing attention</h3>
+        <p class="erp-analytics-sub">Below pass in two or more subjects, or in one subject and often absent. In class order, not ranked.</p>
+        {% if a.attention.rows %}
+        <ul class="erp-attention-list">
+            {% for r in a.attention.rows %}{% include "partials/_attention_row.html" %}{% endfor %}
+        </ul>
+        {% if a.attention.rest %}
+        <details class="erp-class-more erp-attention-more">
+            <summary>Show all {{ a.attention.total }} students</summary>
+            <ul class="erp-attention-list">
+                {% for r in a.attention.rest %}{% include "partials/_attention_row.html" %}{% endfor %}
+            </ul>
+        </details>
+        {% endif %}
+        {% elif not a.marks %}
+        <p class="erp-analytics-sub">No finalized results yet.</p>
+        {% elif not a.attention.has_pass_marks %}
+        <p class="erp-analytics-sub">No pass marks are set for {{ a.marks.term_label }}, so nobody can be checked yet.</p>
+        {% else %}
+        <p class="erp-analytics-sub">No students need attention right now.</p>
+        {% endif %}
     </article>
     {% endif %}
 
@@ -179,35 +206,21 @@
     {% endif %}
 
     {% if a.show_marks %}
-    <article class="erp-analytics-card erp-analytics-card--marks">
-        <h3 class="erp-analytics-title">Marks snapshot</h3>
+    <article class="erp-analytics-card erp-analytics-card--subjects">
+        <h3 class="erp-analytics-title">Marks by subject{% if a.marks %}, {{ a.marks.term_label }}{% endif %}</h3>
         {% if a.marks %}
-        <p class="erp-analytics-sub">{{ a.marks.term.name }}. Finalized assessments only, as a percentage of each test's maximum.</p>
-        <ul class="erp-class-bars">
-            {% for row in a.marks.classes %}
-            <li class="erp-class-row">
-                <span class="erp-class-name">{{ row.class_name }}</span>
-                <progress class="erp-class-bar erp-class-bar--marks" max="100" value="{{ row.average|stringformat:'.1f' }}" aria-label="{{ row.class_name }} average">{{ row.average|floatformat:1 }}%</progress>
-                <span class="erp-class-pct">{{ row.average|floatformat:1 }}%</span>
-            </li>
-            {% endfor %}
-        </ul>
-        <p class="erp-analytics-sub">Class average, lowest first.</p>
-        <h4 class="erp-analytics-subtitle">Score bands</h4>
-        <ul class="erp-class-bars">
-            {% for band in a.marks.bands %}
-            <li class="erp-class-row">
-                <span class="erp-class-name">{{ band.label }}</span>
-                <progress class="erp-class-bar erp-class-bar--marks" max="100" value="{{ band.share }}" aria-label="{{ band.label }}">{{ band.share }}%</progress>
-                <span class="erp-class-pct">{{ band.count }}</span>
-            </li>
-            {% endfor %}
-        </ul>
-        <p class="erp-analytics-sub">{{ a.marks.total }} result{{ a.marks.total|pluralize }} marked{% if a.marks.absent %}; {{ a.marks.absent }} absent (not counted as zero){% endif %}.</p>
-        <ul class="visually-hidden erp-visually-hidden-data">
-            {% for row in a.marks.classes %}<li>{{ row.class_name }}: average {{ row.average|floatformat:1 }}% over {{ row.results }} result{{ row.results|pluralize }}</li>{% endfor %}
-            {% for band in a.marks.bands %}<li>{{ band.label }}: {{ band.count }} result{{ band.count|pluralize }}</li>{% endfor %}
-        </ul>
+        <p class="erp-analytics-sub">Average score, lowest first.</p>
+        {% include "partials/charts/_bars.html" with rows=a.marks_subjects colour="marks" %}
+        {% else %}
+        <p class="erp-analytics-sub">No finalized results yet.</p>
+        {% endif %}
+    </article>
+    <article class="erp-analytics-card erp-analytics-card--bands">
+        <h3 class="erp-analytics-title">Score bands{% if a.marks %}, {{ a.marks.term_label }}{% endif %}</h3>
+        {% if a.marks %}
+        <p class="erp-analytics-sub">Finalized only, absent not counted as zero.</p>
+        {% include "partials/charts/_columns.html" with rows=a.marks.band_columns colour="marks" label="Results by score band" %}
+        <p class="erp-analytics-sub">{{ a.marks.total }} result{{ a.marks.total|pluralize }} marked{% if a.marks.absent %}; {{ a.marks.absent }} absent{% endif %}.</p>
         {% else %}
         <p class="erp-analytics-sub">No finalized results yet.</p>
         {% endif %}

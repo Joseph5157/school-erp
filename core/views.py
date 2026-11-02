@@ -932,6 +932,10 @@ def admin_overview(request):
                 # Links appear only where the viewer can open the target (the same permission
                 # as the views' own decorators).
                 include_class_links=request.user.has_perm("core.view_classgrade"),
+                include_attention=(
+                    request.user.has_perm("core.view_student")
+                    and request.user.has_perm("core.view_studentresult")
+                ),
                 missing_attendance_url=(
                     reverse("core:report-missing-attendance")
                     if request.user.has_perm("core.view_attendanceregister")

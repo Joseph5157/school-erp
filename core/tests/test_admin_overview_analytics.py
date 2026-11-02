@@ -604,16 +604,18 @@ class MarksFixture(AnalyticsFixture):
         self.maths = Subject.objects.create(name="Mathematics")
 
     def assessment(self, scores, *, name="Unit Test", term=None, class_grade=None, section=None,
-                   maximum="20", finalize=True):
+                   maximum="20", finalize=True, subject=None, pass_mark=None):
         """An assessment with `{enrollment: score}` results; a score of None is ABSENT."""
         class_grade = class_grade or self.class_grade
         term = term or self.term_b
+        subject = subject or self.maths
         offering, _ = AcademicSubjectOffering.objects.get_or_create(
-            academic_year=self.year, class_grade=class_grade, subject=self.maths
+            academic_year=term.academic_year, class_grade=class_grade, subject=subject
         )
         assessment = Assessment(
             term=term, offering=offering, section=section or self.section, name=name,
             assessment_date=term.start_date, maximum_marks=Decimal(maximum),
+            pass_mark=None if pass_mark is None else Decimal(str(pass_mark)),
         )
         assessment.full_clean()
         assessment.save()
@@ -626,7 +628,7 @@ class MarksFixture(AnalyticsFixture):
         if finalize:
             Assessment.objects.filter(pk=assessment.pk).update(
                 status=Assessment.Status.FINALIZED, finalized_by=self.admin_user,
-                finalized_at=timezone.now(), subject_label=self.maths.name,
+                finalized_at=timezone.now(), subject_label=subject.name,
             )
         return assessment
 
@@ -644,39 +646,31 @@ class MarksSnapshotTests(MarksFixture, TestCase):
         self.assessment({self.s1: 15}, finalize=False)
         self.assertIsNone(analytics.marks_snapshot(TODAY))
 
-    def test_average_is_a_percentage_of_the_maximum_per_class(self):
-        self.assessment({self.s1: 15, self.s2: 10})  # 75% and 50%
+    def test_snapshot_carries_term_and_no_class_breakdown(self):
+        self.assessment({self.s1: 15, self.s2: 10})
         snapshot = analytics.marks_snapshot(TODAY)
         self.assertEqual(snapshot["term"], self.term_b)
-        self.assertEqual(
-            [(r["class_name"], r["average"], r["results"]) for r in snapshot["classes"]],
-            [("Grade 1", 62.5, 2)],
-        )
+        self.assertNotIn("classes", snapshot)  # the page no longer shows marks by class
+
+    def subject_display(self):
+        return [(r["label"], r["display"]) for r in analytics.overview_context(TODAY, include_marks=True)["marks_subjects"]]
 
     def test_different_maximums_are_normalised(self):
         self.assessment({self.s1: 18}, maximum="30", name="Out of 30")  # 60%
         self.assessment({self.s1: 20}, maximum="20", name="Out of 20")  # 100%
-        snapshot = analytics.marks_snapshot(TODAY)
-        self.assertEqual(snapshot["classes"][0]["average"], 80.0)
+        self.assertEqual(self.subject_display(), [("Mathematics", "80%")])
 
     def test_an_absent_result_is_never_a_zero(self):
         self.assessment({self.s1: 16, self.s2: None})
         snapshot = analytics.marks_snapshot(TODAY)
-        self.assertEqual(snapshot["classes"][0]["average"], 80.0)  # not 40.0
-        self.assertEqual(snapshot["classes"][0]["results"], 1)
+        self.assertEqual(self.subject_display(), [("Mathematics", "80%")])  # not 40%
+        self.assertEqual(snapshot["total"], 1)
         self.assertEqual(snapshot["absent"], 1)
 
     def test_draft_results_do_not_leak_into_a_finalized_average(self):
         self.assessment({self.s1: 20, self.s2: 20}, name="Final one")
         self.assessment({self.s1: 0, self.s2: 0}, name="Still draft", finalize=False)
-        self.assertEqual(analytics.marks_snapshot(TODAY)["classes"][0]["average"], 100.0)
-
-    def test_classes_are_listed_lowest_average_first(self):
-        grade, section, s3 = self.second_class()
-        self.assessment({self.s1: 18}, name="G1")
-        self.assessment({s3: 8}, name="G2", class_grade=grade, section=section)
-        names = [r["class_name"] for r in analytics.marks_snapshot(TODAY)["classes"]]
-        self.assertEqual(names, ["Grade 2", "Grade 1"])
+        self.assertEqual(self.subject_display(), [("Mathematics", "100%")])
 
     def test_score_bands_count_results_and_sum_to_the_total(self):
         # 100%, 80%, 60%, 35%, and 59.9% which belongs in 40-59.
@@ -698,7 +692,7 @@ class MarksSnapshotTests(MarksFixture, TestCase):
         self.assessment({self.s1: 20}, name="New", term=self.term_b)
         snapshot = analytics.marks_snapshot(TODAY)
         self.assertEqual(snapshot["term"], self.term_b)
-        self.assertEqual(snapshot["classes"][0]["average"], 100.0)  # term A not mixed in
+        self.assertEqual(self.subject_display(), [("Mathematics", "100%")])  # term A not mixed in
 
     def test_a_term_that_has_not_started_is_ignored(self):
         future = AcademicTerm.objects.create(
@@ -712,19 +706,21 @@ class MarksSnapshotTests(MarksFixture, TestCase):
 class MarksSnapshotViewTests(MarksFixture, TestCase):
     url = reverse("core:admin-overview")
 
-    def test_renders_term_class_average_and_bands(self):
+    def test_renders_term_subject_bars_and_bands(self):
         self.assessment({self.s1: 15, self.s2: 10})
         response = self.administrator.get(self.url)
-        self.assertContains(response, "Marks snapshot")
+        self.assertContains(response, "Marks by subject")
         self.assertContains(response, "Term 2")
-        self.assertContains(response, "Grade 1")
-        self.assertContains(response, "62.5%")
+        self.assertContains(response, "Mathematics")
+        self.assertContains(response, "63%")
         self.assertContains(response, "80% and above")
-        self.assertContains(response, "erp-visually-hidden-data")
+        self.assertContains(response, 'aria-label="60–79%: 1"')
+        self.assertContains(response, "<title>60–79%: 1</title>")
+        self.assertContains(response, 'aria-label="Mathematics"')
 
     def test_empty_state_is_honest(self):
         response = self.administrator.get(self.url)
-        self.assertContains(response, "Marks snapshot")
+        self.assertContains(response, "Marks by subject")
         self.assertContains(response, "No finalized results yet.")
 
     def test_hidden_without_permission_to_view_results(self):
@@ -738,13 +734,83 @@ class MarksSnapshotViewTests(MarksFixture, TestCase):
         client.login(username="no-marks", password="pass-12345")
         response = client.get(self.url)
         self.assertEqual(response.status_code, 200)
-        self.assertNotContains(response, "Marks snapshot")
+        self.assertNotContains(response, "Marks by subject")
+        self.assertNotContains(response, "Score bands")
 
     def test_marks_do_not_follow_the_attendance_period(self):
         self.assessment({self.s1: 15})
         response = self.administrator.get(self.url, {"period": "custom", "from": "2026-07-03", "to": "2026-07-04"})
-        self.assertContains(response, "Marks snapshot")
-        self.assertContains(response, "75.0%")
+        self.assertContains(response, "Marks by subject")
+        self.assertContains(response, "75%")
+
+    def test_marks_by_subject_lists_lowest_first_and_names_the_term(self):
+        science = Subject.objects.create(name="Science")
+        self.assessment({self.s1: 18, self.s2: 16}, name="Maths test")  # 90%, 80%: 85
+        self.assessment({self.s1: 8, self.s2: 12}, name="Sci test", subject=science)  # 50
+        context = analytics.overview_context(TODAY, include_marks=True)
+        self.assertEqual(
+            [(r["label"], r["display"], r["low"]) for r in context["marks_subjects"]],
+            [("Science", "50%", False), ("Mathematics", "85%", False)],
+        )
+        response = self.administrator.get(self.url)
+        self.assertContains(response, "erp-analytics-card--subjects")
+        self.assertContains(response, "Marks by subject, Term 2")
+        content = response.content.decode()
+        self.assertLess(content.index(">Science<"), content.index(">Mathematics<"))
+        self.assertContains(response, "erp-class-bar--marks")
+        self.assertNotContains(response, "erp-class-bar--low")
+
+    def test_score_bands_draw_as_columns_with_counts(self):
+        self.assessment({self.s1: 20, self.s2: 16}, name="A")  # 100, 80
+        self.assessment({self.s1: 12, self.s2: 7}, name="B")  # 60, 35
+        response = self.administrator.get(self.url)
+        self.assertContains(response, "erp-analytics-card--bands")
+        self.assertContains(response, "Score bands, Term 2")
+        content = response.content.decode()
+        card = content[content.index("erp-analytics-card--bands"):]
+        self.assertEqual(card.count('width="24"'), 4)
+        for label in ("80% and above", "60–79%", "40–59%", "Below 40%"):
+            self.assertIn(f'aria-label="{label}: ', card)
+        context = analytics.overview_context(TODAY, include_marks=True)
+        self.assertEqual(
+            [(r["label"], r["display"]) for r in context["marks"]["band_columns"]],
+            [("80% and above", "2"), ("60–79%", "1"), ("40–59%", "0"), ("Below 40%", "1")],
+        )
+        self.assertIn("Finalized only, absent not counted as zero", card)
+
+    def test_band_column_heights_follow_the_share_not_the_count(self):
+        self.assessment({self.s1: 20, self.s2: 20}, name="A")  # both 100%
+        columns = analytics.overview_context(TODAY, include_marks=True)["marks"]["band_columns"]
+        self.assertEqual(columns[0]["value"], 100)
+        self.assertEqual(columns[0]["bar_height"], 120)
+        self.assertEqual(columns[3]["bar_height"], 0)
+
+    def test_marks_cards_need_results_permission(self):
+        from django.contrib.auth import get_user_model
+        from django.contrib.auth.models import Permission
+
+        self.assessment({self.s1: 15})
+        user = get_user_model().objects.create_user(username="no-marks2", password="pass-12345")
+        user.user_permissions.add(Permission.objects.get(codename="view_school"))
+        client = self.client_class()
+        client.login(username="no-marks2", password="pass-12345")
+        response = client.get(self.url)
+        self.assertNotContains(response, "Marks by subject")
+        self.assertNotContains(response, "erp-analytics-card--bands")
+        context = analytics.overview_context(TODAY)
+        self.assertIsNone(context["marks"])
+        self.assertEqual(context["marks_subjects"], [])
+
+    def test_absent_results_are_counted_and_explained(self):
+        self.assessment({self.s1: 16, self.s2: None})
+        response = self.administrator.get(self.url)
+        self.assertContains(response, "1 result marked; 1 absent.")
+        self.assertContains(response, "Finalized only, absent not counted as zero")
+
+    def test_no_results_shows_the_existing_empty_message(self):
+        response = self.administrator.get(self.url)
+        self.assertContains(response, "No finalized results yet.", count=3)  # subjects, bands and attention
+        self.assertNotContains(response, "erp-cols--marks")
 
     def test_more_results_do_not_add_queries(self):
         self.assessment({self.s1: 15}, name="First")
@@ -979,7 +1045,11 @@ class OverviewChartCardsTests(AnalyticsFixture, TestCase):
         ]["url"]
         response = self.administrator.get(link)
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Grade 2")
+        # The section dropdown lists "Grade 2" even on a blank form, so read the report's rows.
+        html = response.content.decode()
+        rows = html[html.index("<tbody>"):html.index("</tbody>")]
+        self.assertIn("Grade 2", rows)
+        self.assertNotIn("Grade 1", rows)  # Grade 1 submitted its register today
 
     def test_marks_ring_needs_results_permission(self):
         self.assess(self.make_term(), "Done", datetime.date(2026, 7, 1), True)
@@ -1296,7 +1366,10 @@ class OverviewChartLayoutTests(AnalyticsFixture, TestCase):
             end_date=datetime.date(2026, 9, 30), display_order=1,
         )
         self.day(datetime.date(2026, 7, 1), {self.s1: P, self.s2: A})
-        self.assertEqual(self.modifiers(self.administrator), "erp-analytics")
+        # Nobody is flagged, so the empty attention card is the short kind; nothing else is missing.
+        self.assertEqual(
+            self.modifiers(self.administrator), "erp-analytics erp-analytics--attention-short"
+        )
         classes = self.modifiers(self.login_with("ov-only", "view_school"))
         self.assertIn("erp-analytics--no-absent", classes)
         self.assertNotIn("erp-analytics--no-gauge", classes)
@@ -1338,3 +1411,328 @@ class OverviewChartLayoutTests(AnalyticsFixture, TestCase):
             block,
         )
         self.assertIn(".erp-analytics-card--classes .erp-chart-scroll { margin-block: auto; }", block)
+
+
+class AbsentDayCountsTests(AnalyticsFixture, TestCase):
+    def test_counts_reportable_absent_days_per_student_in_the_period(self):
+        for d, statuses in (
+            (1, {self.s1: A, self.s2: P}), (2, {self.s1: A, self.s2: A}), (3, {self.s1: P, self.s2: P}),
+        ):
+            self.day(datetime.date(2026, 7, d), statuses)
+        self.day(datetime.date(2026, 7, 6), {self.s1: A, self.s2: A}, submit=False)  # draft
+        self.day(datetime.date(2026, 6, 22), {self.s1: A, self.s2: A})  # before the period
+        counts = analytics.absent_day_counts(analytics.default_period(TODAY))
+        self.assertEqual(counts, {self.s1.student_id: 2, self.s2.student_id: 1})
+
+    def test_one_query_whatever_the_number_of_days(self):
+        for d in (1, 2, 3, 6, 7):
+            self.day(datetime.date(2026, 7, d), {self.s1: A, self.s2: A})
+        with self.assertNumQueries(1):
+            analytics.absent_day_counts(analytics.default_period(TODAY))
+
+
+class StudentsNeedingAttentionViewTests(MarksFixture, TestCase):
+    url = reverse("core:admin-overview")
+
+    def setUp(self):
+        super().setUp()
+        self.science = Subject.objects.create(name="Science")
+
+    def fail_two(self, enrollment):
+        for subject in (self.maths, self.science):
+            self.assessment(
+                {enrollment: 2}, subject=subject, pass_mark=10, name=f"{subject.name} {enrollment.pk}"
+            )
+
+    def login_with(self, username, *codenames):
+        from django.contrib.auth import get_user_model
+        from django.contrib.auth.models import Permission
+
+        user = get_user_model().objects.create_user(username=username, password="pass-12345")
+        user.user_permissions.add(*Permission.objects.filter(codename__in=codenames))
+        client = self.client_class()
+        client.login(username=username, password="pass-12345")
+        return client
+
+    def card(self, response):
+        html = response.content.decode()
+        start = html.index("erp-analytics-card--attention")
+        return html[start:html.index("</article>", start)]
+
+    def test_rows_link_to_the_student_page_and_state_the_reason(self):
+        self.fail_two(self.s1)
+        card = self.card(self.administrator.get(self.url))
+        self.assertIn("Students needing attention", card)
+        self.assertIn(reverse("core:student-detail", args=[self.s1.student_id]), card)
+        self.assertIn(self.s1.student.full_name, card)
+        self.assertIn("Below pass in Mathematics and Science (Term 2)", card)
+
+    def test_reason_uses_the_period_the_page_is_showing(self):
+        self.fail_two(self.s1)
+        for d in (1, 2, 3, 6):
+            self.day(datetime.date(2026, 7, d), {self.s1: A, self.s2: P})
+        default = self.card(self.administrator.get(self.url))
+        self.assertIn("absent 4 days (last 14 days)", default)
+        month = self.card(self.administrator.get(self.url, {"period": "month"}))
+        self.assertIn("absent 4 days (this month)", month)
+        shorter = self.card(self.administrator.get(self.url, {"period": "custom", "from": "2026-07-07", "to": "2026-07-14"}))
+        self.assertNotIn("absent 4 days", shorter)
+
+    def test_custom_range_names_its_own_dates_in_the_reason(self):
+        self.fail_two(self.s1)
+        for d in (7, 8, 9, 10):
+            self.day(datetime.date(2026, 7, d), {self.s1: A, self.s2: P})
+        card = self.card(self.administrator.get(
+            self.url, {"period": "custom", "from": "2026-07-07", "to": "2026-07-14"}
+        ))
+        self.assertIn("absent 4 days (7 Jul – 14 Jul)", card)
+
+    def test_attention_uses_the_same_threshold_as_frequent_absentees(self):
+        self.fail_two(self.s1)
+        for d in range(1, 1 + analytics.ABSENTEE_THRESHOLD_DAYS):
+            self.day(datetime.date(2026, 7, d), {self.s1: A, self.s2: P})
+        absentees = self.administrator.get(self.url).context["attendance_analytics"]
+        self.assertEqual(absentees["absentees"]["rows"][0]["student_id"], self.s1.student_id)
+
+    def test_empty_state_when_results_are_checked_and_nobody_qualifies(self):
+        self.assessment({self.s1: 15}, pass_mark=10)
+        card = self.card(self.administrator.get(self.url))
+        self.assertIn("No students need attention right now.", card)
+
+    def test_no_finalized_results_is_not_an_all_clear(self):
+        card = self.card(self.administrator.get(self.url))
+        self.assertIn("No finalized results yet.", card)
+        self.assertNotIn("No students need attention right now.", card)
+
+    def test_results_without_pass_marks_say_nobody_can_be_checked(self):
+        self.assessment({self.s1: 2})  # finalized, but no pass mark
+        card = self.card(self.administrator.get(self.url))
+        self.assertIn("No pass marks are set for Term 2, so nobody can be checked yet.", card)
+        self.assertNotIn("No students need attention right now.", card)
+
+    def flag(self, count):
+        for i in range(count):
+            self.fail_two(self.enroll_student(f"Pupil {i:02d}", self.class_grade, self.section))
+
+    def test_twelve_flagged_show_ten_and_the_other_two_sit_behind_show_all(self):
+        self.flag(12)
+        card = self.card(self.administrator.get(self.url))
+        self.assertEqual(card.count("erp-attention-row"), 12)  # none is dropped
+        details = card[card.index('<details class="erp-class-more erp-attention-more"'):]
+        self.assertIn("<summary>Show all 12 students</summary>", details)
+        self.assertEqual(details.count("erp-attention-row"), 2)
+        self.assertEqual(card[:card.index("<details")].count("erp-attention-row"), 10)
+        self.assertNotIn("Showing 10 of", card)
+        self.assertIn("Pupil 11", details)
+        self.assertNotIn("Pupil 09", details)
+
+    def test_ten_flagged_have_no_show_all(self):
+        self.flag(10)
+        card = self.card(self.administrator.get(self.url))
+        self.assertEqual(card.count("erp-attention-row"), 10)
+        self.assertNotIn("<details", card)
+        self.assertNotIn("Show all", card)
+
+    def test_the_attention_details_adds_no_queries(self):
+        self.flag(10)
+        with CaptureQueriesContext(connection) as ten:
+            self.administrator.get(self.url)
+        self.flag_more(5)
+        with CaptureQueriesContext(connection) as fifteen:
+            self.administrator.get(self.url)
+        self.assertEqual(len(fifteen), len(ten))
+
+    def flag_more(self, count):
+        for i in range(count):
+            self.fail_two(self.enroll_student(f"Extra {i:02d}", self.class_grade, self.section))
+
+    def test_section_modifier_says_when_the_list_is_short(self):
+        short = "erp-analytics--attention-short"
+        modifiers = lambda: re.search(  # noqa: E731
+            r'<section class="(erp-analytics[^"]*)"', self.administrator.get(self.url).content.decode()
+        ).group(1)
+        self.assertIn(short, modifiers())  # no flagged student at all
+        self.flag(6)
+        self.assertIn(short, modifiers())  # six rows still sit full width
+        self.flag_more(1)
+        self.assertNotIn(short, modifiers())  # seven rows keep the tall two-row card
+
+    def test_a_viewer_without_the_list_gets_no_short_modifier(self):
+        client = self.login_with("results-only", "view_school", "view_studentresult")
+        html = client.get(self.url).content.decode()
+        self.assertNotIn("erp-analytics--attention-short", html)
+
+    def test_a_fallback_term_from_an_earlier_year_names_its_year_everywhere(self):
+        old_year = AcademicYear.objects.create(
+            name="2025-26", start_date=datetime.date(2025, 6, 1), end_date=datetime.date(2026, 4, 30)
+        )
+        old_term = AcademicTerm.objects.create(
+            academic_year=old_year, name="Term 3", start_date=datetime.date(2026, 1, 5),
+            end_date=datetime.date(2026, 4, 1), display_order=3,
+        )
+        for subject in (self.maths, self.science):
+            self.assessment(
+                {self.s1: 2}, subject=subject, pass_mark=10, term=old_term, name=f"{subject.name} old"
+            )
+        # Term 2 (2026-27) is running but has no finalized results, so Term 3 of 2025-26 is the fallback.
+        html = self.administrator.get(self.url).content.decode()
+        self.assertEqual(html.count("Term 3, 2025-26"), 3)  # subjects title, bands title, attention reason
+        self.assertIn("Marks by subject, Term 3, 2025-26", html)
+        self.assertIn("Score bands, Term 3, 2025-26", html)
+        self.assertIn("Below pass in Mathematics and Science (Term 3, 2025-26)", html)
+
+    def test_a_term_in_the_current_year_is_not_given_a_year(self):
+        self.fail_two(self.s1)
+        html = self.administrator.get(self.url).content.decode()
+        self.assertIn("Marks by subject, Term 2<", html)
+        self.assertNotIn("Term 2, 2026-2027", html)
+
+    def test_absences_are_not_queried_when_there_is_no_reporting_term(self):
+        with mock.patch.object(analytics, "absent_day_counts") as counts:
+            self.administrator.get(self.url)
+        counts.assert_not_called()
+        self.fail_two(self.s1)
+        with mock.patch.object(analytics, "absent_day_counts", return_value={}) as counts:
+            self.administrator.get(self.url)
+        counts.assert_called_once()
+
+    def test_full_overview_stays_under_the_query_ceiling(self):
+        # Measured: 72 queries in this fixture (8 students, 1 register, results in 2 subjects). The
+        # ceiling is that plus 5, so a per-student or per-class loop fails it at once.
+        enrollments = [self.s1, self.s2]
+        for i in range(6):
+            enrollments.append(self.enroll_student(f"Pupil {i:02d}", self.class_grade, self.section))
+            self.fail_two(enrollments[-1])
+        self.day(datetime.date(2026, 7, 1), {e: A if e is self.s1 else P for e in enrollments})
+        with CaptureQueriesContext(connection) as ctx:
+            response = self.administrator.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertLessEqual(len(ctx), 77)
+
+    def test_a_view_school_only_viewer_never_touches_results(self):
+        self.fail_two(self.s1)
+        client = self.login_with("school-only-queries", "view_school")
+        with CaptureQueriesContext(connection) as ctx:
+            response = client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        touching = [q["sql"] for q in ctx if "core_studentresult" in q["sql"]]
+        self.assertEqual(touching, [])
+
+    def test_list_needs_both_view_student_and_view_results(self):
+        self.fail_two(self.s1)
+        both = self.login_with("both", "view_school", "view_student", "view_studentresult")
+        self.assertContains(both.get(self.url), "Students needing attention")
+        for name, codenames in (
+            ("students-only", ("view_school", "view_student")),
+            ("results-only", ("view_school", "view_studentresult")),
+            ("school-only", ("view_school",)),
+        ):
+            response = self.login_with(name, *codenames).get(self.url)
+            self.assertEqual(response.status_code, 200)
+            self.assertNotContains(response, "Students needing attention")
+            self.assertNotContains(response, self.s1.student.full_name)
+            self.assertIsNone(response.context["attendance_analytics"]["attention"])
+
+    def test_phone_order_puts_the_list_right_after_the_rings(self):
+        self.fail_two(self.s1)
+        html = self.administrator.get(self.url).content.decode()
+        self.assertLess(
+            html.index("erp-analytics-card--rings"), html.index("erp-analytics-card--attention")
+        )
+        self.assertLess(
+            html.index("erp-analytics-card--attention"),
+            html.index("erp-analytics-card--classes") if "erp-analytics-card--classes" in html
+            else html.index("erp-analytics-card--subjects"),
+        )
+
+    def test_query_count_does_not_grow_with_students(self):
+        self.fail_two(self.s1)
+        with CaptureQueriesContext(connection) as before:
+            self.administrator.get(self.url)
+        for i in range(8):
+            self.fail_two(self.enroll_student(f"Pupil {i}", self.class_grade, self.section))
+        with CaptureQueriesContext(connection) as after:
+            self.administrator.get(self.url)
+        self.assertEqual(len(after), len(before))
+
+    def test_no_class_link_context_key_is_left_over(self):
+        response = self.administrator.get(self.url)
+        self.assertNotIn("class_links", response.context["attendance_analytics"])
+
+
+class OverviewNoHoleLayoutTests(AnalyticsFixture, TestCase):
+    """Desktop rows must stay full whichever cards are missing; the section names what is missing."""
+
+    url = reverse("core:admin-overview")
+
+    def modifiers(self, client):
+        html = client.get(self.url).content.decode()
+        return re.search(r'<section class="(erp-analytics[^"]*)"', html).group(1)
+
+    def css(self):
+        text = (Path(settings.BASE_DIR) / "static" / "css" / "erp.css").read_text(encoding="utf-8")
+        return text.split("/* ---------- Desktop Overview grid ---------- */", 1)[1]
+
+    def login_with(self, username, *codenames):
+        from django.contrib.auth import get_user_model
+        from django.contrib.auth.models import Permission
+
+        user = get_user_model().objects.create_user(username=username, password="pass-12345")
+        user.user_permissions.add(*Permission.objects.filter(codename__in=codenames))
+        client = self.client_class()
+        client.login(username=username, password="pass-12345")
+        return client
+
+    def test_section_names_a_missing_attendance_chart(self):
+        self.assertIn("erp-analytics--no-chart", self.modifiers(self.administrator))
+        self.day(datetime.date(2026, 7, 1), {self.s1: P, self.s2: A})
+        self.assertNotIn("erp-analytics--no-chart", self.modifiers(self.administrator))
+
+    def test_section_names_a_missing_attention_card(self):
+        self.assertNotIn("erp-analytics--no-attention", self.modifiers(self.administrator))
+        for name, codenames in (
+            ("results-only", ("view_school", "view_studentresult")),
+            ("students-only", ("view_school", "view_student")),
+            ("school-only", ("view_school",)),
+        ):
+            self.assertIn("erp-analytics--no-attention", self.modifiers(self.login_with(name, *codenames)))
+
+    def test_desktop_rows_four_and_five_and_the_absentee_fallback(self):
+        block = self.css()
+        self.assertNotIn(".erp-analytics-card--bands .erp-chart-scroll", block)  # no cap on the bands row
+        for rule in (
+            ".erp-analytics > .erp-analytics-card--attention { grid-column: span 7; grid-row: span 2; order: 5; }",
+            ".erp-analytics > .erp-analytics-card--subjects { grid-column: span 5; order: 6; }",
+            ".erp-analytics > .erp-analytics-card--bands { grid-column: span 5; order: 7; }",
+            ".erp-analytics--no-attention > .erp-analytics-card--subjects,\n  .erp-analytics--attention-short > .erp-analytics-card--subjects { grid-column: span 7; }",
+            ".erp-analytics--no-attention > .erp-analytics-card--bands,\n  .erp-analytics--attention-short > .erp-analytics-card--bands { grid-column: span 5; }",
+            ".erp-analytics--attention-short > .erp-analytics-card--attention { grid-column: span 12; grid-row: auto; }",
+            ".erp-analytics-card--bands .erp-cols { width: max-content; min-width: 100%; justify-content: space-around; }",
+            ".erp-analytics--no-chart > .erp-analytics-card--absent { grid-column: span 12; }",
+        ):
+            self.assertIn(rule, block)
+
+    def test_show_all_classes_summary_has_a_visible_open_and_closed_cue(self):
+        css = Path(settings.BASE_DIR, "static", "css", "erp.css").read_text(encoding="utf-8")
+        self.assertIn(".erp-class-more > summary::after {", css)
+        self.assertIn(".erp-class-more[open] > summary::after { transform: rotate(180deg); }", css)
+        self.assertRegex(css, r"\.erp-class-more > summary \{[^}]*min-height: 2\.75rem")
+
+    def test_attention_class_name_may_wrap_so_a_long_one_cannot_overflow(self):
+        css = Path(settings.BASE_DIR, "static", "css", "erp.css").read_text(encoding="utf-8")
+        rule = re.search(r"\.erp-attention-class \{[^}]*\}", css).group(0)
+        self.assertNotIn("nowrap", rule)
+        self.assertIn("overflow-wrap: anywhere", rule)
+
+    def test_column_charts_share_a_baseline_when_a_label_wraps(self):
+        css = Path(settings.BASE_DIR, "static", "css", "erp.css").read_text(encoding="utf-8")
+        rule = re.search(r"\.erp-cols \{[^}]*\}", css).group(0)
+        self.assertIn("align-items: flex-start", rule)
+        self.assertNotIn("flex-end", rule)
+
+    def test_attention_rules_do_not_split_the_gate_c_comment_and_dead_css_is_gone(self):
+        css = Path(settings.BASE_DIR, "static", "css", "erp.css").read_text(encoding="utf-8")
+        gate_c = css.index("/* Gate C: period chip")
+        self.assertTrue(css[gate_c:].split("\n", 2)[1].startswith(".erp-period {"))
+        self.assertLess(css.index("/* Students needing attention"), gate_c)
+        self.assertNotIn("erp-analytics-subtitle", css)

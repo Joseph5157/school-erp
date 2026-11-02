@@ -7,13 +7,12 @@ A day with no submitted data is omitted, never drawn as 0%.
 """
 
 import datetime
-import re
 from dataclasses import dataclass
 
-from django.db.models import Avg, Count, DecimalField, ExpressionWrapper, F, Q
+from django.db.models import Count, DecimalField, ExpressionWrapper, F, Q
 from django.urls import reverse
 
-from core import charts, reports
+from core import charts, marks_analytics, reports
 from core.charts import shares
 from core.models import (
     AcademicEnrollment,
@@ -353,11 +352,6 @@ def completion_rings(today, *, can_view_results, can_view_publications,
     return rings
 
 
-def _natural_key(name):
-    """Sort "Grade 2" before "Grade 10"."""
-    return [int(part) if part.isdigit() else part.lower() for part in re.split(r"(\d+)", name)]
-
-
 def _class_row(row, with_link):
     return {
         "label": row["class_name"],
@@ -404,6 +398,18 @@ def frequent_absentees(period, threshold=ABSENTEE_THRESHOLD_DAYS, limit=ABSENTEE
         for r in page
     ]
     return {"rows": rows, "total": total}
+
+
+def absent_day_counts(period):
+    """{student_id: reportable days absent in the period}, from one grouped query."""
+    return {
+        row["academic_enrollment__student_id"]: row["days"]
+        for row in _entries(period)
+        .filter(status=AttendanceStatus.ABSENT)
+        .order_by()
+        .values("academic_enrollment__student_id")
+        .annotate(days=Count("id"))
+    }
 
 
 def _heat_tier(percentage):
@@ -491,24 +497,29 @@ def trend_chart(points, *, width, height, pad=8):
     }
 
 
+def _subject_rows(term):
+    """Rows for the horizontal bars: each subject's average, lowest first. Never `low` (red is
+    only for attendance under target)."""
+    return [
+        {
+            "label": row["subject_name"],
+            "value": row["average"],
+            "display": f"{charts.percent_display(row['average'])}%",
+            "low": False,
+        }
+        for row in marks_analytics.subject_averages(term)
+    ]
+
+
 def marks_snapshot(today):
-    """Average and score bands for the latest term that has finalized, marked results.
+    """Score bands for the reporting term (`marks_analytics.reporting_term`).
 
     Only FINALIZED assessments count. A score is turned into a percentage of its own
     assessment's maximum, so tests out of different totals compare fairly. An ABSENT result is
     never a zero: it is left out of every average and band and only reported as a count.
     Returns None when no started term has any finalized marked result.
     """
-    term = (
-        AcademicTerm.objects.filter(
-            start_date__lte=today,
-            assessments__status=Assessment.Status.FINALIZED,
-            assessments__results__status=ResultStatus.MARKED,
-        )
-        .order_by("-start_date", "-display_order")
-        .distinct()
-        .first()
-    )
+    term = marks_analytics.reporting_term(today)
     if term is None:
         return None
     percent = ExpressionWrapper(
@@ -518,23 +529,6 @@ def marks_snapshot(today):
     results = StudentResult.objects.filter(
         assessment__term=term, assessment__status=Assessment.Status.FINALIZED
     ).annotate(percent=percent)
-    marked = results.filter(status=ResultStatus.MARKED)
-    rows = (
-        marked.order_by()
-        .values("assessment__section__class_grade_id", "assessment__section__class_grade__name")
-        .annotate(average=Avg("percent"), results=Count("id"))
-    )
-    classes = sorted(
-        (
-            {
-                "class_name": row["assessment__section__class_grade__name"],
-                "average": round(float(row["average"]), 1),
-                "results": row["results"],
-            }
-            for row in rows
-        ),
-        key=lambda r: (r["average"], r["class_name"]),
-    )
     minimums = [minimum for minimum, _ in MARK_BANDS]
     aggregate = results.aggregate(
         absent=Count("id", filter=Q(status=ResultStatus.ABSENT)),
@@ -548,13 +542,21 @@ def marks_snapshot(today):
         },
     )
     counts = [aggregate[f"band_{i}"] for i in range(len(MARK_BANDS))]
+    band_shares = shares(counts)
     return {
         "term": term,
-        "classes": classes,
+        "term_label": marks_analytics.term_label(term, today),
         "bands": [
             {"label": label, "count": count, "share": share}
-            for (_, label), count, share in zip(MARK_BANDS, counts, shares(counts), strict=True)
+            for (_, label), count, share in zip(MARK_BANDS, counts, band_shares, strict=True)
         ],
+        # Columns show the count; the height is the band's share of all marked results.
+        "band_columns": charts.columns(
+            [
+                {"label": label, "value": share, "display": str(count), "low": False}
+                for (_, label), count, share in zip(MARK_BANDS, counts, band_shares, strict=True)
+            ]
+        ),
         "total": sum(counts),
         "absent": aggregate["absent"],
     }
@@ -567,6 +569,7 @@ def overview_context(
     include_marks=False,
     include_publications=False,
     include_class_links=False,
+    include_attention=False,
     missing_attendance_url=None,
     params=None,
 ):
@@ -574,14 +577,26 @@ def overview_context(
 
     Student names are personal data, so the absentee list is only built when the caller says
     the user may view students; otherwise `absentees` is None and the section is not shown.
-    Marks are only built for callers who may view results. `params` (the GET query) picks the
+    The attention list needs `include_attention` (the caller may view students and
+    results). Marks are only built for callers who may view results. `params` (the GET query) picks the
     attendance period; the heatmap, today strip and marks snapshot are independent of it.
     Class columns and bars link to the class page only when `include_class_links` says the
     viewer may open it; the registers ring links to the report only when a URL is given.
     """
     today = business_today() if today is None else today
+    marks = marks_snapshot(today) if include_marks else None
     choice = resolve_period(params or {}, today)
     period = choice["period"]
+    # Marks come from the reporting term, absences from the selected period; they are independent.
+    attention = None
+    if include_attention:
+        attention = marks_analytics.students_needing_attention(
+            marks["term"] if marks else None,
+            absent_day_counts(period) if marks else {},  # no term, nobody to check
+            threshold=ABSENTEE_THRESHOLD_DAYS,
+            period_label=choice["label"],
+            term_label=marks["term_label"] if marks else None,
+        )
     points = daily_trend(period)
     strip = today_strip(today)
     classes = class_comparison(period)
@@ -594,10 +609,12 @@ def overview_context(
         "custom_from": choice["custom_from"],
         "custom_to": choice["custom_to"],
         "show_marks": include_marks,
-        "marks": marks_snapshot(today) if include_marks else None,
+        "marks": marks,
+        "marks_subjects": _subject_rows(marks["term"]) if marks else [],
         "today": today,
         "absentees": frequent_absentees(period) if include_absentees else None,
         "absentee_threshold": ABSENTEE_THRESHOLD_DAYS,
+        "attention": attention,
         "heatmap": attendance_heatmap(today),
         "period": period,
         "period_days": period.days,
@@ -615,15 +632,14 @@ def overview_context(
         "class_columns": charts.columns(
             [
                 _class_row(row, include_class_links)
-                for row in sorted(classes, key=lambda r: _natural_key(r["class_name"]))
+                for row in sorted(classes, key=lambda r: charts.natural_key(r["class_name"]))
             ]
         ),
         "class_bars_phone": [_class_row(row, include_class_links) for row in classes[:5]],
         "class_bars_rest": [
             _class_row(row, include_class_links)
-            for row in sorted(classes[5:], key=lambda r: _natural_key(r["class_name"]))
+            for row in sorted(classes[5:], key=lambda r: charts.natural_key(r["class_name"]))
         ],
-        "class_links": include_class_links,
         "points": points,
         "summary": trend_summary(period, points),
         "chart": trend_chart(points, width=320, height=120),

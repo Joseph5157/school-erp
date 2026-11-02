@@ -1,0 +1,6 @@
+{# One "Students needing attention" row; `r` is a row from marks_analytics.students_needing_attention. #}
+<li><a class="erp-attention-row" href="{% url 'core:student-detail' r.student_id %}">
+    <span class="erp-attention-name">{{ r.name }}</span>
+    <span class="erp-attention-class">{{ r.class_name }}</span>
+    <span class="erp-attention-reason">{{ r.reason }}</span>
+</a></li>
