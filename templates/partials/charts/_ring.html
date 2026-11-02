@@ -1,0 +1,9 @@
+{# Progress ring. `c` is charts.ring(); `label` is the accessible text. Fixed width and height, so the text never scales. #}
+<svg class="erp-ring" width="{{ c.size }}" height="{{ c.size }}" viewBox="0 0 {{ c.size }} {{ c.size }}" role="img"
+     aria-label="{{ label }}: {{ c.percent }} percent, {{ c.done }} of {{ c.total }}">
+    <title>{{ label }}: {{ c.done }} of {{ c.total }} ({{ c.percent }}%)</title>
+    <circle class="erp-ring-track" cx="{{ c.center }}" cy="{{ c.center }}" r="{{ c.radius }}" stroke-width="{{ c.stroke }}"/>
+    {% if c.done %}<circle class="erp-ring-value" cx="{{ c.center }}" cy="{{ c.center }}" r="{{ c.radius }}" stroke-width="{{ c.stroke }}" stroke-dasharray="{{ c.dash }} {{ c.circumference }}" transform="rotate(-90 {{ c.center }} {{ c.center }})"/>{% endif %}
+    <text class="erp-chart-text" x="{{ c.center }}" y="{{ c.center }}" dy=".35em" font-size="16">{{ c.percent }}%</text>
+</svg>
+<ul class="visually-hidden erp-visually-hidden-data"><li>{{ label }}: {{ c.done }} of {{ c.total }} ({{ c.percent }}%)</li></ul>

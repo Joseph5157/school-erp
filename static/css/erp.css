@@ -1055,6 +1055,12 @@ a.erp-glance-tile:hover, a.erp-glance-tile:focus-visible { border-color: var(--e
 .erp-trend-badge--improving { background: var(--erp-ok-wash); color: var(--erp-ok-strong); }
 .erp-trend-badge--worsening { background: var(--erp-bad-wash); color: var(--erp-bad); }
 .erp-trend { display: block; width: 100%; height: auto; }
+/* The wide chart keeps a fixed height and stretches sideways only; lines and dots stay a constant thickness. */
+.erp-trend--wide { height: 12.5rem; width: 100%; }
+.erp-trend--wide .erp-trend-grid, .erp-trend--wide .erp-trend-line { vector-effect: non-scaling-stroke; }
+.erp-trend-dotline { stroke: var(--erp-viz-attendance); stroke-width: 8; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.erp-trend-hitline { stroke: transparent; stroke-width: 20; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.erp-trend-point:hover .erp-trend-dotline { stroke: var(--erp-viz-attendance); stroke-width: 10; }
 .erp-trend-grid { stroke: var(--erp-viz-grid); stroke-width: 1; }
 .erp-trend-area { fill: var(--erp-viz-attendance); fill-opacity: .12; stroke: none; }
 .erp-trend-line { fill: none; stroke: var(--erp-viz-attendance); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
@@ -1063,7 +1069,7 @@ a.erp-glance-tile:hover, a.erp-glance-tile:focus-visible { border-color: var(--e
 .erp-trend-hit { fill: transparent; }
 .erp-trend-point:hover .erp-trend-dot { fill: var(--erp-viz-attendance); }
 .erp-trend-axis { display: flex; justify-content: space-between; margin: var(--erp-space-1) 0 0; font-size: var(--erp-text-xs); color: var(--erp-ink-soft); }
-.erp-class-bars { list-style: none; margin: var(--erp-space-3) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--erp-space-3); }
+.erp-class-bars { max-width: 32rem; list-style: none; margin: var(--erp-space-3) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--erp-space-3); }
 .erp-class-row { display: grid; grid-template-columns: minmax(4.5rem, 6.5rem) 1fr 2.75rem; align-items: center; gap: var(--erp-space-3); }
 .erp-class-name { font-size: var(--erp-text-sm); font-weight: 600; overflow-wrap: anywhere; }
 .erp-class-pct { font-size: var(--erp-text-sm); font-weight: 700; text-align: end; }
@@ -1074,6 +1080,40 @@ a.erp-glance-tile:hover, a.erp-glance-tile:focus-visible { border-color: var(--e
 /* Marks are a different measure from attendance, so they get their own colour. */
 .erp-class-bar--marks::-webkit-progress-value { background: var(--erp-viz-marks); }
 .erp-class-bar--marks::-moz-progress-bar { background: var(--erp-viz-marks); }
+.erp-class-bar--low::-webkit-progress-value { background: var(--erp-viz-low); }
+.erp-class-bar--low::-moz-progress-bar { background: var(--erp-viz-low); }
+.erp-class-link { color: inherit; text-decoration: none; }
+.erp-class-link:hover { text-decoration: underline; }
+/* School charts: fixed-size SVGs (text never scales) inside cards that scroll rather than stretch. */
+.erp-chart-card { display: flex; flex-direction: column; gap: var(--erp-space-2); min-width: 0; padding: var(--erp-space-4); background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius); }
+.erp-chart-head { margin: 0; font-size: var(--erp-text-sm); font-weight: 600; color: var(--erp-ink-soft); }
+.erp-chart-big { font-size: 1.75rem; font-weight: 700; line-height: 1.1; }
+.erp-chart-scroll { overflow-x: auto; max-width: 100%; }
+.erp-ring, .erp-donut, .erp-gauge { display: block; flex: none; }
+.erp-ring-track, .erp-donut-track { fill: none; stroke: var(--erp-viz-grid); }
+.erp-ring-value { fill: none; stroke: var(--erp-viz-attendance); stroke-linecap: round; }
+.erp-gauge-track { fill: none; stroke: var(--erp-viz-grid); stroke-width: 14; stroke-linecap: round; }
+.erp-gauge-value { fill: none; stroke: var(--erp-viz-attendance); stroke-width: 14; stroke-linecap: round; }
+.erp-gauge-tick { stroke: var(--erp-ink); stroke-width: 2; }
+.erp-gauge--low .erp-gauge-value { stroke: var(--erp-viz-low); }
+.erp-chart-text { fill: var(--erp-ink); font-weight: 700; text-anchor: middle; }
+.erp-donut-seg { fill: none; }
+.erp-donut-seg--0 { stroke: var(--erp-viz-attendance); }
+.erp-donut-seg--1 { stroke: var(--erp-viz-low); }
+.erp-donut-seg--2 { stroke: var(--erp-viz-marks); }
+.erp-donut-seg--3 { stroke: var(--erp-viz-grid); }
+.erp-donut-legend { list-style: none; margin: 0; padding: 0; font-size: var(--erp-text-sm); }
+.erp-cols { display: flex; align-items: flex-end; gap: var(--erp-space-2); margin: 0; padding: 0; list-style: none; }
+.erp-col { display: flex; flex-direction: column; align-items: center; gap: var(--erp-space-1); min-width: 2.25rem; color: inherit; text-decoration: none; }
+.erp-col svg { display: block; flex: none; }
+.erp-col-bar { fill: var(--erp-viz-attendance); }
+.erp-cols--marks .erp-col-bar { fill: var(--erp-viz-marks); }
+.erp-col--low .erp-col-bar { fill: var(--erp-viz-low); }
+.erp-col-track { fill: var(--erp-viz-grid); fill-opacity: .5; }
+.erp-col-value { font-size: var(--erp-text-xs); font-weight: 700; }
+.erp-col--low .erp-col-value { color: var(--erp-viz-low); }
+.erp-col-label { font-size: var(--erp-text-xs); color: var(--erp-ink-soft); max-width: 3.5rem; overflow-wrap: anywhere; text-align: center; }
+a.erp-col:hover .erp-col-label { text-decoration: underline; }
 /* Gate B: attendance heatmap (28 days, Mon-Sun weeks) and frequent-absentee cards. */
 .erp-heat { display: flex; flex-direction: column; gap: 4px; margin-top: var(--erp-space-3); }
 .erp-heat-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }

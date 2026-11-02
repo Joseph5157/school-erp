@@ -1,9 +1,13 @@
-{# One daily-attendance trend chart. `c` is a chart from analytics.trend_chart; `kind` is "phone" or "wide" (CSS shows one per screen width). #}
-<svg class="erp-trend erp-trend--{{ kind }}" viewBox="0 0 {{ c.width }} {{ c.height }}" role="img"
+{# One daily-attendance trend chart. `c` is a chart from analytics.trend_chart; `kind` is "phone" or "wide" (CSS shows one per screen width). The wide chart has a fixed CSS height and stretches sideways only (preserveAspectRatio none), so its dots are zero-length round lines that stay round. #}
+<svg class="erp-trend erp-trend--{{ kind }}" viewBox="0 0 {{ c.width }} {{ c.height }}"{% if kind == "wide" %} preserveAspectRatio="none"{% endif %} role="img"
      aria-label="Daily attendance percentage from {{ a.points.0.date|date:'j M' }}. Average {{ a.summary.current|floatformat:1 }} percent. Axis starts at {{ c.y_min }} percent.">
     <line class="erp-trend-grid" x1="0" x2="{{ c.width }}" y1="8" y2="8"/>
     <line class="erp-trend-grid" x1="0" x2="{{ c.width }}" y1="{{ c.height|add:'-8' }}" y2="{{ c.height|add:'-8' }}"/>
     {% if c.dots|length > 1 %}<polygon class="erp-trend-area" points="{{ c.area }}"/>{% endif %}
     <polyline class="erp-trend-line" points="{{ c.line }}"/>
+    {% if kind == "wide" %}
+    {% for dot in c.dots %}<g class="erp-trend-point"><title>{{ dot.date|date:"j M" }}: {{ dot.percentage|floatformat:1 }}%</title><line class="erp-trend-hitline" x1="{{ dot.x }}" y1="{{ dot.y }}" x2="{{ dot.x }}" y2="{{ dot.y }}"/><line class="erp-trend-dotline" x1="{{ dot.x }}" y1="{{ dot.y }}" x2="{{ dot.x }}" y2="{{ dot.y }}"/></g>{% endfor %}
+    {% else %}
     {% for dot in c.dots %}<g class="erp-trend-point"><title>{{ dot.date|date:"j M" }}: {{ dot.percentage|floatformat:1 }}%</title><circle class="erp-trend-hit" cx="{{ dot.x }}" cy="{{ dot.y }}" r="10"/><circle class="erp-trend-dot" cx="{{ dot.x }}" cy="{{ dot.y }}" r="4"/></g>{% endfor %}
+    {% endif %}
 </svg>
