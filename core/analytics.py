@@ -22,6 +22,7 @@ from core.models import (
     AttendanceRegister,
     AttendanceStatus,
     ResultStatus,
+    Student,
     StudentResult,
     TermPublication,
     business_today,
@@ -237,6 +238,8 @@ def class_comparison(period):
         }
         for row in rows
     ]
+    for row in result:
+        row["display"] = charts.percent_display(row["percentage"], ATTENDANCE_TARGET_PERCENT)
     result.sort(key=lambda r: (r["percentage"], r["class_name"]))
     return result
 
@@ -249,7 +252,8 @@ def term_attendance(today):
     totals = reports.counts(_entries(Period(start=term.start_date, end=min(term.end_date, today))))
     if totals["percentage"] is None:
         return None
-    percent = round(totals["percentage"])
+    # The unrounded figure: the gauge turns red and says "met" on it, and shows a rounded display.
+    percent = totals["percentage"]
     return {
         "term": term,
         "percent": percent,
@@ -270,11 +274,13 @@ def completion_rings(today, *, can_view_results, can_view_publications,
                      missing_attendance_url, strip=None):
     """The "still to finish" rings, each `{key, label, term_name, chart, url}`.
 
-    Registers today shows whenever a school day expects registers. Marks entered and Results
-    published use `ring_term` (named in the label once it has ended) and appear only for viewers
-    allowed to see that data. A correction marks a publication STALE in the database
-    (`publication._mark_stale`), so counting PUBLISHED does not overcount. Constant queries
-    however many students or classes exist.
+    Registers today shows whenever a school day expects registers; `missing_attendance_url` is
+    the report's bare URL and the ring links to it for today. Marks entered and Results
+    published use `ring_term` and always name that term in the label; they appear only for
+    viewers allowed to see that data. Results published counts students who are ACTIVE and
+    enrolled in the term, once each, with a PUBLISHED result. A correction marks a publication
+    STALE in the database (`publication._mark_stale`), so counting PUBLISHED does not
+    overcount. Constant queries however many students or classes exist.
     """
     strip = today_strip(today) if strip is None else strip
     rings = []
@@ -286,13 +292,16 @@ def completion_rings(today, *, can_view_results, can_view_publications,
                 "label": "Registers today",
                 "term_name": "",
                 "chart": registers,
-                "url": missing_attendance_url,
+                "url": (
+                    f"{missing_attendance_url}?start={today:%Y-%m-%d}&end={today:%Y-%m-%d}"
+                    if missing_attendance_url
+                    else None
+                ),
             }
         )
     term = ring_term(today)
     if term is None:
         return rings
-    suffix = "" if term.start_date <= today <= term.end_date else f", {term.name}"
     if can_view_results:
         totals = Assessment.objects.filter(term=term, assessment_date__lte=today).aggregate(
             total=Count("id"),
@@ -303,24 +312,29 @@ def completion_rings(today, *, can_view_results, can_view_publications,
             rings.append(
                 {
                     "key": "marks",
-                    "label": f"Marks entered{suffix}",
+                    "label": f"Marks entered, {term.name}",
                     "term_name": term.name,
                     "chart": chart,
                     "url": None,
                 }
             )
     if can_view_publications:
-        enrolled = (
+        enrolled_ids = (
             AcademicEnrollment.objects.filter(
-                academic_year_id=term.academic_year_id, start_date__lte=term.end_date
+                academic_year_id=term.academic_year_id,
+                start_date__lte=term.end_date,
+                student__status=Student.Status.ACTIVE,
             )
             .filter(Q(end_date__isnull=True) | Q(end_date__gte=term.start_date))
             .values("student_id")
-            .distinct()
-            .count()
         )
+        enrolled = enrolled_ids.distinct().count()
         published = (
-            TermPublication.objects.filter(term=term, status=TermPublication.Status.PUBLISHED)
+            TermPublication.objects.filter(
+                term=term,
+                status=TermPublication.Status.PUBLISHED,
+                student_id__in=enrolled_ids,
+            )
             .values("student_id")
             .distinct()
             .count()
@@ -330,7 +344,7 @@ def completion_rings(today, *, can_view_results, can_view_publications,
             rings.append(
                 {
                     "key": "published",
-                    "label": f"Results published{suffix}",
+                    "label": f"Results published, {term.name}",
                     "term_name": term.name,
                     "chart": chart,
                     "url": None,
@@ -348,7 +362,7 @@ def _class_row(row, with_link):
     return {
         "label": row["class_name"],
         "value": row["percentage"],
-        "display": f"{row['percentage']:.0f}%",
+        "display": f"{charts.percent_display(row['percentage'], ATTENDANCE_TARGET_PERCENT)}%",
         "low": row["percentage"] < ATTENDANCE_TARGET_PERCENT,
         "url": (
             reverse("core:class-grade-detail", args=[row["class_grade_id"]]) if with_link else None
@@ -605,6 +619,10 @@ def overview_context(
             ]
         ),
         "class_bars_phone": [_class_row(row, include_class_links) for row in classes[:5]],
+        "class_bars_rest": [
+            _class_row(row, include_class_links)
+            for row in sorted(classes[5:], key=lambda r: _natural_key(r["class_name"]))
+        ],
         "class_links": include_class_links,
         "points": points,
         "summary": trend_summary(period, points),

@@ -1,6 +1,6 @@
 {# Overview attendance analytics (Gate A). School-wide, submitted registers only; see core/analytics.py. #}
 {% with a=attendance_analytics %}
-<section class="erp-analytics" aria-labelledby="analytics-title">
+<section class="erp-analytics{% if not a.gauge %} erp-analytics--no-gauge{% endif %}{% if not a.rings %} erp-analytics--no-rings{% endif %}{% if a.absentees is None %} erp-analytics--no-absent{% endif %}" aria-labelledby="analytics-title">
     <div class="erp-analytics-top">
     <h2 class="erp-section-title" id="analytics-title">Attendance, {{ a.label }}</h2>
 
@@ -85,9 +85,15 @@
             {% include "partials/charts/_columns.html" with rows=a.class_columns colour="attendance" label="Attendance by class" %}
         </div>
         <div class="erp-class-phone">
-            <p class="erp-analytics-sub">The {{ a.class_bars_phone|length }} lowest attendance, {{ a.label }}.</p>
+            <p class="erp-analytics-sub">{% if a.class_bars_rest %}The {{ a.class_bars_phone|length }} classes with the lowest attendance, {{ a.label }}.{% elif a.classes|length == 1 %}Attendance for the one class with data, {{ a.label }}.{% else %}All {{ a.classes|length }} classes, lowest first, {{ a.label }}.{% endif %}</p>
             {% include "partials/charts/_bars.html" with rows=a.class_bars_phone colour="attendance" %}
-            {% if a.class_links %}<a class="erp-all-classes" href="{% url 'core:class-grade-list' %}">All classes</a>{% endif %}
+            {% if a.class_bars_rest %}
+            <details class="erp-class-more">
+                <summary>Show all classes</summary>
+                <p class="erp-analytics-sub">The other {{ a.class_bars_rest|length }} class{{ a.class_bars_rest|length|pluralize:",es" }}, in class order.</p>
+                {% include "partials/charts/_bars.html" with rows=a.class_bars_rest colour="attendance" %}
+            </details>
+            {% endif %}
         </div>
     </article>
     {% endif %}
@@ -124,7 +130,6 @@
         </ul>
     </article>
 
-
     <article class="erp-analytics-card erp-analytics-card--heat">
         <h3 class="erp-analytics-title">Attendance heatmap</h3>
         <p class="erp-analytics-sub">Last 4 weeks. Darker blue is higher; red is under 80%.
@@ -143,8 +148,8 @@
         {% if a.classes|length > 1 %}{% with low=a.classes.0 high=a.classes|last %}
         {# Desktop only: the two ends of the class comparison, next to the heatmap. #}
         <dl class="erp-class-callouts">
-            <div><dt>Lowest class</dt><dd>{{ low.class_name }}, {{ low.percentage|floatformat:0 }}%</dd></div>
-            <div><dt>Best class</dt><dd>{{ high.class_name }}, {{ high.percentage|floatformat:0 }}%</dd></div>
+            <div><dt>Lowest class</dt><dd>{{ low.class_name }}, {{ low.display }}%</dd></div>
+            <div><dt>Best class</dt><dd>{{ high.class_name }}, {{ high.display }}%</dd></div>
         </dl>
         {% endwith %}{% endif %}
     </article>

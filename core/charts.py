@@ -6,6 +6,7 @@ so values are compared with `is None`, never by truthiness.
 """
 
 import math
+from decimal import ROUND_DOWN, ROUND_HALF_UP, Decimal
 
 
 def shares(counts):
@@ -19,6 +20,30 @@ def shares(counts):
     for i in order[: 100 - sum(floors)]:
         floors[i] += 1
     return floors
+
+
+def percent_display(value, target=None):
+    """A percentage as text without the % sign, rounded half up (the same as `floatformat:0`).
+
+    A value under `target` that would round up to it keeps one decimal (truncated, so 79.96 is
+    "79.9"), so a figure that misses the target never reads as meeting it.
+    """
+    exact = Decimal(str(value))
+    rounded = exact.quantize(Decimal(1), rounding=ROUND_HALF_UP)
+    if target is not None and value < target and rounded >= target:
+        return str(exact.quantize(Decimal("0.1"), rounding=ROUND_DOWN))
+    return str(rounded)
+
+
+def _guarded_shares(counts):
+    """`shares`, but a part with a count never shows 0 and the others never push one to 100."""
+    result = shares(counts)
+    for index, count in enumerate(counts):
+        if count and not result[index]:
+            result[index] = 1
+    while sum(result) > 100:
+        result[result.index(max(result))] -= 1
+    return result
 
 
 def _r(value):
@@ -60,7 +85,7 @@ def donut(parts, size=110, stroke=15):
         return None
     radius = (size - stroke) / 2
     circumference = 2 * math.pi * radius
-    part_shares = shares(counts)
+    part_shares = _guarded_shares(counts)
     segments = []
     used = 0.0
     for index, ((label, count), share) in enumerate(zip(parts, part_shares, strict=True)):
@@ -111,6 +136,7 @@ def gauge(percent, target):
     x2, y2 = _gauge_point(target, _GAUGE_R + 6)
     return {
         "percent": percent,
+        "display": percent_display(percent, target),
         "target": target,
         "track_d": f"M {start_x:g} {start_y:g} {arc} {end_x:g} {end_y:g}",
         "value_d": f"M {start_x:g} {start_y:g} {arc} {value_x:g} {value_y:g}",

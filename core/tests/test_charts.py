@@ -40,6 +40,38 @@ class ChartGeometryTests(SimpleTestCase):
         self.assertTrue(charts.gauge(80, 80)["met"])
         self.assertFalse(charts.gauge(79.9, 80)["met"])
 
+    def test_percent_display_rounds_half_up_like_floatformat(self):
+        self.assertEqual(charts.percent_display(84.5), "85")
+        self.assertEqual(charts.percent_display(84.4), "84")
+        self.assertEqual(charts.percent_display(0), "0")
+        self.assertEqual(charts.percent_display(100), "100")
+
+    def test_percent_display_shows_a_decimal_when_rounding_would_reach_the_target(self):
+        self.assertEqual(charts.percent_display(79.6, 80), "79.6")
+        self.assertEqual(charts.percent_display(79.96, 80), "79.9")
+        self.assertEqual(charts.percent_display(80, 80), "80")
+        self.assertEqual(charts.percent_display(84.5, 80), "85")
+        self.assertEqual(charts.percent_display(50, 80), "50")
+
+    def test_gauge_displays_half_up_and_tests_the_unrounded_value(self):
+        self.assertEqual(charts.gauge(84.5, 80)["display"], "85")
+        self.assertTrue(charts.gauge(84.5, 80)["met"])
+        low = charts.gauge(79.6, 80)
+        self.assertEqual(low["display"], "79.6")
+        self.assertFalse(low["met"])
+
+    def test_donut_headline_is_100_only_when_nothing_else_has_a_count(self):
+        d = charts.donut([("Present", 399), ("Absent", 1)])
+        self.assertEqual(d["headline_percent"], 99)
+        self.assertEqual([s["share"] for s in d["segments"]], [99, 1])
+        self.assertEqual(charts.donut([("Present", 400), ("Absent", 0)])["headline_percent"], 100)
+
+    def test_donut_headline_is_0_only_when_the_first_part_has_no_count(self):
+        d = charts.donut([("Present", 1), ("Absent", 399)])
+        self.assertEqual(d["headline_percent"], 1)
+        self.assertEqual(sum(s["share"] for s in d["segments"]), 100)
+        self.assertEqual(charts.donut([("Present", 0), ("Absent", 5)])["headline_percent"], 0)
+
     def test_gauge_zero_percent_is_drawn(self):
         self.assertIsNotNone(charts.gauge(0, 80))
 

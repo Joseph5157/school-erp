@@ -1081,16 +1081,16 @@ a.erp-glance-tile:hover, a.erp-glance-tile:focus-visible { border-color: var(--e
 /* School charts: fixed-size SVGs (text never scales) inside cards that scroll rather than stretch. */
 .erp-chart-card { display: flex; flex-direction: column; gap: var(--erp-space-2); min-width: 0; padding: var(--erp-space-4); background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius); }
 .erp-chart-head { margin: 0; font-size: var(--erp-text-sm); font-weight: 600; color: var(--erp-ink-soft); }
-.erp-chart-big { font-size: 1.75rem; font-weight: 700; line-height: 1.1; }
 .erp-chart-scroll { overflow-x: auto; max-width: 100%; }
 /* Overview row 1. The pair holds the gauge and donut side by side (also on phones). Inside a
    narrow phone card the gauge may shrink with its box, but is never drawn larger than 200px. */
 .erp-chart-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--erp-space-3); margin-bottom: var(--erp-space-4); }
 .erp-analytics .erp-chart-card { margin-bottom: var(--erp-space-4); }
 .erp-chart-pair .erp-chart-card { margin-bottom: 0; align-items: center; text-align: center; }
-.erp-chart-pair .erp-chart-card:only-child { grid-column: 1 / -1; }
+@media (max-width: 991.98px) {
+  .erp-chart-pair .erp-chart-card:only-child { grid-column: 1 / -1; }
+}
 .erp-gauge { max-width: 100%; height: auto; }
-.erp-donut-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--erp-space-1) var(--erp-space-3); }
 .erp-donut-key { display: inline-block; width: .6rem; height: .6rem; margin-right: .3rem; border-radius: 50%; }
 .erp-donut-key--0 { background: var(--erp-viz-attendance); }
 .erp-donut-key--1 { background: var(--erp-viz-low); }
@@ -1101,7 +1101,8 @@ a.erp-glance-tile:hover, a.erp-glance-tile:focus-visible { border-color: var(--e
 .erp-ring-count { font-size: var(--erp-text-xs); color: var(--erp-ink-soft); }
 a.erp-ring-link:hover .erp-ring-label { text-decoration: underline; }
 .erp-class-desk { display: none; }
-.erp-all-classes { display: inline-flex; align-items: center; min-height: 2.75rem; margin-top: var(--erp-space-2); font-size: var(--erp-text-sm); font-weight: 600; }
+.erp-class-more { margin-top: var(--erp-space-2); }
+.erp-class-more > summary { display: flex; align-items: center; min-height: 2.75rem; cursor: pointer; color: var(--erp-action); font-size: var(--erp-text-sm); font-weight: 600; }
 .erp-ring, .erp-donut, .erp-gauge { display: block; flex: none; }
 .erp-ring-track, .erp-donut-track { fill: none; stroke: var(--erp-viz-grid); }
 .erp-ring-value { fill: none; stroke: var(--erp-viz-attendance); stroke-linecap: round; }
@@ -1113,9 +1114,7 @@ a.erp-ring-link:hover .erp-ring-label { text-decoration: underline; }
 .erp-donut-seg { fill: none; }
 .erp-donut-seg--0 { stroke: var(--erp-viz-attendance); }
 .erp-donut-seg--1 { stroke: var(--erp-viz-low); }
-.erp-donut-seg--2 { stroke: var(--erp-viz-marks); }
-.erp-donut-seg--3 { stroke: var(--erp-viz-grid); }
-.erp-donut-legend { list-style: none; margin: 0; padding: 0; font-size: var(--erp-text-sm); }
+.erp-donut-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--erp-space-1) var(--erp-space-3); list-style: none; margin: 0; padding: 0; font-size: var(--erp-text-sm); }
 .erp-cols { display: flex; align-items: flex-end; gap: var(--erp-space-2); margin: 0; padding: 0; list-style: none; }
 .erp-col { display: flex; flex-direction: column; align-items: center; gap: var(--erp-space-1); min-width: 2.25rem; color: inherit; text-decoration: none; }
 .erp-col svg { display: block; flex: none; }
@@ -1177,10 +1176,16 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
   .erp-analytics .erp-chart-card { margin: 0; }
   .erp-analytics-card--gauge, .erp-analytics-card--donut { grid-column: span 3; }
   .erp-analytics-card--rings { grid-column: span 6; }
+  /* A missing card widens its neighbours so no row has a hole: the template names what is missing on the section. */
+  .erp-analytics--no-gauge .erp-analytics-card--donut { grid-column: span 6; }
+  .erp-analytics--no-rings .erp-analytics-card--gauge,
+  .erp-analytics--no-rings .erp-analytics-card--donut { grid-column: span 6; }
+  .erp-analytics--no-gauge.erp-analytics--no-rings .erp-analytics-card--donut { grid-column: span 12; }
   .erp-analytics > .erp-analytics-card { grid-column: span 4; }
   .erp-analytics > .erp-analytics-card--trend { grid-column: span 8; order: 1; }
   .erp-analytics > .erp-analytics-card--heat { order: 2; }
   .erp-analytics > .erp-analytics-card--classes { grid-column: span 8; order: 3; }
+  .erp-analytics--no-absent > .erp-analytics-card--classes { grid-column: span 12; }
   .erp-analytics > .erp-analytics-card--absent { order: 4; }
   .erp-analytics > .erp-analytics-card--marks { grid-column: span 12; order: 5; }
   /* By class card: spread the columns across the card and centre the chart in its height. The row is at

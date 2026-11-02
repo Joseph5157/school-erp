@@ -49,6 +49,18 @@ class ChartPartialTests(SimpleTestCase):
         self.assertIn("target 90%", html)
         self.assertNotIn("style=", html)
 
+    def test_gauge_partial_is_red_only_below_target_and_shows_the_shared_display(self):
+        low = render_to_string(
+            "partials/charts/_gauge.html", {"c": charts.gauge(79.6, 80), "label": "Attendance"}
+        )
+        self.assertIn("erp-gauge--low", low)
+        self.assertIn("79.6%", low)
+        met = render_to_string(
+            "partials/charts/_gauge.html", {"c": charts.gauge(84.5, 80), "label": "Attendance"}
+        )
+        self.assertNotIn("erp-gauge--low", met)
+        self.assertIn("85%", met)
+
     def test_column_svg_is_24px_wide_whatever_the_card_width(self):
         rows = charts.columns(
             [
@@ -123,6 +135,13 @@ class ChartPartialTests(SimpleTestCase):
         self.assertIn("vector-effect: non-scaling-stroke", css)
         self.assertIn(".erp-chart-scroll {", css)
         self.assertIn("overflow-x: auto", css)
+
+    def test_unused_chart_css_is_gone(self):
+        css = _css()
+        self.assertNotIn(".erp-chart-big", css)
+        self.assertNotIn(".erp-donut-seg--2", css)
+        self.assertNotIn(".erp-donut-seg--3", css)
+        self.assertEqual(css.count(".erp-donut-legend {"), 1)
 
 
 class TrendSvgTests(SimpleTestCase):
