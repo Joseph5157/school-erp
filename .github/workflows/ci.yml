@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
   pull_request:
+    # Docs-only PRs have nothing for these checks to catch.
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -33,7 +37,9 @@ jobs:
           POSTGRES_DB: erp
         ports:
           - 5432:5432
+        # The test database is thrown away after each run, so it lives in memory.
         options: >-
+          --tmpfs /var/lib/postgresql/data
           --health-cmd "pg_isready -U erp"
           --health-interval 5s
           --health-timeout 5s
@@ -60,4 +66,4 @@ jobs:
       - name: Migrations are up to date
         run: python manage.py makemigrations --check --dry-run
       - name: Test suite (PostgreSQL)
-        run: python manage.py test --parallel 4
+        run: python manage.py test --parallel 4 --durations 20
