@@ -117,6 +117,11 @@ urlpatterns = [
         views.offering_create,
         name="offering-create",
     ),
+    path(
+        "academic-years/<int:pk>/subjects/grades/<int:grade_pk>/order/",
+        views.offering_reorder,
+        name="offering-reorder",
+    ),
     path("subject-offerings/<int:pk>/edit/", views.offering_update, name="offering-update"),
     path(
         "academic-years/<int:pk>/assignments/",

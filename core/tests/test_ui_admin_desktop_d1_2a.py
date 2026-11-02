@@ -3,7 +3,6 @@
 import datetime
 import re
 
-from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.test import TestCase
@@ -78,6 +77,9 @@ class SharedPatternTests(SchoolConfigurationListsFixture, TestCase):
                 self.assertIn("School setup", content)
                 self.assertEqual(content.count("<h1"), 1)
                 self.assertIn('class="erp-panel"', content)
+                if key == "offerings":  # A grouped list, not a table: nothing to scroll or head.
+                    self.assertIn('role="region" aria-label="Subjects offered"', content)
+                    continue
                 self.assertIn(f'role="region" aria-label="{labels[key]}" tabindex="0"', content)
                 self.assertNotIn("<th>", content.split("<main")[1])  # every header is scope="col"
                 self.assertIn('scope="col"', content)
@@ -162,7 +164,7 @@ class OfferingListTests(SchoolConfigurationListsFixture, TestCase):
         content = self.administrator.get(self.urls()["offerings"]).content.decode()
         # Same class: display_order 1 (Drawing) before 2 (English), not creation order.
         self.assertLess(content.index("Drawing"), content.index("English (ENG)"))
-        self.assertIn('<td class="text-nowrap">1</td>', content)
+        self.assertIn('Report card position </span>1</span>', content)
         self.assertIn('<span class="text-nowrap">A</span>', content)   # Drawing: Section A only
         self.assertIn('<span class="text-nowrap">All Sections</span>', content)  # English: all
         self.assertIn(reverse("core:offering-update", args=[self.eng_offer.pk]), content)
@@ -188,10 +190,3 @@ class OfferingListTests(SchoolConfigurationListsFixture, TestCase):
     def test_lookup_shows_validation_errors_without_javascript(self):
         response = self.administrator.get(self.urls()["offerings"], {"section": ""})
         self.assertContains(response, "This field is required.")
-
-
-class StylesheetTests(TestCase):
-    def test_offerings_floor_widths_exist(self):
-        css = (settings.BASE_DIR / "static" / "css" / "erp.css").read_text(encoding="utf-8")
-        block = css[css.index("UI-D1-2A: school configuration lists"):]
-        self.assertIn(".erp-offerings-table td:nth-child(3) { min-width: 14rem; }", block)

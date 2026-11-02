@@ -3,37 +3,72 @@
 {% block content %}
 {% if perms.core.add_academicsubjectoffering %}{% url 'core:offering-create' academic_year.pk as create_url %}{% endif %}
 {% include "partials/_page_header.html" with eyebrow="School setup" title="Subjects offered" purpose=academic_year.name primary_url=create_url primary_label="Offer a Subject" only %}
+<p class="erp-note-text">Report card position: each number shows where the Subject appears on report cards for that Class/Grade.</p>
 <div class="erp-panel">
-<div class="erp-table-scroll" role="region" aria-label="Subjects offered" tabindex="0">
-<table class="table erp-keep erp-offerings-table">
-    <thead>
-        <tr>
-            <th scope="col">Class/Grade</th>
-            <th scope="col">Report card position</th>
-            <th scope="col">Subject</th>
-            <th scope="col">Sections</th>
-            <th scope="col"><span class="visually-hidden">Actions</span></th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for offering in offerings %}
-        <tr>
-            <td class="fw-semibold">{{ offering.class_grade }}</td>
-            <td class="text-nowrap">{{ offering.display_order }}</td>
-            <td>{{ offering.subject }}</td>
-            <td>{% for link in offering.section_links.all %}<span class="text-nowrap">{{ link.section.name }}</span>{% if not forloop.last %}, {% endif %}{% empty %}<span class="text-nowrap">All Sections</span>{% endfor %}</td>
-            <td class="text-end text-nowrap">{% if perms.core.change_academicsubjectoffering %}<a href="{% url 'core:offering-update' offering.pk %}">Edit order and Sections<span class="visually-hidden">: {{ offering.class_grade }}, {{ offering.subject }}</span></a>{% endif %}</td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="5">No Subjects offered in this Academic Year yet.</td></tr>
-        {% endfor %}
-    </tbody>
-</table>
+{% if grade_groups %}
+<div role="region" aria-label="Subjects offered">
+    {% for group in grade_groups %}{% with count=group.offerings|length %}
+    <div class="erp-offering-grade">
+        <details class="erp-offering-group" id="grade-{{ group.grade.pk }}"{% if forloop.first %} open{% endif %}>
+            <summary><span class="erp-offering-grade-name">{{ group.grade }}</span> <span class="erp-offering-count">{{ count }} subject{{ count|pluralize }}</span></summary>
+            <ol class="erp-offering-list">
+                {% for offering in group.offerings %}
+                <li class="erp-offering-row">
+                    <span class="erp-offering-position"><span class="visually-hidden">Report card position </span>{{ offering.display_order }}</span>
+                    <span class="erp-offering-subject">{{ offering.subject }}</span>
+                    <span class="erp-offering-sections">{% for link in offering.section_links.all %}{% if forloop.first %}Section{{ offering.section_links.all|length|pluralize }} {% endif %}<span class="text-nowrap">{{ link.section.name }}</span>{% if not forloop.last %}, {% endif %}{% empty %}<span class="text-nowrap">All Sections</span>{% endfor %}</span>
+                    {% if perms.core.change_academicsubjectoffering %}<a class="erp-offering-edit" href="{% url 'core:offering-update' offering.pk %}">Edit<span class="visually-hidden">: {{ group.grade }}, {{ offering.subject }}</span></a>{% endif %}
+                </li>
+                {% endfor %}
+            </ol>
+        </details>
+        {# Starts hidden; erp.js reveals it, so no-JS users never see a dead button and use Edit instead. #}
+        {% if perms.core.change_academicsubjectoffering and count > 1 %}<button type="button" class="btn btn-outline-secondary btn-sm erp-offering-order-btn" data-bs-toggle="modal" data-bs-target="#order-{{ group.grade.pk }}" hidden>Change order<span class="visually-hidden">: {{ group.grade }}</span></button>{% endif %}
+    </div>
+    {% endwith %}{% endfor %}
 </div>
+{% else %}
+<p class="erp-offering-empty">No Subjects offered in this Academic Year yet.</p>
+{% endif %}
 </div>
 
+{% if perms.core.change_academicsubjectoffering %}{% for group in grade_groups %}{% if group.offerings|length > 1 %}
+<div class="modal fade" id="order-{{ group.grade.pk }}" tabindex="-1" aria-labelledby="order-{{ group.grade.pk }}-title" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <form class="modal-content" method="post" action="{% url 'core:offering-reorder' academic_year.pk group.grade.pk %}" data-erp-reorder>
+            {% csrf_token %}
+            <div class="modal-header">
+                <h2 class="modal-title h5" id="order-{{ group.grade.pk }}-title">Subject order: {{ group.grade }}</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="erp-note-text">Move Subjects into the order they should appear on report cards.</p>
+                <ol class="erp-reorder-list" data-erp-reorder-list>
+                    {% for offering in group.offerings %}
+                    <li class="erp-reorder-item" data-erp-reorder-name="{{ offering.subject }}">
+                        <input type="hidden" name="offering" value="{{ offering.pk }}">
+                        <span class="erp-reorder-handle" data-erp-reorder-handle title="Drag to move" aria-hidden="true" hidden><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><circle cx="5.5" cy="3" r="1.4"/><circle cx="10.5" cy="3" r="1.4"/><circle cx="5.5" cy="8" r="1.4"/><circle cx="10.5" cy="8" r="1.4"/><circle cx="5.5" cy="13" r="1.4"/><circle cx="10.5" cy="13" r="1.4"/></svg></span>
+                        <span class="erp-reorder-number" data-erp-reorder-number>{{ forloop.counter }}</span>
+                        <span class="erp-reorder-name">{{ offering.subject }}</span>
+                        <button type="button" class="btn btn-outline-secondary btn-sm erp-reorder-move" data-erp-reorder-move="up" aria-label="Move {{ offering.subject }} up">&uarr;</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm erp-reorder-move" data-erp-reorder-move="down" aria-label="Move {{ offering.subject }} down">&darr;</button>
+                    </li>
+                    {% endfor %}
+                </ol>
+                <p class="visually-hidden" role="status" aria-live="polite" data-erp-reorder-announce></p>
+                <p class="erp-reorder-note">Report cards already published won't change.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary" data-erp-once>Save order</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}{% endfor %}{% endif %}
+
 <h2 class="h5 mt-4" id="offered-lookup-title">Which Subjects does a Section take?</h2>
-<p class="erp-note-text">A read-only lookup. It does not change the table above.</p>
+<p class="erp-note-text">A read-only lookup. It does not change the list above.</p>
 <form method="get" class="erp-toolbar erp-toolbar--inline" aria-labelledby="offered-lookup-title">
     <div class="erp-field">{{ lookup.section.label_tag }}{{ lookup.section }}{% for error in lookup.section.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>
     <div class="erp-field">{{ lookup.term.label_tag }}{{ lookup.term }}{% for error in lookup.term.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>
@@ -45,3 +80,4 @@
 </ul>
 {% endif %}
 {% endblock %}
+{% block extra_js %}{% if perms.core.change_academicsubjectoffering %}<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js" integrity="sha384-HZZ/fukV+9G8gwTNjN7zQDG0Sp7MsZy5DDN6VfY3Be7V9dvQpEpR2jF2HlyFUUjU" crossorigin="anonymous" defer></script>{% endif %}{% endblock %}

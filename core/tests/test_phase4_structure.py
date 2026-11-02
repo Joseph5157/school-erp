@@ -369,7 +369,8 @@ class StructureViewTests(StructureFixture, TestCase):
             {"sections": [self.six_a.pk], "subject": self.maths.pk},
         )
         self.assertRedirects(
-            response, reverse("core:academic-year-offerings", args=[self.year.pk])
+            response,
+            reverse("core:academic-year-offerings", args=[self.year.pk]) + f"#grade-{self.grade6.pk}",
         )
         offering.refresh_from_db()
         self.assertEqual(offering.subject, self.sanskrit)

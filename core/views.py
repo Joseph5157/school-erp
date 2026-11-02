@@ -1,3 +1,4 @@
+import re
 from datetime import timedelta
 from urllib.parse import urlencode
 
@@ -433,16 +434,38 @@ def term_update(request, pk):
     )
 
 
-@administrator_required("core.view_academicsubjectoffering")
-def academic_year_offerings(request, pk):
-    academic_year = get_object_or_404(AcademicYear, pk=pk)
+def _grade_sort_key(name):
+    """Sort "Grade 2" before "Grade 10"."""
+    return [int(part) if part.isdigit() else part.lower() for part in re.split(r"(\d+)", name)]
+
+
+def _offering_groups(academic_year):
+    """The year's offerings, one group per Class/Grade, each in report card position order."""
     offerings = (
         AcademicSubjectOffering.objects.filter(academic_year=academic_year)
         .select_related("class_grade", "subject")
         .prefetch_related("section_links__section")
-        .order_by("class_grade__name", "display_order", "subject__name")
+        .order_by("display_order", "subject__name")
     )
-    lookup = OfferedSubjectsLookupForm(request.GET or None, academic_year=academic_year)
+    groups = {}
+    for offering in offerings:
+        group = groups.setdefault(
+            offering.class_grade_id, {"grade": offering.class_grade, "offerings": []}
+        )
+        group["offerings"].append(offering)
+    return sorted(groups.values(), key=lambda group: _grade_sort_key(group["grade"].name))
+
+
+def _offerings_url(academic_year_id, class_grade_id):
+    """The Subjects offered page, opened at this Class/Grade's group."""
+    url = reverse("core:academic-year-offerings", args=[academic_year_id])
+    return f"{url}#grade-{class_grade_id}"
+
+
+@administrator_required("core.view_academicsubjectoffering")
+def academic_year_offerings(request, pk):
+    academic_year = get_object_or_404(AcademicYear, pk=pk)
+    lookup =OfferedSubjectsLookupForm(request.GET or None, academic_year=academic_year)
     offered = None
     if lookup.is_valid():
         section = lookup.cleaned_data["section"]
@@ -458,11 +481,34 @@ def academic_year_offerings(request, pk):
         "core/academic_year_offerings.html",
         {
             "academic_year": academic_year,
-            "offerings": offerings,
+            "grade_groups": _offering_groups(academic_year),
             "lookup": lookup,
             "offered": offered,
         },
     )
+
+
+@administrator_required("core.change_academicsubjectoffering")
+@require_POST
+def offering_reorder(request, pk, grade_pk):
+    academic_year = get_object_or_404(AcademicYear, pk=pk)
+    grade = get_object_or_404(ClassGrade, pk=grade_pk)
+    try:
+        changed = AcademicSubjectOffering.reorder(
+            academic_year.pk, grade.pk, request.POST.getlist("offering")
+        )
+    except (ValidationError, IntegrityError):
+        messages.error(
+            request,
+            f"Nothing was saved: the Subjects for {grade} changed after this page opened. "
+            "Check the list and try again.",
+        )
+    else:
+        if changed:
+            messages.success(request, f"Subject order saved for {grade}.")
+        else:
+            messages.info(request, f"The Subject order for {grade} was not changed.")
+    return redirect(_offerings_url(academic_year.pk, grade.pk))
 
 
 @administrator_required("core.add_academicsubjectoffering")
@@ -487,7 +533,7 @@ def offering_create(request, pk):
             form.add_error(None, "This Subject is already offered to this Class/Grade this year.")
         else:
             messages.success(request, "Subject offering created.")
-            return redirect("core:academic-year-offerings", pk=academic_year.pk)
+            return redirect(_offerings_url(academic_year.pk, offering.class_grade_id))
     return render(
         request,
         "core/offering_form.html",
@@ -518,7 +564,7 @@ def offering_update(request, pk):
             form.add_error(None, error)
         else:
             messages.success(request, "Subject offering updated.")
-            return redirect("core:academic-year-offerings", pk=offering.academic_year_id)
+            return redirect(_offerings_url(offering.academic_year_id, offering.class_grade_id))
     return render(
         request,
         "core/offering_form.html",

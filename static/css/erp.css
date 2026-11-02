@@ -1666,10 +1666,62 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 @media (max-width: 575.98px) { .erp-assignment-history { max-width: 18rem; } }
 
 /* ---------- UI-D1-2A: school configuration lists ---------- */
-/* Subjects offered: Class/Grade and Subject keep a floor width so a narrow container scrolls the
-   table inside its labelled region instead of breaking names into one-letter lines. */
-.erp-offerings-table td:nth-child(1) { min-width: 9rem; }
-.erp-offerings-table td:nth-child(3) { min-width: 14rem; }
+/* Subjects offered: one collapsible group per Class/Grade. The Change order button sits over the
+   summary's right edge because a button inside <summary> would also toggle the group. */
+.erp-offering-grade { position: relative; }
+.erp-offering-grade + .erp-offering-grade { border-top: 1px solid var(--erp-rule); }
+.erp-offering-group { scroll-margin-top: 4.5rem; }
+.erp-offering-group > summary {
+  display: flex; align-items: center; gap: var(--erp-space-3); min-height: 3.25rem;
+  padding: var(--erp-space-2) 9.5rem var(--erp-space-2) var(--erp-space-4);
+  cursor: pointer; list-style: none;
+}
+.erp-offering-group > summary::-webkit-details-marker { display: none; }
+.erp-offering-group > summary::before {
+  content: ""; flex: none; width: .5rem; height: .5rem; margin-right: var(--erp-space-1);
+  border-right: 2px solid var(--erp-ink-soft); border-bottom: 2px solid var(--erp-ink-soft);
+  transform: rotate(-45deg); transition: transform .15s ease;
+}
+.erp-offering-group[open] > summary::before { transform: rotate(45deg); }
+.erp-offering-grade-name { font-weight: 600; }
+.erp-offering-count { font-size: var(--erp-text-sm); color: var(--erp-ink-soft); }
+.erp-offering-order-btn { position: absolute; top: .625rem; right: var(--erp-space-4); }
+.erp-offering-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--erp-rule); }
+.erp-offering-row {
+  display: grid; grid-template-columns: 2rem minmax(0, 1fr) minmax(0, 14rem) 3.5rem;
+  align-items: baseline; column-gap: var(--erp-space-3);
+  padding: var(--erp-space-2) var(--erp-space-4) var(--erp-space-2) 2.25rem;
+}
+.erp-offering-row + .erp-offering-row { border-top: 1px solid var(--erp-rule); }
+.erp-offering-position { font-variant-numeric: tabular-nums; color: var(--erp-ink-soft); }
+.erp-offering-sections { font-size: var(--erp-text-sm); color: var(--erp-ink-soft); }
+.erp-offering-edit { grid-column: 4; justify-self: end; }
+.erp-offering-empty { margin: 0; padding: var(--erp-space-4); }
+@media (max-width: 575.98px) {
+  /* Phone buttons are taller for touch, so this one starts higher to stay centred in the row. */
+  .erp-offering-order-btn { top: .25rem; }
+  .erp-offering-row {
+    grid-template-columns: 1.5rem minmax(0, 1fr) auto;
+    padding-left: var(--erp-space-4);
+  }
+  .erp-offering-sections { grid-column: 2; grid-row: 2; }
+  .erp-offering-edit { grid-column: 3; grid-row: 1 / span 2; align-self: center; padding: var(--erp-space-2) 0 var(--erp-space-2) var(--erp-space-2); }
+}
+/* Order modal. The handle stops touch scrolling only where a drag can start. */
+.erp-reorder-list { list-style: none; margin: var(--erp-space-3) 0; padding: 0; display: grid; gap: var(--erp-space-2); }
+.erp-reorder-item {
+  display: flex; align-items: center; gap: var(--erp-space-2); padding: var(--erp-space-1) var(--erp-space-2);
+  background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius-sm);
+}
+.erp-reorder-item.sortable-ghost { opacity: .45; }
+.erp-reorder-handle {
+  display: inline-flex; align-items: center; justify-content: center; flex: none; width: 2rem; height: 2.75rem;
+  color: var(--erp-ink-soft); cursor: grab; touch-action: none;
+}
+.erp-reorder-number { flex: none; min-width: 1.25rem; text-align: right; font-variant-numeric: tabular-nums; color: var(--erp-ink-soft); }
+.erp-reorder-name { flex: 1 1 auto; min-width: 0; }
+.erp-reorder-move { flex: none; width: 2.5rem; height: 2.5rem; padding: 0; }
+.erp-reorder-note { margin: 0; font-size: var(--erp-text-sm); color: var(--erp-ink-soft); }
 
 /* ---------- UI-D1-3C: Guardian access review decision controls ---------- */
 /* The Decision column keeps a floor width and its controls flex within it (min-width:0), so the

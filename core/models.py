@@ -1,4 +1,5 @@
 import datetime
+import itertools
 import string
 import uuid
 from decimal import Decimal
@@ -1861,6 +1862,44 @@ class AcademicSubjectOffering(models.Model):
             .aggregate(last=models.Max("display_order"))["last"]
         )
         return (last or 0) + 1
+
+    @classmethod
+    def reorder(cls, academic_year_id, class_grade_id, ordered_pks):
+        """Renumber a Grade's Subjects 1..n in the given order, all or nothing.
+
+        `ordered_pks` must name every offering of the Grade/year exactly once; otherwise
+        ValidationError and nothing is written. Returns False when the positions already match.
+
+        The unique position rule is checked row by row, so a direct renumber could collide
+        depending on the order Postgres visits rows in. Every row first moves to a number that
+        neither an old nor a new position uses; the final numbers are then all free.
+        """
+        with transaction.atomic():
+            offerings = {
+                str(offering.pk): offering
+                for offering in cls.objects.select_for_update().filter(
+                    academic_year_id=academic_year_id, class_grade_id=class_grade_id
+                )
+            }
+            submitted = [str(pk) for pk in ordered_pks]
+            if len(submitted) != len(offerings) or set(submitted) != set(offerings):
+                raise ValidationError("The list must name every Subject of this Class/Grade once.")
+            final = {pk: position for position, pk in enumerate(submitted, start=1)}
+            if all(offering.display_order == final[pk] for pk, offering in offerings.items()):
+                return False
+
+            taken = {offering.display_order for offering in offerings.values()} | set(final.values())
+            parking = (number for number in itertools.count(1) if number not in taken)
+            for offering in offerings.values():
+                offering.display_order = next(parking)
+            cls.objects.bulk_update(offerings.values(), ["display_order"])
+
+            now = timezone.now()
+            for pk, offering in offerings.items():
+                offering.display_order = final[pk]
+                offering.updated_at = now
+            cls.objects.bulk_update(offerings.values(), ["display_order", "updated_at"])
+        return True
 
     def clean(self):
         super().clean()
