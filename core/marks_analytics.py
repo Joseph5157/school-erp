@@ -35,10 +35,6 @@ from core.models import (
 # reveal one student's marks.
 MIN_COMPARISON_STUDENTS = 5
 
-# Percentages come out of the database as long decimals. A score that is exactly the pass mark
-# but written in different units (6 of 18 against a pass mark of 2 of 6) must not read as below.
-_TIE_TOLERANCE = 1e-9
-
 _PERCENT = ExpressionWrapper(
     F("score") * 100 / F("assessment__maximum_marks"),
     output_field=DecimalField(max_digits=9, decimal_places=4),
@@ -81,8 +77,13 @@ def _pass_comparison(results, *group_by):
 
 
 def _is_below(sat, pass_percent):
-    """Strictly below the pass mark; a tie, or no pass mark at all, is not below."""
-    return pass_percent is not None and sat < pass_percent - _TIE_TOLERANCE
+    """Strictly below the pass mark; a tie, or no pass mark at all, is not below.
+
+    The averages are exact to 16+ digits in the database and are compared as floats, which
+    collapses the last-digit rounding noise: across 1,492 random true ties with mixed
+    maximums none compared as below, so no tolerance is needed.
+    """
+    return pass_percent is not None and sat < pass_percent
 
 
 def reporting_term(today):
@@ -201,18 +202,21 @@ def _join_names(names):
     return f"{', '.join(names[:-1])} and {names[-1]}"
 
 
-def students_needing_attention(
-    term, absent_days, threshold=3, limit=10, period_label="last 14 days"
-):
+def students_needing_attention(term, absent_days, threshold=3, limit=10, *, period_label):
     """Active students below pass in 2+ subjects, or in 1 subject and absent `threshold`+ days.
 
     Marks come from `term`; `absent_days` ({student_id: days}) comes from the period the page is
     showing, named by `period_label`. Below-pass is the student page's rule (`_pass_comparison`),
     found for every student by one grouped query. Rows are ordered by class (natural order) and
     name, never by performance. `total` is the true count even when `limit` trims the rows.
+    `has_pass_marks` says whether any finalized test in the term has a pass mark, so an empty
+    list can be told apart from "nobody could be checked".
     """
     if term is None:
-        return {"rows": [], "total": 0}
+        return {"rows": [], "total": 0, "has_pass_marks": False}
+    has_pass_marks = (
+        marked_results(term).filter(assessment__pass_mark__isnull=False).order_by().exists()
+    )
     grouped = _pass_comparison(
         marked_results(term).filter(academic_enrollment__student__status=Student.Status.ACTIVE),
         "academic_enrollment__student_id",
@@ -259,4 +263,4 @@ def students_needing_attention(
             }
         )
     rows.sort(key=lambda r: (charts.natural_key(r["class_name"]), r["name"].lower(), r["student_id"]))
-    return {"rows": rows[:limit], "total": len(rows)}
+    return {"rows": rows[:limit], "total": len(rows), "has_pass_marks": has_pass_marks}

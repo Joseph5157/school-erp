@@ -289,7 +289,9 @@ class StudentsNeedingAttentionTests(MarksAnalyticsFixture, TestCase):
 
     def test_one_subject_below_pass_alone_is_not_listed(self):
         self.below(self.s1, self.maths)
-        self.assertEqual(self.attention(), {"rows": [], "total": 0})
+        result = self.attention()
+        self.assertEqual((result["rows"], result["total"]), ([], 0))
+        self.assertTrue(result["has_pass_marks"])
 
     def test_one_subject_plus_frequent_absence_is_listed(self):
         self.below(self.s1, self.maths)
@@ -324,13 +326,38 @@ class StudentsNeedingAttentionTests(MarksAnalyticsFixture, TestCase):
         self.assessment({self.s1: 2}, subject=self.maths, pass_mark=10, name="Fail")
         self.assessment({self.s1: 20}, subject=self.maths, name="Great but no pass mark")
         self.below(self.s1, self.science)
-        listed = marks_analytics.students_needing_attention(self.term_b, {})["rows"][0]
+        listed = marks_analytics.students_needing_attention(
+            self.term_b, {}, period_label="last 14 days"
+        )["rows"][0]
         page = {
             s.subject_name
             for s in marks_analytics.student_subject_scores(self.s1.student, self.term_b)
             if s.below_pass
         }
         self.assertEqual(set(listed["below_subjects"]), page)
+
+    def test_a_test_the_student_was_absent_for_does_not_move_the_pass_mark(self):
+        # Maths: 12/20 on a test with pass 10 (60% vs 50%); absent from a test with pass 16.
+        # Against both pass marks it would read 60% vs 65%, below pass. It must not.
+        self.assessment({self.s1: 12}, subject=self.maths, pass_mark=10, name="Sat")
+        self.assessment({self.s1: None}, subject=self.maths, pass_mark=16, name="Missed")
+        self.below(self.s1, self.science)
+        self.assertEqual(self.attention()["total"], 0)  # Science alone is not enough
+        maths = {s.subject_name: s for s in marks_analytics.student_subject_scores(
+            self.s1.student, self.term_b)}["Mathematics"]
+        self.assertFalse(maths.below_pass)
+
+    def test_a_tie_across_tests_with_mixed_maximums_is_not_below(self):
+        # Test 1: 1 of 3 against a pass mark of 0 of 3. Test 2: 3 of 9 against 6 of 9.
+        # Averaged, the score is one third and so is the pass mark, a real tie. The database
+        # returns 33.3333333333333333 for one and 33.33333333333333335 for the other.
+        self.assessment({self.s1: 1}, subject=self.maths, maximum="3", pass_mark=0, name="T1")
+        self.assessment({self.s1: 3}, subject=self.maths, maximum="9", pass_mark=6, name="T2")
+        self.below(self.s1, self.science)
+        self.assertEqual(self.attention()["total"], 0)  # Maths is a tie, so only Science is below
+        maths = {s.subject_name: s for s in marks_analytics.student_subject_scores(
+            self.s1.student, self.term_b)}["Mathematics"]
+        self.assertFalse(maths.below_pass)
 
     def test_only_tests_the_student_was_marked_on_count(self):
         self.assessment({self.s1: None, self.s2: 2}, subject=self.maths, pass_mark=10, name="A")
@@ -411,7 +438,9 @@ class StudentsNeedingAttentionTests(MarksAnalyticsFixture, TestCase):
     def test_query_count_does_not_grow_with_students(self):
         def count():
             with CaptureQueriesContext(connection) as ctx:
-                marks_analytics.students_needing_attention(self.term_b, {})
+                marks_analytics.students_needing_attention(
+                    self.term_b, {}, period_label="last 14 days"
+                )
             return len(ctx)
 
         self.below(self.s1, self.maths, self.science)
@@ -420,3 +449,25 @@ class StudentsNeedingAttentionTests(MarksAnalyticsFixture, TestCase):
             self.below(extra, self.maths, self.science)
         self.assertEqual(self.attention()["total"], 11)
         self.assertEqual(count(), before)
+
+    def test_has_pass_marks_says_whether_anyone_could_be_checked(self):
+        self.assessment({self.s1: 2}, subject=self.maths, name="No pass mark")
+        self.assertFalse(self.attention()["has_pass_marks"])
+        self.assessment({self.s1: 2}, subject=self.science, pass_mark=10, name="With pass mark")
+        self.assertTrue(self.attention()["has_pass_marks"])
+        # A draft test with a pass mark does not count.
+        self.assessment({self.s1: 2}, subject=self.maths, pass_mark=10, term=self.term_a,
+                        finalize=False, name="Draft")
+        self.assertFalse(
+            marks_analytics.students_needing_attention(
+                self.term_a, {}, period_label="last 14 days"
+            )["has_pass_marks"]
+        )
+
+    def test_no_term_means_nothing_to_check(self):
+        result = marks_analytics.students_needing_attention(None, {}, period_label="x")
+        self.assertEqual(result, {"rows": [], "total": 0, "has_pass_marks": False})
+
+    def test_period_label_is_required(self):
+        with self.assertRaises(TypeError):
+            marks_analytics.students_needing_attention(self.term_b, {})

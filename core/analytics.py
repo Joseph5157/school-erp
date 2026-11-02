@@ -591,6 +591,7 @@ def overview_context(
         marks_analytics.students_needing_attention(
             marks["term"] if marks else None,
             absent_day_counts(period),
+            threshold=ABSENTEE_THRESHOLD_DAYS,
             period_label=choice["label"],
         )
         if include_attention

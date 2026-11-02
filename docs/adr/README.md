@@ -18,17 +18,7 @@ A typical ADR should include:
 
 ## Use in this project
 
-Important decisions should eventually be recorded as individual ADRs.
-
-Suggested future ADR subjects include:
-- applicant and student separation
-- academic enrollment history
-- guardian as first-class entity
-- modular monolith architecture
-- technology stack
-- authorization approach
-
-Do not create all those ADR files now. ADRs should be added only when the decision is important enough to justify a formal record.
+Decisions that matter enough to justify a formal record get their own ADR; the index below lists the ones recorded so far. Add a new ADR only when a decision is important enough to justify one.
 
 ## Source-of-truth relationship
 

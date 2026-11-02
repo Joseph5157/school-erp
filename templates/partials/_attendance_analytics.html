@@ -90,6 +90,10 @@
             {% endfor %}
         </ul>
         {% if a.attention.total > a.attention.rows|length %}<p class="erp-analytics-sub">Showing {{ a.attention.rows|length }} of {{ a.attention.total }}.</p>{% endif %}
+        {% elif not a.marks %}
+        <p class="erp-analytics-sub">No finalized results yet.</p>
+        {% elif not a.attention.has_pass_marks %}
+        <p class="erp-analytics-sub">No pass marks are set for {{ a.marks.term.name }}, so nobody can be checked yet.</p>
         {% else %}
         <p class="erp-analytics-sub">No students need attention right now.</p>
         {% endif %}

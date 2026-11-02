@@ -809,7 +809,7 @@ class MarksSnapshotViewTests(MarksFixture, TestCase):
 
     def test_no_results_shows_the_existing_empty_message(self):
         response = self.administrator.get(self.url)
-        self.assertContains(response, "No finalized results yet.", count=2)
+        self.assertContains(response, "No finalized results yet.", count=3)  # subjects, bands and attention
         self.assertNotContains(response, "erp-cols--marks")
 
     def test_more_results_do_not_add_queries(self):
@@ -1475,14 +1475,37 @@ class StudentsNeedingAttentionViewTests(MarksFixture, TestCase):
         shorter = self.card(self.administrator.get(self.url, {"period": "custom", "from": "2026-07-07", "to": "2026-07-14"}))
         self.assertNotIn("absent 4 days", shorter)
 
-    def test_empty_state_wording(self):
+    def test_custom_range_names_its_own_dates_in_the_reason(self):
+        self.fail_two(self.s1)
+        for d in (7, 8, 9, 10):
+            self.day(datetime.date(2026, 7, d), {self.s1: A, self.s2: P})
+        card = self.card(self.administrator.get(
+            self.url, {"period": "custom", "from": "2026-07-07", "to": "2026-07-14"}
+        ))
+        self.assertIn("absent 4 days (7 Jul – 14 Jul)", card)
+
+    def test_attention_uses_the_same_threshold_as_frequent_absentees(self):
+        self.fail_two(self.s1)
+        for d in range(1, 1 + analytics.ABSENTEE_THRESHOLD_DAYS):
+            self.day(datetime.date(2026, 7, d), {self.s1: A, self.s2: P})
+        absentees = self.administrator.get(self.url).context["attendance_analytics"]
+        self.assertEqual(absentees["absentees"]["rows"][0]["student_id"], self.s1.student_id)
+
+    def test_empty_state_when_results_are_checked_and_nobody_qualifies(self):
         self.assessment({self.s1: 15}, pass_mark=10)
         card = self.card(self.administrator.get(self.url))
         self.assertIn("No students need attention right now.", card)
 
-    def test_empty_state_when_no_term_has_results(self):
+    def test_no_finalized_results_is_not_an_all_clear(self):
         card = self.card(self.administrator.get(self.url))
-        self.assertIn("No students need attention right now.", card)
+        self.assertIn("No finalized results yet.", card)
+        self.assertNotIn("No students need attention right now.", card)
+
+    def test_results_without_pass_marks_say_nobody_can_be_checked(self):
+        self.assessment({self.s1: 2})  # finalized, but no pass mark
+        card = self.card(self.administrator.get(self.url))
+        self.assertIn("No pass marks are set for Term 2, so nobody can be checked yet.", card)
+        self.assertNotIn("No students need attention right now.", card)
 
     def test_shows_up_to_ten_with_the_true_total(self):
         for i in range(12):
@@ -1572,14 +1595,15 @@ class OverviewNoHoleLayoutTests(AnalyticsFixture, TestCase):
 
     def test_desktop_rows_four_and_five_and_the_absentee_fallback(self):
         block = self.css()
+        self.assertNotIn(".erp-analytics-card--bands .erp-chart-scroll", block)  # no cap on the bands row
         for rule in (
-            ".erp-analytics > .erp-analytics-card--attention { grid-column: span 7; order: 5; }",
+            ".erp-analytics > .erp-analytics-card--attention { grid-column: span 7; grid-row: span 2; order: 5; }",
             ".erp-analytics > .erp-analytics-card--subjects { grid-column: span 5; order: 6; }",
-            ".erp-analytics > .erp-analytics-card--bands { grid-column: span 12; order: 7; }",
+            ".erp-analytics > .erp-analytics-card--bands { grid-column: span 5; order: 7; }",
             ".erp-analytics--no-attention > .erp-analytics-card--subjects { grid-column: span 7; }",
             ".erp-analytics--no-attention > .erp-analytics-card--bands { grid-column: span 5; }",
+            ".erp-analytics-card--bands .erp-cols { width: max-content; min-width: 100%; justify-content: space-around; }",
             ".erp-analytics--no-chart > .erp-analytics-card--absent { grid-column: span 12; }",
-            ".erp-analytics-card--bands .erp-chart-scroll { max-width: 32rem; }",
         ):
             self.assertIn(rule, block)
 
@@ -1588,3 +1612,9 @@ class OverviewNoHoleLayoutTests(AnalyticsFixture, TestCase):
         self.assertIn(".erp-class-more > summary::after {", css)
         self.assertIn(".erp-class-more[open] > summary::after { transform: rotate(180deg); }", css)
         self.assertRegex(css, r"\.erp-class-more > summary \{[^}]*min-height: 2\.75rem")
+
+    def test_attention_class_name_may_wrap_so_a_long_one_cannot_overflow(self):
+        css = Path(settings.BASE_DIR, "static", "css", "erp.css").read_text(encoding="utf-8")
+        rule = re.search(r"\.erp-attention-class \{[^}]*\}", css).group(0)
+        self.assertNotIn("nowrap", rule)
+        self.assertIn("overflow-wrap: anywhere", rule)

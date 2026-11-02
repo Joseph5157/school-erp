@@ -1157,7 +1157,7 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
 .erp-attention-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 var(--erp-space-3); align-items: baseline; padding: var(--erp-space-2) var(--erp-space-3); min-height: 2.75rem; border: 1px solid var(--erp-rule); border-radius: var(--erp-radius-sm); color: var(--erp-ink); text-decoration: none; }
 .erp-attention-row:hover, .erp-attention-row:focus-visible { border-color: var(--erp-action); color: var(--erp-ink); }
 .erp-attention-name { grid-column: 1; font-weight: 600; overflow-wrap: anywhere; }
-.erp-attention-class { grid-column: 2; font-size: var(--erp-text-xs); color: var(--erp-ink-soft); white-space: nowrap; }
+.erp-attention-class { grid-column: 2; max-width: 9rem; text-align: right; font-size: var(--erp-text-xs); color: var(--erp-ink-soft); overflow-wrap: anywhere; }
 .erp-attention-reason { grid-column: 1 / -1; font-size: var(--erp-text-xs); color: var(--erp-ink-soft); overflow-wrap: anywhere; }
 .erp-analytics-subtitle { font-size: var(--erp-text-sm); font-weight: 600; margin: var(--erp-space-4) 0 var(--erp-space-2); }
 .erp-period { margin: 0 0 var(--erp-space-4); }
@@ -1199,12 +1199,13 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
   .erp-analytics > .erp-analytics-card--absent { order: 4; }
   /* Without the attendance chart the absentee card would sit alone at span 4. */
   .erp-analytics--no-chart > .erp-analytics-card--absent { grid-column: span 12; }
-  /* Row 4: attention 7 + subjects 5. Row 5: bands across, its columns capped so they do not stretch.
-     Without the attention card (viewer lacks view_student) the marks cards pair up 7 + 5 instead. */
-  .erp-analytics > .erp-analytics-card--attention { grid-column: span 7; order: 5; }
+  /* Attention takes 7 columns across two rows; marks by subject and score bands stack beside it at 5.
+     Without the attention card (viewer lacks view_student) the marks cards pair up 7 + 5 on one row instead. */
+  .erp-analytics > .erp-analytics-card--attention { grid-column: span 7; grid-row: span 2; order: 5; }
   .erp-analytics > .erp-analytics-card--subjects { grid-column: span 5; order: 6; }
-  .erp-analytics > .erp-analytics-card--bands { grid-column: span 12; order: 7; }
-  .erp-analytics-card--bands .erp-chart-scroll { max-width: 32rem; }
+  .erp-analytics > .erp-analytics-card--bands { grid-column: span 5; order: 7; }
+  /* Spread the four band columns across the card (the same rule the By class card uses). */
+  .erp-analytics-card--bands .erp-cols { width: max-content; min-width: 100%; justify-content: space-around; }
   .erp-analytics--no-attention > .erp-analytics-card--subjects { grid-column: span 7; }
   .erp-analytics--no-attention > .erp-analytics-card--bands { grid-column: span 5; }
   /* By class card: spread the columns across the card and centre the chart in its height. The row is at
