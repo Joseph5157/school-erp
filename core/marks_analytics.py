@@ -90,6 +90,7 @@ def reporting_term(today):
     """The running term if it has finalized MARKED results, else the latest started one that does."""
     return (
         AcademicTerm.objects.filter(start_date__lte=today)
+        .select_related("academic_year")
         .filter(Exists(_counted_results(assessment__term=OuterRef("pk"))))
         .order_by(
             Case(When(end_date__gte=today, then=0), default=1, output_field=IntegerField()),
@@ -98,6 +99,18 @@ def reporting_term(today):
         )
         .first()
     )
+
+
+def term_label(term, today):
+    """The term's name, with its year added when it is not from the year running today.
+
+    The reporting term falls back to the latest started term, which may belong to an earlier year;
+    the cards then say "Term 3, 2025-26" so nobody reads old marks as this year's. `term` must
+    come from `reporting_term` (its year is already loaded).
+    """
+    if term.academic_year.contains(today):
+        return term.name
+    return f"{term.name}, {term.academic_year.name}"
 
 
 def marked_results(term, scope=None):
@@ -202,18 +215,22 @@ def _join_names(names):
     return f"{', '.join(names[:-1])} and {names[-1]}"
 
 
-def students_needing_attention(term, absent_days, threshold=3, limit=10, *, period_label):
+def students_needing_attention(
+    term, absent_days, threshold=3, limit=10, *, period_label, term_label=None
+):
     """Active students below pass in 2+ subjects, or in 1 subject and absent `threshold`+ days.
 
     Marks come from `term`; `absent_days` ({student_id: days}) comes from the period the page is
     showing, named by `period_label`. Below-pass is the student page's rule (`_pass_comparison`),
     found for every student by one grouped query. Rows are ordered by class (natural order) and
-    name, never by performance. `total` is the true count even when `limit` trims the rows.
+    name, never by performance. `rows` is the first `limit` of them and `rest` the others, in the
+    same order, so a long list can be folded without hiding the senior classes; `total` counts both.
+    `term_label` names the term in each reason (default: its name).
     `has_pass_marks` says whether any finalized test in the term has a pass mark, so an empty
     list can be told apart from "nobody could be checked".
     """
     if term is None:
-        return {"rows": [], "total": 0, "has_pass_marks": False}
+        return {"rows": [], "rest": [], "total": 0, "has_pass_marks": False}
     has_pass_marks = (
         marked_results(term).filter(assessment__pass_mark__isnull=False).order_by().exists()
     )
@@ -249,7 +266,7 @@ def students_needing_attention(term, absent_days, threshold=3, limit=10, *, peri
         if enrollment is None:
             continue
         days = absent_days.get(student_id) or None
-        reason = f"Below pass in {_join_names(subjects)} ({term.name})"
+        reason = f"Below pass in {_join_names(subjects)} ({term_label or term.name})"
         if days:
             reason += f"; absent {days} day{'' if days == 1 else 's'} ({period_label})"
         rows.append(
@@ -263,4 +280,9 @@ def students_needing_attention(term, absent_days, threshold=3, limit=10, *, peri
             }
         )
     rows.sort(key=lambda r: (charts.natural_key(r["class_name"]), r["name"].lower(), r["student_id"]))
-    return {"rows": rows[:limit], "total": len(rows), "has_pass_marks": has_pass_marks}
+    return {
+        "rows": rows[:limit],
+        "rest": rows[limit:],
+        "total": len(rows),
+        "has_pass_marks": has_pass_marks,
+    }

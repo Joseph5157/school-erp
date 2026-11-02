@@ -545,6 +545,7 @@ def marks_snapshot(today):
     band_shares = shares(counts)
     return {
         "term": term,
+        "term_label": marks_analytics.term_label(term, today),
         "bands": [
             {"label": label, "count": count, "share": share}
             for (_, label), count, share in zip(MARK_BANDS, counts, band_shares, strict=True)
@@ -587,16 +588,15 @@ def overview_context(
     choice = resolve_period(params or {}, today)
     period = choice["period"]
     # Marks come from the reporting term, absences from the selected period; they are independent.
-    attention = (
-        marks_analytics.students_needing_attention(
+    attention = None
+    if include_attention:
+        attention = marks_analytics.students_needing_attention(
             marks["term"] if marks else None,
-            absent_day_counts(period),
+            absent_day_counts(period) if marks else {},  # no term, nobody to check
             threshold=ABSENTEE_THRESHOLD_DAYS,
             period_label=choice["label"],
+            term_label=marks["term_label"] if marks else None,
         )
-        if include_attention
-        else None
-    )
     points = daily_trend(period)
     strip = today_strip(today)
     classes = class_comparison(period)

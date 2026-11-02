@@ -610,7 +610,7 @@ class MarksFixture(AnalyticsFixture):
         term = term or self.term_b
         subject = subject or self.maths
         offering, _ = AcademicSubjectOffering.objects.get_or_create(
-            academic_year=self.year, class_grade=class_grade, subject=subject
+            academic_year=term.academic_year, class_grade=class_grade, subject=subject
         )
         assessment = Assessment(
             term=term, offering=offering, section=section or self.section, name=name,
@@ -706,7 +706,7 @@ class MarksSnapshotTests(MarksFixture, TestCase):
 class MarksSnapshotViewTests(MarksFixture, TestCase):
     url = reverse("core:admin-overview")
 
-    def test_renders_term_class_average_and_bands(self):
+    def test_renders_term_subject_bars_and_bands(self):
         self.assessment({self.s1: 15, self.s2: 10})
         response = self.administrator.get(self.url)
         self.assertContains(response, "Marks by subject")
@@ -1366,7 +1366,10 @@ class OverviewChartLayoutTests(AnalyticsFixture, TestCase):
             end_date=datetime.date(2026, 9, 30), display_order=1,
         )
         self.day(datetime.date(2026, 7, 1), {self.s1: P, self.s2: A})
-        self.assertEqual(self.modifiers(self.administrator), "erp-analytics")
+        # Nobody is flagged, so the empty attention card is the short kind; nothing else is missing.
+        self.assertEqual(
+            self.modifiers(self.administrator), "erp-analytics erp-analytics--attention-short"
+        )
         classes = self.modifiers(self.login_with("ov-only", "view_school"))
         self.assertIn("erp-analytics--no-absent", classes)
         self.assertNotIn("erp-analytics--no-gauge", classes)
@@ -1507,12 +1510,113 @@ class StudentsNeedingAttentionViewTests(MarksFixture, TestCase):
         self.assertIn("No pass marks are set for Term 2, so nobody can be checked yet.", card)
         self.assertNotIn("No students need attention right now.", card)
 
-    def test_shows_up_to_ten_with_the_true_total(self):
-        for i in range(12):
+    def flag(self, count):
+        for i in range(count):
             self.fail_two(self.enroll_student(f"Pupil {i:02d}", self.class_grade, self.section))
+
+    def test_twelve_flagged_show_ten_and_the_other_two_sit_behind_show_all(self):
+        self.flag(12)
+        card = self.card(self.administrator.get(self.url))
+        self.assertEqual(card.count("erp-attention-row"), 12)  # none is dropped
+        details = card[card.index('<details class="erp-class-more erp-attention-more"'):]
+        self.assertIn("<summary>Show all 12 students</summary>", details)
+        self.assertEqual(details.count("erp-attention-row"), 2)
+        self.assertEqual(card[:card.index("<details")].count("erp-attention-row"), 10)
+        self.assertNotIn("Showing 10 of", card)
+        self.assertIn("Pupil 11", details)
+        self.assertNotIn("Pupil 09", details)
+
+    def test_ten_flagged_have_no_show_all(self):
+        self.flag(10)
         card = self.card(self.administrator.get(self.url))
         self.assertEqual(card.count("erp-attention-row"), 10)
-        self.assertIn("Showing 10 of 12.", card)
+        self.assertNotIn("<details", card)
+        self.assertNotIn("Show all", card)
+
+    def test_the_attention_details_adds_no_queries(self):
+        self.flag(10)
+        with CaptureQueriesContext(connection) as ten:
+            self.administrator.get(self.url)
+        self.flag_more(5)
+        with CaptureQueriesContext(connection) as fifteen:
+            self.administrator.get(self.url)
+        self.assertEqual(len(fifteen), len(ten))
+
+    def flag_more(self, count):
+        for i in range(count):
+            self.fail_two(self.enroll_student(f"Extra {i:02d}", self.class_grade, self.section))
+
+    def test_section_modifier_says_when_the_list_is_short(self):
+        short = "erp-analytics--attention-short"
+        modifiers = lambda: re.search(  # noqa: E731
+            r'<section class="(erp-analytics[^"]*)"', self.administrator.get(self.url).content.decode()
+        ).group(1)
+        self.assertIn(short, modifiers())  # no flagged student at all
+        self.flag(3)
+        self.assertIn(short, modifiers())
+        self.flag_more(1)
+        self.assertNotIn(short, modifiers())  # four rows keep the tall card
+
+    def test_a_viewer_without_the_list_gets_no_short_modifier(self):
+        client = self.login_with("results-only", "view_school", "view_studentresult")
+        html = client.get(self.url).content.decode()
+        self.assertNotIn("erp-analytics--attention-short", html)
+
+    def test_a_fallback_term_from_an_earlier_year_names_its_year_everywhere(self):
+        old_year = AcademicYear.objects.create(
+            name="2025-26", start_date=datetime.date(2025, 6, 1), end_date=datetime.date(2026, 4, 30)
+        )
+        old_term = AcademicTerm.objects.create(
+            academic_year=old_year, name="Term 3", start_date=datetime.date(2026, 1, 5),
+            end_date=datetime.date(2026, 4, 1), display_order=3,
+        )
+        for subject in (self.maths, self.science):
+            self.assessment(
+                {self.s1: 2}, subject=subject, pass_mark=10, term=old_term, name=f"{subject.name} old"
+            )
+        # Term 2 (2026-27) is running but has no finalized results, so Term 3 of 2025-26 is the fallback.
+        html = self.administrator.get(self.url).content.decode()
+        self.assertEqual(html.count("Term 3, 2025-26"), 3)  # subjects title, bands title, attention reason
+        self.assertIn("Marks by subject, Term 3, 2025-26", html)
+        self.assertIn("Score bands, Term 3, 2025-26", html)
+        self.assertIn("Below pass in Mathematics and Science (Term 3, 2025-26)", html)
+
+    def test_a_term_in_the_current_year_is_not_given_a_year(self):
+        self.fail_two(self.s1)
+        html = self.administrator.get(self.url).content.decode()
+        self.assertIn("Marks by subject, Term 2<", html)
+        self.assertNotIn("Term 2, 2026-2027", html)
+
+    def test_absences_are_not_queried_when_there_is_no_reporting_term(self):
+        with mock.patch.object(analytics, "absent_day_counts") as counts:
+            self.administrator.get(self.url)
+        counts.assert_not_called()
+        self.fail_two(self.s1)
+        with mock.patch.object(analytics, "absent_day_counts", return_value={}) as counts:
+            self.administrator.get(self.url)
+        counts.assert_called_once()
+
+    def test_full_overview_stays_under_the_query_ceiling(self):
+        # Measured: 72 queries in this fixture (8 students, 1 register, results in 2 subjects). The
+        # ceiling is that plus 5, so a per-student or per-class loop fails it at once.
+        enrollments = [self.s1, self.s2]
+        for i in range(6):
+            enrollments.append(self.enroll_student(f"Pupil {i:02d}", self.class_grade, self.section))
+            self.fail_two(enrollments[-1])
+        self.day(datetime.date(2026, 7, 1), {e: A if e is self.s1 else P for e in enrollments})
+        with CaptureQueriesContext(connection) as ctx:
+            response = self.administrator.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertLessEqual(len(ctx), 77)
+
+    def test_a_view_school_only_viewer_never_touches_results(self):
+        self.fail_two(self.s1)
+        client = self.login_with("school-only-queries", "view_school")
+        with CaptureQueriesContext(connection) as ctx:
+            response = client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        touching = [q["sql"] for q in ctx if "core_studentresult" in q["sql"]]
+        self.assertEqual(touching, [])
 
     def test_list_needs_both_view_student_and_view_results(self):
         self.fail_two(self.s1)
@@ -1600,8 +1704,9 @@ class OverviewNoHoleLayoutTests(AnalyticsFixture, TestCase):
             ".erp-analytics > .erp-analytics-card--attention { grid-column: span 7; grid-row: span 2; order: 5; }",
             ".erp-analytics > .erp-analytics-card--subjects { grid-column: span 5; order: 6; }",
             ".erp-analytics > .erp-analytics-card--bands { grid-column: span 5; order: 7; }",
-            ".erp-analytics--no-attention > .erp-analytics-card--subjects { grid-column: span 7; }",
-            ".erp-analytics--no-attention > .erp-analytics-card--bands { grid-column: span 5; }",
+            ".erp-analytics--no-attention > .erp-analytics-card--subjects,\n  .erp-analytics--attention-short > .erp-analytics-card--subjects { grid-column: span 7; }",
+            ".erp-analytics--no-attention > .erp-analytics-card--bands,\n  .erp-analytics--attention-short > .erp-analytics-card--bands { grid-column: span 5; }",
+            ".erp-analytics--attention-short > .erp-analytics-card--attention { grid-column: span 12; grid-row: auto; }",
             ".erp-analytics-card--bands .erp-cols { width: max-content; min-width: 100%; justify-content: space-around; }",
             ".erp-analytics--no-chart > .erp-analytics-card--absent { grid-column: span 12; }",
         ):
@@ -1618,3 +1723,16 @@ class OverviewNoHoleLayoutTests(AnalyticsFixture, TestCase):
         rule = re.search(r"\.erp-attention-class \{[^}]*\}", css).group(0)
         self.assertNotIn("nowrap", rule)
         self.assertIn("overflow-wrap: anywhere", rule)
+
+    def test_column_charts_share_a_baseline_when_a_label_wraps(self):
+        css = Path(settings.BASE_DIR, "static", "css", "erp.css").read_text(encoding="utf-8")
+        rule = re.search(r"\.erp-cols \{[^}]*\}", css).group(0)
+        self.assertIn("align-items: flex-start", rule)
+        self.assertNotIn("flex-end", rule)
+
+    def test_attention_rules_do_not_split_the_gate_c_comment_and_dead_css_is_gone(self):
+        css = Path(settings.BASE_DIR, "static", "css", "erp.css").read_text(encoding="utf-8")
+        gate_c = css.index("/* Gate C: period chip")
+        self.assertTrue(css[gate_c:].split("\n", 2)[1].startswith(".erp-period {"))
+        self.assertLess(css.index("/* Students needing attention"), gate_c)
+        self.assertNotIn("erp-analytics-subtitle", css)

@@ -1,6 +1,6 @@
 {# Overview attendance analytics (Gate A). School-wide, submitted registers only; see core/analytics.py. #}
 {% with a=attendance_analytics %}
-<section class="erp-analytics{% if not a.gauge %} erp-analytics--no-gauge{% endif %}{% if not a.rings %} erp-analytics--no-rings{% endif %}{% if a.absentees is None %} erp-analytics--no-absent{% endif %}{% if not a.chart %} erp-analytics--no-chart{% endif %}{% if a.attention is None %} erp-analytics--no-attention{% endif %}" aria-labelledby="analytics-title">
+<section class="erp-analytics{% if not a.gauge %} erp-analytics--no-gauge{% endif %}{% if not a.rings %} erp-analytics--no-rings{% endif %}{% if a.absentees is None %} erp-analytics--no-absent{% endif %}{% if not a.chart %} erp-analytics--no-chart{% endif %}{% if a.attention is None %} erp-analytics--no-attention{% elif a.attention.total <= 3 %} erp-analytics--attention-short{% endif %}" aria-labelledby="analytics-title">
     <div class="erp-analytics-top">
     <h2 class="erp-section-title" id="analytics-title">Attendance, {{ a.label }}</h2>
 
@@ -81,19 +81,20 @@
         <p class="erp-analytics-sub">Below pass in two or more subjects, or in one subject and often absent. In class order, not ranked.</p>
         {% if a.attention.rows %}
         <ul class="erp-attention-list">
-            {% for r in a.attention.rows %}
-            <li><a class="erp-attention-row" href="{% url 'core:student-detail' r.student_id %}">
-                <span class="erp-attention-name">{{ r.name }}</span>
-                <span class="erp-attention-class">{{ r.class_name }}</span>
-                <span class="erp-attention-reason">{{ r.reason }}</span>
-            </a></li>
-            {% endfor %}
+            {% for r in a.attention.rows %}{% include "partials/_attention_row.html" %}{% endfor %}
         </ul>
-        {% if a.attention.total > a.attention.rows|length %}<p class="erp-analytics-sub">Showing {{ a.attention.rows|length }} of {{ a.attention.total }}.</p>{% endif %}
+        {% if a.attention.rest %}
+        <details class="erp-class-more erp-attention-more">
+            <summary>Show all {{ a.attention.total }} students</summary>
+            <ul class="erp-attention-list">
+                {% for r in a.attention.rest %}{% include "partials/_attention_row.html" %}{% endfor %}
+            </ul>
+        </details>
+        {% endif %}
         {% elif not a.marks %}
         <p class="erp-analytics-sub">No finalized results yet.</p>
         {% elif not a.attention.has_pass_marks %}
-        <p class="erp-analytics-sub">No pass marks are set for {{ a.marks.term.name }}, so nobody can be checked yet.</p>
+        <p class="erp-analytics-sub">No pass marks are set for {{ a.marks.term_label }}, so nobody can be checked yet.</p>
         {% else %}
         <p class="erp-analytics-sub">No students need attention right now.</p>
         {% endif %}
@@ -206,7 +207,7 @@
 
     {% if a.show_marks %}
     <article class="erp-analytics-card erp-analytics-card--subjects">
-        <h3 class="erp-analytics-title">Marks by subject{% if a.marks %}, {{ a.marks.term.name }}{% endif %}</h3>
+        <h3 class="erp-analytics-title">Marks by subject{% if a.marks %}, {{ a.marks.term_label }}{% endif %}</h3>
         {% if a.marks %}
         <p class="erp-analytics-sub">Average score, lowest first.</p>
         {% include "partials/charts/_bars.html" with rows=a.marks_subjects colour="marks" %}
@@ -215,7 +216,7 @@
         {% endif %}
     </article>
     <article class="erp-analytics-card erp-analytics-card--bands">
-        <h3 class="erp-analytics-title">Score bands{% if a.marks %}, {{ a.marks.term.name }}{% endif %}</h3>
+        <h3 class="erp-analytics-title">Score bands{% if a.marks %}, {{ a.marks.term_label }}{% endif %}</h3>
         {% if a.marks %}
         <p class="erp-analytics-sub">Finalized only, absent not counted as zero.</p>
         {% include "partials/charts/_columns.html" with rows=a.marks.band_columns colour="marks" label="Results by score band" %}

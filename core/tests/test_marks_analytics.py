@@ -12,6 +12,7 @@ from core import marks_analytics
 from core.models import (
     AcademicEnrollment,
     AcademicTerm,
+    AcademicYear,
     Assessment,
     ClassGrade,
     Section,
@@ -404,11 +405,52 @@ class StudentsNeedingAttentionTests(MarksAnalyticsFixture, TestCase):
         # Class order is natural (the fixture's class, then Grade 2, then Grade 10).
         self.assertEqual(names, ["Meena Das", "Zed Best", "Amy Worst"])
 
-    def test_limit_keeps_the_true_total(self):
+    def test_limit_trims_rows_and_the_rest_keeps_the_others(self):
         for enrollment in (self.s1, self.s2):
             self.below(enrollment, self.maths, self.science)
         result = self.attention(limit=1)
-        self.assertEqual((len(result["rows"]), result["total"]), (1, 2))
+        self.assertEqual((len(result["rows"]), len(result["rest"]), result["total"]), (1, 1, 2))
+
+    def flag_students(self, count):
+        """`count` flagged students (below pass in two subjects), named so name order is stable."""
+        for i in range(count):
+            self.below(
+                self.enroll_student(f"Pupil {i:02d}", self.class_grade, self.section),
+                self.maths, self.science,
+            )
+
+    def test_twelve_flagged_gives_ten_rows_and_two_in_rest_in_order(self):
+        self.flag_students(12)
+        result = self.attention()
+        names = [r["name"] for r in result["rows"] + result["rest"]]
+        self.assertEqual((len(result["rows"]), len(result["rest"]), result["total"]), (10, 2, 12))
+        self.assertEqual(names, [f"Pupil {i:02d}" for i in range(12)])  # continues, never re-sorted
+
+    def test_ten_flagged_has_nothing_in_rest(self):
+        self.flag_students(10)
+        result = self.attention()
+        self.assertEqual((len(result["rows"]), result["rest"], result["total"]), (10, [], 10))
+
+    def test_rest_continues_by_class_so_senior_classes_stay_reachable(self):
+        senior = ClassGrade.objects.create(name="Grade 10")
+        senior_section = Section.objects.create(class_grade=senior, name="A")
+        self.flag_students(10)
+        boy = self.enroll_student("Aaron Senior", senior, senior_section)
+        for subject in (self.maths, self.science):
+            self.assessment(
+                {boy: 2}, subject=subject, class_grade=senior, section=senior_section,
+                pass_mark=10, name=f"{subject.name} senior",
+            )
+        result = self.attention()
+        self.assertNotIn("Aaron Senior", [r["name"] for r in result["rows"]])
+        self.assertEqual([r["name"] for r in result["rest"]], ["Aaron Senior"])
+
+    def test_term_label_is_used_in_the_reason(self):
+        self.below(self.s1, self.english, self.maths)
+        row = marks_analytics.students_needing_attention(
+            self.term_b, {}, period_label="x", term_label="Term 2, 2025-26"
+        )["rows"][0]
+        self.assertEqual(row["reason"], "Below pass in English and Mathematics (Term 2, 2025-26)")
 
     def test_reason_names_term_and_period(self):
         self.below(self.s1, self.english, self.maths)
@@ -466,8 +508,29 @@ class StudentsNeedingAttentionTests(MarksAnalyticsFixture, TestCase):
 
     def test_no_term_means_nothing_to_check(self):
         result = marks_analytics.students_needing_attention(None, {}, period_label="x")
-        self.assertEqual(result, {"rows": [], "total": 0, "has_pass_marks": False})
+        self.assertEqual(result, {"rows": [], "rest": [], "total": 0, "has_pass_marks": False})
 
     def test_period_label_is_required(self):
         with self.assertRaises(TypeError):
             marks_analytics.students_needing_attention(self.term_b, {})
+
+
+class TermLabelTests(MarksAnalyticsFixture, TestCase):
+    def test_a_term_in_the_current_year_is_just_its_name(self):
+        self.assertEqual(marks_analytics.term_label(self.term_b, TODAY), "Term 2")
+
+    def test_a_term_from_an_earlier_year_names_its_year(self):
+        old_year = AcademicYear.objects.create(
+            name="2025-26", start_date=datetime.date(2025, 6, 1), end_date=datetime.date(2026, 4, 30)
+        )
+        term = AcademicTerm.objects.create(
+            academic_year=old_year, name="Term 3", start_date=datetime.date(2026, 1, 5),
+            end_date=datetime.date(2026, 4, 1), display_order=3,
+        )
+        self.assertEqual(marks_analytics.term_label(term, TODAY), "Term 3, 2025-26")
+
+    def test_reporting_term_loads_its_year_without_a_second_query(self):
+        self.assessment({self.s1: 10}, term=self.term_b)
+        term = marks_analytics.reporting_term(TODAY)
+        with self.assertNumQueries(0):
+            marks_analytics.term_label(term, TODAY)
