@@ -604,16 +604,18 @@ class MarksFixture(AnalyticsFixture):
         self.maths = Subject.objects.create(name="Mathematics")
 
     def assessment(self, scores, *, name="Unit Test", term=None, class_grade=None, section=None,
-                   maximum="20", finalize=True):
+                   maximum="20", finalize=True, subject=None, pass_mark=None):
         """An assessment with `{enrollment: score}` results; a score of None is ABSENT."""
         class_grade = class_grade or self.class_grade
         term = term or self.term_b
+        subject = subject or self.maths
         offering, _ = AcademicSubjectOffering.objects.get_or_create(
-            academic_year=self.year, class_grade=class_grade, subject=self.maths
+            academic_year=self.year, class_grade=class_grade, subject=subject
         )
         assessment = Assessment(
             term=term, offering=offering, section=section or self.section, name=name,
             assessment_date=term.start_date, maximum_marks=Decimal(maximum),
+            pass_mark=None if pass_mark is None else Decimal(str(pass_mark)),
         )
         assessment.full_clean()
         assessment.save()
@@ -626,7 +628,7 @@ class MarksFixture(AnalyticsFixture):
         if finalize:
             Assessment.objects.filter(pk=assessment.pk).update(
                 status=Assessment.Status.FINALIZED, finalized_by=self.admin_user,
-                finalized_at=timezone.now(), subject_label=self.maths.name,
+                finalized_at=timezone.now(), subject_label=subject.name,
             )
         return assessment
 

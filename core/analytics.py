@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from django.db.models import Avg, Count, DecimalField, ExpressionWrapper, F, Q
 from django.urls import reverse
 
-from core import charts, reports
+from core import charts, marks_analytics, reports
 from core.charts import shares
 from core.models import (
     AcademicEnrollment,
@@ -492,23 +492,14 @@ def trend_chart(points, *, width, height, pad=8):
 
 
 def marks_snapshot(today):
-    """Average and score bands for the latest term that has finalized, marked results.
+    """Average and score bands for the reporting term (`marks_analytics.reporting_term`).
 
     Only FINALIZED assessments count. A score is turned into a percentage of its own
     assessment's maximum, so tests out of different totals compare fairly. An ABSENT result is
     never a zero: it is left out of every average and band and only reported as a count.
     Returns None when no started term has any finalized marked result.
     """
-    term = (
-        AcademicTerm.objects.filter(
-            start_date__lte=today,
-            assessments__status=Assessment.Status.FINALIZED,
-            assessments__results__status=ResultStatus.MARKED,
-        )
-        .order_by("-start_date", "-display_order")
-        .distinct()
-        .first()
-    )
+    term = marks_analytics.reporting_term(today)
     if term is None:
         return None
     percent = ExpressionWrapper(

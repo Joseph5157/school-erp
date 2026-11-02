@@ -33,3 +33,7 @@ Do not create all those ADR files now. ADRs should be added only when the decisi
 ## Source-of-truth relationship
 
 ADRs should not replace approved product requirements or domain documentation. They are the formal record of the architectural and design rationale that supports those accepted decisions.
+
+## Index of recorded ADRs
+
+- [0022 Display-only subject averages in analytics](0022-analytics-subject-averages.md): accepted exception to ADR 0009 for chart averages.
