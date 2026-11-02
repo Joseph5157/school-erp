@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from django.db.models import Avg, Count, DecimalField, ExpressionWrapper, F, Q
 
 from core import reports
+from core.charts import shares
 from core.models import (
     AcademicEnrollment,
     AcademicTerm,
@@ -355,19 +356,6 @@ def trend_chart(points, *, width, height, pad=8):
     }
 
 
-def _shares(counts):
-    """Whole-number percentages of `counts` that always add up to 100 (largest remainder)."""
-    total = sum(counts)
-    if not total:
-        return [0] * len(counts)
-    exact = [count * 100 / total for count in counts]
-    shares = [int(value) for value in exact]
-    order = sorted(range(len(counts)), key=lambda i: exact[i] - shares[i], reverse=True)
-    for i in order[: 100 - sum(shares)]:
-        shares[i] += 1
-    return shares
-
-
 def marks_snapshot(today):
     """Average and score bands for the latest term that has finalized, marked results.
 
@@ -430,7 +418,7 @@ def marks_snapshot(today):
         "classes": classes,
         "bands": [
             {"label": label, "count": count, "share": share}
-            for (_, label), count, share in zip(MARK_BANDS, counts, _shares(counts), strict=True)
+            for (_, label), count, share in zip(MARK_BANDS, counts, shares(counts), strict=True)
         ],
         "total": sum(counts),
         "absent": aggregate["absent"],
