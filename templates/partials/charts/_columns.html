@@ -1,15 +1,12 @@
 {# Column chart. `rows` is charts.columns() (label, value, display, optional low and url); `colour` is "attendance" or "marks". Each column is its own 24px-wide SVG, so bars never stretch; many columns scroll inside the card. #}
 <div class="erp-chart-scroll">
-    <ul class="erp-cols erp-cols--{{ colour }}" role="img" aria-label="{{ label }}">
+    <ul class="erp-cols erp-cols--{{ colour }}" aria-label="{{ label }}">
         {% for r in rows %}
         <li>{% if r.url %}<a class="erp-col{% if r.low %} erp-col--low{% endif %}" href="{{ r.url }}">{% else %}<span class="erp-col{% if r.low %} erp-col--low{% endif %}">{% endif %}
             <span class="erp-col-value">{{ r.display }}</span>
-            <svg width="24" height="120" viewBox="0 0 24 120" aria-hidden="true" focusable="false"><title>{{ r.label }}: {{ r.display }}</title><rect class="erp-col-track" x="0" y="0" width="100%" height="120" rx="3"/>{% if r.bar_height %}<rect class="erp-col-bar" x="0" y="{{ r.bar_y }}" width="100%" height="{{ r.bar_height }}" rx="3"/>{% endif %}</svg>
+            <svg width="24" height="120" viewBox="0 0 24 120" role="img" aria-label="{{ r.label }}: {{ r.display }}"><title>{{ r.label }}: {{ r.display }}</title><rect class="erp-col-track" x="0" y="0" width="100%" height="120" rx="3"/>{% if r.bar_height %}<rect class="erp-col-bar" x="0" y="{{ r.bar_y }}" width="100%" height="{{ r.bar_height }}" rx="3"/>{% endif %}</svg>
             <span class="erp-col-label">{{ r.label }}</span>
         {% if r.url %}</a>{% else %}</span>{% endif %}</li>
         {% endfor %}
     </ul>
 </div>
-<ul class="visually-hidden erp-visually-hidden-data">
-    {% for r in rows %}<li>{{ r.label }}: {{ r.display }}</li>{% endfor %}
-</ul>

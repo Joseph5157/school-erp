@@ -61,8 +61,11 @@ class ChartPartialTests(SimpleTestCase):
         )
         self.assertEqual(html.count('width="24"'), 2)
         self.assertNotIn("style=", html)
-        self.assertIn('role="img"', html)
-        self.assertIn(HIDDEN, html)
+        self.assertNotIn('<ul class="erp-cols erp-cols--attendance" role="img"', html)
+        self.assertIn('<ul class="erp-cols erp-cols--attendance" aria-label="x">', html)
+        self.assertEqual(html.count('role="img"'), 2)
+        self.assertIn('aria-label="1A: 90%"', html)
+        self.assertNotIn(HIDDEN, html)
 
     def test_many_columns_scroll_inside_the_card(self):
         html = render_to_string(
@@ -120,3 +123,35 @@ class ChartPartialTests(SimpleTestCase):
         self.assertIn("vector-effect: non-scaling-stroke", css)
         self.assertIn(".erp-chart-scroll {", css)
         self.assertIn("overflow-x: auto", css)
+
+
+class TrendSvgTests(SimpleTestCase):
+    def _render(self, kind):
+        import datetime
+
+        from core import analytics
+
+        points = [
+            {"date": datetime.date(2026, 7, d), "percentage": pct, "present": 5, "absent": 1}
+            for d, pct in ((1, 50.0), (2, 80.0), (3, 90.0))
+        ]
+        chart = analytics.trend_chart(points, width=720, height=200)
+        return render_to_string(
+            "partials/_trend_svg.html",
+            {"c": chart, "kind": kind, "a": {"points": points, "summary": {"current": 73.3}}},
+        )
+
+    def test_wide_trend_stretches_sideways_only_with_round_line_dots(self):
+        html = self._render("wide")
+        self.assertIn('preserveAspectRatio="none"', html)
+        self.assertEqual(html.count('class="erp-trend-dotline"'), 3)
+        self.assertEqual(html.count('class="erp-trend-hitline"'), 3)
+        self.assertNotIn("<circle", html)
+        self.assertIn("<title>1 Jul: 50.0%</title>", html)
+
+    def test_phone_trend_keeps_its_circles(self):
+        html = self._render("phone")
+        self.assertNotIn("preserveAspectRatio", html)
+        self.assertEqual(html.count('class="erp-trend-dot"'), 3)
+        self.assertNotIn("erp-trend-dotline", html)
+        self.assertIn("<title>1 Jul: 50.0%</title>", html)
