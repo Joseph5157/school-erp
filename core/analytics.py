@@ -7,7 +7,6 @@ A day with no submitted data is omitted, never drawn as 0%.
 """
 
 import datetime
-import re
 from dataclasses import dataclass
 
 from django.db.models import Count, DecimalField, ExpressionWrapper, F, Q
@@ -353,11 +352,6 @@ def completion_rings(today, *, can_view_results, can_view_publications,
     return rings
 
 
-def _natural_key(name):
-    """Sort "Grade 2" before "Grade 10"."""
-    return [int(part) if part.isdigit() else part.lower() for part in re.split(r"(\d+)", name)]
-
-
 def _class_row(row, with_link):
     return {
         "label": row["class_name"],
@@ -404,6 +398,18 @@ def frequent_absentees(period, threshold=ABSENTEE_THRESHOLD_DAYS, limit=ABSENTEE
         for r in page
     ]
     return {"rows": rows, "total": total}
+
+
+def absent_day_counts(period):
+    """{student_id: reportable days absent in the period}, from one grouped query."""
+    return {
+        row["academic_enrollment__student_id"]: row["days"]
+        for row in _entries(period)
+        .filter(status=AttendanceStatus.ABSENT)
+        .order_by()
+        .values("academic_enrollment__student_id")
+        .annotate(days=Count("id"))
+    }
 
 
 def _heat_tier(percentage):
@@ -562,6 +568,7 @@ def overview_context(
     include_marks=False,
     include_publications=False,
     include_class_links=False,
+    include_attention=False,
     missing_attendance_url=None,
     params=None,
 ):
@@ -569,7 +576,8 @@ def overview_context(
 
     Student names are personal data, so the absentee list is only built when the caller says
     the user may view students; otherwise `absentees` is None and the section is not shown.
-    Marks are only built for callers who may view results. `params` (the GET query) picks the
+    The attention list needs `include_attention` (the caller may view students and
+    results). Marks are only built for callers who may view results. `params` (the GET query) picks the
     attendance period; the heatmap, today strip and marks snapshot are independent of it.
     Class columns and bars link to the class page only when `include_class_links` says the
     viewer may open it; the registers ring links to the report only when a URL is given.
@@ -578,6 +586,16 @@ def overview_context(
     marks = marks_snapshot(today) if include_marks else None
     choice = resolve_period(params or {}, today)
     period = choice["period"]
+    # Marks come from the reporting term, absences from the selected period; they are independent.
+    attention = (
+        marks_analytics.students_needing_attention(
+            marks["term"] if marks else None,
+            absent_day_counts(period),
+            period_label=choice["label"],
+        )
+        if include_attention
+        else None
+    )
     points = daily_trend(period)
     strip = today_strip(today)
     classes = class_comparison(period)
@@ -595,6 +613,8 @@ def overview_context(
         "today": today,
         "absentees": frequent_absentees(period) if include_absentees else None,
         "absentee_threshold": ABSENTEE_THRESHOLD_DAYS,
+        "attention": attention,
+        "class_links": include_class_links,
         "heatmap": attendance_heatmap(today),
         "period": period,
         "period_days": period.days,
@@ -612,15 +632,14 @@ def overview_context(
         "class_columns": charts.columns(
             [
                 _class_row(row, include_class_links)
-                for row in sorted(classes, key=lambda r: _natural_key(r["class_name"]))
+                for row in sorted(classes, key=lambda r: charts.natural_key(r["class_name"]))
             ]
         ),
         "class_bars_phone": [_class_row(row, include_class_links) for row in classes[:5]],
         "class_bars_rest": [
             _class_row(row, include_class_links)
-            for row in sorted(classes[5:], key=lambda r: _natural_key(r["class_name"]))
+            for row in sorted(classes[5:], key=lambda r: charts.natural_key(r["class_name"]))
         ],
-        "class_links": include_class_links,
         "points": points,
         "summary": trend_summary(period, points),
         "chart": trend_chart(points, width=320, height=120),

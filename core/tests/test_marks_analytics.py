@@ -9,7 +9,15 @@ from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
 
 from core import marks_analytics
-from core.models import AcademicEnrollment, AcademicTerm, Assessment, Section, Subject
+from core.models import (
+    AcademicEnrollment,
+    AcademicTerm,
+    Assessment,
+    ClassGrade,
+    Section,
+    Student,
+    Subject,
+)
 from core.tests.test_admin_overview_analytics import TODAY, MarksFixture
 
 
@@ -245,3 +253,170 @@ class PlacementAndPrivacyTests(MarksAnalyticsFixture, TestCase):
             score = self.score_for(self.s1)
         self.assertEqual(score.score, 50.0)
         self.assertIsNone(score.section_average)
+
+
+class StudentsNeedingAttentionTests(MarksAnalyticsFixture, TestCase):
+    """The Overview list: 2+ subjects below pass, or 1 below pass and frequent absence."""
+
+    def setUp(self):
+        super().setUp()
+        self.english = Subject.objects.create(name="English")
+
+    def below(self, enrollment, *subjects, term=None):
+        """A failing test (score 2 of 20, pass 10) in each named subject."""
+        for subject in subjects:
+            self.assessment(
+                {enrollment: 2}, name=f"{subject.name} {enrollment.pk} {term and term.pk}", subject=subject,
+                pass_mark=10,
+                term=term,
+            )
+
+    def attention(self, absent=None, **kwargs):
+        return marks_analytics.students_needing_attention(
+            self.term_b, absent or {}, period_label="last 14 days", **kwargs
+        )
+
+    def test_two_subjects_below_pass_is_listed(self):
+        self.below(self.s1, self.maths, self.science)
+        result = self.attention()
+        self.assertEqual(result["total"], 1)
+        row = result["rows"][0]
+        self.assertEqual(row["student_id"], self.s1.student_id)
+        self.assertEqual(row["name"], self.s1.student.full_name)
+        self.assertEqual(row["class_name"], self.class_grade.name)
+        self.assertEqual(row["below_subjects"], ["Mathematics", "Science"])
+        self.assertIsNone(row["absent_days"])
+
+    def test_one_subject_below_pass_alone_is_not_listed(self):
+        self.below(self.s1, self.maths)
+        self.assertEqual(self.attention(), {"rows": [], "total": 0})
+
+    def test_one_subject_plus_frequent_absence_is_listed(self):
+        self.below(self.s1, self.maths)
+        result = self.attention({self.s1.student_id: 3})
+        self.assertEqual(result["total"], 1)
+        self.assertEqual(result["rows"][0]["absent_days"], 3)
+
+    def test_one_subject_with_too_few_absences_is_not_listed(self):
+        self.below(self.s1, self.maths)
+        self.assertEqual(self.attention({self.s1.student_id: 2})["total"], 0)
+        self.assertEqual(self.attention({self.s1.student_id: 2}, threshold=2)["total"], 1)
+
+    def test_frequent_absence_alone_is_not_listed(self):
+        self.assessment({self.s1: 15}, pass_mark=10)
+        self.assertEqual(self.attention({self.s1.student_id: 9})["total"], 0)
+
+    def test_subject_with_no_pass_mark_never_counts(self):
+        self.below(self.s1, self.maths)
+        self.assessment({self.s1: 2}, name="No mark", subject=self.science)  # no pass mark
+        self.assessment({self.s1: 2}, name="No mark 2", subject=self.english)
+        self.assertEqual(self.attention()["total"], 0)
+
+    def test_a_score_exactly_on_the_pass_mark_is_not_below(self):
+        self.assessment({self.s1: 10}, subject=self.maths, pass_mark=10, name="M")
+        self.assessment({self.s1: 10}, subject=self.science, pass_mark=10, name="S")
+        # 6 of 18 against a pass mark of 6: the same 33.33...% on both sides.
+        self.assessment({self.s1: 6}, subject=self.english, maximum="18", pass_mark=6, name="E")
+        self.assertEqual(self.attention()["total"], 0)
+
+    def test_same_rule_as_the_student_page(self):
+        # Fails Maths on the test with a pass mark; the high test without one must not change that.
+        self.assessment({self.s1: 2}, subject=self.maths, pass_mark=10, name="Fail")
+        self.assessment({self.s1: 20}, subject=self.maths, name="Great but no pass mark")
+        self.below(self.s1, self.science)
+        listed = marks_analytics.students_needing_attention(self.term_b, {})["rows"][0]
+        page = {
+            s.subject_name
+            for s in marks_analytics.student_subject_scores(self.s1.student, self.term_b)
+            if s.below_pass
+        }
+        self.assertEqual(set(listed["below_subjects"]), page)
+
+    def test_only_tests_the_student_was_marked_on_count(self):
+        self.assessment({self.s1: None, self.s2: 2}, subject=self.maths, pass_mark=10, name="A")
+        self.assessment({self.s1: None, self.s2: 2}, subject=self.science, pass_mark=10, name="B")
+        rows = self.attention()["rows"]
+        self.assertEqual([r["student_id"] for r in rows], [self.s2.student_id])
+
+    def test_draft_assessments_and_other_terms_do_not_count(self):
+        self.assessment({self.s1: 2}, subject=self.maths, pass_mark=10, finalize=False, name="D1")
+        self.assessment({self.s1: 2}, subject=self.science, pass_mark=10, finalize=False, name="D2")
+        self.below(self.s1, self.maths, self.science, term=self.term_a)
+        self.assertEqual(self.attention()["total"], 0)
+
+    def test_inactive_student_is_left_out(self):
+        self.below(self.s1, self.maths, self.science)
+        Student.objects.filter(pk=self.s1.student_id).update(status=Student.Status.INACTIVE)
+        self.assertEqual(self.attention()["total"], 0)
+
+    def test_student_without_an_active_enrollment_is_left_out(self):
+        self.below(self.s1, self.maths, self.science)
+        AcademicEnrollment.objects.filter(pk=self.s1.pk).update(
+            status=AcademicEnrollment.Status.COMPLETED, end_date=datetime.date(2026, 6, 30)
+        )
+        self.assertEqual(self.attention()["total"], 0)
+
+    def test_rows_order_by_class_then_name_not_by_performance(self):
+        grade10 = ClassGrade.objects.create(name="Grade 10")
+        grade2 = ClassGrade.objects.create(name="Grade 2")
+        sec10 = Section.objects.create(class_grade=grade10, name="A")
+        sec2 = Section.objects.create(class_grade=grade2, name="A")
+        zed = self.enroll_student("Zed Best", grade2, sec2)
+        amy = self.enroll_student("Amy Worst", grade10, sec10)
+        for enrollment, grade, section, score in (
+            (zed, grade2, sec2, 9),
+            (amy, grade10, sec10, 0),
+            (self.s2, self.class_grade, self.section, 5),
+        ):
+            for subject in (self.maths, self.science):
+                self.assessment(
+                    {enrollment: score}, subject=subject, class_grade=grade, section=section,
+                    pass_mark=10, name=f"{subject.name} {enrollment.pk}",
+                )
+        names = [r["name"] for r in self.attention()["rows"]]
+        # Class order is natural (the fixture's class, then Grade 2, then Grade 10).
+        self.assertEqual(names, ["Meena Das", "Zed Best", "Amy Worst"])
+
+    def test_limit_keeps_the_true_total(self):
+        for enrollment in (self.s1, self.s2):
+            self.below(enrollment, self.maths, self.science)
+        result = self.attention(limit=1)
+        self.assertEqual((len(result["rows"]), result["total"]), (1, 2))
+
+    def test_reason_names_term_and_period(self):
+        self.below(self.s1, self.english, self.maths)
+        row = marks_analytics.students_needing_attention(
+            self.term_b, {self.s1.student_id: 4}, period_label="last 14 days"
+        )["rows"][0]
+        self.assertEqual(
+            row["reason"],
+            "Below pass in English and Mathematics (Term 2); absent 4 days (last 14 days)",
+        )
+
+    def test_reason_wording_for_one_day_three_subjects_and_no_absence(self):
+        self.below(self.s1, self.english, self.maths, self.science)
+
+        def reason(days):
+            absent = {self.s1.student_id: days} if days else {}
+            return marks_analytics.students_needing_attention(
+                self.term_b, absent, period_label="this month"
+            )["rows"][0]["reason"]
+
+        self.assertEqual(
+            reason(1),
+            "Below pass in English, Mathematics and Science (Term 2); absent 1 day (this month)",
+        )
+        self.assertEqual(reason(0), "Below pass in English, Mathematics and Science (Term 2)")
+
+    def test_query_count_does_not_grow_with_students(self):
+        def count():
+            with CaptureQueriesContext(connection) as ctx:
+                marks_analytics.students_needing_attention(self.term_b, {})
+            return len(ctx)
+
+        self.below(self.s1, self.maths, self.science)
+        before = count()
+        for extra in self.more_students(10):
+            self.below(extra, self.maths, self.science)
+        self.assertEqual(self.attention()["total"], 11)
+        self.assertEqual(count(), before)

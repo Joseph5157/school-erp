@@ -21,11 +21,23 @@ from django.db.models import (
     When,
 )
 
-from core.models import AcademicTerm, Assessment, ResultStatus, StudentResult
+from core import charts
+from core.models import (
+    AcademicEnrollment,
+    AcademicTerm,
+    Assessment,
+    ResultStatus,
+    Student,
+    StudentResult,
+)
 
 # A section average is hidden below this many distinct students, so a small section cannot
 # reveal one student's marks.
 MIN_COMPARISON_STUDENTS = 5
+
+# Percentages come out of the database as long decimals. A score that is exactly the pass mark
+# but written in different units (6 of 18 against a pass mark of 2 of 6) must not read as below.
+_TIE_TOLERANCE = 1e-9
 
 _PERCENT = ExpressionWrapper(
     F("score") * 100 / F("assessment__maximum_marks"),
@@ -51,6 +63,26 @@ def _counted_results(**extra):
     return StudentResult.objects.filter(
         assessment__status=Assessment.Status.FINALIZED, status=ResultStatus.MARKED, **extra
     )
+
+
+def _pass_comparison(results, *group_by):
+    """Like with like: per group, the average percent over only the tests that have a pass mark.
+
+    `results` are already MARKED, so tests the student was absent for are never in it. The
+    student page and the Overview's attention list both read below-pass from this and
+    `_is_below`, so the two cannot drift apart.
+    """
+    return (
+        results.filter(assessment__pass_mark__isnull=False)
+        .order_by()
+        .values(*group_by)
+        .annotate(sat=Avg("percent"), pass_percent=Avg(_PASS_PERCENT))
+    )
+
+
+def _is_below(sat, pass_percent):
+    """Strictly below the pass mark; a tie, or no pass mark at all, is not below."""
+    return pass_percent is not None and sat < pass_percent - _TIE_TOLERANCE
 
 
 def reporting_term(today):
@@ -110,14 +142,9 @@ def student_subject_scores(student, term, scope=None):
     if not scores:
         return []
 
-    # Like with like: only the tests this student sat that have a pass mark.
-    pass_rows = (
-        own.filter(assessment__pass_mark__isnull=False)
-        .values("subject_name")
-        .annotate(sat=Avg("percent"), pass_percent=Avg(_PASS_PERCENT))
-    )
     passes = {
-        row["subject_name"]: (float(row["sat"]), float(row["pass_percent"])) for row in pass_rows
+        row["subject_name"]: (float(row["sat"]), float(row["pass_percent"]))
+        for row in _pass_comparison(own, "subject_name")
     }
 
     section_averages = {}
@@ -147,7 +174,7 @@ def student_subject_scores(student, term, scope=None):
                 subject_name=name,
                 score=scores[name],
                 pass_percent=pass_percent,
-                below_pass=pass_percent is not None and sat < pass_percent,
+                below_pass=_is_below(sat, pass_percent),
                 section_average=section_averages.get(name),
             )
         )
@@ -165,3 +192,71 @@ def terms_with_results(student):
             )
         ).order_by("-start_date", "-display_order")
     )
+
+
+def _join_names(names):
+    """"A", "A and B", "A, B and C"."""
+    if len(names) < 2:
+        return "".join(names)
+    return f"{', '.join(names[:-1])} and {names[-1]}"
+
+
+def students_needing_attention(
+    term, absent_days, threshold=3, limit=10, period_label="last 14 days"
+):
+    """Active students below pass in 2+ subjects, or in 1 subject and absent `threshold`+ days.
+
+    Marks come from `term`; `absent_days` ({student_id: days}) comes from the period the page is
+    showing, named by `period_label`. Below-pass is the student page's rule (`_pass_comparison`),
+    found for every student by one grouped query. Rows are ordered by class (natural order) and
+    name, never by performance. `total` is the true count even when `limit` trims the rows.
+    """
+    if term is None:
+        return {"rows": [], "total": 0}
+    grouped = _pass_comparison(
+        marked_results(term).filter(academic_enrollment__student__status=Student.Status.ACTIVE),
+        "academic_enrollment__student_id",
+        "subject_name",
+    )
+    below = {}
+    for row in grouped:
+        if _is_below(float(row["sat"]), float(row["pass_percent"])):
+            below.setdefault(row["academic_enrollment__student_id"], []).append(row["subject_name"])
+    flagged = {
+        student_id: sorted(subjects)
+        for student_id, subjects in below.items()
+        if len(subjects) >= 2 or absent_days.get(student_id, 0) >= threshold
+    }
+
+    # The class shown is the student's current ACTIVE enrollment; no active enrollment, no row.
+    current = {
+        e.student_id: e
+        for e in AcademicEnrollment.objects.filter(
+            student_id__in=flagged,
+            status=AcademicEnrollment.Status.ACTIVE,
+            student__status=Student.Status.ACTIVE,
+        )
+        .select_related("student", "class_grade")
+        .order_by("start_date", "pk")
+    }
+    rows = []
+    for student_id, subjects in flagged.items():
+        enrollment = current.get(student_id)
+        if enrollment is None:
+            continue
+        days = absent_days.get(student_id) or None
+        reason = f"Below pass in {_join_names(subjects)} ({term.name})"
+        if days:
+            reason += f"; absent {days} day{'' if days == 1 else 's'} ({period_label})"
+        rows.append(
+            {
+                "student_id": student_id,
+                "name": enrollment.student.full_name,
+                "class_name": enrollment.class_grade.name,
+                "below_subjects": subjects,
+                "absent_days": days,
+                "reason": reason,
+            }
+        )
+    rows.sort(key=lambda r: (charts.natural_key(r["class_name"]), r["name"].lower(), r["student_id"]))
+    return {"rows": rows[:limit], "total": len(rows)}

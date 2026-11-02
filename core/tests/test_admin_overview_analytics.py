@@ -1404,3 +1404,167 @@ class OverviewChartLayoutTests(AnalyticsFixture, TestCase):
             block,
         )
         self.assertIn(".erp-analytics-card--classes .erp-chart-scroll { margin-block: auto; }", block)
+
+
+class AbsentDayCountsTests(AnalyticsFixture, TestCase):
+    def test_counts_reportable_absent_days_per_student_in_the_period(self):
+        for d, statuses in (
+            (1, {self.s1: A, self.s2: P}), (2, {self.s1: A, self.s2: A}), (3, {self.s1: P, self.s2: P}),
+        ):
+            self.day(datetime.date(2026, 7, d), statuses)
+        self.day(datetime.date(2026, 7, 6), {self.s1: A, self.s2: A}, submit=False)  # draft
+        self.day(datetime.date(2026, 6, 22), {self.s1: A, self.s2: A})  # before the period
+        counts = analytics.absent_day_counts(analytics.default_period(TODAY))
+        self.assertEqual(counts, {self.s1.student_id: 2, self.s2.student_id: 1})
+
+    def test_one_query_whatever_the_number_of_days(self):
+        for d in (1, 2, 3, 6, 7):
+            self.day(datetime.date(2026, 7, d), {self.s1: A, self.s2: A})
+        with self.assertNumQueries(1):
+            analytics.absent_day_counts(analytics.default_period(TODAY))
+
+
+class StudentsNeedingAttentionViewTests(MarksFixture, TestCase):
+    url = reverse("core:admin-overview")
+
+    def setUp(self):
+        super().setUp()
+        self.science = Subject.objects.create(name="Science")
+
+    def fail_two(self, enrollment):
+        for subject in (self.maths, self.science):
+            self.assessment(
+                {enrollment: 2}, subject=subject, pass_mark=10, name=f"{subject.name} {enrollment.pk}"
+            )
+
+    def login_with(self, username, *codenames):
+        from django.contrib.auth import get_user_model
+        from django.contrib.auth.models import Permission
+
+        user = get_user_model().objects.create_user(username=username, password="pass-12345")
+        user.user_permissions.add(*Permission.objects.filter(codename__in=codenames))
+        client = self.client_class()
+        client.login(username=username, password="pass-12345")
+        return client
+
+    def card(self, response):
+        html = response.content.decode()
+        start = html.index("erp-analytics-card--attention")
+        return html[start:html.index("</article>", start)]
+
+    def test_rows_link_to_the_student_page_and_state_the_reason(self):
+        self.fail_two(self.s1)
+        card = self.card(self.administrator.get(self.url))
+        self.assertIn("Students needing attention", card)
+        self.assertIn(reverse("core:student-detail", args=[self.s1.student_id]), card)
+        self.assertIn(self.s1.student.full_name, card)
+        self.assertIn("Below pass in Mathematics and Science (Term 2)", card)
+
+    def test_reason_uses_the_period_the_page_is_showing(self):
+        self.fail_two(self.s1)
+        for d in (1, 2, 3, 6):
+            self.day(datetime.date(2026, 7, d), {self.s1: A, self.s2: P})
+        default = self.card(self.administrator.get(self.url))
+        self.assertIn("absent 4 days (last 14 days)", default)
+        month = self.card(self.administrator.get(self.url, {"period": "month"}))
+        self.assertIn("absent 4 days (this month)", month)
+        shorter = self.card(self.administrator.get(self.url, {"period": "custom", "from": "2026-07-07", "to": "2026-07-14"}))
+        self.assertNotIn("absent 4 days", shorter)
+
+    def test_empty_state_wording(self):
+        self.assessment({self.s1: 15}, pass_mark=10)
+        card = self.card(self.administrator.get(self.url))
+        self.assertIn("No students need attention right now.", card)
+
+    def test_empty_state_when_no_term_has_results(self):
+        card = self.card(self.administrator.get(self.url))
+        self.assertIn("No students need attention right now.", card)
+
+    def test_shows_up_to_ten_with_the_true_total(self):
+        for i in range(12):
+            self.fail_two(self.enroll_student(f"Pupil {i:02d}", self.class_grade, self.section))
+        card = self.card(self.administrator.get(self.url))
+        self.assertEqual(card.count("erp-attention-row"), 10)
+        self.assertIn("Showing 10 of 12.", card)
+
+    def test_list_needs_both_view_student_and_view_results(self):
+        self.fail_two(self.s1)
+        both = self.login_with("both", "view_school", "view_student", "view_studentresult")
+        self.assertContains(both.get(self.url), "Students needing attention")
+        for name, codenames in (
+            ("students-only", ("view_school", "view_student")),
+            ("results-only", ("view_school", "view_studentresult")),
+            ("school-only", ("view_school",)),
+        ):
+            response = self.login_with(name, *codenames).get(self.url)
+            self.assertEqual(response.status_code, 200)
+            self.assertNotContains(response, "Students needing attention")
+            self.assertNotContains(response, self.s1.student.full_name)
+            self.assertIsNone(response.context["attendance_analytics"]["attention"])
+
+    def test_phone_order_puts_the_list_right_after_the_rings(self):
+        self.fail_two(self.s1)
+        html = self.administrator.get(self.url).content.decode()
+        self.assertLess(
+            html.index("erp-analytics-card--rings"), html.index("erp-analytics-card--attention")
+        )
+        self.assertLess(
+            html.index("erp-analytics-card--attention"),
+            html.index("erp-analytics-card--classes") if "erp-analytics-card--classes" in html
+            else html.index("erp-analytics-card--subjects"),
+        )
+
+    def test_query_count_does_not_grow_with_students(self):
+        self.fail_two(self.s1)
+        with CaptureQueriesContext(connection) as before:
+            self.administrator.get(self.url)
+        for i in range(8):
+            self.fail_two(self.enroll_student(f"Pupil {i}", self.class_grade, self.section))
+        with CaptureQueriesContext(connection) as after:
+            self.administrator.get(self.url)
+        self.assertEqual(len(after), len(before))
+
+
+class OverviewNoHoleLayoutTests(AnalyticsFixture, TestCase):
+    """Desktop rows must stay full whichever cards are missing; the section names what is missing."""
+
+    url = reverse("core:admin-overview")
+
+    def modifiers(self, client):
+        html = client.get(self.url).content.decode()
+        return re.search(r'<section class="(erp-analytics[^"]*)"', html).group(1)
+
+    def css(self):
+        text = (Path(settings.BASE_DIR) / "static" / "css" / "erp.css").read_text(encoding="utf-8")
+        return text.split("/* ---------- Desktop Overview grid ---------- */", 1)[1]
+
+    def login_with(self, username, *codenames):
+        from django.contrib.auth import get_user_model
+        from django.contrib.auth.models import Permission
+
+        user = get_user_model().objects.create_user(username=username, password="pass-12345")
+        user.user_permissions.add(*Permission.objects.filter(codename__in=codenames))
+        client = self.client_class()
+        client.login(username=username, password="pass-12345")
+        return client
+
+    def test_section_names_a_missing_attention_card(self):
+        self.assertNotIn("erp-analytics--no-attention", self.modifiers(self.administrator))
+        for name, codenames in (
+            ("results-only", ("view_school", "view_studentresult")),
+            ("students-only", ("view_school", "view_student")),
+            ("school-only", ("view_school",)),
+        ):
+            self.assertIn("erp-analytics--no-attention", self.modifiers(self.login_with(name, *codenames)))
+
+    def test_desktop_rows_four_and_five_and_the_absentee_fallback(self):
+        block = self.css()
+        for rule in (
+            ".erp-analytics > .erp-analytics-card--attention { grid-column: span 7; order: 5; }",
+            ".erp-analytics > .erp-analytics-card--subjects { grid-column: span 5; order: 6; }",
+            ".erp-analytics > .erp-analytics-card--bands { grid-column: span 12; order: 7; }",
+            ".erp-analytics--no-attention > .erp-analytics-card--subjects { grid-column: span 7; }",
+            ".erp-analytics--no-attention > .erp-analytics-card--bands { grid-column: span 5; }",
+            ".erp-analytics-card--bands .erp-chart-scroll { max-width: 32rem; }",
+        ):
+            self.assertIn(rule, block)

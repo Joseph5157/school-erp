@@ -6,7 +6,13 @@ so values are compared with `is None`, never by truthiness.
 """
 
 import math
+import re
 from decimal import ROUND_DOWN, ROUND_HALF_UP, Decimal
+
+
+def natural_key(name):
+    """Sort key putting "Grade 2" before "Grade 10"."""
+    return [int(part) if part.isdigit() else part.lower() for part in re.split(r"(\d+)", name)]
 
 
 def shares(counts):
