@@ -10,7 +10,7 @@ import datetime
 import re
 from dataclasses import dataclass
 
-from django.db.models import Avg, Count, DecimalField, ExpressionWrapper, F, Q
+from django.db.models import Count, DecimalField, ExpressionWrapper, F, Q
 from django.urls import reverse
 
 from core import charts, marks_analytics, reports
@@ -506,7 +506,7 @@ def _subject_rows(term):
 
 
 def marks_snapshot(today):
-    """Average and score bands for the reporting term (`marks_analytics.reporting_term`).
+    """Score bands for the reporting term (`marks_analytics.reporting_term`).
 
     Only FINALIZED assessments count. A score is turned into a percentage of its own
     assessment's maximum, so tests out of different totals compare fairly. An ABSENT result is
@@ -523,23 +523,6 @@ def marks_snapshot(today):
     results = StudentResult.objects.filter(
         assessment__term=term, assessment__status=Assessment.Status.FINALIZED
     ).annotate(percent=percent)
-    marked = results.filter(status=ResultStatus.MARKED)
-    rows = (
-        marked.order_by()
-        .values("assessment__section__class_grade_id", "assessment__section__class_grade__name")
-        .annotate(average=Avg("percent"), results=Count("id"))
-    )
-    classes = sorted(
-        (
-            {
-                "class_name": row["assessment__section__class_grade__name"],
-                "average": round(float(row["average"]), 1),
-                "results": row["results"],
-            }
-            for row in rows
-        ),
-        key=lambda r: (r["average"], r["class_name"]),
-    )
     minimums = [minimum for minimum, _ in MARK_BANDS]
     aggregate = results.aggregate(
         absent=Count("id", filter=Q(status=ResultStatus.ABSENT)),
@@ -556,7 +539,6 @@ def marks_snapshot(today):
     band_shares = shares(counts)
     return {
         "term": term,
-        "classes": classes,
         "bands": [
             {"label": label, "count": count, "share": share}
             for (_, label), count, share in zip(MARK_BANDS, counts, band_shares, strict=True)

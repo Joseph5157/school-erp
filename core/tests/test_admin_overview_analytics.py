@@ -646,39 +646,31 @@ class MarksSnapshotTests(MarksFixture, TestCase):
         self.assessment({self.s1: 15}, finalize=False)
         self.assertIsNone(analytics.marks_snapshot(TODAY))
 
-    def test_average_is_a_percentage_of_the_maximum_per_class(self):
-        self.assessment({self.s1: 15, self.s2: 10})  # 75% and 50%
+    def test_snapshot_carries_term_and_no_class_breakdown(self):
+        self.assessment({self.s1: 15, self.s2: 10})
         snapshot = analytics.marks_snapshot(TODAY)
         self.assertEqual(snapshot["term"], self.term_b)
-        self.assertEqual(
-            [(r["class_name"], r["average"], r["results"]) for r in snapshot["classes"]],
-            [("Grade 1", 62.5, 2)],
-        )
+        self.assertNotIn("classes", snapshot)  # the page no longer shows marks by class
+
+    def subject_display(self):
+        return [(r["label"], r["display"]) for r in analytics.overview_context(TODAY, include_marks=True)["marks_subjects"]]
 
     def test_different_maximums_are_normalised(self):
         self.assessment({self.s1: 18}, maximum="30", name="Out of 30")  # 60%
         self.assessment({self.s1: 20}, maximum="20", name="Out of 20")  # 100%
-        snapshot = analytics.marks_snapshot(TODAY)
-        self.assertEqual(snapshot["classes"][0]["average"], 80.0)
+        self.assertEqual(self.subject_display(), [("Mathematics", "80%")])
 
     def test_an_absent_result_is_never_a_zero(self):
         self.assessment({self.s1: 16, self.s2: None})
         snapshot = analytics.marks_snapshot(TODAY)
-        self.assertEqual(snapshot["classes"][0]["average"], 80.0)  # not 40.0
-        self.assertEqual(snapshot["classes"][0]["results"], 1)
+        self.assertEqual(self.subject_display(), [("Mathematics", "80%")])  # not 40%
+        self.assertEqual(snapshot["total"], 1)
         self.assertEqual(snapshot["absent"], 1)
 
     def test_draft_results_do_not_leak_into_a_finalized_average(self):
         self.assessment({self.s1: 20, self.s2: 20}, name="Final one")
         self.assessment({self.s1: 0, self.s2: 0}, name="Still draft", finalize=False)
-        self.assertEqual(analytics.marks_snapshot(TODAY)["classes"][0]["average"], 100.0)
-
-    def test_classes_are_listed_lowest_average_first(self):
-        grade, section, s3 = self.second_class()
-        self.assessment({self.s1: 18}, name="G1")
-        self.assessment({s3: 8}, name="G2", class_grade=grade, section=section)
-        names = [r["class_name"] for r in analytics.marks_snapshot(TODAY)["classes"]]
-        self.assertEqual(names, ["Grade 2", "Grade 1"])
+        self.assertEqual(self.subject_display(), [("Mathematics", "100%")])
 
     def test_score_bands_count_results_and_sum_to_the_total(self):
         # 100%, 80%, 60%, 35%, and 59.9% which belongs in 40-59.
@@ -700,7 +692,7 @@ class MarksSnapshotTests(MarksFixture, TestCase):
         self.assessment({self.s1: 20}, name="New", term=self.term_b)
         snapshot = analytics.marks_snapshot(TODAY)
         self.assertEqual(snapshot["term"], self.term_b)
-        self.assertEqual(snapshot["classes"][0]["average"], 100.0)  # term A not mixed in
+        self.assertEqual(self.subject_display(), [("Mathematics", "100%")])  # term A not mixed in
 
     def test_a_term_that_has_not_started_is_ignored(self):
         future = AcademicTerm.objects.create(
@@ -722,7 +714,9 @@ class MarksSnapshotViewTests(MarksFixture, TestCase):
         self.assertContains(response, "Mathematics")
         self.assertContains(response, "63%")
         self.assertContains(response, "80% and above")
-        self.assertContains(response, "erp-visually-hidden-data")
+        self.assertContains(response, 'aria-label="60–79%: 1"')
+        self.assertContains(response, "<title>60–79%: 1</title>")
+        self.assertContains(response, 'aria-label="Mathematics"')
 
     def test_empty_state_is_honest(self):
         response = self.administrator.get(self.url)
@@ -806,6 +800,12 @@ class MarksSnapshotViewTests(MarksFixture, TestCase):
         context = analytics.overview_context(TODAY)
         self.assertIsNone(context["marks"])
         self.assertEqual(context["marks_subjects"], [])
+
+    def test_absent_results_are_counted_and_explained(self):
+        self.assessment({self.s1: 16, self.s2: None})
+        response = self.administrator.get(self.url)
+        self.assertContains(response, "1 result marked; 1 absent.")
+        self.assertContains(response, "Finalized only, absent not counted as zero")
 
     def test_no_results_shows_the_existing_empty_message(self):
         response = self.administrator.get(self.url)
