@@ -926,7 +926,7 @@ class AcademicEnrollmentForm(forms.ModelForm):
         return cleaned_data
 
 
-class ApplicantForm(forms.ModelForm):
+class ApplicantForm(FieldAccessibilityMixin, forms.ModelForm):
     """Register an Applicant.
 
     `admission_status` is intentionally excluded: the admission state changes
@@ -978,7 +978,7 @@ class GuardianForm(forms.ModelForm):
         fields = ["full_name", "phone", "email"]
 
 
-class ApplicantGuardianForm(forms.ModelForm):
+class ApplicantGuardianForm(FieldAccessibilityMixin, forms.ModelForm):
     """Associate a Guardian with a specific Applicant.
 
     `applicant` is supplied by the view from the URL rather than taken from
@@ -1012,7 +1012,7 @@ class ApplicantGuardianForm(forms.ModelForm):
         return cleaned_data
 
 
-class StudentGuardianForm(forms.ModelForm):
+class StudentGuardianForm(FieldAccessibilityMixin, forms.ModelForm):
     """Associate a Guardian with an existing Student.
 
     `student` comes from the URL, not the request. It is not a form field, so
@@ -1038,7 +1038,7 @@ class StudentGuardianForm(forms.ModelForm):
         return cleaned_data
 
 
-class StudentGuardianRelationshipForm(forms.ModelForm):
+class StudentGuardianRelationshipForm(FieldAccessibilityMixin, forms.ModelForm):
     """Change only the relationship type of an existing Student-Guardian link."""
 
     class Meta:
@@ -1259,7 +1259,7 @@ class GuardianVerificationForm(forms.Form):
     )
 
 
-class TeacherCreateForm(forms.Form):
+class TeacherCreateForm(FieldAccessibilityMixin, forms.Form):
     first_name = forms.CharField(max_length=150)
     last_name = forms.CharField(max_length=150)
     username = forms.CharField(max_length=30, help_text=USERNAME_HELP)
@@ -1284,11 +1284,11 @@ class GuardianUsernameForm(forms.Form):
     username = forms.CharField(max_length=30, label="New username", help_text=USERNAME_HELP)
 
 
-class TeacherUsernameForm(forms.Form):
+class TeacherUsernameForm(FieldAccessibilityMixin, forms.Form):
     username = forms.CharField(max_length=30, label="New username", help_text=USERNAME_HELP)
 
 
-class TeacherDeactivateForm(forms.Form):
+class TeacherDeactivateForm(FieldAccessibilityMixin, forms.Form):
     reason = forms.CharField(
         max_length=200, help_text="Recorded permanently with the deactivation."
     )

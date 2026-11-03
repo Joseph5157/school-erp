@@ -13,7 +13,7 @@
 <form method="post" class="erp-form">
     {% csrf_token %}
     {% include "partials/_form_required_legend.html" %}
-    {% if form.non_field_errors %}<div class="erp-form-errors" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+    {% include "partials/_form_error_summary.html" with form=form action_text="deactivating" only %}
     {% for field in form %}{% include "partials/_form_field.html" with field=field only %}{% endfor %}
     <div class="erp-form-actions">
         <button type="submit" class="btn btn-danger">Deactivate login</button>

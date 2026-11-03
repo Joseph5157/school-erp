@@ -139,7 +139,7 @@ class GuardianFormsD13D1Tests(Phase4Fixture, TestCase):
         self.assertEqual(response.status_code, 200)
         content = response.content.decode()
         self.assertEqual(ApplicantGuardian.objects.count(), 0)
-        self.assertEqual(content.count("This field is required."), 2)
+        self.assertEqual(content.count("erp-field-errors"), 2)
         self.assertEqual(content.count("<h1"), 1)
 
     def test_applicant_guardian_duplicate_shows_form_error_once_and_keeps_values(self):
@@ -208,7 +208,7 @@ class GuardianFormsD13D1Tests(Phase4Fixture, TestCase):
         self.assertEqual(content.count("This Guardian is already associated with this Student."), 1)
         self.assertRegex(content, r'<option value="FATHER" selected>')
         response = self.client.post(self.add_url(), {"guardian": "", "relationship_type": ""})
-        self.assertEqual(response.content.decode().count("This field is required."), 2)
+        self.assertEqual(response.content.decode().count("erp-field-errors"), 2)
         self.assertEqual(StudentGuardian.objects.count(), 1)
 
     def test_student_relationship_edit_invalid_and_valid(self):
@@ -216,7 +216,7 @@ class GuardianFormsD13D1Tests(Phase4Fixture, TestCase):
         url = reverse("core:student-guardian-edit", args=[link.pk])
         response = self.client.post(url, {"relationship_type": ""})
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.content.decode().count("This field is required."), 1)
+        self.assertEqual(response.content.decode().count("erp-field-errors"), 1)
         response = self.client.post(url, {"relationship_type": RelationshipType.FATHER})
         self.assertRedirects(response, reverse("core:student-detail", args=[self.student.pk]))
         link.refresh_from_db()
