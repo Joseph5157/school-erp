@@ -7,9 +7,10 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.cache import add_never_cache_headers
 
 from accounts.models import SecurityEvent
-from core import teacher_accounts
+from core import one_time_forms, teacher_accounts
 from core.authorization import administrator_required
 from core.forms import TeacherCreateForm, TeacherDeactivateForm, TeacherUsernameForm
+from core.models import School
 from core.tables import Column, build_table, parse_choice
 
 PERMISSION = "accounts.manage_teacher_accounts"
@@ -30,7 +31,7 @@ def _teacher_slip(request, user, password, *, heading):
     response = render(
         request,
         "core/teacher_credential_slip.html",
-        {"teacher": user, "password": password, "heading": heading},
+        {"teacher": user, "password": password, "heading": heading, "school": School.objects.first()},
     )
     add_never_cache_headers(response)
     response["Cache-Control"] = "no-store, no-cache, must-revalidate, private"
@@ -73,6 +74,13 @@ def teacher_list(request):
 def teacher_create(request):
     form = TeacherCreateForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
+        if one_time_forms.is_repeat(request, "teacher-create"):
+            messages.info(
+                request,
+                "This teacher was already created, so no new password was made. "
+                "If you no longer have it, reset the password from the teacher's profile.",
+            )
+            return redirect("core:teacher-list")
         try:
             user, password = teacher_accounts.create_teacher(
                 actor=request.user, **form.cleaned_data
@@ -81,7 +89,11 @@ def teacher_create(request):
             form.add_error("username", error)
         else:
             return _teacher_slip(request, user, password, heading="Teacher account created")
-    return render(request, "core/teacher_form.html", {"form": form})
+    return render(
+        request,
+        "core/teacher_form.html",
+        {"form": form, "one_time_token": one_time_forms.token_for(request, "teacher-create")},
+    )
 
 
 @administrator_required(PERMISSION)
@@ -102,14 +114,26 @@ def teacher_detail(request, pk):
 @administrator_required(PERMISSION)
 def teacher_reset_password(request, pk):
     teacher = get_teacher_or_404(pk)
+    purpose = f"teacher-reset-{teacher.pk}"
     if request.method == "POST":
+        if one_time_forms.is_repeat(request, purpose):
+            messages.info(
+                request,
+                "This password was already reset, so no new password was made. "
+                "If you no longer have it, reset it again.",
+            )
+            return redirect("core:teacher-detail", pk=teacher.pk)
         try:
             password = teacher_accounts.reset_teacher_password(user=teacher, actor=request.user)
         except ValidationError as error:
             messages.error(request, " ".join(error.messages))
             return redirect("core:teacher-detail", pk=teacher.pk)
         return _teacher_slip(request, teacher, password, heading="Password reset")
-    return render(request, "core/teacher_reset_confirm.html", {"teacher": teacher})
+    return render(
+        request,
+        "core/teacher_reset_confirm.html",
+        {"teacher": teacher, "one_time_token": one_time_forms.token_for(request, purpose)},
+    )
 
 
 @administrator_required(PERMISSION)

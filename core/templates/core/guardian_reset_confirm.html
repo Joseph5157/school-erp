@@ -5,6 +5,7 @@
 <p>A new temporary password will be shown once. Every existing session of this login ends immediately, and the guardian must choose a new password at next sign-in.</p>
 <form method="post" class="erp-form">
     {% csrf_token %}
+    <input type="hidden" name="one_time_token" value="{{ one_time_token }}">
     <div class="erp-form-actions">
         <button type="submit" class="btn btn-danger">Reset password</button>
         <a class="btn btn-link" href="{% url 'core:guardian-detail' account.guardian_id %}">Cancel</a>

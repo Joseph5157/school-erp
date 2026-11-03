@@ -1981,3 +1981,12 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 /* UI-D1-3D2 review fix: the "Guardian: <name>" purpose line wraps a long unbroken name instead of running
    past the right gutter on phones. Scoped to the Guardian form wrapper so shared headers are unchanged. */
 .erp-guardian-form-page .erp-page-purpose { overflow-wrap: break-word; min-width: 0; }
+
+/* Credential slip: paper shows only the card. Visibility, so the card can stay where it is in the page. */
+.erp-credential-card { max-width: 28rem; margin-bottom: var(--erp-space-3); padding: var(--erp-space-4); border: 1px solid var(--erp-rule); border-radius: .375rem; overflow-wrap: anywhere; }
+.erp-credential-school { margin-bottom: var(--erp-space-1); font-size: 1.125rem; font-weight: 600; }
+@media print {
+  body * { visibility: hidden; }
+  .erp-credential-card, .erp-credential-card * { visibility: visible; }
+  .erp-credential-card { position: absolute; top: 0; left: 0; }
+}
