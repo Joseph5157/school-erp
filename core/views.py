@@ -25,6 +25,7 @@ from core import (
     guardian_access,
     guardian_accounts,
     marks_analytics,
+    one_time_forms,
     publication,
     reports,
     school_logo,
@@ -2722,7 +2723,7 @@ def _credential_slip(request, account, password, *, heading):
     response = render(
         request,
         "core/guardian_credential_slip.html",
-        {"account": account, "password": password, "heading": heading},
+        {"account": account, "password": password, "heading": heading, "school": School.objects.first()},
     )
     add_never_cache_headers(response)
     response["Cache-Control"] = "no-store, no-cache, must-revalidate, private"
@@ -2733,7 +2734,15 @@ def _credential_slip(request, account, password, *, heading):
 def guardian_account_create(request, pk):
     guardian = get_object_or_404(Guardian, pk=pk)
     form = GuardianAccountCreateForm(request.POST or None)
+    purpose = f"guardian-account-create-{guardian.pk}"
     if request.method == "POST" and form.is_valid():
+        if one_time_forms.is_repeat(request, purpose):
+            messages.info(
+                request,
+                "This portal account was already created, so no new password was made. "
+                "If you no longer have it, reset the password from the Guardian's profile.",
+            )
+            return redirect("core:guardian-detail", pk=guardian.pk)
         try:
             account, password = guardian_accounts.create_guardian_account(
                 guardian=guardian,
@@ -2749,7 +2758,12 @@ def guardian_account_create(request, pk):
     return render(
         request,
         "core/guardian_account_form.html",
-        {"guardian": guardian, "form": form, "mode": "create"},
+        {
+            "guardian": guardian,
+            "form": form,
+            "mode": "create",
+            "one_time_token": one_time_forms.token_for(request, purpose),
+        },
     )
 
 
@@ -2824,7 +2838,15 @@ def guardian_account_username(request, pk):
 @administrator_required("core.reset_guardian_password")
 def guardian_account_reset_password(request, pk):
     account = get_object_or_404(GuardianAccount.objects.select_related("guardian", "user"), pk=pk)
+    purpose = f"guardian-account-reset-{account.pk}"
     if request.method == "POST":
+        if one_time_forms.is_repeat(request, purpose):
+            messages.info(
+                request,
+                "This password was already reset, so no new password was made. "
+                "If you no longer have it, reset it again.",
+            )
+            return redirect("core:guardian-detail", pk=account.guardian_id)
         try:
             password = guardian_accounts.reset_guardian_password(
                 account=account, actor=request.user
@@ -2833,7 +2855,11 @@ def guardian_account_reset_password(request, pk):
             messages.error(request, " ".join(error.messages))
             return redirect("core:guardian-detail", pk=account.guardian_id)
         return _credential_slip(request, account, password, heading="Password reset")
-    return render(request, "core/guardian_reset_confirm.html", {"account": account})
+    return render(
+        request,
+        "core/guardian_reset_confirm.html",
+        {"account": account, "one_time_token": one_time_forms.token_for(request, purpose)},
+    )
 
 
 @administrator_required("core.add_guardianstudentaccess")

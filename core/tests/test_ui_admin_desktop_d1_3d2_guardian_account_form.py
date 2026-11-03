@@ -108,7 +108,7 @@ class GuardianAccountFormD13D2Tests(TestCase):
         self.assertIn(f'<a class="btn btn-link" href="{self.detail_url}">Cancel</a>', form)
         self.assertNotIn('type="password"', form)
         names = [n for n in re.findall(r'<(?:input|select|textarea)[^>]*\bname="([^"]+)"', form)
-                 if n != "csrfmiddlewaretoken"]
+                 if n not in ("csrfmiddlewaretoken", "one_time_token")]
         self.assertEqual(names, FIELD_ORDER)
         options = re.findall(r"<option[^>]*>([^<]+)</option>", form)
         self.assertEqual([o for o in options if o != "---------"], METHOD_LABELS)

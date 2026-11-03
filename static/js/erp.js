@@ -522,3 +522,21 @@
     button.hidden = true;
   });
 })();
+
+// Credential slip copy buttons: hidden until the browser can copy (HTTPS or localhost).
+(function () {
+  var buttons = document.querySelectorAll("[data-erp-copy]");
+  var status = document.querySelector("[data-erp-copy-status]");
+  if (!buttons.length || !status || !navigator.clipboard) return;
+  buttons.forEach(function (button) {
+    button.hidden = false;
+    button.addEventListener("click", function () {
+      var label = button.getAttribute("data-erp-copy-label");
+      var value = document.getElementById(button.getAttribute("data-erp-copy")).textContent;
+      navigator.clipboard.writeText(value).then(
+        function () { status.textContent = label + " copied."; },
+        function () { status.textContent = label + " could not be copied. Select it and copy it by hand."; }
+      );
+    });
+  });
+})();

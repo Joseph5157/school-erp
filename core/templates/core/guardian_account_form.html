@@ -15,6 +15,7 @@
 {% endif %}
 <form method="post" class="erp-form">
     {% csrf_token %}
+    {% if one_time_token %}<input type="hidden" name="one_time_token" value="{{ one_time_token }}">{% endif %}
     {% include "partials/_form_required_legend.html" %}
     {% if form.non_field_errors %}<div class="erp-form-errors" role="alert">{{ form.non_field_errors }}</div>{% endif %}
     {% for field in form %}{% include "partials/_form_field.html" with field=field only %}{% endfor %}
