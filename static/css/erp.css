@@ -1697,8 +1697,21 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 /* Links wrap as whole units, separated by space rather than a dot that could start a line. */
 .erp-year-links-group { display: flex; flex-wrap: wrap; gap: .1rem var(--erp-space-3); }
 .erp-year-links a { white-space: nowrap; }
-/* Phones size the table to its content (it scrolls in its own box); cap the links so they wrap. */
-@media (max-width: 575.98px) { .erp-year-links { max-width: 16rem; } }
+/* Below 768px (d-md-none) each year is a card, so its links are on screen without sideways scrolling. */
+.erp-year-cards { display: grid; gap: var(--erp-space-3); margin: 0; padding: 0; list-style: none; }
+.erp-year-card, .erp-year-cards-empty {
+  padding: var(--erp-space-4);
+  background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
+}
+.erp-year-card-name { margin: 0; font-size: var(--erp-text-lg); font-weight: 600; }
+.erp-year-card-meta { margin: var(--erp-space-1) 0 0; color: var(--erp-ink-soft); font-size: var(--erp-text-sm); }
+.erp-year-card .erp-year-links {
+  gap: var(--erp-space-3); min-width: 0;
+  margin-top: var(--erp-space-3); padding-top: var(--erp-space-3); border-top: 1px solid var(--erp-rule);
+}
+.erp-year-card .erp-year-links strong { font-size: var(--erp-text-xs); letter-spacing: .04em; text-transform: uppercase; }
+.erp-year-card .erp-year-links-group { gap: 0 var(--erp-space-4); }
+.erp-year-card .erp-year-links a { display: inline-flex; align-items: center; min-height: 2.75rem; }
 @media (min-width: 1200px) {
   .erp-year-links { gap: var(--erp-space-1); }
   .erp-year-links li { display: grid; grid-template-columns: 6rem minmax(0, 1fr); column-gap: var(--erp-space-2); }

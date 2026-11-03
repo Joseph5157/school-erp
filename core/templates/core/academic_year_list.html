@@ -3,6 +3,8 @@
 {% block content %}
 {% if perms.core.add_academicyear %}{% url 'core:academic-year-create' as create_url %}{% endif %}
 {% include "partials/_page_header.html" with eyebrow="School setup" title="Academic Years" purpose="Each year holds its calendar, terms, subjects and teacher assignments." primary_url=create_url primary_label="Create Academic Year" only %}
+{# A4 portrait is narrower than the md breakpoint, so printing must pick the table explicitly. #}
+<div class="d-none d-md-block d-print-block">
 <div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Academic Years" tabindex="0">
 <table class="table erp-years-table">
@@ -23,31 +25,31 @@
             <td class="text-nowrap">{{ academic_year.end_date }}</td>
             <td class="text-nowrap">{{ academic_year.saturdays_instructional|yesno:"Instructional,Off" }}</td>
             <td class="erp-year-links-cell">
-                <ul class="erp-year-links">
-                    <li><strong>Calendar:</strong><span class="erp-year-links-group">
-                        {% if perms.core.view_schoolcalendarday %}<a href="{% url 'core:academic-year-calendar' academic_year.pk %}">Calendar</a>{% endif %}
-                        {% if perms.core.view_academicterm %}<a href="{% url 'core:academic-year-terms' academic_year.pk %}">Terms</a>{% endif %}
-                    </span></li>
-                    <li><strong>Teaching:</strong><span class="erp-year-links-group">
-                        {% if perms.core.view_academicsubjectoffering %}<a href="{% url 'core:academic-year-offerings' academic_year.pk %}">Subjects offered</a>{% endif %}
-                        {% if perms.core.view_sectionclassteacher %}<a href="{% url 'core:academic-year-class-teachers' academic_year.pk %}">Class teachers</a>{% endif %}
-                        {% if perms.core.view_assessmentteacherassignment %}<a href="{% url 'core:academic-year-teacher-assignments' academic_year.pk %}">Subject teachers</a>{% endif %}
-                        {% if perms.core.view_sectionclassteacher %}<a href="{% url 'core:academic-year-assignments' academic_year.pk %}">Assignment overview</a>{% endif %}
-                    </span></li>
-                    <li><strong>Assessment:</strong><span class="erp-year-links-group">
-                        {% if perms.core.view_assessment %}<a href="{% url 'core:academic-year-assessments' academic_year.pk %}">Assessments</a>{% endif %}
-                        {% if perms.core.view_gradingscale %}<a href="{% url 'core:academic-year-grading-scales' academic_year.pk %}">Grading</a>{% endif %}
-                    </span></li>
-                </ul>
+                {% include "partials/_academic_year_links.html" %}
             </td>
         </tr>
         {% empty %}
         <tr>
-            <td colspan="5">No Academic Years yet.{% if perms.core.add_academicyear %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:academic-year-create' %}">Create academic year</a>{% endif %}</td>
+            <td colspan="5">{% include "partials/_academic_year_empty.html" %}</td>
         </tr>
         {% endfor %}
     </tbody>
 </table>
 </div>
 </div>
+</div>
+{% if academic_years %}
+{# role="list": Safari drops list semantics from a ul with list-style: none. #}
+<ul class="erp-year-cards d-md-none d-print-none" role="list">
+    {% for academic_year in academic_years %}
+    <li class="erp-year-card">
+        <h2 class="erp-year-card-name">{{ academic_year.name }}</h2>
+        <p class="erp-year-card-meta">{{ academic_year.start_date }} – {{ academic_year.end_date }}<br>Saturdays: {{ academic_year.saturdays_instructional|yesno:"Instructional,Off" }}</p>
+        {% include "partials/_academic_year_links.html" %}
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<div class="erp-year-cards-empty d-md-none d-print-none">{% include "partials/_academic_year_empty.html" %}</div>
+{% endif %}
 {% endblock %}
