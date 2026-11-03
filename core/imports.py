@@ -37,6 +37,7 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from accounts.models import SecurityEvent
+from core.charts import natural_key
 from core.models import (
     ADMISSION_NUMBER_VALIDATOR,
     AcademicEnrollment,
@@ -732,12 +733,17 @@ def discard_batch(batch, *, user):
     )
 
 
+def _create_missing_classes(names, classes):
+    """Add new Classes/Grades after the existing ones, Grade 2 before Grade 10 whatever the file order."""
+    for name in sorted(names, key=natural_key):
+        if name_key(name) not in classes:
+            classes[name_key(name)] = ClassGrade.objects.create(name=name)
+
+
 def _apply(batch, plan, user):
     """Create everything in `plan` through the domain workflow."""
     classes = {name_key(c.name): c for c in ClassGrade.objects.all()}
-    for name in plan.classes:
-        if name_key(name) not in classes:
-            classes[name_key(name)] = ClassGrade.objects.create(name=name)
+    _create_missing_classes(plan.classes, classes)
     new_sections = {}
     for class_key, section_name in plan.sections:
         class_grade = classes[class_key]

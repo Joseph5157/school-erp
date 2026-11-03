@@ -333,25 +333,89 @@ class SchoolCalendarDay(models.Model):
         return f"{self.academic_year} {self.date} ({kind}){suffix}"
 
 
+def _renumber(model, rows, submitted):
+    """Give `rows` ({str(pk): instance}) positions 1..n in `submitted` order. False if already so.
+
+    The unique position rule is checked row by row, so a direct renumber could collide
+    depending on the order Postgres visits rows in. Every row first moves to a number that
+    neither an old nor a new position uses; the final numbers are then all free.
+    """
+    final = {pk: position for position, pk in enumerate(submitted, start=1)}
+    if all(row.display_order == final[pk] for pk, row in rows.items()):
+        return False
+
+    taken = {row.display_order for row in rows.values()} | set(final.values())
+    parking = (number for number in itertools.count(1) if number not in taken)
+    for row in rows.values():
+        row.display_order = next(parking)
+    model.objects.bulk_update(rows.values(), ["display_order"])
+
+    now = timezone.now()
+    for pk, row in rows.items():
+        row.display_order = final[pk]
+        row.updated_at = now
+    model.objects.bulk_update(rows.values(), ["display_order", "updated_at"])
+    return True
+
+
 class ClassGrade(models.Model):
     """A reusable, year-agnostic Class/Grade reference record.
 
     Per docs/adr/0001-academic-structure-and-enrollment-history.md, Class/Grade
     is not recreated per Academic Year and carries no year relationship. It is
     referenced by Section, and later by Academic Enrollment.
+
+    `display_order` is explicit, never inferred from the name, because schools
+    use names like Nursery and LKG that have no number to sort by.
     """
 
     name = models.CharField(max_length=100, unique=True)
+    display_order = models.PositiveSmallIntegerField(
+        blank=True,
+        validators=[MinValueValidator(1)],
+        help_text="Position of this Class/Grade in lists; 1 is shown first. Leave blank to place it last.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ["name"]
+        ordering = ["display_order"]
         verbose_name = "Class/Grade"
         verbose_name_plural = "Classes/Grades"
+        constraints = [
+            models.UniqueConstraint(fields=["display_order"], name="classgrade_unique_display_order"),
+            models.CheckConstraint(
+                condition=models.Q(display_order__gte=1),
+                name="classgrade_display_order_positive",
+            ),
+        ]
 
     def __str__(self):
         return self.name
+
+    @classmethod
+    def next_display_order(cls):
+        """The first position after every existing Class/Grade."""
+        return (cls.objects.aggregate(last=models.Max("display_order"))["last"] or 0) + 1
+
+    @classmethod
+    def reorder(cls, ordered_pks):
+        """Renumber every Class/Grade 1..n in the given order, all or nothing.
+
+        `ordered_pks` must name each Class/Grade exactly once; otherwise ValidationError and
+        nothing is written. Returns False when the positions already match.
+        """
+        with transaction.atomic():
+            grades = {str(grade.pk): grade for grade in cls.objects.select_for_update()}
+            submitted = [str(pk) for pk in ordered_pks]
+            if len(submitted) != len(grades) or set(submitted) != set(grades):
+                raise ValidationError("The list must name every Class/Grade once.")
+            return _renumber(cls, grades, submitted)
+
+    def save(self, *args, **kwargs):
+        if self.display_order is None:
+            self.display_order = self.next_display_order()
+        super().save(*args, **kwargs)
 
 
 class Section(models.Model):
@@ -1869,10 +1933,6 @@ class AcademicSubjectOffering(models.Model):
 
         `ordered_pks` must name every offering of the Grade/year exactly once; otherwise
         ValidationError and nothing is written. Returns False when the positions already match.
-
-        The unique position rule is checked row by row, so a direct renumber could collide
-        depending on the order Postgres visits rows in. Every row first moves to a number that
-        neither an old nor a new position uses; the final numbers are then all free.
         """
         with transaction.atomic():
             offerings = {
@@ -1884,22 +1944,7 @@ class AcademicSubjectOffering(models.Model):
             submitted = [str(pk) for pk in ordered_pks]
             if len(submitted) != len(offerings) or set(submitted) != set(offerings):
                 raise ValidationError("The list must name every Subject of this Class/Grade once.")
-            final = {pk: position for position, pk in enumerate(submitted, start=1)}
-            if all(offering.display_order == final[pk] for pk, offering in offerings.items()):
-                return False
-
-            taken = {offering.display_order for offering in offerings.values()} | set(final.values())
-            parking = (number for number in itertools.count(1) if number not in taken)
-            for offering in offerings.values():
-                offering.display_order = next(parking)
-            cls.objects.bulk_update(offerings.values(), ["display_order"])
-
-            now = timezone.now()
-            for pk, offering in offerings.items():
-                offering.display_order = final[pk]
-                offering.updated_at = now
-            cls.objects.bulk_update(offerings.values(), ["display_order", "updated_at"])
-        return True
+            return _renumber(cls, offerings, submitted)
 
     def clean(self):
         super().clean()

@@ -385,8 +385,8 @@ class StudentsNeedingAttentionTests(MarksAnalyticsFixture, TestCase):
         self.assertEqual(self.attention()["total"], 0)
 
     def test_rows_order_by_class_then_name_not_by_performance(self):
-        grade10 = ClassGrade.objects.create(name="Grade 10")
-        grade2 = ClassGrade.objects.create(name="Grade 2")
+        grade10 = ClassGrade.objects.create(name="Grade 10", display_order=100)
+        grade2 = ClassGrade.objects.create(name="Grade 2", display_order=50)
         sec10 = Section.objects.create(class_grade=grade10, name="A")
         sec2 = Section.objects.create(class_grade=grade2, name="A")
         zed = self.enroll_student("Zed Best", grade2, sec2)
@@ -402,7 +402,7 @@ class StudentsNeedingAttentionTests(MarksAnalyticsFixture, TestCase):
                     pass_mark=10, name=f"{subject.name} {enrollment.pk}",
                 )
         names = [r["name"] for r in self.attention()["rows"]]
-        # Class order is natural (the fixture's class, then Grade 2, then Grade 10).
+        # Class order is the stored position (the fixture's class, then Grade 2, then Grade 10).
         self.assertEqual(names, ["Meena Das", "Zed Best", "Amy Worst"])
 
     def test_limit_trims_rows_and_the_rest_keeps_the_others(self):

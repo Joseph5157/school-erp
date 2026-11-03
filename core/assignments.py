@@ -53,7 +53,7 @@ def overview(academic_year, on_date):
     on_date = min(max(on_date, academic_year.start_date), academic_year.end_date)
     teachers = active_teacher_ids()
     sections = list(Section.objects.select_related("class_grade").order_by(
-        "class_grade__name", "name"
+        "class_grade__display_order", "name"
     ))
     sections_by_grade = {}
     for section in sections:
@@ -87,7 +87,7 @@ def overview(academic_year, on_date):
         AcademicSubjectOffering.objects.filter(academic_year=academic_year)
         .select_related("class_grade", "subject")
         .prefetch_related("section_links__section__class_grade")
-        .order_by("class_grade__name", "subject__name")
+        .order_by("class_grade__display_order", "subject__name")
     )
     subject_rows = []
     for offering, section in _offering_sections(offerings, sections_by_grade):
@@ -116,7 +116,7 @@ def teacher_load(user):
     class_rows = (
         SectionClassTeacher.objects.filter(teacher=user)
         .select_related("academic_year", "section__class_grade")
-        .order_by("-academic_year__start_date", "section__class_grade__name", "start_date")
+        .order_by("-academic_year__start_date", "section__class_grade__display_order", "start_date")
     )
     subject_rows = (
         AssessmentTeacherAssignment.objects.filter(teacher=user)
@@ -178,7 +178,7 @@ def plan_copy(source, target):
     source_rows = list(
         SectionClassTeacher.objects.filter(academic_year=source)
         .select_related("teacher", "section__class_grade")
-        .order_by("section__class_grade__name", "section__name", "start_date")
+        .order_by("section__class_grade__display_order", "section__name", "start_date")
     )
     effective_at_end = {
         row.section_id: row for row in source_rows if row.is_effective_on(source.end_date)
@@ -211,7 +211,7 @@ def plan_copy(source, target):
         .effective_on(source.end_date)
         .select_related("teacher", "offering__subject", "offering__class_grade",
                         "section__class_grade")
-        .order_by("offering__class_grade__name", "offering__subject__name", "section__name")
+        .order_by("offering__class_grade__display_order", "offering__subject__name", "section__name")
     ):
         label = (
             f"{assignment.offering.subject.name} {assignment.section}: "

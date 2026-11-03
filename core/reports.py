@@ -120,7 +120,7 @@ def daily_absentees(on_date):
             "register__academic_year",
         )
         .order_by(
-            "register__section__class_grade__name",
+            "register__section__class_grade__display_order",
             "register__section__name",
             "academic_enrollment__student__full_name",
         )

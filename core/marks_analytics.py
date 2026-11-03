@@ -387,12 +387,13 @@ def students_needing_attention(
                 "student_id": student_id,
                 "name": enrollment.student.full_name,
                 "class_name": enrollment.class_grade.name,
+                "class_order": enrollment.class_grade.display_order,
                 "below_subjects": subjects,
                 "absent_days": days,
                 "reason": reason,
             }
         )
-    rows.sort(key=lambda r: (charts.natural_key(r["class_name"]), r["name"].lower(), r["student_id"]))
+    rows.sort(key=lambda r: (r["class_order"], r["name"].lower(), r["student_id"]))
     return {
         "rows": rows[:limit],
         "rest": rows[limit:],

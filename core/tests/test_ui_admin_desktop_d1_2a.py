@@ -28,8 +28,8 @@ class SchoolConfigurationListsFixture(AuthorizationClientsMixin):
         self.year = AcademicYear.objects.create(
             name="2026-27", start_date=datetime.date(2026, 6, 1), end_date=datetime.date(2027, 3, 31)
         )
-        self.class_two = ClassGrade.objects.create(name="Class 2")
-        self.class_one = ClassGrade.objects.create(name="Class 1")
+        self.class_two = ClassGrade.objects.create(name="Class 2", display_order=2)
+        self.class_one = ClassGrade.objects.create(name="Class 1", display_order=1)
         self.one_a = Section.objects.create(class_grade=self.class_one, name="A")
         self.one_b = Section.objects.create(class_grade=self.class_one, name="B")
         self.english = Subject.objects.create(name="English", code="ENG")

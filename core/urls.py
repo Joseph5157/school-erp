@@ -275,6 +275,7 @@ urlpatterns = [
     ),
     path("classes/", views.class_grade_list, name="class-grade-list"),
     path("classes/create/", views.class_grade_create, name="class-grade-create"),
+    path("classes/order/", views.class_grade_reorder, name="class-grade-reorder"),
     path("classes/<int:pk>/", views.class_grade_detail, name="class-grade-detail"),
     path("classes/<int:pk>/sections/create/", views.section_create, name="section-create"),
     path("applicants/", views.applicant_list, name="applicant-list"),

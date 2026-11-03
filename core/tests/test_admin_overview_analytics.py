@@ -1118,9 +1118,9 @@ class OverviewChartCardsTests(AnalyticsFixture, TestCase):
 
     def test_lowest_and_best_class_callouts_use_the_same_number_as_the_columns(self):
         classes = [
-            {"class_name": "Grade 2", "class_grade_id": 1, "percentage": 84.5,
+            {"class_name": "Grade 2", "class_grade_id": 1, "class_order": 1, "percentage": 84.5,
              "display": "85", "present": 169, "absent": 31},
-            {"class_name": "Grade 3", "class_grade_id": 2, "percentage": 100.0,
+            {"class_name": "Grade 3", "class_grade_id": 2, "class_order": 2, "percentage": 100.0,
              "display": "100", "present": 5, "absent": 0},
         ]
         self.day(datetime.date(2026, 7, 2), {self.s1: P, self.s2: A})
@@ -1211,11 +1211,12 @@ class OverviewChartCardsTests(AnalyticsFixture, TestCase):
         self.assertEqual([b["label"] for b in context["class_bars_phone"]],
                          ["Grade 3", "Grade 1", "Grade 2"])
 
-    def test_class_order_is_natural_so_grade_10_follows_grade_9(self):
+    def test_class_columns_follow_the_stored_position_so_grade_10_follows_grade_9(self):
         d = datetime.date(2026, 7, 2)
         for name, student in (("Grade 10", "Ten Rao"), ("Grade 9", "Nine Rao")):
             grade, section, enrolment = self.second_class(name, student)
             self.day(d, {enrolment: P}, class_grade=grade, section=section)
+        ClassGrade.objects.filter(name="Grade 10").update(display_order=100)
         labels = [c["label"] for c in analytics.overview_context(TODAY)["class_columns"]]
         self.assertEqual(labels, ["Grade 9", "Grade 10"])
 
