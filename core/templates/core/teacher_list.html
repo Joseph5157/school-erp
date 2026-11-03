@@ -43,12 +43,12 @@
         </tr>
         {% empty %}
         <tr>
-            <td colspan="6">No teachers yet.{% if perms.accounts.manage_teacher_accounts %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:teacher-create' %}">Add teacher</a>{% endif %}</td>
+            <td colspan="6">{% if query or status %}No teachers match your search or status filter.{% else %}No teachers yet.{% if perms.accounts.manage_teacher_accounts %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:teacher-create' %}">Add teacher</a>{% endif %}{% endif %}</td>
         </tr>
         {% endfor %}
     </tbody>
 </table>
 </div>
 </div>
-{% include "partials/_table_footer.html" with table=table only %}
+{% if table.paginator.count %}{% include "partials/_table_footer.html" with table=table only %}{% endif %}
 {% endblock %}
