@@ -87,6 +87,7 @@ def teacher_create(request):
             )
         except ValidationError as error:
             form.add_error("username", error)
+            form.apply_error_state()
         else:
             return _teacher_slip(request, user, password, heading="Teacher account created")
     return render(
@@ -147,6 +148,7 @@ def teacher_username(request, pk):
             )
         except ValidationError as error:
             form.add_error("username", error)
+            form.apply_error_state()
         else:
             messages.success(request, "Username changed.")
             return redirect("core:teacher-detail", pk=teacher.pk)
@@ -164,6 +166,7 @@ def teacher_deactivate(request, pk):
             )
         except ValidationError as error:
             form.add_error(None, error)
+            form.apply_error_state()
         else:
             messages.success(request, "Teacher login deactivated. Open sessions have ended.")
             return redirect("core:teacher-detail", pk=teacher.pk)
