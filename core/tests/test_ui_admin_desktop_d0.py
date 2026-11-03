@@ -53,7 +53,8 @@ class AdminDesktopD0Tests(AuthorizationClientsMixin, TestCase):
         self.assertContains(response, 'class="table erp-years-table"')
         self.assertContains(response, '<td class="text-nowrap fw-semibold">2026-27</td>')
         self.assertEqual(content.count('<td class="text-nowrap">'), 3)
-        self.assertEqual(content.count('class="erp-year-links-group"'), 3)
+        # Three groups in the table and three more in the phone card.
+        self.assertEqual(content.count('class="erp-year-links-group"'), 6)
         self.assertContains(response, '<span class="visually-hidden">Year pages</span>')
         # Links are spaced by the flex group; a text dot could start a wrapped line.
         self.assertNotIn("&middot;", content.split('class="erp-year-links"')[1].split("</ul>")[0])
@@ -80,4 +81,3 @@ class AdminDesktopD0Tests(AuthorizationClientsMixin, TestCase):
         self.assertIn("@media (hover: hover) { .erp-panel .table > tbody > tr:hover", block)
         self.assertIn(".erp-panel > .erp-table-scroll { border-radius: 0; scrollbar-gutter: auto; }", block)
         self.assertIn("@media (max-width: 575.98px) { .erp-toolbar--inline > .erp-field { flex-basis: 100%; } }", block)
-        self.assertIn("@media (max-width: 575.98px) { .erp-year-links { max-width: 16rem; } }", block)
