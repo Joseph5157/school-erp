@@ -35,12 +35,12 @@
         </tr>
         {% empty %}
         <tr>
-            <td colspan="2">No Applicants yet.{% if perms.core.add_applicant %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:applicant-create' %}">Register applicant</a>{% endif %}</td>
+            <td colspan="2">{% if status %}No applicants match the selected admission status.{% else %}No Applicants yet.{% if perms.core.add_applicant %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:applicant-create' %}">Register applicant</a>{% endif %}{% endif %}</td>
         </tr>
         {% endfor %}
     </tbody>
 </table>
 </div>
 </div>
-{% include "partials/_table_footer.html" with table=table only %}
+{% if table.paginator.count %}{% include "partials/_table_footer.html" with table=table only %}{% endif %}
 {% endblock %}

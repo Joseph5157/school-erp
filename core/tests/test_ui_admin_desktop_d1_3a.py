@@ -75,11 +75,23 @@ class ApplicantListTests(D13AFixture, TestCase):
         content = self.client.get(self.applicants_url).content.decode()
         self.assertIn("No Applicants yet.", content)
         self.assertIn(f'href="{reverse("core:applicant-create")}">Register applicant', content)
-        # Wording is deliberately unchanged from before D1-3A (pinned by phase 3a); the footer offers Clear filters.
+        self.assertNotIn("No results", content)
+
+    def test_filter_with_no_matches_says_so_once(self):
+        Applicant.objects.all().delete()
         content = self.client.get(self.applicants_url, {"status": "ACCEPTED"}).content.decode()
+        self.assertIn("No applicants match the selected admission status.", content)
+        self.assertNotIn("No Applicants yet.", content)
+        self.assertNotIn("No results", content)
+        # The page header keeps its action; only the "nothing here yet" one goes.
+        self.assertNotIn(f'mt-2" href="{reverse("core:applicant-create")}"', content)
+        self.assertEqual(content.count("Clear filters"), 1)
+
+    def test_an_invalid_status_is_not_treated_as_a_filter(self):
+        Applicant.objects.all().delete()
+        content = self.client.get(self.applicants_url, {"status": "BOGUS"}).content.decode()
         self.assertIn("No Applicants yet.", content)
-        self.assertIn("No results", content)
-        self.assertIn("Clear filters", content)
+        self.assertNotIn("Clear filters", content)
 
     def test_long_name_is_not_truncated(self):
         self.assertIn(LONG_NAME, self.client.get(self.applicants_url).content.decode())
@@ -226,12 +238,17 @@ class TeacherListTests(D13AFixture, TestCase):
         self.assertRegex(content, r'href="[^"]*q=extra[^"]*page=2')
 
     def test_empty_and_filtered_empty_states(self):
-        content = self.client.get(self.teachers_url, {"q": "nobody-matches"}).content.decode()
-        self.assertIn("No teachers yet.", content)  # wording unchanged from before D1-3A
-        self.assertIn("Clear filters", content)
+        for params in ({"q": "nobody-matches"}, {"q": "nobody-matches", "status": "active"}):
+            with self.subTest(params=params):
+                content = self.client.get(self.teachers_url, params).content.decode()
+                self.assertIn("No teachers match your search or status filter.", content)
+                self.assertNotIn("No teachers yet.", content)
+                self.assertNotIn("No results", content)
+                self.assertEqual(content.count("Clear filters"), 1)
         get_user_model().objects.filter(groups=self.teachers).delete()
         content = self.client.get(self.teachers_url).content.decode()
         self.assertIn("No teachers yet.", content)
+        self.assertNotIn("No results", content)
         self.assertIn(f'href="{reverse("core:teacher-create")}">Add teacher', content)
 
     def test_long_name_visible_and_header_action_unchanged(self):

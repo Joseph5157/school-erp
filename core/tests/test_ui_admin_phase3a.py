@@ -166,7 +166,7 @@ class ApplicantTableTests(AuthorizationClientsMixin, TestCase):
 
     def test_empty_filter_result_keeps_empty_row_and_clear_link(self):
         response = self.administrator.get(self.url, {"status": "REJECTED"})
-        self.assertContains(response, "No Applicants yet.")
+        self.assertContains(response, "No applicants match the selected admission status.")
         self.assertContains(response, "Clear filters")
 
     def test_non_admin_still_forbidden(self):

@@ -173,7 +173,7 @@ class SortSurvivesFilteringTests(AuthorizationClientsMixin, TestCase):
     def test_clear_links_do_not_carry_the_sort(self):
         cases = (
             ("core:student-list", {"q": "x", "sort": "-name"}, "Clear search"),
-            ("core:applicant-list", {"status": "applied", "sort": "-name"}, "Clear filters"),
+            ("core:applicant-list", {"status": "ACCEPTED", "sort": "-name"}, "Clear filters"),
             ("core:teacher-list", {"q": "x", "sort": "-name"}, "Clear filters"),
         )
         for name, query, label in cases:
