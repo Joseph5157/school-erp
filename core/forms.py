@@ -1371,7 +1371,7 @@ class ContactConsentForm(forms.Form):
 
 class AttendanceSummaryForm(forms.Form):
     section = forms.ModelChoiceField(
-        Section.objects.select_related("class_grade").order_by("class_grade__name", "name")
+        Section.objects.select_related("class_grade").order_by("class_grade__display_order", "name")
     )
     start = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
     end = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
@@ -1395,10 +1395,10 @@ class AnnouncementForm(forms.Form):
                            help_text="Plain text. Line breaks are kept.")
     audience = forms.ChoiceField(choices=Announcement.Audience.choices,
                                  widget=forms.RadioSelect, initial=Announcement.Audience.ALL)
-    class_grade = forms.ModelChoiceField(ClassGrade.objects.order_by("name"), required=False,
+    class_grade = forms.ModelChoiceField(ClassGrade.objects.all(), required=False,
                                          label="Class")
     section = forms.ModelChoiceField(
-        Section.objects.select_related("class_grade").order_by("class_grade__name", "name"),
+        Section.objects.select_related("class_grade").order_by("class_grade__display_order", "name"),
         required=False,
     )
 

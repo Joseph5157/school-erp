@@ -1413,7 +1413,7 @@ def my_students(request):
     enrollments = list(
         teacher_student_scope(request.user, today)
         .select_related("student", "section__class_grade")
-        .order_by("section__class_grade__name", "section__name", "student__full_name")
+        .order_by("section__class_grade__display_order", "section__name", "student__full_name")
     )
     class_sections = set(
         class_teacher_assignments(request.user, today).values_list("section_id", flat=True)
@@ -1826,7 +1826,7 @@ def academic_year_teacher_assignments(request, pk):
         AssessmentTeacherAssignment.objects.filter(offering__academic_year=academic_year)
         .select_related("teacher", "offering__class_grade", "offering__subject",
                         "offering__academic_year", "section")
-        .order_by("offering__class_grade__name", "offering__subject__name", "section__name",
+        .order_by("offering__class_grade__display_order", "offering__subject__name", "section__name",
                   "start_date")
     ):
         by_slot.setdefault((row.offering_id, row.section_id), []).append(row)
@@ -1960,7 +1960,7 @@ def academic_year_class_teachers(request, pk):
         by_section.setdefault(row.section_id, []).append(row)
     sections = []
     for section in Section.objects.select_related("class_grade").order_by(
-        "class_grade__name", "name"
+        "class_grade__display_order", "name"
     ):
         history = by_section.get(section.pk, [])
         current = next((row for row in history if row.is_effective_on(today)), None)
@@ -2127,6 +2127,25 @@ def class_grade_create(request):
     else:
         form = ClassGradeForm()
     return render(request, "core/class_grade_form.html", {"form": form})
+
+
+@administrator_required("core.change_classgrade")
+@require_POST
+def class_grade_reorder(request):
+    try:
+        changed = ClassGrade.reorder(request.POST.getlist("class_grade"))
+    except (ValidationError, IntegrityError):
+        messages.error(
+            request,
+            "Nothing was saved: the Classes/Grades changed after this page opened. "
+            "Check the list and try again.",
+        )
+    else:
+        if changed:
+            messages.success(request, "Class/Grade order saved.")
+        else:
+            messages.info(request, "The Class/Grade order was not changed.")
+    return redirect("core:class-grade-list")
 
 
 @administrator_required("core.add_section")
@@ -2486,7 +2505,7 @@ def term_publication(request, pk):
     """Preview (GET) and confirm (POST) publication for one Term and Section."""
     term = get_object_or_404(AcademicTerm.objects.select_related("academic_year"), pk=pk)
     sections = Section.objects.select_related("class_grade").order_by(
-        "class_grade__name", "name"
+        "class_grade__display_order", "name"
     )
     source = request.POST if request.method == "POST" else request.GET
     section = None
@@ -2974,10 +2993,10 @@ def student_list(request):
     section_choices = []
     class_filter = section_filter = None
     if current_year is not None:
-        class_choices = list(ClassGrade.objects.order_by("name"))
+        class_choices = list(ClassGrade.objects.all())
         section_choices = list(
             Section.objects.select_related("class_grade").order_by(
-                "class_grade__name", "name"
+                "class_grade__display_order", "name"
             )
         )
         class_filter = _parse_id(request, "class", {c.pk for c in class_choices})

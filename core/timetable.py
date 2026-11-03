@@ -175,7 +175,7 @@ def todays_teacher_timetable(assignments, today, year_is_instructional):
             section_id__in={section for _, section in pairs},
         )
         .select_related("period", "section__class_grade", "offering__subject")
-        .order_by("period__sequence", "section__class_grade__name", "section__name")
+        .order_by("period__sequence", "section__class_grade__display_order", "section__name")
     )
     return [
         {

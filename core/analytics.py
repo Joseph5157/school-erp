@@ -222,7 +222,11 @@ def class_comparison(period):
     rows = (
         _entries(period)
         .order_by()
-        .values("register__class_grade_id", "register__class_grade__name")
+        .values(
+            "register__class_grade_id",
+            "register__class_grade__name",
+            "register__class_grade__display_order",
+        )
         .annotate(
             present=Count("id", filter=Q(status=AttendanceStatus.PRESENT)),
             absent=Count("id", filter=Q(status=AttendanceStatus.ABSENT)),
@@ -232,6 +236,7 @@ def class_comparison(period):
         {
             "class_grade_id": row["register__class_grade_id"],
             "class_name": row["register__class_grade__name"],
+            "class_order": row["register__class_grade__display_order"],
             "present": row["present"],
             "absent": row["absent"],
             "percentage": reports.percentage(row["present"], row["absent"]),
@@ -668,13 +673,13 @@ def overview_context(
         "class_columns": charts.columns(
             [
                 _class_row(row, include_class_links)
-                for row in sorted(classes, key=lambda r: charts.natural_key(r["class_name"]))
+                for row in sorted(classes, key=lambda r: r["class_order"])
             ]
         ),
         "class_bars_phone": [_class_row(row, include_class_links) for row in classes[:5]],
         "class_bars_rest": [
             _class_row(row, include_class_links)
-            for row in sorted(classes[5:], key=lambda r: charts.natural_key(r["class_name"]))
+            for row in sorted(classes[5:], key=lambda r: r["class_order"])
         ],
         "points": points,
         "summary": trend_summary(period, points),

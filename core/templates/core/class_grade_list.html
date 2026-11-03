@@ -3,6 +3,9 @@
 {% block content %}
 {% if perms.core.add_classgrade %}{% url 'core:class-grade-create' as create_url %}{% endif %}
 {% include "partials/_page_header.html" with eyebrow="School setup" title="Classes/Grades" purpose="Each Class/Grade holds its Sections. Open one to see them." primary_url=create_url primary_label="Create Class/Grade" only %}
+{% with count=class_grades|length %}
+{# Starts hidden; erp.js reveals it, so without JS the order simply stays as it is. #}
+{% if perms.core.change_classgrade and count > 1 %}<p class="text-end"><button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#class-order" hidden>Change order</button></p>{% endif %}
 <div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Classes/Grades" tabindex="0">
 <table class="table erp-keep">
@@ -27,4 +30,40 @@
 </table>
 </div>
 </div>
+
+{% if perms.core.change_classgrade and count > 1 %}
+<div class="modal fade" id="class-order" tabindex="-1" aria-labelledby="class-order-title" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <form class="modal-content" method="post" action="{% url 'core:class-grade-reorder' %}" data-erp-reorder>
+            {% csrf_token %}
+            <div class="modal-header">
+                <h2 class="modal-title h5" id="class-order-title">Class/Grade order</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="erp-note-text">Move Classes/Grades into the order they should appear in lists.</p>
+                <ol class="erp-reorder-list" data-erp-reorder-list>
+                    {% for class_grade in class_grades %}
+                    <li class="erp-reorder-item" data-erp-reorder-name="{{ class_grade.name }}">
+                        <input type="hidden" name="class_grade" value="{{ class_grade.pk }}">
+                        <span class="erp-reorder-handle" data-erp-reorder-handle title="Drag to move" aria-hidden="true" hidden><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><circle cx="5.5" cy="3" r="1.4"/><circle cx="10.5" cy="3" r="1.4"/><circle cx="5.5" cy="8" r="1.4"/><circle cx="10.5" cy="8" r="1.4"/><circle cx="5.5" cy="13" r="1.4"/><circle cx="10.5" cy="13" r="1.4"/></svg></span>
+                        <span class="erp-reorder-number" data-erp-reorder-number>{{ forloop.counter }}</span>
+                        <span class="erp-reorder-name">{{ class_grade.name }}</span>
+                        <button type="button" class="btn btn-outline-secondary btn-sm erp-reorder-move" data-erp-reorder-move="up" aria-label="Move {{ class_grade.name }} up">&uarr;</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm erp-reorder-move" data-erp-reorder-move="down" aria-label="Move {{ class_grade.name }} down">&darr;</button>
+                    </li>
+                    {% endfor %}
+                </ol>
+                <p class="visually-hidden" role="status" aria-live="polite" data-erp-reorder-announce></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary" data-erp-once>Save order</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endwith %}
 {% endblock %}
+{% block extra_js %}{% if perms.core.change_classgrade %}<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js" integrity="sha384-HZZ/fukV+9G8gwTNjN7zQDG0Sp7MsZy5DDN6VfY3Be7V9dvQpEpR2jF2HlyFUUjU" crossorigin="anonymous" defer></script>{% endif %}{% endblock %}
