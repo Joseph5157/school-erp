@@ -18,7 +18,8 @@ STATUS_CHOICES = [("live", "Live"), ("withdrawn", "Withdrawn")]
 ANNOUNCEMENT_COLUMNS = (
     Column("Published", "published", ("published_at",)),
     Column("Title", "title", ("title",)),
-    Column("Audience", "audience", ("audience", "class_grade__name", "section__name")),
+    Column("Audience", "audience", ("audience", "class_grade__display_order",
+                                    "section__class_grade__display_order", "section__name")),
     Column("Status", "status", ("withdrawn_at",)),
 )
 

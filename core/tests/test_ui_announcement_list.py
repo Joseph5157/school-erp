@@ -1,5 +1,6 @@
 """Announcements list: search, filters, paging and phone cards (admin mobile audits, task 8)."""
 
+import re
 
 from django.db import connection
 from django.test import TestCase
@@ -7,6 +8,7 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from core import announcements
+from core.models import ClassGrade, Section
 from core.tests.test_phase7_announcements import CLASS, SECTION
 from core.tests.test_ui_admin_phase3b import PreviewFixture
 
@@ -136,3 +138,30 @@ class ListTests(PreviewFixture, TestCase):
         with CaptureQueriesContext(connection) as many:
             self.get()
         self.assertEqual(len(many), len(few))
+
+
+class AudienceSortTests(PreviewFixture, TestCase):
+    """Grades sort by their stored position, not their name (Grade 10 would come before Grade 2)."""
+
+    def setUp(self):
+        super().setUp()
+        self.grade2 = ClassGrade.objects.create(name="Grade 2", display_order=40)
+        self.grade10 = ClassGrade.objects.create(name="Grade 10", display_order=50)
+        self.two_a = Section.objects.create(class_grade=self.grade2, name="A")
+        self.ten_a = Section.objects.create(class_grade=self.grade10, name="A")
+
+    def titles(self, sort, audience):
+        page = html(self.administrator.get(LIST, {"sort": sort, "audience": audience}))
+        return re.findall(r'<th scope="row"[^>]*><a href="[^"]+">([^<]+)</a></th>', table_part(page))
+
+    def test_class_notices_sort_by_grade_position(self):
+        self.notice(CLASS, class_grade=self.grade10, title="Ten")
+        self.notice(CLASS, class_grade=self.grade2, title="Two")
+        self.assertEqual(self.titles("audience", "CLASS"), ["Two", "Ten"])
+        self.assertEqual(self.titles("-audience", "CLASS"), ["Ten", "Two"])
+
+    def test_section_notices_sort_by_their_grade_position(self):
+        self.notice(SECTION, section=self.ten_a, title="Ten A")
+        self.notice(SECTION, section=self.two_a, title="Two A")
+        self.assertEqual(self.titles("audience", "SECTION"), ["Two A", "Ten A"])
+        self.assertEqual(self.titles("-audience", "SECTION"), ["Ten A", "Two A"])
