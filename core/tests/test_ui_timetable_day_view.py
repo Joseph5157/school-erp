@@ -6,6 +6,7 @@ from datetime import date
 from django.db import connection
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
+from django.urls import reverse
 
 from core.tests.test_timetable_grid_ui import TODAY, GridFixture, pinned
 
@@ -113,3 +114,70 @@ class DayViewTests(GridFixture, TestCase):
         with CaptureQueriesContext(connection) as ctx:
             self.client.get(self.grid_url(on=TODAY) + "&day=2")
         self.assertEqual(len(ctx), before)
+
+
+@pinned()
+class DayCarriedThroughTests(GridFixture, TestCase):
+    """Editing a slot from the phone day view returns to the same weekday tab."""
+
+    def setUp(self):
+        self.build_grid()
+        self.assign_from(self.rao, self.maths, self.six_a, date(2026, 6, 1))
+        self.tue = self.make_slot(weekday=1)
+
+    def url(self, name, slot, query):
+        return reverse(f"core:{name}", args=[slot.pk]) + query
+
+    def test_links_in_a_day_view_keep_the_day(self):
+        html = phone_html(self.client.get(self.grid_url(on=TODAY) + "&day=1"))
+        links = re.findall(r'href="([^"]*/slots/[^"]*)"', html)
+        self.assertGreaterEqual(len(links), 3)  # change, end, add (P2)
+        for link in links:
+            self.assertIn("day=1", link, link)
+
+    def test_post_with_day_redirects_with_day(self):
+        query = f"?date={TODAY.isoformat()}&day=1"
+        response = self.client.post(
+            self.url("timetable-slot-end", self.tue, query), {"end_date": "2026-11-30"}
+        )
+        self.assertRedirects(response, self.grid_url(on=TODAY) + "&day=1")
+
+    def test_forms_carry_day_in_cancel_and_back_links(self):
+        query = f"?date={TODAY.isoformat()}&day=1"
+        page = self.client.get(self.url("timetable-slot-change", self.tue, query))
+        self.assertContains(page, "&amp;day=1")
+        future = self.make_slot(weekday=2, start_date=date(2026, 12, 1))
+        page = self.client.get(self.url("timetable-slot-delete", future, query))
+        self.assertContains(page, "day=1", count=1)  # Cancel
+        started = self.client.get(self.url("timetable-slot-delete", self.tue, query))
+        self.assertContains(started, "day=1", count=2)  # End this slot, Back to timetable
+
+    def test_bad_day_is_ignored_on_post(self):
+        for index, bad in enumerate(("abc", "9", "-1", "", "1<x>")):
+            with self.subTest(bad):
+                slot = self.make_slot(weekday=index, period=self.p2)
+                query = f"?date={TODAY.isoformat()}&day={bad}"
+                response = self.client.post(
+                    self.url("timetable-slot-end", slot, query), {"end_date": "2026-11-30"}
+                )
+                self.assertRedirects(response, self.grid_url(on=TODAY))
+
+    def test_no_day_redirects_as_before(self):
+        response = self.client.post(
+            self.url("timetable-slot-end", self.tue, f"?date={TODAY.isoformat()}"),
+            {"end_date": "2026-11-30"},
+        )
+        self.assertRedirects(response, self.grid_url(on=TODAY))
+
+    def test_view_only_user_sees_no_action_links_in_the_day_view(self):
+        from django.contrib.auth.models import Permission
+
+        user = self.make_user("viewer")
+        user.user_permissions.add(*Permission.objects.filter(
+            content_type__app_label="core",
+            codename__in=["view_timetableslot", "view_timetableperiod"],
+        ))
+        self.client.force_login(user)
+        html = phone_html(self.client.get(self.grid_url(on=TODAY) + "&day=1"))
+        self.assertNotIn("<a class=\"btn", html)
+        self.assertNotIn("/slots/", html.replace("/sections/", ""))

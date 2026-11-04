@@ -116,9 +116,26 @@ def timetable_period_delete(request, pk):
 # --- TDB-4D: Section weekly grid and slot workflow ---------------------------------------
 
 
-def _grid_url(academic_year, section, on=None):
+def _query(on=None, day=None):
+    params = {}
+    if on:
+        params["date"] = on.isoformat()
+    if day is not None:
+        params["day"] = day
+    return f"?{urlencode(params)}" if params else ""
+
+
+def _grid_url(academic_year, section, on=None, day=None):
     url = reverse("core:timetable-grid", args=[academic_year.pk, section.pk])
-    return f"{url}?{urlencode({'date': on.isoformat()})}" if on else url
+    return url + _query(on, day)
+
+
+def _return_day(request):
+    """The weekday tab the user was on (0-5), or None. Anything else is ignored."""
+    value = request.GET.get("day", "")
+    if value in {str(n) for n in range(6)}:
+        return int(value)
+    return None
 
 
 def _return_date(request):
@@ -129,8 +146,8 @@ def _return_date(request):
         return None
 
 
-def _with_date(url, on):
-    return f"{url}?{urlencode({'date': on.isoformat()})}" if on else url
+def _with_date(url, on, day=None):
+    return url + _query(on, day)
 
 
 def _default_schedule_date(academic_year, today):
@@ -226,6 +243,7 @@ def timetable_grid(request, pk, section_pk):
         .filter(section=section, offering__academic_year=academic_year)
         .select_related("teacher")
     }
+    return_day = _return_day(request)
     user = request.user
     can_add = user.has_perm("core.add_timetableslot")
     can_change = user.has_perm("core.change_timetableslot")
@@ -248,7 +266,7 @@ def timetable_grid(request, pk, section_pk):
                     cell["add_url"] = _with_date(
                         reverse("core:timetable-slot-create",
                                 args=[academic_year.pk, section.pk, period.pk, weekday]),
-                        schedule_date,
+                        schedule_date, return_day,
                     )
             else:
                 cell["teacher"] = teachers.get(slot.offering_id)
@@ -260,7 +278,8 @@ def timetable_grid(request, pk, section_pk):
                 cell["can_delete"] = can_delete and slot.start_date > today
                 for action in ("change", "end", "delete"):
                     cell[f"{action}_url"] = _with_date(
-                        reverse(f"core:timetable-slot-{action}", args=[slot.pk]), schedule_date
+                        reverse(f"core:timetable-slot-{action}", args=[slot.pk]), schedule_date,
+                        return_day,
                     )
             cells.append(cell)
         rows.append({"period": period, "cells": cells})
@@ -289,13 +308,13 @@ def _slot_for(pk):
     )
 
 
-def _slot_form_page(request, form, slot_cell, academic_year, section, on, **extra):
+def _slot_form_page(request, form, slot_cell, academic_year, section, on, day=None, **extra):
     return render(
         request,
         "core/timetable_slot_form.html",
         {
             "form": form, "cell_label": slot_cell, "academic_year": academic_year,
-            "section": section, "cancel_url": _grid_url(academic_year, section, on), **extra,
+            "section": section, "cancel_url": _grid_url(academic_year, section, on, day), **extra,
         },
     )
 
@@ -309,6 +328,7 @@ def timetable_slot_create(request, pk, section_pk, period_pk, weekday):
         raise Http404("Unknown weekday.")
     today = models.business_today()
     on = _return_date(request)
+    day = _return_day(request)
     start = max(on or _default_schedule_date(academic_year, today), today)
     options = {"academic_year": academic_year, "section": section, "today": today}
     if request.method == "POST":
@@ -329,12 +349,12 @@ def timetable_slot_create(request, pk, section_pk, period_pk, weekday):
                     f"{offering.subject.name} scheduled for {section}, {period.label} on "
                     f"{slot.get_weekday_display()} from {slot.start_date:%d %b %Y}.",
                 )
-                return redirect(_grid_url(academic_year, section, on))
+                return redirect(_grid_url(academic_year, section, on, day))
     else:
         form = TimetableSlotCreateForm(initial={"start_date": start}, **options)
-    day = dict(TimetableSlot.WEEKDAY_CHOICES)[weekday]
+    weekday_name = dict(TimetableSlot.WEEKDAY_CHOICES)[weekday]
     return _slot_form_page(
-        request, form, f"{section} · {period.label} · {day}", academic_year, section, on,
+        request, form, f"{section} · {period.label} · {weekday_name}", academic_year, section, on, day,
         title="Add slot", submit_label="Add slot",
     )
 
@@ -345,6 +365,7 @@ def timetable_slot_change(request, pk):
     academic_year, section = slot.period.academic_year, slot.section
     today = models.business_today()
     on = _return_date(request)
+    day = _return_day(request)
     if request.method == "POST":
         form = TimetableSlotChangeForm(request.POST, slot=slot, today=today)
         if form.is_valid():
@@ -362,13 +383,13 @@ def timetable_slot_change(request, pk):
                     f"{slot.period.label} on {slot.get_weekday_display()} changed from "
                     f"{form.cleaned_data['effective_from']:%d %b %Y}.",
                 )
-                return redirect(_grid_url(academic_year, section, on))
+                return redirect(_grid_url(academic_year, section, on, day))
     else:
         form = TimetableSlotChangeForm(slot=slot, today=today)
     return _slot_form_page(
         request, form,
         f"{section} · {slot.period.label} · {slot.get_weekday_display()}",
-        academic_year, section, on, title="Change slot", submit_label="Save change",
+        academic_year, section, on, day, title="Change slot", submit_label="Save change",
     )
 
 
@@ -378,6 +399,7 @@ def timetable_slot_end(request, pk):
     academic_year, section = slot.period.academic_year, slot.section
     today = models.business_today()
     on = _return_date(request)
+    day = _return_day(request)
     if request.method == "POST":
         form = TimetableSlotEndForm(request.POST, slot=slot, today=today)
         if form.is_valid():
@@ -392,14 +414,14 @@ def timetable_slot_end(request, pk):
                     f"{slot.get_weekday_display()} now ends on "
                     f"{form.cleaned_data['end_date']:%d %b %Y}.",
                 )
-                return redirect(_grid_url(academic_year, section, on))
+                return redirect(_grid_url(academic_year, section, on, day))
     else:
         form = TimetableSlotEndForm(slot=slot, today=today)
     return _slot_form_page(
         request, form,
         f"{section} · {slot.period.label} · {slot.get_weekday_display()} · "
         f"{slot.offering.subject.name}",
-        academic_year, section, on, title="End slot", submit_label="End slot",
+        academic_year, section, on, day, title="End slot", submit_label="End slot",
     )
 
 
@@ -408,7 +430,8 @@ def timetable_slot_delete(request, pk):
     slot = _slot_for(pk)
     academic_year, section = slot.period.academic_year, slot.section
     on = _return_date(request)
-    grid_url = _grid_url(academic_year, section, on)
+    day = _return_day(request)
+    grid_url = _grid_url(academic_year, section, on, day)
     if request.method == "POST":
         try:
             slot.delete()
@@ -423,7 +446,7 @@ def timetable_slot_delete(request, pk):
         {
             "slot": slot, "academic_year": academic_year, "section": section,
             "started": slot.has_started, "grid_url": grid_url,
-            "end_url": _with_date(reverse("core:timetable-slot-end", args=[slot.pk]), on),
+            "end_url": _with_date(reverse("core:timetable-slot-end", args=[slot.pk]), on, day),
             "can_end": request.user.has_perm("core.change_timetableslot"),
         },
     )
