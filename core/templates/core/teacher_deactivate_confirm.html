@@ -7,7 +7,9 @@
     <ul class="mb-0">
         <li>{{ teacher.get_full_name|default:teacher.username }} can no longer sign in.</li>
         <li>Open sessions end immediately.</li>
-        <li>{{ assignment_count }} assignment{{ assignment_count|pluralize }} stay on record &mdash; reassign them first if classes still need teaching.</li>
+        <li>{% if ongoing_assignments %}{{ ongoing_assignments|length }} ongoing assignment{{ ongoing_assignments|length|pluralize }} stay on record &mdash; reassign them first if classes still need teaching.
+            <ul>{% for label in ongoing_assignments %}<li>{{ label }}</li>{% endfor %}</ul>{% else %}No ongoing assignments.{% endif %}
+            {% if perms.core.view_sectionclassteacher %}<a href="{% url 'core:teacher-load' teacher.pk %}">View full workload</a>{% endif %}</li>
     </ul>
 </div>
 <form method="post" class="erp-form">

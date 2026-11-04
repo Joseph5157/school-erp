@@ -4,7 +4,6 @@
 {% if perms.core.add_attendanceregister %}{% url 'core:attendance-register-create' as attendance_create_url %}{% endif %}
 {% if perms.core.view_attendanceentry %}{% url 'core:attendance-reports' as attendance_reports_url %}{% endif %}
 {% include "partials/_page_header.html" with eyebrow="Daily operations" title="Attendance" purpose="Open registers, review completion, and find recent attendance by section or date." primary_url=attendance_create_url primary_label="Open register" secondary_url=attendance_reports_url secondary_label="View reports" only %}
-{% with supplied=form.section.value|default:form.start.value|default:form.end.value %}
 <form method="get" class="erp-toolbar erp-toolbar--inline" aria-label="Filter attendance registers">
     {% if form.errors %}
     <div class="erp-form-errors" role="alert">
@@ -16,9 +15,12 @@
     {% include "partials/_form_field.html" with field=form.section %}
     {% include "partials/_form_field.html" with field=form.start %}
     {% include "partials/_form_field.html" with field=form.end %}
+    {% include "partials/_form_field.html" with field=form.status %}
+    {% if today_only %}<input type="hidden" name="today" value="1">{% endif %}
     <div class="erp-form-actions">
         <button type="submit" class="btn btn-outline-secondary">Filter</button>
-        {% if supplied %}<a class="btn btn-link" href="{% url 'core:attendance-register-list' %}">Clear filters</a>{% endif %}
+        {% if not today_only %}<a class="btn btn-outline-secondary" href="?today=1">Today</a>{% endif %}
+        {% if filters_applied %}<a class="btn btn-link" href="{% url 'core:attendance-register-list' %}">Clear filters</a>{% endif %}
     </div>
 </form>
 {% if section_summary is not None %}
@@ -43,6 +45,8 @@
     </div>
 </section>
 {% endif %}
+{# A4 portrait is narrower than the md breakpoint, so printing must pick the table explicitly. #}
+<div class="d-none d-md-block d-print-block">
 <div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Attendance registers" tabindex="0">
 <table class="table">
@@ -59,7 +63,7 @@
         </tr>
         {% empty %}
         <tr>
-            {% if form.is_valid and supplied %}
+            {% if filters_applied %}
             <td colspan="6">No attendance registers match these filters.</td>
             {% else %}
             <td colspan="6">No attendance registers yet.{% if perms.core.add_attendanceregister %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:attendance-register-create' %}">Open register</a>{% endif %}</td>
@@ -70,6 +74,23 @@
 </table>
 </div>
 </div>
-{% endwith %}
+</div>
+{% if table.paginator.count %}
+{# role="list": Safari drops list semantics from a ul with list-style: none. #}
+<ul class="erp-register-cards d-md-none d-print-none" role="list">
+    {% for register in table.page %}
+    <li class="erp-register-card">
+        <a class="erp-register-card-name" href="{% url 'core:attendance-register-detail' register.pk %}">{{ register.date }}</a>
+        <span class="erp-register-card-status">{% include "partials/_status_badge.html" with label=register.get_status_display tone=register.status|lower only %}</span>
+        <div class="erp-register-card-details">
+            <div>{{ register.section }} · {{ register.academic_year }}</div>
+            <div>{% if register.status == "SUBMITTED" %}Submitted · {{ register.marked_count }} of {{ register.roster_count }}{% else %}Marked {{ register.marked_count }} of {{ register.roster_count }} · {{ register.unmarked_count }} unmarked{% endif %}</div>
+        </div>
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<div class="erp-register-cards-empty d-md-none d-print-none">{% if filters_applied %}No attendance registers match these filters.{% else %}No attendance registers yet.{% if perms.core.add_attendanceregister %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:attendance-register-create' %}">Open register</a>{% endif %}{% endif %}</div>
+{% endif %}
 {% include "partials/_table_footer.html" with table=table only %}
 {% endblock %}

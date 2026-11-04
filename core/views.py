@@ -7,7 +7,8 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
-from django.db.models import Count, Exists, OuterRef, Prefetch, Q, Subquery
+from django.db.models import Count, Exists, F, OuterRef, Prefetch, Q, Subquery
+from django.db.models.functions import Coalesce
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -2439,10 +2440,23 @@ def guardian_list(request):
     guardians = guardians.prefetch_related(
         Prefetch(
             "student_links",
-            queryset=StudentGuardian.objects.select_related("student").order_by(
-                "student__full_name"
+            queryset=StudentGuardian.objects.select_related("student")
+            .order_by("student__full_name")
+            .prefetch_related(
+                Prefetch(
+                    "access_grants",
+                    queryset=GuardianStudentAccess.objects.filter(revoked_at__isnull=True),
+                    to_attr="active_grants",
+                )
             ),
             to_attr="child_links",
+        ),
+        Prefetch(
+            "accounts",
+            queryset=GuardianAccount.objects.filter(revoked_at__isnull=True).select_related(
+                "user"
+            ),
+            to_attr="active_accounts",
         ),
         # Applicants not yet admitted as students; progressed ones already
         # appear above through their StudentGuardian links.
@@ -2455,6 +2469,8 @@ def guardian_list(request):
         ),
     )
     table = build_table(request, guardians, GUARDIAN_COLUMNS, "name")
+    for guardian in table.page:
+        guardian.portal_state = guardian_accounts.portal_state_label(guardian)
     return render(
         request,
         "core/guardian_list.html",
@@ -3428,20 +3444,57 @@ REGISTER_COLUMNS = (
 
 @administrator_required("core.view_attendanceregister")
 def attendance_register_list(request):
+    # The roster is the register's date-effective enrollments, exactly as
+    # AttendanceRegister.eligible_enrollments() defines it; marked counts only entries on it.
+    roster = AcademicEnrollment.objects.filter(
+        academic_year_id=OuterRef("academic_year_id"),
+        class_grade_id=OuterRef("class_grade_id"),
+        section_id=OuterRef("section_id"),
+        start_date__lte=OuterRef("date"),
+    ).filter(Q(end_date__isnull=True) | Q(end_date__gte=OuterRef("date")))
+    marked = AttendanceEntry.objects.filter(
+        register_id=OuterRef("pk"),
+        academic_enrollment__academic_year_id=OuterRef("academic_year_id"),
+        academic_enrollment__class_grade_id=OuterRef("class_grade_id"),
+        academic_enrollment__section_id=OuterRef("section_id"),
+        academic_enrollment__start_date__lte=OuterRef("date"),
+    ).filter(
+        Q(academic_enrollment__end_date__isnull=True)
+        | Q(academic_enrollment__end_date__gte=OuterRef("date"))
+    )
     registers = AttendanceRegister.objects.select_related(
         "academic_year", "class_grade", "section__class_grade"
-    ).annotate(entry_count=Count("entries"))
+    ).annotate(
+        entry_count=Count("entries"),
+        roster_count=Coalesce(
+            Subquery(roster.order_by().values("section_id").annotate(n=Count("pk")).values("n")[:1]),
+            0,
+        ),
+        marked_count=Coalesce(
+            Subquery(marked.order_by().values("register_id").annotate(n=Count("pk")).values("n")[:1]),
+            0,
+        ),
+    ).annotate(unmarked_count=F("roster_count") - F("marked_count"))
     form = AttendanceRegisterFilterForm(request.GET or None)
+    filters_applied = False
     if form.is_valid():
         section = form.cleaned_data.get("section")
         start = form.cleaned_data.get("start")
         end = form.cleaned_data.get("end")
+        status = form.cleaned_data.get("status")
         if section is not None:
             registers = registers.filter(section=section)
         if start is not None:
             registers = registers.filter(date__gte=start)
         if end is not None:
             registers = registers.filter(date__lte=end)
+        if status:
+            registers = registers.filter(status=status)
+        filters_applied = any((section, start, end, status))
+    today_only = request.GET.get("today") == "1"
+    if today_only:
+        registers = registers.filter(date=business_today())
+        filters_applied = True
     section_summary = None
     if form.is_valid() and form.cleaned_data.get("section") is not None:
         # Reportable (submitted, eligible) attendance only - Gate 7 semantics.
@@ -3466,6 +3519,8 @@ def attendance_register_list(request):
             "form": form,
             "section_summary": section_summary,
             "section_total": sum(counts.values()) if section_summary is not None else None,
+            "filters_applied": filters_applied,
+            "today_only": today_only,
         },
     )
 

@@ -85,7 +85,7 @@ class TeacherListAssignmentCountTests(Phase4Fixture, AuthorizationClientsMixin, 
 
     def counts(self):
         response = self.administrator.get(self.url)
-        return {t.username: t.assignment_count for t in response.context["teachers"]}
+        return {t.username: t.current_assignment_count for t in response.context["teachers"]}
 
     def class_teacher(self, teacher, section):
         return SectionClassTeacher.assign(

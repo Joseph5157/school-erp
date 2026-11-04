@@ -2,6 +2,7 @@
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.html import format_html
@@ -10,6 +11,17 @@ from core import announcements, notifications
 from core.authorization import administrator_required
 from core.forms import AnnouncementForm, WithdrawalForm
 from core.models import Announcement, School
+from core.tables import Column, build_table, parse_choice
+
+STATUS_CHOICES = [("live", "Live"), ("withdrawn", "Withdrawn")]
+
+ANNOUNCEMENT_COLUMNS = (
+    Column("Published", "published", ("published_at",)),
+    Column("Title", "title", ("title",)),
+    Column("Audience", "audience", ("audience", "class_grade__display_order",
+                                    "section__class_grade__display_order", "section__name")),
+    Column("Status", "status", ("withdrawn_at",)),
+)
 
 
 def _announcements():
@@ -19,8 +31,21 @@ def _announcements():
 
 @administrator_required("core.view_announcement")
 def announcement_list(request):
-    return render(request, "core/announcement_list.html",
-                  {"announcements": _announcements()[:100]})
+    query = request.GET.get("q", "").strip()
+    status = parse_choice(request, "status", STATUS_CHOICES)
+    audience = parse_choice(request, "audience", Announcement.Audience.choices)
+    notices = _announcements()
+    if query:
+        notices = notices.filter(Q(title__icontains=query) | Q(body__icontains=query))
+    if status:
+        notices = notices.filter(withdrawn_at__isnull=(status == "live"))
+    if audience:
+        notices = notices.filter(audience=audience)
+    table = build_table(request, notices, ANNOUNCEMENT_COLUMNS, "-published")
+    return render(request, "core/announcement_list.html", {
+        "table": table, "query": query, "status": status, "audience": audience,
+        "status_choices": STATUS_CHOICES, "audience_choices": Announcement.Audience.choices,
+    })
 
 
 @administrator_required("core.add_announcement")
