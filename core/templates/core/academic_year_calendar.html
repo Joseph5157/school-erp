@@ -52,10 +52,7 @@
                     <a class="btn btn-link btn-sm" href="{% url 'core:calendar-day-update' day.pk %}">Edit label</a>
                 {% endif %}
                 {% if perms.core.delete_schoolcalendarday %}
-                <form method="post" action="{% url 'core:calendar-day-delete' day.pk %}" class="d-inline">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-outline-danger btn-sm">Remove</button>
-                </form>
+                <a class="btn btn-outline-danger btn-sm" href="{% url 'core:calendar-day-delete' day.pk %}">Remove</a>
                 {% endif %}
             </td>
         </tr>

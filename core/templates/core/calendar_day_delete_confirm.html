@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Remove calendar exception{% endblock %}
+{% block content %}
+{% include "partials/_page_header.html" with eyebrow="School calendar" title="Remove calendar exception" purpose=academic_year.name only %}
+<dl class="erp-note-text">
+    <dt class="visually-hidden">Date</dt>
+    <dd class="mb-1"><strong>{{ calendar_day.date|date:"j F Y" }}</strong> ({{ calendar_day.date|date:"l" }})</dd>
+    <dt class="visually-hidden">Label</dt>
+    <dd class="mb-1">{{ calendar_day.label|default:"No label" }}</dd>
+    <dt class="visually-hidden">Current status</dt>
+    <dd>{{ calendar_day.is_instructional|yesno:"Extra instructional day,Holiday / closure" }}</dd>
+</dl>
+<div class="alert alert-warning" role="alert">
+    <p class="fw-semibold mb-2">This change has the following consequences:</p>
+    <ul class="mb-0">
+        <li>The date goes back to the weekly pattern and becomes {{ normal_instructional|yesno:"an instructional day,not an instructional day" }}.</li>
+        <li>The exception and its label are deleted.</li>
+    </ul>
+</div>
+<form method="post" class="erp-form">
+    {% csrf_token %}
+    <div class="erp-form-actions">
+        <button type="submit" class="btn btn-danger">Remove exception</button>
+        <a class="btn btn-link" href="{% url 'core:academic-year-calendar' academic_year.pk %}">Cancel</a>
+    </div>
+</form>
+{% endblock %}

@@ -200,6 +200,12 @@ RULES = {
         "Add exception",
     ),
     "calendar-day-update": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Edit exception"),
+    "calendar-day-delete": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Remove exception"),
+    "school-logo-remove": Rule(
+        "school-detail",
+        (Crumb("School", "core:school-detail", perm="core.view_school"),),
+        "Remove logo",
+    ),
     "term-create": Rule(
         "academic-year-list",
         (_ACADEMIC_YEARS, Crumb("Terms", "core:academic-year-terms", True, perm="core.view_academicyear")),

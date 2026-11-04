@@ -403,10 +403,8 @@ class LogoViewTests(LogoFixture, TestCase):
                 self.assertEqual(response.status_code, 302)
                 self.assertIn("/accounts/login/", response["Location"])
 
-    def test_management_views_accept_post_only(self):
-        for name in ("core:school-logo-upload", "core:school-logo-remove"):
-            with self.subTest(view=name):
-                self.assertEqual(self.admin_client.get(reverse(name)).status_code, 405)
+    def test_upload_view_accepts_post_only(self):
+        self.assertEqual(self.admin_client.get(reverse("core:school-logo-upload")).status_code, 405)
 
     def test_school_page_offers_management_only_to_those_who_may_change(self):
         url = reverse("core:school-detail")

@@ -174,18 +174,22 @@ def school_logo_upload(request):
 
 
 @administrator_required("core.change_school")
-@require_POST
 def school_logo_remove(request):
     school = School.objects.first()
     if school is None:
         return redirect("core:school-create")
-    try:
-        school_logo.remove_logo(school, actor=request.user)
-    except ValidationError as error:
-        messages.error(request, error.messages[0])
-    else:
-        messages.success(request, "School logo removed.")
-    return redirect("core:school-detail")
+    if request.method == "POST":
+        try:
+            school_logo.remove_logo(school, actor=request.user)
+        except ValidationError as error:
+            messages.error(request, error.messages[0])
+        else:
+            messages.success(request, "School logo removed.")
+        return redirect("core:school-detail")
+    if SchoolLogo.current_for(school) is None:
+        messages.error(request, "There is no logo to remove.")
+        return redirect("core:school-detail")
+    return render(request, "core/school_logo_remove_confirm.html", {"school": school})
 
 
 def _logo_etag(request):
@@ -342,7 +346,8 @@ def calendar_day_update(request, pk):
 @administrator_required("core.delete_schoolcalendarday")
 def calendar_day_delete(request, pk):
     calendar_day = get_object_or_404(SchoolCalendarDay, pk=pk)
-    academic_year_id = calendar_day.academic_year_id
+    academic_year = calendar_day.academic_year
+    calendar_url = redirect("core:academic-year-calendar", pk=academic_year.pk)
     if request.method == "POST":
         try:
             calendar_day.delete()
@@ -350,7 +355,22 @@ def calendar_day_delete(request, pk):
             messages.error(request, error.messages[0])
         else:
             messages.success(request, "Calendar exception removed.")
-    return redirect("core:academic-year-calendar", pk=academic_year_id)
+        return calendar_url
+    if calendar_day.attendance_registers().exists():
+        messages.error(
+            request,
+            "Attendance already exists on this date; this calendar exception cannot be removed.",
+        )
+        return calendar_url
+    return render(
+        request,
+        "core/calendar_day_delete_confirm.html",
+        {
+            "calendar_day": calendar_day,
+            "academic_year": academic_year,
+            "normal_instructional": academic_year.default_is_instructional(calendar_day.date),
+        },
+    )
 
 
 @administrator_required("core.change_schoolcalendarday")
