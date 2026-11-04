@@ -49,6 +49,23 @@ def _check_verification(method, note):
     return note
 
 
+def portal_state_label(guardian):
+    """The Guardian's portal state in one phrase, for list cards.
+
+    Reads only what the list view prefetched: `active_accounts` (unrevoked
+    accounts with their login) and, on each `child_links` entry,
+    `active_grants` (unrevoked access grants).
+    """
+    accounts = guardian.active_accounts
+    if not accounts:
+        return "No account"
+    if not accounts[0].user.is_active:
+        return "Login inactive"
+    if any(link.active_grants for link in guardian.child_links):
+        return "Access granted"
+    return "Account only"
+
+
 def active_account(guardian):
     return (
         GuardianAccount.objects.filter(guardian=guardian, revoked_at__isnull=True)

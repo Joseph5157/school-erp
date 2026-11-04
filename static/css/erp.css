@@ -1990,3 +1990,24 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 /* UI-D1-3D2 review fix: the "Guardian: <name>" purpose line wraps a long unbroken name instead of running
    past the right gutter on phones. Scoped to the Guardian form wrapper so shared headers are unchanged. */
 .erp-guardian-form-page .erp-page-purpose { overflow-wrap: break-word; min-width: 0; }
+
+/* Guardians list on phones: one card per Guardian instead of the table (shown below 768px by d-md-none).
+   The name link's ::after covers the card; phone and email sit above it so they stay separate tap targets. */
+.erp-guardian-cards { display: grid; gap: var(--erp-space-2); margin: 0; padding: 0; list-style: none; }
+.erp-guardian-cards + .erp-table-footer, .erp-guardian-cards-empty + .erp-table-footer { margin-top: var(--erp-space-4); }
+.erp-guardian-card {
+  position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--erp-space-3); align-items: center;
+  padding: var(--erp-space-3) var(--erp-space-4);
+  background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
+}
+.erp-guardian-card:active { background: var(--erp-paper); }
+.erp-guardian-card-name { min-width: 0; overflow-wrap: anywhere; font-weight: 600; color: var(--erp-ink); text-decoration: none; }
+.erp-guardian-card-name::after { content: ""; position: absolute; inset: 0; border-radius: var(--erp-radius); }
+.erp-guardian-card-name:focus-visible { outline: none; }
+.erp-guardian-card-name:focus-visible::after { outline: 3px solid var(--erp-focus-color); outline-offset: -3px; }
+.erp-guardian-card-status { grid-column: 2; grid-row: 1; }
+.erp-guardian-card-details, .erp-guardian-card-contact { grid-column: 1 / -1; min-width: 0; overflow-wrap: anywhere; color: var(--erp-ink-soft); font-size: var(--erp-text-sm); }
+.erp-guardian-card-details { margin-top: var(--erp-space-1); }
+.erp-guardian-card-contact { display: flex; flex-direction: column; margin-top: var(--erp-space-1); }
+.erp-guardian-card-contact a { position: relative; z-index: 1; display: flex; align-items: center; min-height: 2.75rem; color: var(--erp-action); }
+.erp-guardian-cards-empty { padding: var(--erp-space-4); background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius); }
