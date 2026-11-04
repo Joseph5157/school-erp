@@ -12,12 +12,19 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
-from django.db.models import Count
+from django.db.models import Count, Q
 
 from accounts.models import SecurityEvent
 from accounts.usernames import clean_new_username
+from core.academic_years import current_academic_year
 from core.guardian_accounts import generate_temporary_password
-from core.models import TEACHERS_GROUP_NAME, GuardianAccount
+from core.models import (
+    TEACHERS_GROUP_NAME,
+    AssessmentTeacherAssignment,
+    GuardianAccount,
+    SectionClassTeacher,
+    business_today,
+)
 
 Event = SecurityEvent.EventType
 NOT_A_TEACHER = "That login is not a teacher account."
@@ -48,15 +55,46 @@ def _manageable_teachers(queryset):
     )
 
 
+def _ongoing(prefix, today):
+    """Rows with no end date, or ending on or after today (the end date is inclusive)."""
+    return Q(**{f"{prefix}end_date__isnull": True}) | Q(**{f"{prefix}end_date__gte": today})
+
+
 def teacher_queryset():
-    """Manageable Teachers-group logins (active and inactive)."""
-    return (
-        _manageable_teachers(get_user_model().objects.all())
-        .annotate(
-            assignment_count=Count("assessment_assignments", distinct=True)
-            + Count("class_teacher_assignments", distinct=True)
-        )
+    """Manageable Teachers-group logins (active and inactive).
+
+    `current_assignment_count` counts subject and class-teacher assignments in the current
+    Academic Year that have no end date or end on or after today. History stays on the profile.
+    """
+    today = business_today()
+    year = current_academic_year(today)
+    subject = Q(assessment_assignments__offering__academic_year=year) & _ongoing(
+        "assessment_assignments__", today
     )
+    class_teacher = Q(class_teacher_assignments__academic_year=year) & _ongoing(
+        "class_teacher_assignments__", today
+    )
+    return _manageable_teachers(get_user_model().objects.all()).annotate(
+        current_assignment_count=Count("assessment_assignments", filter=subject, distinct=True)
+        + Count("class_teacher_assignments", filter=class_teacher, distinct=True)
+    )
+
+
+def ongoing_assignments(teacher):
+    """Labels for the teacher's ongoing assignments in the current year, class teacher first."""
+    today = business_today()
+    year = current_academic_year(today)
+    if year is None:
+        return []
+    class_rows = SectionClassTeacher.objects.filter(
+        _ongoing("", today), teacher=teacher, academic_year=year
+    ).select_related("section__class_grade")
+    subject_rows = AssessmentTeacherAssignment.objects.filter(
+        _ongoing("", today), teacher=teacher, offering__academic_year=year
+    ).select_related("offering__subject", "section__class_grade")
+    labels = [f"Class teacher: {row.section}" for row in class_rows]
+    labels += [f"{row.offering.subject.name}: {row.section}" for row in subject_rows]
+    return labels
 
 
 def _lock_teacher(user):
