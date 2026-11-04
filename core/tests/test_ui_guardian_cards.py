@@ -164,7 +164,7 @@ class GuardianCardTests(AuthorizationClientsMixin, TestCase):
         self.assertEqual(html.count("No guardians match this search"), 1)
         self.assertNotIn("<li", card_list(html))
         self.assertNotIn("d-none d-md-block", html)
-        self.assertNotIn("erp-guardian-card", html.replace("erp-guardian-cards-", ""))
+        self.assertEqual(card_list(html), "")
 
     def test_unfiltered_empty_shows_one_message(self):
         html = self.get()
