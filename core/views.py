@@ -32,6 +32,7 @@ from core import (
     reports,
     school_logo,
     setup_checklist,
+    teacher_accounts,
     timetable,
 )
 from core.academic_years import current_academic_year
@@ -2146,13 +2147,30 @@ def academic_year_assignments(request, pk):
 @administrator_required("core.view_sectionclassteacher")
 def teacher_load(request, pk):
     teacher = get_object_or_404(get_user_model(), pk=pk)
+    years = assignments.teacher_load(teacher)
+    active = is_teacher(teacher)
     return render(
         request,
         "core/teacher_load.html",
         {
             "teacher": teacher,
-            "is_active_teacher": is_teacher(teacher),
-            "years": assignments.teacher_load(teacher),
+            "is_active_teacher": active,
+            "teacher_line": (
+                f"{teacher.get_full_name()} · {teacher.username}"
+                if teacher.get_full_name()
+                else teacher.username
+            ),
+            "status_label": "Active teacher" if active else "Not an active teacher",
+            "status_tone": "active" if active else "inactive",
+            "years": years,
+            "grouped_years": [
+                (
+                    year,
+                    teacher_accounts.group_assignments(rows["class"]),
+                    teacher_accounts.group_assignments(rows["subject"]),
+                )
+                for year, rows in years
+            ],
         },
     )
 

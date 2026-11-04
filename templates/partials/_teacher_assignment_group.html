@@ -1,0 +1,6 @@
+<li class="erp-teacher-group">
+    {% if group.subject %}<strong class="erp-teacher-group-title">{{ group.subject }}</strong>{% endif %}
+    {% if show_year %}<span class="erp-teacher-group-year">{{ group.year.name }}</span>{% endif %}
+    {% for entry in group.grades %}<span class="d-block">{{ entry.grade.name }}: {% for section in entry.sections %}{{ section.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>{% endfor %}
+    <span class="d-block erp-teacher-group-dates">{{ group.start|date:"j M Y" }} &ndash; {% if group.end %}{{ group.end|date:"j M Y" }}{% else %}Ongoing{% endif %}</span>
+</li>

@@ -8,6 +8,8 @@ on a slip and are never stored in plain text, logged or put in an audit
 detail.
 """
 
+from datetime import date
+
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
@@ -195,3 +197,35 @@ def reactivate_teacher(*, user, actor):
         locked.save(update_fields=["is_active"])
         SecurityEvent.record(Event.TEACHER_REACTIVATED, actor=actor, subject_user=locked)
     return locked
+
+
+def group_assignments(assignments):
+    """Combine assignment rows that share year, subject and dates into one entry each.
+
+    Takes subject rows (AssessmentTeacherAssignment) or class teacher rows
+    (SectionClassTeacher; their subject is None). Each entry lists its grades in
+    stored display order with the sections taught in each. Rows combine only when
+    year, subject, start and end all match; entries run newest year first.
+    """
+    groups = {}
+    for row in assignments:
+        offering = getattr(row, "offering", None)
+        year = offering.academic_year if offering else row.academic_year
+        subject = offering.subject.name if offering else None
+        key = (year.pk, subject, row.start_date, row.end_date)
+        group = groups.setdefault(
+            key,
+            {"year": year, "subject": subject, "start": row.start_date, "end": row.end_date, "by_grade": {}},
+        )
+        group["by_grade"].setdefault(row.section.class_grade, []).append(row.section)
+    result = []
+    for group in groups.values():
+        by_grade = group.pop("by_grade")
+        group["grades"] = [
+            {"grade": grade, "sections": sorted(sections, key=lambda s: s.name)}
+            for grade, sections in sorted(by_grade.items(), key=lambda item: item[0].display_order)
+        ]
+        result.append(group)
+    result.sort(key=lambda g: (g["subject"] or "", g["start"], g["end"] is None, g["end"] or date.min))
+    result.sort(key=lambda g: g["year"].start_date, reverse=True)
+    return result

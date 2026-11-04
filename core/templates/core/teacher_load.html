@@ -1,22 +1,24 @@
 {% extends "base.html" %}
-{% block title %}Teacher load - {{ teacher }}{% endblock %}
+{% block title %}Teacher workload - {{ teacher }}{% endblock %}
 {% block content %}
-{% include "partials/_page_header.html" with eyebrow="Teacher" title=teacher.get_full_name|default:teacher.username only %}
-<p class="erp-note-text">{{ teacher.username }} &middot;
-    {% if is_active_teacher %}Active teacher{% else %}<strong>Not an active teacher</strong> &mdash; has no teacher access; existing assignments are kept for history.{% endif %}</p>
-{% for year, rows in years %}
+<div class="erp-teacher-page">
+{% include "partials/_page_header.html" with eyebrow="Teacher" title="Teacher workload" purpose=teacher_line status_label=status_label status_tone=status_tone only %}
+{% if not is_active_teacher %}<p class="erp-note-text">This login has no teacher access. Existing assignments are kept for history.</p>{% endif %}
+<p class="erp-note-text">Assignments are managed from <a href="{% url 'core:academic-year-list' %}">Academic Years</a>.</p>
+{% for year, class_groups, subject_groups in grouped_years %}
 <section aria-labelledby="load-year-{{ year.pk }}">
 <h2 class="erp-section-title" id="load-year-{{ year.pk }}">{{ year.name }}</h2>
-<p class="mb-1"><strong>Class teacher</strong></p>
-<ul>
-    {% for row in rows.class %}<li>{{ row.section }}: {{ row.start_date }} &ndash; {{ row.end_date|default:"open" }}</li>{% empty %}<li class="text-muted">None</li>{% endfor %}
+<h3 class="h6">Class teacher</h3>
+<ul class="erp-teacher-groups">
+    {% for group in class_groups %}{% include "partials/_teacher_assignment_group.html" with group=group show_year=False only %}{% empty %}<li class="text-muted">None</li>{% endfor %}
 </ul>
-<p class="mb-1"><strong>Subjects</strong></p>
-<ul>
-    {% for row in rows.subject %}<li>{{ row.offering.subject.name }} &middot; {{ row.section }}: {{ row.start_date }} &ndash; {{ row.end_date|default:"open" }}</li>{% empty %}<li class="text-muted">None</li>{% endfor %}
+<h3 class="h6">Subjects</h3>
+<ul class="erp-teacher-groups">
+    {% for group in subject_groups %}{% include "partials/_teacher_assignment_group.html" with group=group show_year=False only %}{% empty %}<li class="text-muted">None</li>{% endfor %}
 </ul>
 </section>
 {% empty %}
 <p>No assignments.</p>
 {% endfor %}
+</div>
 {% endblock %}

@@ -133,14 +133,13 @@ class TeacherDetailD13BTests(Phase4Fixture, TestCase):
         )
         content = self.get(teacher)
         self.assertNotIn(">None<", content)
-        subject_rows = re.findall(r"<li>(2026-27: [^<]*&middot;[^<]*)</li>", content)
-        self.assertEqual(len(subject_rows), 2)
-        self.assertIn("Mathematics", subject_rows[0])
-        self.assertIn("Sanskrit", subject_rows[1])
-        class_rows = re.findall(r"<li>(2026-27: [^<]*&ndash;[^<]*)</li>", content)
-        self.assertEqual(len(class_rows), 2)
-        self.assertIn("&ndash; 30 Sep 2026", class_rows[0])
-        self.assertTrue(class_rows[1].endswith("&ndash; open"))
+        # Grouped rows (Task 11): one entry per subject and date range, open-ended reads "Ongoing".
+        subject_rows = re.findall(r'<strong class="erp-teacher-group-title">([^<]*)</strong>', content)
+        self.assertEqual(subject_rows, ["Mathematics", "Sanskrit"])
+        class_rows = re.findall(r'erp-teacher-group-dates">([^<]*)</span>', content)
+        self.assertEqual(len(class_rows), 4)
+        self.assertTrue(class_rows[2].endswith("30 Sep 2026"))
+        self.assertTrue(class_rows[3].endswith("Ongoing"))
         self.assertLess(content.index("Subjects"), content.index("Class teacher"))
 
     def test_workload_link_requires_view_sectionclassteacher(self):
