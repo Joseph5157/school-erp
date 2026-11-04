@@ -65,6 +65,19 @@ jobs:
       - run: python manage.py check
       - name: Migrations are up to date
         run: python manage.py makemigrations --check --dry-run
+      # Autovacuum can analyze a table while a test transaction is still filling it.
+      # It cannot see those rows, so it records "0 rows", and the planner then picks
+      # plans that make the seed-demo setups take many minutes. Some runs were hit and
+      # some were not, depending on timing. This database is thrown away, so autovacuum
+      # has nothing useful to do here.
+      - name: Turn off autovacuum for the throwaway test database
+        env:
+          PGPASSWORD: erp
+        run: |
+          psql -h "$DB_HOST" -U "$DB_USER" -d postgres -c "ALTER SYSTEM SET autovacuum = off"
+          psql -h "$DB_HOST" -U "$DB_USER" -d postgres -c "SELECT pg_reload_conf()"
+          sleep 1
+          psql -h "$DB_HOST" -U "$DB_USER" -d postgres -c "SHOW autovacuum"
       - name: Test suite (PostgreSQL)
         run: |
           pip install py-spy
