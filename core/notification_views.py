@@ -23,12 +23,15 @@ QUEUE_COLUMNS = (
 @require_POST
 def guardian_consent_record(request, pk):
     guardian = get_object_or_404(Guardian, pk=pk)
-    form = ContactConsentForm(request.POST)
+    latest = guardian.contact_consents.first()
+    form = ContactConsentForm(request.POST, current_status=latest.status if latest else None)
     if form.is_valid():
         consent = notifications.record_consent(
             guardian=guardian, user=request.user, **form.cleaned_data
         )
         messages.success(request, f"WhatsApp consent recorded: {consent.get_status_display()}.")
+    elif form.errors.get("note"):
+        messages.error(request, "Consent was not recorded. " + form.errors["note"][0])
     else:
         messages.error(request, "Consent was not recorded. Choose a decision and how it was given.")
     return redirect("core:guardian-detail", pk=pk)

@@ -16,11 +16,11 @@
     <dt class="col-sm-3">Date of birth</dt>
     <dd class="col-sm-9">{{ student.date_of_birth|default:"-" }}</dd>
     <dt class="col-sm-3">Email</dt>
-    <dd class="col-sm-9">{{ student.email|default:"-" }}</dd>
+    <dd class="col-sm-9 erp-wrap-anywhere">{% if student.email %}<a href="mailto:{{ student.email }}">{{ student.email }}</a>{% else %}-{% endif %}</dd>
     <dt class="col-sm-3">Phone</dt>
-    <dd class="col-sm-9">{{ student.phone|default:"-" }}</dd>
+    <dd class="col-sm-9 erp-wrap-anywhere">{% if student.phone %}<a href="tel:{{ student.phone }}">{{ student.phone }}</a>{% else %}-{% endif %}</dd>
     <dt class="col-sm-3">Source Applicant</dt>
-    <dd class="col-sm-9"><a href="{% url 'core:applicant-detail' student.applicant.pk %}">{{ student.applicant.full_name }}</a></dd>
+    <dd class="col-sm-9 erp-wrap-anywhere"><a href="{% url 'core:applicant-detail' student.applicant.pk %}">{{ student.applicant.full_name }}</a></dd>
     <dt class="col-sm-3">Admission outcome</dt>
     <dd class="col-sm-9">{% if student.applicant.admission_status == "ACCEPTED" %}{% if student.applicant.admission_decided_at %}Accepted on {{ student.applicant.admission_decided_at|date:"j M Y" }}{% else %}Accepted{% endif %}{% else %}{{ student.applicant.get_admission_status_display }}{% endif %}</dd>
 </dl>
@@ -43,6 +43,7 @@
 
 <section id="status-history" aria-labelledby="status-history-heading">
 <h2 class="h5" id="status-history-heading">Status history</h2>
+<div class="d-none d-md-block d-print-block">
 <div class="erp-panel mb-4">
 <div class="erp-table-scroll" role="region" aria-label="Status history" tabindex="0">
 <table class="table">
@@ -65,6 +66,25 @@
 </table>
 </div>
 </div>
+</div>
+<div class="d-md-none d-print-none mb-4">
+{% if student.status_changes.all %}
+<ul class="erp-record-cards" role="list">
+    {% for change in student.status_changes.all %}
+    <li class="erp-record-card">
+        <div class="erp-record-title">{{ change.get_previous_status_display }} <span aria-hidden="true">&rarr;</span><span class="visually-hidden">to</span> {{ change.get_new_status_display }}</div>
+        <dl class="erp-record-fields">
+            <div><dt>When</dt><dd>{{ change.created_at }}</dd></div>
+            <div><dt>Reason</dt><dd>{{ change.reason|default:"-" }}</dd></div>
+            <div><dt>By</dt><dd>{{ change.changed_by|default:"-" }}</dd></div>
+        </dl>
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<p class="erp-record-empty">No status changes recorded.</p>
+{% endif %}
+</div>
 </section>
 
 <section id="placement" aria-labelledby="placement-heading">
@@ -84,7 +104,7 @@
 <p>No active placement.</p>
 {% endif %}
 {% if perms.core.add_academicenrollment %}
-    <a class="btn btn-primary mb-3" href="{% url 'core:student-enroll' student.pk %}">Record Enrollment</a>
+    <a class="btn btn-primary mb-3" href="{% url 'core:student-enroll' student.pk %}">{% if current_enrollment %}Change placement{% else %}Record enrollment{% endif %}</a>
 {% endif %}
 {% if perms.core.view_attendanceentry %}
     <a class="btn btn-outline-secondary mb-3" href="{% url 'core:student-attendance' student.pk %}">View Attendance</a>
@@ -98,6 +118,7 @@
 
 <section id="enrollment-history" aria-labelledby="enrollment-history-heading">
 <h2 class="h5" id="enrollment-history-heading">Enrollment history</h2>
+<div class="d-none d-md-block d-print-block">
 <div class="erp-panel mb-4">
 <div class="erp-table-scroll" role="region" aria-label="Enrollment history" tabindex="0">
 <table class="table">
@@ -132,6 +153,27 @@
     </tbody>
 </table>
 </div>
+</div>
+</div>
+<div class="d-md-none d-print-none mb-4">
+{% if enrollments %}
+<ul class="erp-record-cards" role="list">
+    {% for enrollment in enrollments %}
+    <li class="erp-record-card">
+        <div class="erp-record-title">{{ enrollment.academic_year }} <span class="erp-record-sub">{{ enrollment.section }}</span></div>
+        <dl class="erp-record-fields">
+            <div><dt>From</dt><dd>{{ enrollment.start_date }}</dd></div>
+            <div><dt>To</dt><dd>{{ enrollment.end_date|default:"—" }}</dd></div>
+            <div><dt>Status</dt><dd>{{ enrollment.get_status_display }}</dd></div>
+            <div><dt>Roll number</dt><dd>{{ enrollment.roll_number|default:"-" }}
+                {% if perms.core.change_academicenrollment %}<a class="ms-2 small" href="{% url 'core:enrollment-roll-number' enrollment.pk %}">Edit<span class="visually-hidden"> roll number, {{ enrollment.academic_year }}</span></a>{% endif %}</dd></div>
+        </dl>
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<p class="erp-record-empty">No enrollments yet.</p>
+{% endif %}
 </div>
 </section>
 

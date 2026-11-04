@@ -1,10 +1,11 @@
 {% extends "base.html" %}
 {% block title %}{{ teacher.get_full_name|default:teacher.username }}{% endblock %}
 {% block content %}
+<div class="erp-teacher-page">
 {% include "partials/_page_header.html" with eyebrow="Teacher login" title=teacher.get_full_name|default:teacher.username purpose=teacher.username status_label=teacher.is_active|yesno:"Active,Inactive" status_tone=teacher.is_active|yesno:"active,inactive" only %}
 <section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="teacher-account-heading">
 <h2 class="h5 mb-3" id="teacher-account-heading">Account</h2>
-<dl class="row mb-0">
+<dl class="row mb-0 erp-teacher-account">
     <dt class="col-sm-3">Username</dt>
     <dd class="col-sm-9">{{ teacher.username }}</dd>
     <dt class="col-sm-3">Email</dt>
@@ -21,6 +22,8 @@
 <div class="d-flex flex-wrap gap-2">
     <a class="btn btn-outline-secondary" href="{% url 'core:teacher-reset-password' teacher.pk %}">Reset password</a>
     <a class="btn btn-outline-secondary" href="{% url 'core:teacher-username' teacher.pk %}">Change username</a>
+</div>
+<div class="erp-danger-zone mt-4 pt-3">
     {% if teacher.is_active %}
     <a class="btn btn-danger" href="{% url 'core:teacher-deactivate' teacher.pk %}">Deactivate</a>
     {% else %}
@@ -32,12 +35,12 @@
 <section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="teacher-assignments-heading">
 <h2 class="h5 mb-3" id="teacher-assignments-heading">Assignments</h2>
 <h3 class="h6">Subjects</h3>
-<ul>
-    {% for row in subject_assignments %}<li>{{ row.offering.academic_year.name }}: {{ row.offering.subject.name }} &middot; {{ row.section }}</li>{% empty %}<li class="text-muted">None</li>{% endfor %}
+<ul class="erp-teacher-groups">
+    {% for group in subject_groups %}{% include "partials/_teacher_assignment_group.html" with group=group show_year=True only %}{% empty %}<li class="text-muted">None</li>{% endfor %}
 </ul>
 <h3 class="h6">Class teacher</h3>
-<ul{% if not perms.core.view_sectionclassteacher %} class="mb-0"{% endif %}>
-    {% for row in class_assignments %}<li>{{ row.academic_year.name }}: {{ row.section }}: {{ row.start_date }} &ndash; {{ row.end_date|default:"open" }}</li>{% empty %}<li class="text-muted">None</li>{% endfor %}
+<ul class="erp-teacher-groups{% if not perms.core.view_sectionclassteacher %} mb-0{% endif %}">
+    {% for group in class_groups %}{% include "partials/_teacher_assignment_group.html" with group=group show_year=True only %}{% empty %}<li class="text-muted">None</li>{% endfor %}
 </ul>
 {% if perms.core.view_sectionclassteacher %}<p class="mb-0"><a href="{% url 'core:teacher-load' teacher.pk %}">View full workload</a></p>{% endif %}
 </section>
@@ -58,4 +61,5 @@
 </table>
 </div>
 </section>
+</div>
 {% endblock %}

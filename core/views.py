@@ -32,6 +32,7 @@ from core import (
     reports,
     school_logo,
     setup_checklist,
+    teacher_accounts,
     timetable,
 )
 from core.academic_years import current_academic_year
@@ -2146,13 +2147,30 @@ def academic_year_assignments(request, pk):
 @administrator_required("core.view_sectionclassteacher")
 def teacher_load(request, pk):
     teacher = get_object_or_404(get_user_model(), pk=pk)
+    years = assignments.teacher_load(teacher)
+    active = is_teacher(teacher)
     return render(
         request,
         "core/teacher_load.html",
         {
             "teacher": teacher,
-            "is_active_teacher": is_teacher(teacher),
-            "years": assignments.teacher_load(teacher),
+            "is_active_teacher": active,
+            "teacher_line": (
+                f"{teacher.get_full_name()} · {teacher.username}"
+                if teacher.get_full_name()
+                else teacher.username
+            ),
+            "status_label": "Active teacher" if active else "Not an active teacher",
+            "status_tone": "active" if active else "inactive",
+            "years": years,
+            "grouped_years": [
+                (
+                    year,
+                    teacher_accounts.group_assignments(rows["class"]),
+                    teacher_accounts.group_assignments(rows["subject"]),
+                )
+                for year, rows in years
+            ],
         },
     )
 
@@ -2583,6 +2601,7 @@ def guardian_detail(request, pk):
             ("portal-account", "Portal account", "accounts" in context),
             ("student-access", "Student access", "relationships" in context),
             ("history", "Account history", "events" in context),
+            ("messaging-consent", "Messaging consent", "consents" in context),
         )
     )
     return render(request, "core/guardian_detail.html", context)
@@ -3298,12 +3317,59 @@ def student_detail(request, pk):
     )
 
 
+def placement_change_summary(student, new):
+    """What a placement change will do, for the summary shown before it is saved.
+
+    ``new`` holds the validated academic_year, class_grade, section and start_date.
+    It mirrors ``Student.enroll``: the current ACTIVE placement is closed on the
+    day before the new start date. ``current`` and ``ends_on`` are None when the
+    Student has no active placement.
+    """
+    current = (
+        student.enrollments.select_related("academic_year", "class_grade", "section__class_grade")
+        .filter(status=AcademicEnrollment.Status.ACTIVE)
+        .first()
+    )
+    ends_on = new["start_date"] - timedelta(days=1) if current is not None else None
+    return {"current": current, "new": new, "ends_on": ends_on}
+
+
 @administrator_required("core.add_academicenrollment")
 def student_enroll(request, pk):
     student = get_object_or_404(Student, pk=pk)
-    if request.method == "POST":
+    has_placement = student.enrollments.filter(status=AcademicEnrollment.Status.ACTIVE).exists()
+    if request.method == "POST" and "edit" in request.POST:
+        # Back from the summary: refill the form without showing validation noise.
+        form = AcademicEnrollmentForm(initial=request.POST.dict())
+    elif request.method == "POST":
         form = AcademicEnrollmentForm(request.POST)
         if form.is_valid():
+            # Changing a placement shows a summary first; the confirm post
+            # carries the same values and is validated again here.
+            if has_placement and "confirm" not in request.POST and request.POST.get("access_review") != "1":
+                try:
+                    student.check_placement_change(
+                        academic_year=form.cleaned_data["academic_year"],
+                        class_grade=form.cleaned_data["class_grade"],
+                        section=form.cleaned_data["section"],
+                        start_date=form.cleaned_data["start_date"],
+                    )
+                except ValidationError as error:
+                    messages.error(request, error.messages[0])
+                    return render(
+                        request,
+                        "core/enrollment_form.html",
+                        {"form": form, "student": student, "has_placement": has_placement},
+                    )
+                return render(
+                    request,
+                    "core/enrollment_confirm.html",
+                    {
+                        "student": student,
+                        "form": form,
+                        "summary": placement_change_summary(student, form.cleaned_data),
+                    },
+                )
             grants = _grants_needing_review(request, student, ending_placement=True)
             if grants is not None:
                 return _access_review_page(
@@ -3324,14 +3390,17 @@ def student_enroll(request, pk):
             except ValidationError as error:
                 messages.error(request, error.messages[0])
             else:
-                messages.success(request, "Academic Enrollment recorded.")
+                messages.success(
+                    request,
+                    "Placement changed." if has_placement else "Academic Enrollment recorded.",
+                )
                 return redirect("core:student-detail", pk=student.pk)
     else:
         form = AcademicEnrollmentForm()
     return render(
         request,
         "core/enrollment_form.html",
-        {"form": form, "student": student},
+        {"form": form, "student": student, "has_placement": has_placement},
     )
 
 

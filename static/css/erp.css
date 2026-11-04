@@ -1850,6 +1850,46 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 .erp-copy-plan li, .erp-copy-plan td { overflow-wrap: anywhere; }
 .erp-assign-cards-empty { padding: var(--erp-space-4); background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius); }
 
+/* ---------- Teacher profile and workload: grouped assignments ---------- */
+.erp-teacher-account dd,
+.erp-teacher-group,
+.erp-teacher-page .erp-page-title,
+.erp-teacher-page .erp-page-purpose { overflow-wrap: anywhere; }
+.erp-teacher-groups { padding-left: 0; list-style: none; }
+.erp-teacher-group { padding: var(--erp-space-2) 0; border-bottom: 1px solid var(--erp-rule); }
+.erp-teacher-group:last-child { border-bottom: 0; }
+.erp-teacher-group-year { color: var(--erp-ink-soft); }
+.erp-teacher-group-title + .erp-teacher-group-year { margin-left: var(--erp-space-2); }
+.erp-teacher-group-dates { color: var(--erp-ink-soft); font-size: var(--erp-text-sm); }
+.erp-danger-zone { border-top: 1px solid var(--erp-rule); }
+
+/* ---------- Student history on phones: one stacked record per row ---------- */
+.erp-wrap-anywhere, .erp-page-title, .erp-page-purpose { overflow-wrap: anywhere; }
+.erp-record-cards { display: grid; gap: var(--erp-space-2); margin: 0; padding: 0; list-style: none; }
+.erp-record-card { padding: var(--erp-space-3) var(--erp-space-4); background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius); overflow-wrap: anywhere; }
+.erp-record-title { font-weight: 600; color: var(--erp-ink); }
+.erp-record-sub { margin-left: var(--erp-space-2); font-weight: 400; color: var(--erp-ink-soft); }
+.erp-record-fields { display: grid; gap: var(--erp-space-1); margin: var(--erp-space-2) 0 0; font-size: var(--erp-text-sm); }
+.erp-record-fields > div { display: grid; grid-template-columns: minmax(6rem, 35%) minmax(0, 1fr); column-gap: var(--erp-space-3); }
+.erp-record-fields dt { font-weight: 400; color: var(--erp-ink-soft); }
+.erp-record-fields dd { margin: 0; min-width: 0; }
+.erp-record-empty { padding: var(--erp-space-4); margin: 0; background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius); }
+
+/* ---------- Timetable one-day phone view ---------- */
+.erp-day-tabs { display: flex; flex-wrap: wrap; gap: var(--erp-space-2); margin-bottom: var(--erp-space-3); }
+.erp-day-tab {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 2.75rem; padding: 0 var(--erp-space-3);
+  border: 1px solid var(--erp-rule); border-radius: .5rem;
+  color: var(--erp-ink); text-decoration: none; background: var(--erp-paper);
+}
+.erp-day-tab.is-selected { background: var(--erp-ink); color: var(--erp-paper); border-color: var(--erp-ink); }
+.erp-day-heading { font-size: 1.125rem; margin: 0 0 var(--erp-space-2); }
+.erp-day-periods { list-style: none; margin: 0; padding: 0; }
+.erp-day-period { padding: var(--erp-space-3) 0; border-top: 1px solid var(--erp-rule); overflow-wrap: anywhere; }
+.erp-day-period-label { margin: 0; font-size: var(--erp-text-sm); color: var(--erp-ink-soft); font-weight: 650; }
+.erp-day-action { min-height: 2.75rem; display: inline-flex; align-items: center; }
+
 /* ---------- UI-D1-1: teacher assignment history ---------- */
 /* Each history entry stacks status + teacher, then the date range, then its permitted actions.
    The History column keeps a floor width so a narrow container scrolls the table (inside its

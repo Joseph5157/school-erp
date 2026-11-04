@@ -197,6 +197,7 @@ class Phase1AcceptanceJourneyTests(TestCase):
                 "class_grade": class_grade.pk,
                 "section": section.pk,
                 "start_date": "2027-06-01",
+                "confirm": "1",
             },
         )
 
@@ -364,6 +365,7 @@ class Phase2ReconciledAcceptanceJourneyTests(TestCase):
                 "class_grade": self.grade.pk,
                 "section": section.pk,
                 "start_date": start.isoformat(),
+                "confirm": "1",
             },
         )
         self.assertRedirects(response, reverse("core:student-detail", args=[student.pk]))

@@ -821,6 +821,45 @@ class Student(models.Model):
                 changed_by=actor,
             )
 
+    @staticmethod
+    def _check_new_placement(class_grade, section, start_date):
+        """Rules on the new placement alone; returns the start date as a date."""
+        start_date = _as_date(start_date)
+        if start_date is None:
+            raise ValidationError("An effective start date is required.")
+        if start_date > business_today():
+            raise ValidationError("The effective start date cannot be in the future.")
+        if section.class_grade_id != class_grade.pk:
+            raise ValidationError("Selected Section does not belong to the selected Class/Grade.")
+        return start_date
+
+    @staticmethod
+    def _check_against_current(current, academic_year, class_grade, section, start_date):
+        """Rules for replacing the ACTIVE placement `current`."""
+        if (
+            current.academic_year_id == academic_year.pk
+            and current.class_grade_id == class_grade.pk
+            and current.section_id == section.pk
+        ):
+            raise ValidationError(
+                "This Student already has an active enrollment for this placement."
+            )
+        if start_date <= current.start_date:
+            raise ValidationError(
+                "The new placement must start after the current placement's "
+                f"start date ({current.start_date.isoformat()})."
+            )
+
+    def check_placement_change(self, *, academic_year, class_grade, section, start_date):
+        """Raise the ValidationError `enroll` would raise for these values, without saving.
+
+        The same checks `enroll` runs (it repeats the current-placement ones under its lock).
+        """
+        start_date = self._check_new_placement(class_grade, section, start_date)
+        current = self.current_enrollment
+        if current is not None:
+            self._check_against_current(current, academic_year, class_grade, section, start_date)
+
     def enroll(self, *, academic_year, class_grade, section, start_date, actor=None,
                access_decisions=None, access_note=""):
         """Place the Student into a new academic placement effective `start_date`.
@@ -846,13 +885,7 @@ class Student(models.Model):
         one, or a date that would produce an invalid or overlapping history is
         rejected without changing anything.
         """
-        start_date = _as_date(start_date)
-        if start_date is None:
-            raise ValidationError("An effective start date is required.")
-        if start_date > business_today():
-            raise ValidationError("The effective start date cannot be in the future.")
-        if section.class_grade_id != class_grade.pk:
-            raise ValidationError("Selected Section does not belong to the selected Class/Grade.")
+        start_date = self._check_new_placement(class_grade, section, start_date)
 
         try:
             with transaction.atomic():
@@ -867,19 +900,9 @@ class Student(models.Model):
                     student=self, status=AcademicEnrollment.Status.ACTIVE
                 ).first()
                 if current is not None:
-                    if (
-                        current.academic_year_id == academic_year.pk
-                        and current.class_grade_id == class_grade.pk
-                        and current.section_id == section.pk
-                    ):
-                        raise ValidationError(
-                            "This Student already has an active enrollment for this placement."
-                        )
-                    if start_date <= current.start_date:
-                        raise ValidationError(
-                            "The new placement must start after the current placement's "
-                            f"start date ({current.start_date.isoformat()})."
-                        )
+                    self._check_against_current(
+                        current, academic_year, class_grade, section, start_date
+                    )
                     # Phase 6 (ADR 0013): ending a placement needs an explicit
                     # retain/revoke decision for every active guardian grant.
                     from core.guardian_access import apply_review_decisions

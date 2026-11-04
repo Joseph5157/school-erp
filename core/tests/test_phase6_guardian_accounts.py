@@ -225,7 +225,9 @@ class GrantTests(GuardianFixture, TestCase):
     def test_relationship_type_never_grants(self):
         self.assertFalse(GuardianStudentAccess.objects.exists())
         page = self.client.get(reverse("core:guardian-detail", args=[self.guardian.pk]))
-        self.assertContains(page, "Not granted", count=2)
+        table, phone = page.content.decode().split('<div class="d-md-none d-print-none')
+        self.assertEqual(table.count("Not granted"), 2)  # one per relationship, table layout
+        self.assertEqual(phone.count("Not granted"), 2)  # one per relationship, phone cards
 
 
 class RevocationAndSessionTests(GuardianFixture, TestCase):

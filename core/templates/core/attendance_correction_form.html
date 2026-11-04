@@ -35,6 +35,7 @@
 
 <section class="mt-4" aria-labelledby="correction-history-heading">
 <h2 class="h5" id="correction-history-heading">Correction history</h2>
+<div class="d-none d-md-block d-print-block">
 <div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Correction history" tabindex="0">
 <table class="table">
@@ -71,6 +72,26 @@
     </tbody>
 </table>
 </div>
+</div>
+</div>
+<div class="d-md-none d-print-none">
+{% if corrections %}
+<ul class="erp-record-cards" role="list">
+    {% for correction in corrections %}
+    <li class="erp-record-card">
+        <div class="erp-record-title">{{ correction.get_previous_status_display }} <span aria-hidden="true">&rarr;</span><span class="visually-hidden">to</span> {{ correction.get_new_status_display }}</div>
+        <dl class="erp-record-fields">
+            <div><dt>When</dt><dd>{{ correction.created_at }}</dd></div>
+            {% if correction.previous_absence_note != correction.new_absence_note %}<div><dt>Note change</dt><dd>{{ correction.previous_absence_note|default:"(none)" }} &rarr; {{ correction.new_absence_note|default:"(none)" }}</dd></div>{% endif %}
+            <div><dt>Reason</dt><dd>{{ correction.reason|linebreaksbr }}</dd></div>
+            <div><dt>By</dt><dd>{{ correction.corrected_by }}</dd></div>
+        </dl>
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<p class="erp-record-empty">No corrections recorded.</p>
+{% endif %}
 </div>
 </section>
 {% endblock %}

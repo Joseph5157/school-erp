@@ -136,7 +136,10 @@ class MonthlySummaryTests(AriaAssertions, C2Fixture, TestCase):
         self.assertEqual(re.findall(r'<(?:select|input)[^>]* name="(\w+)"', tag), ["section", "month"])
         self.assertEqual(re.findall(r"<label[^>]*>([^<]+):</label>", tag), ["Section", "Month"])
         self.assertIn(">Show summary</button>", tag)
-        self.assertNotIn('value="2', tag)
+        # No preset month or Section. Section ids starting with 2 used to trip a `'value="2'` check.
+        month_input = re.search(r'<input[^>]* name="month"[^>]*>', tag).group()
+        self.assertNotIn("value=", month_input)
+        self.assertIn(re.findall(r'<option value="([^"]*)" selected', tag), ([], [""]))
         self.assertEqual(tag.count('class="erp-required-mark"'), 2)
 
     def test_results_structure_values_and_context(self):

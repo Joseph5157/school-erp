@@ -53,6 +53,7 @@
             listed here may not be counted.
         </p>
     </div>
+    <div class="d-none d-md-block d-print-block">
     <div class="erp-table-scroll" role="region" aria-label="Attendance history" tabindex="0">
     <table class="table">
         <caption class="visually-hidden">Recorded attendance entries for {{ student.full_name }}, by date.</caption>
@@ -83,6 +84,26 @@
             {% endfor %}
         </tbody>
     </table>
+    </div>
+    </div>
+    <div class="d-md-none d-print-none">
+    {% if entries %}
+    <ul class="erp-record-cards" role="list">
+        {% for entry in entries %}
+        <li class="erp-record-card">
+            <div class="erp-record-title">{{ entry.register.date|date:"j M Y" }} <span class="erp-record-sub">{{ entry.get_status_display }}</span></div>
+            <dl class="erp-record-fields">
+                <div><dt>Academic year</dt><dd>{{ entry.register.academic_year }}</dd></div>
+                <div><dt>Section</dt><dd>{{ entry.register.section }}</dd></div>
+                <div><dt>Register</dt><dd>{% include "partials/_status_badge.html" with label=entry.register.get_status_display tone=entry.register.status|lower only %}</dd></div>
+                {% if entry.absence_note %}<div><dt>Absence note</dt><dd>{{ entry.absence_note }}</dd></div>{% endif %}
+            </dl>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="erp-record-empty">No attendance recorded.</p>
+    {% endif %}
     </div>
 </section>
 {% endblock %}

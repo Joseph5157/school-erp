@@ -113,11 +113,13 @@ def teacher_detail(request, pk):
     teacher = get_teacher_or_404(pk)
     return render(request, "core/teacher_detail.html", {
         "teacher": teacher,
-        "subject_assignments": teacher.assessment_assignments.select_related(
-            "offering__academic_year", "offering__class_grade", "offering__subject", "section"
+        "subject_groups": teacher_accounts.group_assignments(
+            teacher.assessment_assignments.select_related(
+                "offering__academic_year", "offering__subject", "section__class_grade"
+            )
         ),
-        "class_assignments": teacher.class_teacher_assignments.select_related(
-            "academic_year", "section__class_grade"
+        "class_groups": teacher_accounts.group_assignments(
+            teacher.class_teacher_assignments.select_related("academic_year", "section__class_grade")
         ),
         "events": SecurityEvent.objects.filter(subject_user=teacher).select_related("actor")[:10],
     })
