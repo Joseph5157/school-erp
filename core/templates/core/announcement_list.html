@@ -7,20 +7,45 @@
 {% else %}
 {% include "partials/_page_header.html" with eyebrow="Daily" title="Announcements" purpose="Notices appear in the guardian portal as soon as they are published. Sending them on WhatsApp is a separate step on each notice." only %}
 {% endif %}
+<form method="get" class="erp-toolbar" role="search" aria-label="Filter announcements">
+    {% if table.sort_param %}<input type="hidden" name="sort" value="{{ table.sort_param }}">{% endif %}
+    <div class="row g-2 align-items-end">
+        <div class="col-12 col-md-5 col-lg-4">
+            <label for="announcement-search" class="form-label">Search notices</label>
+            <input type="search" id="announcement-search" name="q" value="{{ query }}" class="form-control" placeholder="Title or message">
+        </div>
+        <div class="col-6 col-md-3 col-lg-2">
+            <label for="announcement-status" class="form-label">Status</label>
+            <select id="announcement-status" name="status" class="form-select">
+                <option value="">All statuses</option>
+                {% for value, label in status_choices %}<option value="{{ value }}"{% if value == status %} selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="col-6 col-md-3 col-lg-2">
+            <label for="announcement-audience" class="form-label">Audience</label>
+            <select id="announcement-audience" name="audience" class="form-select">
+                <option value="">All audiences</option>
+                {% for value, label in audience_choices %}<option value="{{ value }}"{% if value == audience %} selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-outline-secondary">Search</button>
+        </div>
+        {% if table.filtered %}
+        <div class="col-auto">
+            <a class="btn btn-link" href="{% url 'core:announcement-list' %}">Clear filters</a>
+        </div>
+        {% endif %}
+    </div>
+</form>
+{# A4 portrait is narrower than the md breakpoint, so printing must pick the table explicitly. #}
+<div class="d-none d-md-block d-print-block">
 <div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Announcements" tabindex="0">
 <table class="table erp-announcement-table">
-    <caption class="visually-hidden">Published notices, newest first: when each was published, its title, its audience and whether it is live or withdrawn.</caption>
-    <thead>
-        <tr>
-            <th scope="col">Published</th>
-            <th scope="col">Title</th>
-            <th scope="col">Audience</th>
-            <th scope="col">Status</th>
-        </tr>
-    </thead>
+    {% include "partials/_table_head.html" with table=table caption="Published notices: when each was published, its title, its audience and whether it is live or withdrawn" only %}
     <tbody>
-    {% for notice in announcements %}
+    {% for notice in table.page %}
         <tr>
             <td class="text-nowrap">{{ notice.published_at|date:"j M Y, H:i" }}</td>
             <th scope="row" class="fw-semibold text-break"><a href="{% url 'core:announcement-detail' notice.pk %}">{{ notice.title }}</a></th>
@@ -28,10 +53,34 @@
             <td>{% if notice.is_withdrawn %}{% include "partials/_status_badge.html" with label="Withdrawn" tone="revoked" only %}{% else %}{% include "partials/_status_badge.html" with label="Live" tone="published" only %}{% endif %}</td>
         </tr>
     {% empty %}
-        <tr><td colspan="4">No notices yet.{% if perms.core.add_announcement %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:announcement-create' %}">Publish a notice</a>{% endif %}</td></tr>
+        <tr><td colspan="4">{% include "partials/_announcement_list_empty.html" %}</td></tr>
     {% endfor %}
     </tbody>
 </table>
 </div>
 </div>
+</div>
+{% if table.paginator.count %}
+<nav class="erp-card-sort d-md-none d-print-none" aria-label="Sort announcements">
+    <span class="erp-card-sort-label" aria-hidden="true">Sort by</span>
+    {% for header in table.headers %}{% if header.sortable %}
+    <a href="{{ header.url }}"{% if header.aria_sort %} aria-current="true"{% endif %}>
+        {{ header.label }}{% if header.aria_sort == "ascending" %} <span aria-hidden="true">&uarr;</span><span class="visually-hidden">, ascending</span>{% elif header.aria_sort == "descending" %} <span aria-hidden="true">&darr;</span><span class="visually-hidden">, descending</span>{% endif %}
+    </a>
+    {% endif %}{% endfor %}
+</nav>
+{# role="list": Safari drops list semantics from a ul with list-style: none. #}
+<ul class="erp-announcement-cards d-md-none d-print-none" role="list">
+    {% for notice in table.page %}
+    <li class="erp-announcement-card">
+        <a class="erp-announcement-card-title" href="{% url 'core:announcement-detail' notice.pk %}">{{ notice.title }}</a>
+        <span class="erp-announcement-card-status">{% if notice.is_withdrawn %}{% include "partials/_status_badge.html" with label="Withdrawn" tone="revoked" only %}{% else %}{% include "partials/_status_badge.html" with label="Live" tone="published" only %}{% endif %}</span>
+        <div class="erp-announcement-card-details">{{ notice.published_at|date:"j M Y, H:i" }} · {{ notice.audience_label }}</div>
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<div class="erp-student-cards-empty d-md-none d-print-none">{% include "partials/_announcement_list_empty.html" %}</div>
+{% endif %}
+{% include "partials/_table_footer.html" with table=table only %}
 {% endblock %}

@@ -1745,6 +1745,10 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
   .erp-credential-card { position: absolute; top: 0; left: 0; }
 }
 
+/* Announcements list on phones: one card per notice (shown below 768px by d-md-none). The title link covers the card. */
+.erp-announcement-cards { display: grid; gap: var(--erp-space-2); margin: 0; padding: 0; list-style: none; }
+.erp-announcement-cards + .erp-table-footer { margin-top: var(--erp-space-4); }
+.erp-announcement-card {
 /* ---------- Attendance register cards (phones) ---------- */
 .erp-register-cards { display: grid; gap: var(--erp-space-2); margin: 0; padding: 0; list-style: none; }
 .erp-register-cards + .erp-table-footer, .erp-register-cards-empty + .erp-table-footer { margin-top: var(--erp-space-4); }
@@ -1763,6 +1767,13 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
   padding: var(--erp-space-3) var(--erp-space-4);
   background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
 }
+.erp-announcement-card:active { background: var(--erp-paper); }
+.erp-announcement-card-title { min-width: 0; overflow-wrap: anywhere; font-weight: 600; color: var(--erp-ink); text-decoration: none; }
+.erp-announcement-card-title::after { content: ""; position: absolute; inset: 0; border-radius: var(--erp-radius); }
+.erp-announcement-card-title:focus-visible { outline: none; }
+.erp-announcement-card-title:focus-visible::after { outline: 3px solid var(--erp-focus-color); outline-offset: -3px; }
+.erp-announcement-card-status { grid-column: 2; grid-row: 1; }
+.erp-announcement-card-details { grid-column: 1 / -1; grid-row: 2; min-width: 0; margin-top: var(--erp-space-1); overflow-wrap: anywhere; color: var(--erp-ink-soft); font-size: var(--erp-text-sm); }
 .erp-register-card:active { background: var(--erp-paper); }
 .erp-register-card-name { min-width: 0; overflow-wrap: anywhere; font-weight: 600; color: var(--erp-ink); text-decoration: none; }
 .erp-register-card-name::after { content: ""; position: absolute; inset: 0; border-radius: var(--erp-radius); }
