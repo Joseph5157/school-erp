@@ -94,10 +94,7 @@
                     {% if perms.core.change_guardianstudentaccess %}<span class="erp-row-context text-break">Student: {{ row.link.student.full_name }}</span><a class="btn btn-outline-danger btn-sm text-nowrap" href="{% url 'core:guardian-access-revoke' row.active_grant.pk %}" aria-label="Revoke access for {{ row.link.student.full_name }}">Revoke</a>{% endif %}
                 {% elif perms.core.add_guardianstudentaccess %}
                 <span class="erp-row-context text-break">Student: {{ row.link.student.full_name }}</span>
-                <form method="post" action="{% url 'core:guardian-access-grant' row.link.pk %}" class="d-inline">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-outline-primary btn-sm text-nowrap" aria-label="Grant access for {{ row.link.student.full_name }}">Grant access</button>
-                </form>
+                <a class="btn btn-outline-primary btn-sm text-nowrap" href="{% url 'core:guardian-access-grant' row.link.pk %}" aria-label="Grant access for {{ row.link.student.full_name }}">Grant access</a>
                 {% endif %}
             </td>
         </tr>

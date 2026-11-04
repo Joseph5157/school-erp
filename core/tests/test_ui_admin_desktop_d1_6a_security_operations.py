@@ -26,6 +26,7 @@ from core.tests.test_phase6_security import ThrottlingFixture
 
 User = get_user_model()
 LOCKOUTS = reverse("core:login-lockouts")
+CLEAR = reverse("core:login-lockout-clear-confirm")
 ACTIVE_LINK = r'<a class="nav-link active" href="([^"]+)"'
 
 
@@ -64,18 +65,15 @@ class LockoutPageTests(ViewerMixin, ThrottlingFixture, TestCase):
         self.assertIn("Lets this username try to sign in again straight away. The clear is recorded.", page)
         self.assertNotIn("No usernames are locked.", page)
 
-    def test_clear_form_is_the_unchanged_post(self):
+    def test_clear_control_links_to_the_confirmation_page(self):
         self.fail(5)
         page = html(self.client.get(LOCKOUTS))
-        forms = re.findall(r'<form method="post"[^>]*>.*?</form>', page, re.S)
-        (form,) = [f for f in forms if 'name="username"' in f]
-        self.assertIn('name="csrfmiddlewaretoken"', form)
-        self.assertIn('<input type="hidden" name="username" value="meena">', form)
-        self.assertNotIn("action=", form)  # posts back to the same URL
+        self.assertIn(f'href="{CLEAR}?username=meena"', page)
+        self.assertNotIn('name="username"', page)
 
     def test_clear_still_clears_redirects_and_records_the_event(self):
         self.fail(5)
-        response = self.client.post(LOCKOUTS, {"username": "meena"})
+        response = self.client.post(CLEAR, {"username": "meena"})
         self.assertRedirects(response, LOCKOUTS)
         self.assertTrue(self.signed_in(self.attempt(self.password)))
         events = SecurityEvent.objects.filter(event_type=SecurityEvent.EventType.LOCKOUT_CLEARED)
@@ -84,7 +82,7 @@ class LockoutPageTests(ViewerMixin, ThrottlingFixture, TestCase):
         self.assertEqual(events.get().actor, self.admin)
 
     def test_clearing_a_username_that_is_not_locked_records_nothing(self):
-        self.client.post(LOCKOUTS, {"username": "meena"})
+        self.client.post(CLEAR, {"username": "meena"})
         self.assertFalse(SecurityEvent.objects.filter(
             event_type=SecurityEvent.EventType.LOCKOUT_CLEARED).exists())
 
@@ -112,7 +110,7 @@ class LockoutPageTests(ViewerMixin, ThrottlingFixture, TestCase):
         page = html(clearer.get(LOCKOUTS))
         self.assertIn('Clear<span class="visually-hidden"> lockout for meena</span>', page)
         self.assertNotIn('aria-label="Breadcrumb"', page)
-        self.assertEqual(clearer.post(LOCKOUTS, {"username": "meena"}).status_code, 302)
+        self.assertEqual(clearer.post(CLEAR, {"username": "meena"}).status_code, 302)
         self.assertTrue(SecurityEvent.objects.filter(
             event_type=SecurityEvent.EventType.LOCKOUT_CLEARED, actor=user).exists())
 
@@ -140,7 +138,7 @@ class LockoutNavigationTests(ViewerMixin, ThrottlingFixture, TestCase):
                 self.assertEqual(re.findall(ACTIVE_LINK, page), [LOCKOUTS])
                 self.assertIn('aria-label="Breadcrumb"', page)
         # the page a POST redirects to is highlighted too
-        page = html(self.client.post(LOCKOUTS, {"username": "meena"}, follow=True))
+        page = html(self.client.post(CLEAR, {"username": "meena"}, follow=True))
         self.assertEqual(re.findall(ACTIVE_LINK, page), [LOCKOUTS])
 
 

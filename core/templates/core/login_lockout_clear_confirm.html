@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Clear sign-in lockout{% endblock %}
+{% block content %}
+{% include "partials/_page_header.html" with eyebrow="Access and security" title="Clear sign-in lockout" purpose=username only %}
+<p>This lets {{ username }} try signing in again now. The action is recorded.</p>
+<form method="post" class="erp-form">
+    {% csrf_token %}
+    <input type="hidden" name="username" value="{{ username }}">
+    <div class="erp-form-actions">
+        <button type="submit" class="btn btn-primary">Clear lockout</button>
+        <a class="btn btn-link" href="{% url 'core:login-lockouts' %}">Cancel</a>
+    </div>
+</form>
+{% endblock %}

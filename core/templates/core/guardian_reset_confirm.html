@@ -1,7 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Reset password{% endblock %}
+{% block title %}Reset password for {{ account.guardian.full_name }}{% endblock %}
 {% block content %}
-{% include "partials/_page_header.html" with eyebrow="Guardian login" title="Reset password" purpose=account.user.username only %}
+{% include "partials/_page_header.html" with eyebrow="Guardian login" title="Reset password" purpose=account.guardian.full_name only %}
+<dl class="erp-details-list mb-3">
+    <div><dt>Guardian</dt><dd class="text-break">{{ account.guardian.full_name }}</dd></div>
+    <div><dt>Username</dt><dd class="text-break">{{ account.user.username }}</dd></div>
+</dl>
 <p>A new temporary password will be shown once. Every existing session of this login ends immediately, and the guardian must choose a new password at next sign-in.</p>
 <form method="post" class="erp-form">
     {% csrf_token %}

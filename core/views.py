@@ -13,7 +13,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.cache import add_never_cache_headers
-from django.views.decorators.http import condition, require_POST
+from django.views.decorators.http import condition, require_POST, require_safe
 
 from accounts.models import SecurityEvent
 from core import (
@@ -2553,19 +2553,31 @@ def guardian_detail(request, pk):
 
 
 @administrator_required("accounts.clear_login_lockout")
+@require_safe
 def login_lockouts(request):
     from accounts import security
 
-    if request.method == "POST":
-        username = request.POST.get("username", "")
-        if username in security.locked_usernames():
-            security.clear_lockout(username)
-            SecurityEvent.record(SecurityEvent.EventType.LOCKOUT_CLEARED, actor=request.user,
-                                 detail={"username": username})
-            messages.success(request, f"Sign-in lockout cleared for {username}.")
-        return redirect("core:login-lockouts")
     return render(request, "core/login_lockouts.html",
                   {"locked": security.locked_usernames()})
+
+
+@administrator_required("accounts.clear_login_lockout")
+def login_lockout_clear_confirm(request):
+    """Confirm (GET) and clear (POST) one sign-in lockout; the clear is audited."""
+    from accounts import security
+
+    source = request.POST if request.method == "POST" else request.GET
+    username = source.get("username", "")
+    if username not in security.locked_usernames():
+        messages.info(request, "That username is not locked, so nothing was changed.")
+        return redirect("core:login-lockouts")
+    if request.method == "POST":
+        security.clear_lockout(username)
+        SecurityEvent.record(SecurityEvent.EventType.LOCKOUT_CLEARED, actor=request.user,
+                             detail={"username": username})
+        messages.success(request, f"Sign-in lockout cleared for {username}.")
+        return redirect("core:login-lockouts")
+    return render(request, "core/login_lockout_clear_confirm.html", {"username": username})
 
 
 # --- Phase 6 Gate 6: Term publication to guardians (ADR 0014) --------------
@@ -2869,6 +2881,9 @@ def guardian_account_link(request, pk):
 @administrator_required("core.change_guardianaccount")
 def guardian_account_revoke(request, pk):
     account = get_object_or_404(GuardianAccount.objects.select_related("guardian", "user"), pk=pk)
+    if not account.is_active:
+        messages.info(request, "This account link was already revoked, so nothing was changed.")
+        return redirect("core:guardian-detail", pk=account.guardian_id)
     form = RevocationForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         try:
@@ -2880,11 +2895,23 @@ def guardian_account_revoke(request, pk):
         else:
             messages.success(request, "Guardian account link revoked; its sessions were ended.")
             return redirect("core:guardian-detail", pk=account.guardian_id)
+    username = account.user.username
     return render(
         request,
         "core/guardian_revoke_form.html",
-        {"form": form, "subject": f"the portal account link for {account.user.username}",
-         "guardian": account.guardian},
+        {
+            "form": form,
+            "guardian": account.guardian,
+            "heading": f"Revoke portal account link for {account.guardian}",
+            "button_label": "Revoke account link",
+            "details": [("Guardian", str(account.guardian)), ("Username", username)],
+            "consequences": [
+                f"{username} can no longer sign in to the Guardian Portal.",
+                "Open sessions of this login end immediately.",
+                "Student access grants are not changed. Revoke them separately if needed.",
+                "The revocation is recorded and cannot be undone.",
+            ],
+        },
     )
 
 
@@ -2938,7 +2965,9 @@ def guardian_account_reset_password(request, pk):
 
 @administrator_required("core.add_guardianstudentaccess")
 def guardian_access_grant(request, pk):
-    link = get_object_or_404(StudentGuardian.objects.select_related("guardian"), pk=pk)
+    link = get_object_or_404(
+        StudentGuardian.objects.select_related("guardian", "student"), pk=pk
+    )
     if request.method == "POST":
         try:
             guardian_accounts.grant_student_access(student_guardian=link, actor=request.user)
@@ -2946,7 +2975,17 @@ def guardian_access_grant(request, pk):
             messages.error(request, " ".join(error.messages))
         else:
             messages.success(request, "Portal access granted for this Student.")
-    return redirect("core:guardian-detail", pk=link.guardian_id)
+        return redirect("core:guardian-detail", pk=link.guardian_id)
+    if link.access_grants.filter(revoked_at__isnull=True).exists():
+        messages.info(request, "Access is already granted for this relationship, so nothing was changed.")
+        return redirect("core:guardian-detail", pk=link.guardian_id)
+    account = link.guardian.accounts.filter(revoked_at__isnull=True).select_related("user").first()
+    return render(
+        request,
+        "core/guardian_access_grant_confirm.html",
+        {"link": link, "guardian": link.guardian, "student": link.student,
+         "username": account.user.username if account else None},
+    )
 
 
 @administrator_required("core.change_guardianstudentaccess")
@@ -2957,7 +2996,11 @@ def guardian_access_revoke(request, pk):
         ),
         pk=pk,
     )
-    guardian = grant.student_guardian.guardian
+    link = grant.student_guardian
+    guardian, student = link.guardian, link.student.full_name
+    if not grant.is_active:
+        messages.info(request, "This access was already revoked, so nothing was changed.")
+        return redirect("core:guardian-detail", pk=guardian.pk)
     form = RevocationForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         try:
@@ -2969,11 +3012,26 @@ def guardian_access_revoke(request, pk):
         else:
             messages.success(request, "Portal access revoked for this Student.")
             return redirect("core:guardian-detail", pk=guardian.pk)
+    account = guardian.accounts.filter(revoked_at__isnull=True).select_related("user").first()
+    details = [("Guardian", str(guardian))]
+    if account:
+        details.append(("Username", account.user.username))
+    details += [("Student", str(student)), ("Relationship", link.get_relationship_type_display())]
     return render(
         request,
         "core/guardian_revoke_form.html",
-        {"form": form, "subject": f"portal access to {grant.student_guardian.student}",
-         "guardian": guardian},
+        {
+            "form": form,
+            "guardian": guardian,
+            "heading": f"Revoke {guardian}'s portal access to {student}",
+            "button_label": "Revoke Student access",
+            "details": details,
+            "consequences": [
+                f"{guardian} can no longer see {student} in the Guardian Portal.",
+                "Other Students linked to this Guardian are not affected.",
+                "The revocation is recorded and cannot be undone. Access can only be given again by a new grant.",
+            ],
+        },
     )
 
 

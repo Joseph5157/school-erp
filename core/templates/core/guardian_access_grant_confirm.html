@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Grant portal access{% endblock %}
+{% block content %}
+{% include "partials/_page_header.html" with eyebrow="Guardian access" title="Grant portal access" purpose=guardian.full_name only %}
+<dl class="erp-details-list mb-3">
+    <div><dt>Guardian</dt><dd class="text-break">{{ guardian.full_name }}</dd></div>
+    {% if username %}<div><dt>Username</dt><dd class="text-break">{{ username }}</dd></div>{% endif %}
+    <div><dt>Student</dt><dd class="text-break">{{ student.full_name }}</dd></div>
+    <div><dt>Relationship</dt><dd>{{ link.get_relationship_type_display }}</dd></div>
+</dl>
+<div class="alert alert-warning" role="alert">
+    <p class="fw-semibold mb-2">{{ guardian.full_name }} will be able to see this about {{ student.full_name }} in the Guardian Portal:</p>
+    <ul class="mb-0">
+        <li>Name, admission number, class, section, roll number and enrolment status.</li>
+        <li>Submitted attendance, by month and Academic Year, with a summary.</li>
+        <li>Report cards the school has published, and their PDFs.</li>
+        <li>School notices addressed to {{ student.full_name }}&rsquo;s class or to everyone.</li>
+    </ul>
+</div>
+{% if not username %}<p class="erp-note-text">This Guardian has no portal account yet, so nothing is visible until one is created or linked.</p>{% endif %}
+<form method="post" class="erp-form">
+    {% csrf_token %}
+    <div class="erp-form-actions">
+        <button type="submit" class="btn btn-primary">Grant portal access</button>
+        <a class="btn btn-link" href="{% url 'core:guardian-detail' guardian.pk %}">Cancel</a>
+    </div>
+</form>
+{% endblock %}

@@ -1,15 +1,23 @@
 {% extends "base.html" %}
-{% block title %}Revoke{% endblock %}
+{% block title %}{{ heading }}{% endblock %}
 {% block content %}
-{% include "partials/_page_header.html" with eyebrow="Guardian access" title="Revoke" purpose=subject only %}
-<p class="erp-note-text">Revocation takes effect immediately and is permanent; it is recorded, never deleted. Access can only be given again by a new grant.</p>
+{% include "partials/_page_header.html" with eyebrow="Guardian access" title=heading only %}
+<dl class="erp-details-list mb-3">
+    {% for label, value in details %}<div><dt>{{ label }}</dt><dd class="text-break">{{ value }}</dd></div>{% endfor %}
+</dl>
+<div class="alert alert-warning" role="alert">
+    <p class="fw-semibold mb-2">This change has the following consequences:</p>
+    <ul class="mb-0">
+        {% for line in consequences %}<li>{{ line }}</li>{% endfor %}
+    </ul>
+</div>
 <form method="post" class="erp-form">
     {% csrf_token %}
     {% include "partials/_form_required_legend.html" %}
     {% include "partials/_form_error_summary.html" with form=form only %}
     {% include "partials/_form_fields.html" with form=form only %}
     <div class="erp-form-actions">
-        <button type="submit" class="btn btn-danger">Revoke</button>
+        <button type="submit" class="btn btn-danger">{{ button_label }}</button>
         <a class="btn btn-link" href="{% url 'core:guardian-detail' guardian.pk %}">Cancel</a>
     </div>
 </form>

@@ -19,7 +19,7 @@
             <div class="col-sm-4"><label class="form-label" for="{{ consent_form.source.id_for_label }}">How</label>{{ consent_form.source }}</div>
             <div class="col-sm-8"><label class="form-label" for="{{ consent_form.note.id_for_label }}">Note (optional)</label>{{ consent_form.note }}</div>
         </div>
-        <button type="submit" class="btn btn-outline-primary btn-sm mt-2">Record</button>
+        <button type="submit" class="btn btn-outline-primary btn-sm mt-2">Record consent decision</button>
     </form>
     {% endif %}
     {% if consents|length > 1 %}

@@ -127,7 +127,7 @@ class LockoutAdministrationTests(ThrottlingFixture, TestCase):
         self.fail(5)
         page = self.client.get(reverse("core:login-lockouts"))
         self.assertEqual(page.context["locked"], ["meena"])
-        self.client.post(reverse("core:login-lockouts"), {"username": "meena"})
+        self.client.post(reverse("core:login-lockout-clear-confirm"), {"username": "meena"})
         self.assertTrue(self.signed_in(self.attempt(self.password)))
         self.assertTrue(SecurityEvent.objects.filter(event_type=Event.LOCKOUT_CLEARED).exists())
 
