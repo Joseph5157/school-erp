@@ -1,0 +1,6 @@
+{% if table.filtered %}
+No notices match your search or filters.
+<a class="btn btn-outline-secondary btn-sm mt-2" href="{% url 'core:announcement-list' %}">Clear filters</a>
+{% else %}
+No notices yet.{% if perms.core.add_announcement %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:announcement-create' %}">Publish a notice</a>{% endif %}
+{% endif %}
