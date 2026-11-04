@@ -68,7 +68,7 @@ jobs:
       - name: Test suite (PostgreSQL)
         run: |
           pip install py-spy
-          bash .github/scripts/report_test_stall.sh 60 60 &
+          bash .github/scripts/report_test_stall.sh 420 300 &
           watcher=$!
           status=0
           python manage.py test --parallel 4 --durations 20 || status=$?
