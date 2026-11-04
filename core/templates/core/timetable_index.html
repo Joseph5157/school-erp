@@ -2,6 +2,7 @@
 {% block title %}Timetable{% endblock %}
 {% block content %}
 {% include "partials/_page_header.html" with eyebrow="School setup" title="Timetable" purpose="Choose an Academic Year to set up its teaching periods." only %}
+<div class="d-none d-md-block d-print-block">
 <div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Academic Years" tabindex="0">
 <table class="table">
@@ -25,4 +26,22 @@
 </table>
 </div>
 </div>
+</div>
+{% if academic_years %}
+<ul class="erp-setup-cards d-md-none d-print-none" role="list">
+    {% for academic_year in academic_years %}
+    <li class="erp-setup-card">
+        <div class="erp-setup-card-title">{{ academic_year.name }}</div>
+        <div class="erp-setup-card-meta">{{ academic_year.start_date }} to {{ academic_year.end_date }} &middot; {{ academic_year.period_count }} period{{ academic_year.period_count|pluralize }}</div>
+        <div class="erp-setup-card-actions">
+            <a class="btn btn-outline-primary btn-sm" href="{% url 'core:timetable-periods' academic_year.pk %}">Set up periods<span class="visually-hidden"> for {{ academic_year.name }}</span></a>
+            {% if perms.core.view_timetableslot %}<a class="btn btn-outline-primary btn-sm" href="{% url 'core:timetable-sections' academic_year.pk %}">Section timetables<span class="visually-hidden"> for {{ academic_year.name }}</span></a>
+            <a class="btn btn-outline-primary btn-sm" href="{% url 'core:timetable-issues' academic_year.pk %}">Timetable issues<span class="visually-hidden"> for {{ academic_year.name }}</span></a>{% endif %}
+        </div>
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<div class="erp-setup-cards-empty d-md-none d-print-none">No Academic Years yet. Create one under School setup first.</div>
+{% endif %}
 {% endblock %}

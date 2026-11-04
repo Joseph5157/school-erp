@@ -125,9 +125,14 @@ class ClassGradeListTests(SchoolConfigurationListsFixture, TestCase):
 class SubjectListTests(SchoolConfigurationListsFixture, TestCase):
     def test_status_is_text_not_colour_only_and_blank_codes_are_announced(self):
         content = self.administrator.get(self.urls()["subjects"]).content.decode()
-        self.assertEqual(len(re.findall(r"Status: </span>Active", content)), 2)
-        self.assertEqual(len(re.findall(r"Status: </span>Inactive", content)), 1)
-        self.assertIn('<span class="visually-hidden">No code</span>', content)
+        # The page carries the desktop table and the phone card list; each says the status once per Subject.
+        table, cards = content.split('<ul class="erp-setup-cards', 1)
+        for layout, markup in (("table", table), ("cards", cards)):
+            with self.subTest(layout=layout):
+                self.assertEqual(len(re.findall(r"Status: </span>Active", markup)), 2)
+                self.assertEqual(len(re.findall(r"Status: </span>Inactive", markup)), 1)
+        self.assertIn('<span class="visually-hidden">No code</span>', table)
+        self.assertIn("No code", cards)
         self.assertLess(content.index("Drawing"), content.index("English"))  # name order kept
 
     def test_edit_link_is_named_and_points_at_the_existing_route(self):

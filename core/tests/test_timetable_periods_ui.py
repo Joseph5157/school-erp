@@ -77,7 +77,8 @@ class PeriodScreenTests(Phase4Fixture, TestCase):
     def test_empty_state_has_a_single_add_action(self):
         page = self.client.get(self.list_url).content.decode()
         create = reverse("core:timetable-period-create", args=[self.year.pk])
-        self.assertEqual(page.count(f'href="{create}"'), 1)
+        # One in the table's empty row (md and up) and one in the phone empty state; never both visible.
+        self.assertEqual(page.count(f'href="{create}"'), 2)
         self.assertIn("Add the first period", page)
         self.assertNotIn(">Add period<", page)
 

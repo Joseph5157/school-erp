@@ -6,6 +6,7 @@
 {% if periods and perms.core.add_timetableperiod %}
     <a class="btn btn-primary mb-3" href="{% url 'core:timetable-period-create' academic_year.pk %}">Add period</a>
 {% endif %}
+<div class="d-none d-md-block d-print-block">
 <div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Periods" tabindex="0">
 <table class="table">
@@ -18,7 +19,7 @@
             <td>
                 <div class="d-flex flex-wrap gap-2">
                     {% if perms.core.change_timetableperiod %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'core:timetable-period-update' period.pk %}">Edit<span class="visually-hidden"> {{ period.label }}</span></a>{% endif %}
-                    {% if perms.core.delete_timetableperiod %}<a class="btn btn-outline-danger btn-sm" href="{% url 'core:timetable-period-delete' period.pk %}">Delete<span class="visually-hidden"> {{ period.label }}</span></a>{% endif %}
+                    {% if period.in_use %}<span class="small text-muted align-self-center">In use</span>{% elif perms.core.delete_timetableperiod %}<a class="btn btn-outline-danger btn-sm" href="{% url 'core:timetable-period-delete' period.pk %}">Delete<span class="visually-hidden"> {{ period.label }}</span></a>{% endif %}
                 </div>
             </td>
         </tr>
@@ -29,4 +30,21 @@
 </table>
 </div>
 </div>
+</div>
+{% if periods %}
+<ul class="erp-setup-cards d-md-none d-print-none" role="list">
+    {% for period in periods %}
+    <li class="erp-setup-card">
+        <div class="erp-setup-card-title">{{ period.label }}</div>
+        <div class="erp-setup-card-meta">Order {{ period.sequence }}{% if period.in_use %} &middot; In use{% endif %}</div>
+        <div class="erp-setup-card-actions">
+            {% if perms.core.change_timetableperiod %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'core:timetable-period-update' period.pk %}">Edit<span class="visually-hidden"> {{ period.label }}</span></a>{% endif %}
+            {% if perms.core.delete_timetableperiod and not period.in_use %}<a class="btn btn-outline-danger btn-sm" href="{% url 'core:timetable-period-delete' period.pk %}">Delete<span class="visually-hidden"> {{ period.label }}</span></a>{% endif %}
+        </div>
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<div class="erp-setup-cards-empty d-md-none d-print-none">No periods yet.{% if perms.core.add_timetableperiod %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:timetable-period-create' academic_year.pk %}">Add the first period</a>{% endif %}</div>
+{% endif %}
 {% endblock %}

@@ -11,7 +11,7 @@ from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
-from django.db.models import Count, ProtectedError
+from django.db.models import Count, Exists, OuterRef, ProtectedError
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -51,7 +51,9 @@ def timetable_index(request):
 @administrator_required("core.view_timetableperiod")
 def timetable_periods(request, pk):
     academic_year = get_object_or_404(AcademicYear, pk=pk)
-    periods = academic_year.timetable_periods.order_by("sequence")
+    periods = academic_year.timetable_periods.annotate(
+        in_use=Exists(TimetableSlot.objects.filter(period=OuterRef("pk")))
+    ).order_by("sequence")
     return render(
         request,
         "core/timetable_periods.html",
