@@ -31,10 +31,7 @@
         <button type="submit" class="btn btn-outline-primary">{% if logo %}Replace logo{% else %}Upload logo{% endif %}</button>
     </form>
     {% if logo %}
-    <form method="post" action="{% url 'core:school-logo-remove' %}">
-        {% csrf_token %}
-        <button type="submit" class="btn btn-outline-danger">Remove logo</button>
-    </form>
+    <a class="btn btn-outline-danger" href="{% url 'core:school-logo-remove' %}">Remove logo</a>
     {% endif %}
     {% endif %}
 </section>
