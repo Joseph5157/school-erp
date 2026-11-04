@@ -11,6 +11,7 @@
 </form>
 <p class="text-muted">Showing the timetable in force on <strong>{{ schedule_date|date:"l j M Y" }}</strong>. A change you make applies from the date you choose; earlier dates keep their history.</p>
 {% if rows %}
+<div class="d-none d-md-block d-print-block">
 <div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Weekly timetable for {{ section }} on {{ schedule_date|date:'j M Y' }}" tabindex="0">
 <table class="table erp-timetable">
@@ -52,6 +53,42 @@
 </table>
 </div>
 </div>
+</div>
+<section class="erp-day-view d-md-none d-print-none" aria-label="Timetable by day">
+    <nav class="erp-day-tabs" aria-label="Weekday">
+        {% for day in days %}<a class="erp-day-tab{% if day.selected %} is-selected{% endif %}" href="{{ day.url }}"{% if day.selected %} aria-current="page"{% endif %}>{{ day.name }}</a>{% endfor %}
+    </nav>
+    <h2 class="erp-day-heading">{{ selected_day.name }}</h2>
+    {% if selected_day.closed %}
+    <p class="erp-slot-meta">Not a school day. Saturday is not a school day in this Academic Year.</p>
+    {% else %}
+    <ol class="erp-day-periods">
+        {% for item in selected_day.periods %}
+        {% with cell=item.cell period=item.period %}
+        <li class="erp-day-period">
+            <p class="erp-day-period-label">{{ period.label }}</p>
+            {% if cell.slot %}
+            <p class="erp-slot-subject">{{ cell.slot.offering.subject.name }}</p>
+            <p class="erp-slot-meta">{% if cell.teacher %}{{ cell.teacher }}{% else %}No teacher assigned{% endif %}</p>
+            <p class="erp-slot-meta">{% if cell.slot.end_date %}{{ cell.slot.start_date|date:"j M Y" }} to {{ cell.slot.end_date|date:"j M Y" }}{% else %}From {{ cell.slot.start_date|date:"j M Y" }}{% endif %}</p>
+            {% if cell.historical %}<p class="erp-slot-meta">Ended {{ cell.slot.end_date|date:"j M Y" }}</p>{% endif %}
+            {% if cell.can_change or cell.can_end or cell.can_delete %}
+            <div class="erp-slot-actions d-flex flex-wrap gap-2">
+                {% if cell.can_change %}<a class="btn btn-outline-secondary erp-day-action" href="{{ cell.change_url }}">Change<span class="visually-hidden"> {{ cell.slot.offering.subject.name }}, {{ period.label }}, {{ cell.weekday_name }}</span></a>{% endif %}
+                {% if cell.can_end %}<a class="btn btn-outline-secondary erp-day-action" href="{{ cell.end_url }}">End<span class="visually-hidden"> {{ cell.slot.offering.subject.name }}, {{ period.label }}, {{ cell.weekday_name }}</span></a>{% endif %}
+                {% if cell.can_delete %}<a class="btn btn-outline-danger erp-day-action" href="{{ cell.delete_url }}">Delete<span class="visually-hidden"> {{ cell.slot.offering.subject.name }}, {{ period.label }}, {{ cell.weekday_name }}</span></a>{% endif %}
+            </div>
+            {% endif %}
+            {% else %}
+            <p class="erp-slot-meta">No slot scheduled</p>
+            {% if cell.can_add %}<a class="btn btn-outline-primary erp-day-action" href="{{ cell.add_url }}">Add slot<span class="visually-hidden"> for {{ period.label }} on {{ cell.weekday_name }}</span></a>{% endif %}
+            {% endif %}
+        </li>
+        {% endwith %}
+        {% endfor %}
+    </ol>
+    {% endif %}
+</section>
 {% else %}
 {% include "partials/_empty.html" with title="No periods yet" text="This Academic Year has no periods, so there is nothing to schedule. Set up its periods first." %}
 {% if perms.core.view_timetableperiod %}<a class="btn btn-primary" href="{{ periods_url }}">Set up periods</a>{% endif %}

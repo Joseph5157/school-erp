@@ -171,6 +171,34 @@ def timetable_sections(request, pk):
     )
 
 
+def _day_views(rows, academic_year, section, schedule_date, requested, today):
+    """The phone view: one entry per weekday, built from the grid's own cells.
+
+    The selected day is `requested` when it is a valid weekday number, otherwise today
+    when that is a school day, otherwise the first school day (Monday).
+    """
+    names = dict(TimetableSlot.WEEKDAY_CHOICES)
+    try:
+        selected = int(requested)
+    except (TypeError, ValueError):
+        selected = None
+    if selected not in names:
+        selected = today.weekday()
+        if selected == 5 and not academic_year.saturdays_instructional or selected not in names:
+            selected = 0
+    base = reverse("core:timetable-grid", args=[academic_year.pk, section.pk])
+    days = []
+    for weekday, name in names.items():
+        periods = [{"period": row["period"], "cell": row["cells"][weekday]} for row in rows]
+        days.append({
+            "weekday": weekday, "name": name, "selected": weekday == selected,
+            "closed": weekday == 5 and not academic_year.saturdays_instructional,
+            "url": f"{base}?{urlencode({'date': schedule_date.isoformat(), 'day': weekday})}",
+            "periods": periods,
+        })
+    return days
+
+
 @administrator_required("core.view_timetableperiod")
 @administrator_required("core.view_timetableslot")
 def timetable_grid(request, pk, section_pk):
@@ -237,12 +265,15 @@ def timetable_grid(request, pk, section_pk):
             cells.append(cell)
         rows.append({"period": period, "cells": cells})
 
+    days = _day_views(rows, academic_year, section, schedule_date, request.GET.get("day"), today)
+
     return render(
         request,
         "core/timetable_grid.html",
         {
             "academic_year": academic_year, "section": section, "schedule_date": schedule_date,
-            "date_form": date_form, "rows": rows,
+            "date_form": date_form, "rows": rows, "days": days,
+            "selected_day": next(day for day in days if day["selected"]),
             "weekdays": [name for _, name in TimetableSlot.WEEKDAY_CHOICES],
             "periods_url": reverse("core:timetable-periods", args=[academic_year.pk]),
         },
