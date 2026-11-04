@@ -53,6 +53,7 @@
 {% else %}
 <section aria-labelledby="register-submitted-heading">
 <h2 class="h5" id="register-submitted-heading">Submitted attendance</h2>
+<div class="d-none d-md-block d-print-block">
 <div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Submitted attendance" tabindex="0">
 <table class="table">
@@ -81,6 +82,25 @@
     </tbody>
 </table>
 </div>
+</div>
+</div>
+<div class="d-md-none d-print-none">
+{% if entries %}
+<ul class="erp-record-cards" role="list">
+    {% for entry in entries %}
+    <li class="erp-record-card">
+        <div class="erp-record-title"><a href="{% url 'core:student-detail' entry.academic_enrollment.student.pk %}">{{ entry.academic_enrollment.student.full_name }}</a></div>
+        <dl class="erp-record-fields">
+            <div><dt>Status</dt><dd>{{ entry.get_status_display }}</dd></div>
+            {% if entry.absence_note %}<div><dt>Absence note</dt><dd>{{ entry.absence_note }}</dd></div>{% endif %}
+        </dl>
+        {% if perms.core.change_attendanceentry %}<a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:attendance-entry-correct' entry.pk %}" aria-label="Correct attendance for {{ entry.academic_enrollment.student.full_name }}">Correct</a>{% endif %}
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<p class="erp-record-empty">No attendance entries.</p>
+{% endif %}
 </div>
 </section>
 {% endif %}

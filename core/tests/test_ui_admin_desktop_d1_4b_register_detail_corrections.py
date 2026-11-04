@@ -202,7 +202,9 @@ class SubmittedDetailTests(DetailFixture, TestCase):
         self.assertIn('<caption class="visually-hidden">', table)
         self.assertEqual(re.findall(r'<th scope="col">([^<]+)</th>', table),
                          ["Student", "Status", "Absence note", "Actions"])
-        self.assertContains(response, "Correct</a>", count=2)
+        table_layout, phone_layout = content.split('<div class="d-md-none d-print-none')
+        self.assertEqual(table_layout.count("Correct</a>"), 2)  # one per entry, table layout
+        self.assertEqual(phone_layout.count("Correct</a>"), 2)  # one per entry, phone cards
         self.assertContains(response, reverse("core:attendance-entry-correct", args=[self.entry.pk]))
         self.assertNotContains(response, 'id="attendance-capture"')
         self.assertNotContains(response, "Roster")
@@ -358,7 +360,9 @@ class CorrectionHistoryTests(DetailFixture, TestCase):
         history = self.history(self.client.get(self.url))
         self.assertIn("Line one<br>Line two &lt;script&gt;", history)
         self.assertNotIn("<script>", history)
-        self.assertEqual(history.count("word"), 80)
+        table_layout, phone_layout = history.split('<div class="d-md-none d-print-none')
+        self.assertEqual(table_layout.count("word"), 80)
+        self.assertEqual(phone_layout.count("word"), 80)
         self.assertIn('<td class="text-break">Line one', history)
 
     def test_history_is_immutable_after_a_later_correction(self):

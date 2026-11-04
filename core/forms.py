@@ -1385,6 +1385,19 @@ class ContactConsentForm(forms.Form):
         widget=forms.TextInput(attrs={"class": "form-control form-control-sm"}),
     )
 
+    def __init__(self, *args, current_status=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.current_status = current_status
+
+    def clean(self):
+        cleaned = super().clean()
+        status = cleaned.get("status")
+        note = (cleaned.get("note") or "").strip()
+        cleaned["note"] = note
+        if self.current_status and status and status != self.current_status and not note:
+            self.add_error("note", "Add a note saying why the decision is changing.")
+        return cleaned
+
 
 class AttendanceSummaryForm(forms.Form):
     section = forms.ModelChoiceField(

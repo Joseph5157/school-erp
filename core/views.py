@@ -2601,6 +2601,7 @@ def guardian_detail(request, pk):
             ("portal-account", "Portal account", "accounts" in context),
             ("student-access", "Student access", "relationships" in context),
             ("history", "Account history", "events" in context),
+            ("messaging-consent", "Messaging consent", "consents" in context),
         )
     )
     return render(request, "core/guardian_detail.html", context)

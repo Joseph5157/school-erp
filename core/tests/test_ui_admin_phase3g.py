@@ -34,6 +34,7 @@ GUARDIAN_HEADINGS = [
     "Guardian Portal account",
     "Student access",
     "Account and access history",
+    "WhatsApp messages",
 ]
 
 
@@ -132,7 +133,7 @@ class GuardianPageTests(SectionAssertions, AuthorizationClientsMixin, TestCase):
 
         self.assertIn(NAV, html)
         self.assert_menu_matches_sections(
-            html, ["applicants", "portal-account", "student-access", "history"]
+            html, ["applicants", "portal-account", "student-access", "history", "messaging-consent"]
         )
         self.assertIn("No active portal account.", html)
         for heading in GUARDIAN_HEADINGS:
@@ -151,7 +152,7 @@ class GuardianPageTests(SectionAssertions, AuthorizationClientsMixin, TestCase):
         html = self.administrator.get(self.url).content.decode()
 
         self.assert_menu_matches_sections(
-            html, ["applicants", "portal-account", "student-access", "history"]
+            html, ["applicants", "portal-account", "student-access", "history", "messaging-consent"]
         )
         self.assertIn("meena.rao", html)
 

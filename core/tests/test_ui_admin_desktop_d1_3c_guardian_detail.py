@@ -322,7 +322,9 @@ class StudentAccessTests(GuardianDetailD13CBase, TestCase):
 
     def test_not_granted_rows_link_to_the_grant_confirmation(self):
         section = self.access()
-        self.assertEqual(section.count("Not granted"), 2)
+        table, phone = section.split('<div class="d-md-none d-print-none')
+        self.assertEqual(table.count("Not granted"), 2)
+        self.assertEqual(phone.count("Not granted"), 2)
         href = self.url("guardian-access-grant", self.asha_link.pk)
         self.assertRegex(section, rf'<a class="[^"]*text-nowrap[^"]*" href="{href}"[^>]*>Grant access</a>')
         self.assertNotIn("<form", section)
