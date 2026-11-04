@@ -220,7 +220,7 @@ class Phase1AcceptanceJourneyTests(TestCase):
 
         self.client.post(
             reverse("core:student-status-change", args=[student.pk]),
-            {"status": Student.Status.ACTIVE},
+            {"status": Student.Status.ACTIVE, "reason": "Test reason"},
         )
         student.refresh_from_db()
         self.assertEqual(student.status, Student.Status.ACTIVE)

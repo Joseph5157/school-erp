@@ -95,6 +95,7 @@ from core.forms import (
     SectionForm,
     StudentGuardianForm,
     StudentGuardianRelationshipForm,
+    StudentReactivateForm,
     StudentStatusForm,
     SubjectForm,
     SubjectOfferingForm,
@@ -2343,17 +2344,30 @@ def applicant_decision_confirm(request, pk, decision):
 @administrator_required("core.add_student")
 def applicant_progress(request, pk):
     applicant = get_object_or_404(Applicant, pk=pk)
-    if request.method != "POST":
-        return redirect("core:applicant-detail", pk=applicant.pk)
+    if request.method == "POST":
+        try:
+            student = applicant.progress_to_student()
+        except ValidationError as error:
+            messages.error(request, error.messages[0])
+            return redirect("core:applicant-detail", pk=applicant.pk)
+        messages.success(request, "Student created from Applicant.")
+        return redirect("core:student-detail", pk=student.pk)
 
-    try:
-        student = applicant.progress_to_student()
-    except ValidationError as error:
-        messages.error(request, error.messages[0])
+    # GET only describes the change; a stale state goes back to the record with the reason.
+    if applicant.admission_status != Applicant.AdmissionStatus.ACCEPTED:
+        messages.error(request, "Only an accepted Applicant can progress to a Student.")
         return redirect("core:applicant-detail", pk=applicant.pk)
-
-    messages.success(request, "Student created from Applicant.")
-    return redirect("core:student-detail", pk=student.pk)
+    if Student.objects.filter(applicant=applicant).exists():
+        messages.error(request, "This Applicant has already progressed to a Student.")
+        return redirect("core:applicant-detail", pk=applicant.pk)
+    return render(
+        request,
+        "core/applicant_progress_confirm.html",
+        {
+            "applicant": applicant,
+            "guardian_links": applicant.guardian_links.select_related("guardian"),
+        },
+    )
 
 
 @administrator_required("core.add_applicantguardian")
@@ -3235,6 +3249,14 @@ def student_status_change(request, pk):
         messages.error(request, "Invalid Student status.")
         return redirect("core:student-detail", pk=student.pk)
 
+    if (
+        form.cleaned_data["status"] == Student.Status.ACTIVE
+        and student.status == Student.Status.INACTIVE
+        and not form.cleaned_data["reason"].strip()
+    ):
+        messages.error(request, "A reason is required to reactivate a Student.")
+        return redirect("core:student-reactivate-confirm", pk=student.pk)
+
     if form.cleaned_data["status"] == Student.Status.INACTIVE:
         if not form.cleaned_data["reason"].strip():
             messages.error(request, "A reason is required to deactivate a Student.")
@@ -3273,6 +3295,41 @@ def student_deactivate_confirm(request, pk):
         {
             "student": student,
             "grants": list(guardian_access.active_grants_for(student)),
+            "placement": student.enrollments.filter(
+                status=AcademicEnrollment.Status.ACTIVE
+            ).first(),
+        },
+    )
+
+
+@administrator_required("core.change_student")
+def student_reactivate_confirm(request, pk):
+    student = get_object_or_404(Student, pk=pk)
+    if student.status == Student.Status.ACTIVE:
+        messages.error(request, "This Student is already active.")
+        return redirect("core:student-detail", pk=student.pk)
+    if request.method == "POST":
+        form = StudentReactivateForm(request.POST)
+        if form.is_valid():
+            try:
+                student.record_status_change(
+                    Student.Status.ACTIVE,
+                    actor=request.user,
+                    reason=form.cleaned_data["reason"],
+                )
+            except ValidationError as error:
+                messages.error(request, error.messages[0])
+                return redirect("core:student-detail", pk=student.pk)
+            messages.success(request, f"Student status changed: {student.status}.")
+            return redirect("core:student-detail", pk=student.pk)
+    else:
+        form = StudentReactivateForm()
+    return render(
+        request,
+        "core/student_reactivate_confirm.html",
+        {
+            "student": student,
+            "form": form,
             "placement": student.enrollments.filter(
                 status=AcademicEnrollment.Status.ACTIVE
             ).first(),

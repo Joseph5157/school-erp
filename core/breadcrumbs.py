@@ -45,6 +45,14 @@ RULES = {
     "student-deactivate-confirm": Rule(
         "student-list", (_STUDENTS, Crumb("Student", "core:student-detail", True)), "Deactivate"
     ),
+    "student-reactivate-confirm": Rule(
+        "student-list", (_STUDENTS, Crumb("Student", "core:student-detail", True)), "Reactivate"
+    ),
+    "applicant-progress": Rule(
+        "applicant-list",
+        (_APPLICANTS, Crumb("Applicant", "core:applicant-detail", True)),
+        "Progress to Student",
+    ),
     "applicant-detail": Rule("applicant-list", (_APPLICANTS,), "Applicant"),
     "applicant-decision-confirm": Rule(
         "applicant-list",

@@ -344,6 +344,11 @@ urlpatterns = [
         views.student_deactivate_confirm,
         name="student-deactivate-confirm",
     ),
+    path(
+        "students/<int:pk>/reactivate/",
+        views.student_reactivate_confirm,
+        name="student-reactivate-confirm",
+    ),
     path("guardians/", views.guardian_list, name="guardian-list"),
     path("guardians/create/", views.guardian_create, name="guardian-create"),
     path("guardians/<int:pk>/", views.guardian_detail, name="guardian-detail"),

@@ -106,11 +106,16 @@ class DeactivateStudentTests(AuthorizationClientsMixin, TestCase):
         )
         self.assertEqual(change.changed_by, self.admin_user)
 
-    def test_reactivation_needs_no_reason(self):
+    def test_reactivation_needs_a_reason(self):
         self.administrator.post(
             self.url, {"status": Student.Status.INACTIVE, "reason": "Moved away"}
         )
         self.administrator.post(self.url, {"status": Student.Status.ACTIVE})
+        self.student.refresh_from_db()
+        self.assertEqual(self.student.status, Student.Status.INACTIVE)
+        self.administrator.post(
+            self.url, {"status": Student.Status.ACTIVE, "reason": "Returned"}
+        )
         self.student.refresh_from_db()
         self.assertEqual(self.student.status, Student.Status.ACTIVE)
         self.assertEqual(self.student.status_changes.count(), 2)

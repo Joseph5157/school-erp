@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Reactivate student{% endblock %}
+{% block content %}
+{% include "partials/_page_header.html" with eyebrow="Student status" title="Reactivate student" purpose=student.full_name only %}
+{% include "partials/_form_error_summary.html" with form=form action_text="reactivating" only %}
+<p>You are about to reactivate <strong>{{ student.full_name }}</strong>.</p>
+<div class="alert alert-warning" role="alert">
+    <p class="fw-semibold mb-2">This change has the following consequences:</p>
+    <ul class="mb-0">
+        <li>The student returns to active student lists.</li>
+        {% if placement %}<li>The current placement, {{ placement }}, is unchanged.</li>{% else %}<li>The student has no current placement. Placement is managed separately.</li>{% endif %}
+        <li>Guardian portal access is not changed. Access revoked when the student was deactivated stays revoked.</li>
+        <li>The change and its reason are recorded in the student's status history.</li>
+    </ul>
+</div>
+<form method="post" class="erp-form">
+    {% csrf_token %}
+    {% include "partials/_form_required_legend.html" %}
+    <div class="erp-field">
+        <label for="id_reason">Reason <span class="erp-required-mark" aria-hidden="true">*</span><span class="visually-hidden"> (required)</span></label>
+        <textarea name="reason" id="id_reason" rows="3" aria-describedby="reason_helptext" required>{{ form.reason.value|default:"" }}</textarea>
+        <div class="erp-field-help" id="reason_helptext">This reason becomes part of the student's permanent status history.</div>
+    </div>
+    <div class="erp-form-actions">
+        <button type="submit" class="btn btn-success">Reactivate student</button>
+        <a class="btn btn-link" href="{% url 'core:student-detail' student.pk %}">Cancel</a>
+    </div>
+</form>
+{% endblock %}

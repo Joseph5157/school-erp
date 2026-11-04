@@ -972,6 +972,12 @@ class StudentStatusForm(forms.Form):
     reason = forms.CharField(required=False, widget=forms.Textarea(attrs={"rows": 3}))
 
 
+class StudentReactivateForm(forms.Form):
+    """Reactivating a Student needs a reason, which joins the status history."""
+
+    reason = forms.CharField(widget=forms.Textarea(attrs={"rows": 3}))
+
+
 class GuardianForm(forms.ModelForm):
     class Meta:
         model = Guardian

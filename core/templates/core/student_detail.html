@@ -35,11 +35,7 @@
     {% if student.status == "ACTIVE" %}
     <a class="btn btn-warning" href="{% url 'core:student-deactivate-confirm' student.pk %}">Deactivate student&hellip;</a>
     {% else %}
-    <form method="post" action="{% url 'core:student-status-change' student.pk %}" class="d-inline">
-        {% csrf_token %}
-        <input type="hidden" name="status" value="ACTIVE">
-        <button type="submit" class="btn btn-success">Reactivate</button>
-    </form>
+    <a class="btn btn-success" href="{% url 'core:student-reactivate-confirm' student.pk %}">Reactivate student&hellip;</a>
     {% endif %}
 </div>
 </section>

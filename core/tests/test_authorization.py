@@ -974,12 +974,10 @@ class ApplicantProgressAuthorizationTests(AuthorizationClientsMixin, TestCase):
         )
         self.assertEqual(Student.objects.count(), 1)
 
-    def test_get_does_not_progress(self):
+    def test_get_shows_confirmation_and_does_not_progress(self):
         response = self.administrator.get(self.url)
 
-        self.assertRedirects(
-            response, reverse("core:applicant-detail", args=[self.applicant.pk])
-        )
+        self.assertEqual(response.status_code, 200)
         self.assertFalse(Student.objects.exists())
 
     def test_missing_applicant_is_not_found(self):
@@ -1277,7 +1275,9 @@ class StudentStatusChangeAuthorizationTests(AuthorizationClientsMixin, TestCase)
     def test_administrator_can_reactivate(self):
         self.student.record_status_change(Student.Status.INACTIVE, reason="Test reason")
 
-        response = self.administrator.post(self.url, {"status": Student.Status.ACTIVE})
+        response = self.administrator.post(
+            self.url, {"status": Student.Status.ACTIVE, "reason": "Returned"}
+        )
 
         self.assertRedirects(response, reverse("core:student-detail", args=[self.student.pk]))
         self.student.refresh_from_db()
