@@ -4,6 +4,7 @@
 {% if perms.core.add_academicterm %}{% url 'core:term-create' academic_year.pk as create_url %}{% endif %}
 {% include "partials/_page_header.html" with eyebrow="School setup" title="Terms" purpose=academic_year.name primary_url=create_url primary_label="Add Term" only %}
 <p class="erp-note-text"><span class="text-nowrap">{{ academic_year.start_date }}</span> to <span class="text-nowrap">{{ academic_year.end_date }}</span>. Terms are shown in their explicit order and may not overlap.</p>
+<div class="d-none d-md-block d-print-block">
 <div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Terms" tabindex="0">
 <table class="table erp-keep">
@@ -38,4 +39,24 @@
 </table>
 </div>
 </div>
+</div>
+{% if terms %}
+<ul class="erp-term-cards d-md-none d-print-none" role="list">
+    {% for term in terms %}
+    <li class="erp-term-card">
+        <div class="erp-term-card-name">{{ term.name }}</div>
+        <div class="erp-term-card-dates"><span class="text-nowrap">{{ term.start_date }}</span> to <span class="text-nowrap">{{ term.end_date }}</span> &middot; Order {{ term.display_order }}</div>
+        {% if perms.core.view_termpublication or perms.core.change_academicterm or perms.core.change_termremark %}
+        <div class="erp-assign-card-actions">
+            {% if perms.core.view_termpublication %}<a class="btn btn-primary btn-sm" href="{% url 'core:term-publication' term.pk %}">Publish to guardians<span class="visually-hidden">: {{ term.name }}</span></a>{% endif %}
+            {% if perms.core.change_academicterm %}<a class="erp-assign-secondary" href="{% url 'core:term-update' term.pk %}">Edit<span class="visually-hidden"> {{ term.name }}</span></a>{% endif %}
+            {% if perms.core.change_termremark %}<a class="erp-assign-secondary" href="{% url 'core:term-remarks' term.pk %}">Remarks<span class="visually-hidden">: {{ term.name }}</span></a>{% endif %}
+        </div>
+        {% endif %}
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<p class="erp-assign-cards-empty d-md-none d-print-none">No Terms yet.</p>
+{% endif %}
 {% endblock %}

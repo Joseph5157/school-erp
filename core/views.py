@@ -1915,7 +1915,7 @@ def academic_year_teacher_assignments(request, pk):
         by_slot.setdefault((row.offering_id, row.section_id), []).append(row)
     slots = []
     for rows in by_slot.values():
-        history, current = [], None
+        history, current, current_item = [], None, None
         for row in rows:
             if row.start_date > today:
                 status = "Starting soon"
@@ -1929,7 +1929,10 @@ def academic_year_teacher_assignments(request, pk):
                 "can_end": status != "Past",
                 "can_delete": status == "Starting soon" and not row.is_historically_relevant,
             })
+            if status == "Current":
+                current_item = history[-1]
         slots.append({
+            "current_item": current_item,
             "offering": rows[0].offering,
             "section": rows[0].section,
             "current": current,
