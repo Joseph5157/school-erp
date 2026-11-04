@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Progress to Student{% endblock %}
+{% block content %}
+{% include "partials/_page_header.html" with eyebrow="Student progression" title="Progress to Student" purpose=applicant.full_name only %}
+<section class="erp-panel mb-4" aria-labelledby="progress-guardians-heading">
+<h2 class="h5 p-3 p-md-4 pb-0 mb-0" id="progress-guardians-heading">Guardians to copy</h2>
+<div class="erp-table-scroll mt-3" role="region" aria-label="Guardians to copy" tabindex="0">
+<table class="table mb-0">
+    <thead>
+        <tr>
+            <th scope="col">Guardian</th>
+            <th scope="col">Relationship</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for link in guardian_links %}
+        <tr>
+            <td>{{ link.guardian.full_name }}</td>
+            <td>{{ link.get_relationship_type_display }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="2">No Guardians associated yet.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+</section>
+<div class="alert alert-warning" role="alert">
+    <p class="fw-semibold mb-2">This change has the following consequences:</p>
+    <ul class="mb-0">
+        <li>This creates one Student record for {{ applicant.full_name }} and copies the guardians listed here. It does not place the student in a class; placement is managed separately.</li>
+        <li>The Applicant record and its guardian history stay as they are.</li>
+    </ul>
+</div>
+<form method="post" class="erp-form">
+    {% csrf_token %}
+    <div class="erp-form-actions">
+        <button type="submit" class="btn btn-primary">Progress to Student</button>
+        <a class="btn btn-link" href="{% url 'core:applicant-detail' applicant.pk %}">Cancel</a>
+    </div>
+</form>
+{% endblock %}

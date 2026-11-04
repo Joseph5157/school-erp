@@ -127,13 +127,12 @@ class ApplicantDetailD13BTests(Phase4Fixture, TestCase):
         self.assertNotIn(self.reject_url(a), content)
 
     # Progression
-    def test_progress_form_for_accepted_without_student(self):
+    def test_progress_link_for_accepted_without_student(self):
         a = self.applicant("ACCEPTED")
         content = self.get(a)
         self.assertIn("Student progression", content)
-        self.assertIn(f'method="post" action="{self.progress_url(a)}"', content)
-        self.assertIn("csrfmiddlewaretoken", content)
-        self.assertIn("Progress to Student", content)
+        self.assertIn(f'href="{self.progress_url(a)}">Progress to Student', content)
+        self.assertNotIn(f'action="{self.progress_url(a)}"', content)
 
     def test_progress_form_hidden_otherwise(self):
         for status in ("PENDING", "REJECTED"):
