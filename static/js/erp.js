@@ -95,6 +95,7 @@
     var staticCounts = roster.querySelector("[data-erp-static-counts]");
     var filter = "all";
     var autosaveOn = false; // set once HTMX autosave is wired below
+    var unsaved = false; // only ever set when autosave is off, see the warning below
 
     function statusOf(row) {
       var checked = row.querySelector('input[type="radio"]:checked');
@@ -119,9 +120,9 @@
       var hint = roster.querySelector("[data-erp-hint]");
       if (hint) {
         hint.classList.toggle("is-warn", counts.unmarked > 0);
-        hint.textContent = counts.unmarked
+        hint.textContent = (unsaved ? "Unsaved changes. " : "") + (counts.unmarked
           ? "Mark all students to submit (" + counts.unmarked + " unmarked)"
-          : "All students marked";
+          : "All students marked");
       }
     }
 
@@ -151,6 +152,7 @@
             present.checked = true;
             // With autosave each bulk-marked row takes the same save path as a manual change.
             if (autosaveOn) present.dispatchEvent(new Event("change", { bubbles: true }));
+            else unsaved = true;
           }
         });
         refresh();
@@ -279,6 +281,28 @@
       roster.addEventListener("click", function (event) {
         var retry = event.target.closest("[data-erp-retry]");
         if (retry) window.htmx.trigger(retry.closest("[data-erp-row]"), "change");
+      });
+    }
+
+    // Unsaved-changes warning, for a roster that does not save itself (the admin page, or the
+    // teacher page if HTMX failed to load). Nothing here blocks the Save buttons.
+    if (!autosaveOn) {
+      var markUnsaved = function () {
+        unsaved = true;
+        refresh();
+      };
+      roster.addEventListener("change", markUnsaved);
+      roster.addEventListener("input", markUnsaved);
+      var captureForm = roster.closest("form");
+      if (captureForm) {
+        captureForm.addEventListener("submit", function () {
+          unsaved = false;
+        });
+      }
+      window.addEventListener("beforeunload", function (event) {
+        if (!unsaved) return;
+        event.preventDefault();
+        event.returnValue = "";
       });
     }
   });

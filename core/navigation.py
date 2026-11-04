@@ -71,6 +71,7 @@ TEACHER_TABS = (
 # (short URL names). The destinations themselves match on their own name.
 TEACHER_TAB_PARENTS = {
     "my-attendance": "my-home",
+    "my-attendance-submit": "my-home",
     "my-attendance-history": "my-home",
     "my-attendance-assignment": "my-home",
     "my-attendance-register": "my-home",

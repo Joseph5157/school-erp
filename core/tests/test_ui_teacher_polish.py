@@ -147,7 +147,8 @@ class NestedPageActiveTabTests(TestCase):
         self.assertEqual(
             {name: PARENT_LABELS[parent] for name, parent in TEACHER_TAB_PARENTS.items()},
             {
-                "my-attendance": "Today", "my-attendance-history": "Today",
+                "my-attendance": "Today", "my-attendance-submit": "Today",
+                "my-attendance-history": "Today",
                 "my-attendance-assignment": "Today", "my-attendance-register": "Today",
                 "my-student-detail": "Students",
                 "my-gradebook": "Assessments", "assessment-marks-entry": "Assessments",

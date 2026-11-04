@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Submit attendance{% endblock %}
+{% block content %}
+{% with day=register.date|date:"l, j F Y" %}
+{% include "partials/_page_header.html" with eyebrow="Attendance" title="Submit attendance?" purpose=register.section|stringformat:"s"|add:" · "|add:day only %}
+{% endwith %}
+<section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="submit-summary-heading">
+<h2 class="h5 mb-3" id="submit-summary-heading">Attendance to submit</h2>
+<dl class="row mb-2">
+    <dt class="col-6 col-sm-3">Present</dt>
+    <dd class="col-6 col-sm-9">{{ summary.present }}</dd>
+    <dt class="col-6 col-sm-3">Absent</dt>
+    <dd class="col-6 col-sm-9">{{ summary.absent }}</dd>
+    <dt class="col-6 col-sm-3">Absence notes</dt>
+    <dd class="col-6 col-sm-9">{{ summary.notes }}</dd>
+    <dt class="col-6 col-sm-3">Total</dt>
+    <dd class="col-6 col-sm-9">{{ summary.total }}</dd>
+</dl>
+<p class="mb-0">All {{ summary.total }} student{{ summary.total|pluralize }} {{ summary.total|pluralize:"is,are" }} marked.</p>
+</section>
+<div class="alert alert-warning" role="alert">
+    <p class="fw-semibold mb-2">This change has the following consequences:</p>
+    <ul class="mb-0">
+        <li>This register becomes official.</li>
+        <li>{{ correction_text }}</li>
+        {% if alert_count %}<li>Absence messages for {{ alert_count }} student{{ alert_count|pluralize }} will be prepared for office staff to send, where a guardian has portal access.</li>{% endif %}
+    </ul>
+</div>
+<form method="post" class="erp-form">
+    {% csrf_token %}
+    <div class="erp-form-actions">
+        <button type="submit" class="btn btn-primary">Confirm and submit attendance</button>
+        <a class="btn btn-link" href="{{ cancel_url }}">Back to register</a>
+    </div>
+</form>
+<p class="form-text">Your marks are saved as a draft, so going back loses nothing.</p>
+{% endblock %}

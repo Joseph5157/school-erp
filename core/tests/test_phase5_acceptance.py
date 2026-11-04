@@ -81,6 +81,7 @@ class Phase5AcceptanceJourneyTests(Phase4Fixture, TestCase):
         self.rao_c.post(attendance, {"action": "submit",
                                      f"status_{self.ravi_e.pk}": "ABSENT",
                                      f"status_{self.asha_e.pk}": "PRESENT"})
+        self.rao_c.post(reverse("core:my-attendance-submit", args=[self.six_a.pk]))
         register = AttendanceRegister.objects.get(section=self.six_a, date=date(2026, 7, 15))
         self.assertEqual((register.status, register.submitted_by), ("SUBMITTED", self.rao))
 
