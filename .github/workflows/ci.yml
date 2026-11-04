@@ -66,4 +66,11 @@ jobs:
       - name: Migrations are up to date
         run: python manage.py makemigrations --check --dry-run
       - name: Test suite (PostgreSQL)
-        run: python manage.py test --parallel 4 --durations 20
+        run: |
+          pip install py-spy
+          bash .github/scripts/report_test_stall.sh 60 60 &
+          watcher=$!
+          status=0
+          python manage.py test --parallel 4 --durations 20 || status=$?
+          kill "$watcher" 2>/dev/null || true
+          exit "$status"
