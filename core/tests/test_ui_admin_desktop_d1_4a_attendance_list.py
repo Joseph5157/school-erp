@@ -59,16 +59,16 @@ class StructureTests(AttendanceListFixture, TestCase):
         self.build()
         self.register(date(2026, 7, 6), submitted=True, present=[self.asha], absent=[self.ravi])
 
-    def test_one_h1_and_a_labelled_three_field_get_toolbar(self):
+    def test_one_h1_and_a_labelled_four_field_get_toolbar(self):
         content = self.client.get(self.url).content.decode()
         self.assertEqual(content.count("<h1"), 1)
         form = content.split('aria-label="Filter attendance registers"')[0].rsplit("<form", 1)[1]
         self.assertIn('method="get"', form)
         self.assertIn("erp-toolbar", form)
         tag = content.split('aria-label="Filter attendance registers"')[1].split("</form>")[0]
-        self.assertEqual(re.findall(r"<label[^>]*>([^<]+):</label>", tag), ["Section", "Start", "End"])
-        self.assertEqual(re.findall(r'<(?:select|input)[^>]* name="(section|start|end)"', tag),
-                         ["section", "start", "end"])
+        self.assertEqual(re.findall(r"<label[^>]*>([^<]+):</label>", tag), ["Section", "Start", "End", "Status"])
+        self.assertEqual(re.findall(r'<(?:select|input)[^>]* name="(section|start|end|status)"', tag),
+                         ["section", "start", "end", "status"])
         self.assertEqual(tag.count('type="date"'), 2)
         self.assertIn(">Filter</button>", tag)
 
@@ -164,7 +164,8 @@ class SummarySemanticsTests(AttendanceListFixture, TestCase):
         self.assertEqual(by_date[date(2026, 7, 7)].entry_count, 1)
         self.assertEqual(by_date[date(2026, 7, 8)].entry_count, 0)
         content = self.client.get(self.url, {"section": self.six_a.pk}).content.decode()
-        statuses = re.findall(r'</span>(Draft|Submitted)</span>', content)
+        table = content.split('aria-label="Attendance registers"')[1].split("</table>")[0]
+        statuses = re.findall(r'</span>(Draft|Submitted)</span>', table)
         self.assertEqual(sorted(statuses), ["Draft", "Draft", "Submitted"])
 
     def test_summary_follows_the_date_window_and_not_the_visible_page(self):
