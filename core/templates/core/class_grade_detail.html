@@ -2,7 +2,7 @@
 {% block title %}{{ class_grade.name }}{% endblock %}
 {% block content %}
 {% if perms.core.add_section %}{% url 'core:section-create' class_grade.pk as create_url %}{% endif %}
-{% include "partials/_page_header.html" with eyebrow="Classes/Grades" title=class_grade.name primary_url=create_url primary_label="Create Section" only %}
+{% include "partials/_page_header.html" with eyebrow="Classes/Grades" title=class_grade.name primary_url=create_url primary_label="Create section" only %}
 <section aria-labelledby="class-sections">
 <h2 class="erp-section-title" id="class-sections">Sections</h2>
 <div class="erp-panel">

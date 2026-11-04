@@ -2,7 +2,7 @@
 {% block title %}Terms - {{ academic_year.name }}{% endblock %}
 {% block content %}
 {% if perms.core.add_academicterm %}{% url 'core:term-create' academic_year.pk as create_url %}{% endif %}
-{% include "partials/_page_header.html" with eyebrow="School setup" title="Terms" purpose=academic_year.name primary_url=create_url primary_label="Add Term" only %}
+{% include "partials/_page_header.html" with eyebrow="School setup" title="Terms" purpose=academic_year.name primary_url=create_url primary_label="Add term" only %}
 <p class="erp-note-text"><span class="text-nowrap">{{ academic_year.start_date }}</span> to <span class="text-nowrap">{{ academic_year.end_date }}</span>. Terms are shown in their explicit order and may not overlap.</p>
 <div class="d-none d-md-block d-print-block">
 <div class="erp-panel">

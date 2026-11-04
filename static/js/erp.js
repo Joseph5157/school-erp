@@ -428,6 +428,21 @@
     refresh();
   });
 
+  // Character counters: update "42 / 120" as the person types. Line breaks count as two characters,
+  // as they do when the browser submits a textarea, so the figure matches the server limit.
+  document.querySelectorAll("[data-erp-counter-for]").forEach(function (counter) {
+    var input = document.getElementById(counter.getAttribute("data-erp-counter-for"));
+    var max = counter.getAttribute("data-erp-counter-max");
+    if (!input) return;
+    function refresh() {
+      var used = input.value.replace(/\r?\n/g, "\r\n").length;
+      counter.textContent = used + " / " + max;
+      counter.classList.toggle("is-over", used > Number(max));
+    }
+    input.addEventListener("input", refresh);
+    refresh();
+  });
+
   // Subjects offered: a link back to a Class/Grade opens its group.
   if (window.location.hash.indexOf("#grade-") === 0) {
     var linkedGroup = document.getElementById(window.location.hash.slice(1));

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
-{% block title %}Create Section{% endblock %}
+{% block title %}Create section{% endblock %}
 {% block content %}
-{% include "partials/_page_header.html" with eyebrow="Classes/Grades" title="Create Section" purpose=class_grade.name only %}
+{% include "partials/_page_header.html" with eyebrow="Classes/Grades" title="Create section" purpose=class_grade.name only %}
 <form method="post" class="erp-form">
     {% csrf_token %}
     {% include "partials/_form_required_legend.html" %}

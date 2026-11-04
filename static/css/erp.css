@@ -1896,6 +1896,10 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 .erp-drawer-context { display: flex; flex-direction: column; gap: .125rem; margin: 0 0 .75rem; padding: 0 .75rem .5rem; border-bottom: 1px solid var(--erp-rule); font-size: .875rem; color: var(--erp-ink-soft); }
 .erp-drawer-context span:first-child { font-weight: 600; }
 
+/* ---------- Character counters ---------- */
+.erp-char-counter { margin: calc(-1 * var(--erp-space-2)) 0 var(--erp-space-3); text-align: right; font-variant-numeric: tabular-nums; }
+.erp-char-counter.is-over { color: var(--bs-danger); font-weight: 600; }
+
 /* ---------- UI-D1-1: teacher assignment history ---------- */
 /* Each history entry stacks status + teacher, then the date range, then its permitted actions.
    The History column keeps a floor width so a narrow container scrolls the table (inside its

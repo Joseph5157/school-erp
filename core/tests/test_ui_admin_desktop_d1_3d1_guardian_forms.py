@@ -174,7 +174,7 @@ class GuardianFormsD13D1Tests(Phase4Fixture, TestCase):
     def test_student_guardian_create_layout_and_fields(self):
         content = self.get(self.add_url())
         self.assert_shared_layout(content, "People", "Save guardian link")
-        self.assertIn("Associate Guardian with Ravi Testfield", content)
+        self.assertIn("Associate guardian with Ravi Testfield", content)
         self.assert_cancel(content, reverse("core:student-detail", args=[self.student.pk]))
         self.assertEqual(self.field_names(content), ["guardian", "relationship_type"])
         self.assertNotIn('name="student"', content)

@@ -86,9 +86,9 @@ class SharedPatternTests(SchoolConfigurationListsFixture, TestCase):
 
     def test_primary_actions_sit_in_the_header_with_existing_targets(self):
         pages = {
-            "classes": (reverse("core:class-grade-create"), "Create Class/Grade"),
-            "subjects": (reverse("core:subject-create"), "Add Subject"),
-            "terms": (reverse("core:term-create", args=[self.year.pk]), "Add Term"),
+            "classes": (reverse("core:class-grade-create"), "Create class/grade"),
+            "subjects": (reverse("core:subject-create"), "Add subject"),
+            "terms": (reverse("core:term-create", args=[self.year.pk]), "Add term"),
             "offerings": (reverse("core:offering-create", args=[self.year.pk]), "Offer a Subject"),
         }
         urls = self.urls()

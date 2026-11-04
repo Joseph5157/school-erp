@@ -73,7 +73,7 @@ class ApplicantListTests(D13AFixture, TestCase):
     def test_empty_and_filtered_empty_states(self):
         Applicant.objects.all().delete()
         content = self.client.get(self.applicants_url).content.decode()
-        self.assertIn("No Applicants yet.", content)
+        self.assertIn("No applicants yet.", content)
         self.assertIn(f'href="{reverse("core:applicant-create")}">Register applicant', content)
         self.assertNotIn("No results", content)
 
@@ -81,7 +81,7 @@ class ApplicantListTests(D13AFixture, TestCase):
         Applicant.objects.all().delete()
         content = self.client.get(self.applicants_url, {"status": "ACCEPTED"}).content.decode()
         self.assertIn("No applicants match the selected admission status.", content)
-        self.assertNotIn("No Applicants yet.", content)
+        self.assertNotIn("No applicants yet.", content)
         self.assertNotIn("No results", content)
         # The page header keeps its action; only the "nothing here yet" one goes.
         self.assertNotIn(f'mt-2" href="{reverse("core:applicant-create")}"', content)
@@ -90,7 +90,7 @@ class ApplicantListTests(D13AFixture, TestCase):
     def test_an_invalid_status_is_not_treated_as_a_filter(self):
         Applicant.objects.all().delete()
         content = self.client.get(self.applicants_url, {"status": "BOGUS"}).content.decode()
-        self.assertIn("No Applicants yet.", content)
+        self.assertIn("No applicants yet.", content)
         self.assertNotIn("Clear filters", content)
 
     def test_long_name_is_not_truncated(self):

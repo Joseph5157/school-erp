@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}{% if creating %}Add Term{% else %}Edit Term{% endif %}{% endblock %}
+{% block title %}{% if creating %}Add term{% else %}Edit Term{% endif %}{% endblock %}
 {% block content %}
 {% if creating %}
-{% include "partials/_page_header.html" with eyebrow="Terms" title="Add Term" purpose=academic_year.name only %}
+{% include "partials/_page_header.html" with eyebrow="Terms" title="Add term" purpose=academic_year.name only %}
 {% else %}
 {% include "partials/_page_header.html" with eyebrow="Terms" title="Edit Term" purpose=academic_year.name only %}
 {% endif %}

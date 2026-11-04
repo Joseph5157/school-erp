@@ -2,7 +2,7 @@
 {% block title %}Subjects{% endblock %}
 {% block content %}
 {% if perms.core.add_subject %}{% url 'core:subject-create' as create_url %}{% endif %}
-{% include "partials/_page_header.html" with eyebrow="School setup" title="Subjects" purpose="Subjects belong to the whole school. Each Academic Year offers them to Classes/Grades separately." primary_url=create_url primary_label="Add Subject" only %}
+{% include "partials/_page_header.html" with eyebrow="School setup" title="Subjects" purpose="Subjects belong to the whole school. Each Academic Year offers them to Classes/Grades separately." primary_url=create_url primary_label="Add subject" only %}
 <div class="d-none d-md-block d-print-block">
 <div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Subjects" tabindex="0">
@@ -24,7 +24,7 @@
             <td class="text-end text-nowrap">{% if perms.core.change_subject %}<a href="{% url 'core:subject-update' subject.pk %}">Edit<span class="visually-hidden"> {{ subject.name }}</span></a>{% endif %}</td>
         </tr>
         {% empty %}
-        <tr><td colspan="4">No Subjects yet.{% if perms.core.add_subject %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:subject-create' %}">Add subject</a>{% endif %}</td></tr>
+        <tr><td colspan="4">No subjects yet.{% if perms.core.add_subject %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:subject-create' %}">Add subject</a>{% endif %}</td></tr>
         {% endfor %}
     </tbody>
 </table>
@@ -46,6 +46,6 @@
     {% endfor %}
 </ul>
 {% else %}
-<div class="erp-setup-cards-empty d-md-none d-print-none">No Subjects yet.{% if perms.core.add_subject %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:subject-create' %}">Add subject</a>{% endif %}</div>
+<div class="erp-setup-cards-empty d-md-none d-print-none">No subjects yet.{% if perms.core.add_subject %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:subject-create' %}">Add subject</a>{% endif %}</div>
 {% endif %}
 {% endblock %}

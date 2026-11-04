@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}{% if link %}Change relationship{% else %}Associate Guardian{% endif %}{% endblock %}
+{% block title %}{% if link %}Change relationship{% else %}Associate guardian{% endif %}{% endblock %}
 {% block content %}
 <div class="erp-guardian-form-page">
 {% if link %}
 {% include "partials/_page_header.html" with eyebrow="People" title="Change relationship: "|add:link.guardian.full_name|add:" and "|add:student.full_name purpose="Update only how this Guardian relates to this Student." only %}
 {% else %}
-{% include "partials/_page_header.html" with eyebrow="People" title="Associate Guardian with "|add:student.full_name purpose="Choose an existing Guardian and how they relate to this Student. A relationship does not grant Portal access." only %}
+{% include "partials/_page_header.html" with eyebrow="People" title="Associate guardian with "|add:student.full_name purpose="Choose an existing Guardian and how they relate to this Student. A relationship does not grant Portal access." only %}
 {% endif %}
 <form method="post" class="erp-form">
     {% csrf_token %}

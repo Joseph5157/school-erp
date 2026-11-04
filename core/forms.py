@@ -73,6 +73,14 @@ class ParentedCheckboxSelectMultiple(_ParentedChoicesMixin, forms.CheckboxSelect
 
 class SchoolForm(forms.ModelForm):
     SELECTABLE_MODES = (School.NotificationMode.PORTAL_ONLY, School.NotificationMode.ASSIST)
+    CHANNEL_LABELS = {
+        School.NotificationMode.ASSIST: "Prepare WhatsApp messages for office staff to send",
+    }
+    CHANNEL_HELP = (
+        "The ERP prepares approved message content. It does not send WhatsApp messages "
+        "automatically. Office staff review the message and record whether it was sent or skipped. "
+        "With Portal only, guardians see messages after signing in to the Guardian Portal."
+    )
 
     class Meta:
         model = School
@@ -85,10 +93,13 @@ class SchoolForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Labels and help are wording only; the stored values (PORTAL_ONLY, ASSIST) are unchanged.
         self.fields["notification_channel"].choices = [
-            (value, label) for value, label in School.NotificationMode.choices
+            (value, self.CHANNEL_LABELS.get(value, label))
+            for value, label in School.NotificationMode.choices
             if value in self.SELECTABLE_MODES
         ]
+        self.fields["notification_channel"].help_text = self.CHANNEL_HELP
 
     def clean_notification_channel(self):
         mode = self.cleaned_data["notification_channel"]
@@ -899,6 +910,7 @@ class ClassGradeForm(forms.ModelForm):
     class Meta:
         model = ClassGrade
         fields = ["name"]
+        help_texts = {"name": "Examples: Nursery, LKG, Grade 1."}
 
 
 class SectionForm(forms.ModelForm):
@@ -914,6 +926,7 @@ class SectionForm(forms.ModelForm):
     class Meta:
         model = Section
         fields = ["name"]
+        help_texts = {"name": "Examples: A, B, Morning."}
 
     def __init__(self, *args, class_grade=None, **kwargs):
         super().__init__(*args, **kwargs)

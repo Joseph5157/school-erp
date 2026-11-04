@@ -209,7 +209,7 @@ RULES = {
     "term-create": Rule(
         "academic-year-list",
         (_ACADEMIC_YEARS, Crumb("Terms", "core:academic-year-terms", True, perm="core.view_academicyear")),
-        "Add Term",
+        "Add term",
     ),
     "term-update": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Edit Term"),
     # Classes, subjects and subject offerings (S2). Section create takes the class's pk, so it links back to the class;
@@ -217,7 +217,7 @@ RULES = {
     "class-grade-create": Rule(
         "class-grade-list",
         (Crumb("Classes/Grades", "core:class-grade-list", perm="core.view_classgrade"),),
-        "Create Class/Grade",
+        "Create class/grade",
     ),
     "class-grade-detail": Rule(
         "class-grade-list",
@@ -230,17 +230,17 @@ RULES = {
             Crumb("Classes/Grades", "core:class-grade-list", perm="core.view_classgrade"),
             Crumb("Class/Grade", "core:class-grade-detail", True, perm="core.view_classgrade"),
         ),
-        "Create Section",
+        "Create section",
     ),
     "subject-create": Rule(
         "subject-list",
         (Crumb("Subjects", "core:subject-list", perm="core.view_subject"),),
-        "Add Subject",
+        "Add subject",
     ),
     "subject-update": Rule(
         "subject-list",
         (Crumb("Subjects", "core:subject-list", perm="core.view_subject"),),
-        "Edit Subject",
+        "Edit subject",
     ),
     "offering-create": Rule(
         "academic-year-list",

@@ -1,0 +1,2 @@
+{# Live character count for a text field. Expects `field`. Without JavaScript it shows the count at page load. #}
+<p class="erp-field-help erp-char-counter" data-erp-counter-for="{{ field.id_for_label }}" data-erp-counter-max="{{ field.field.max_length }}">{{ field.value|default_if_none:""|length }} / {{ field.field.max_length }}</p>
