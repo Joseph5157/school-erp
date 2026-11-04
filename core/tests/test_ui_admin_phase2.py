@@ -198,7 +198,9 @@ class OverviewCardTests(AuthorizationClientsMixin, AttendanceFixtureMixin, TestC
     def test_page_shows_cards_and_empty_copy(self):
         response = self.administrator.get(reverse("core:admin-overview"))
         self.assertContains(response, "Applicants awaiting decision")
-        self.assertContains(response, "Nothing waiting")
+        # The quiet list is headed "Checklist" while setup is unfinished (this school has no profile).
+        self.assertContains(response, 'id="clear-title">Checklist<')
+        self.assertContains(response, "Finish school setup")
 
     def test_card_hidden_without_source_permission(self):
         user = User.objects.create_user(username="viewer", password="pass-12345")

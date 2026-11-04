@@ -121,6 +121,21 @@ def split_cards(cards):
     return [c for c in cards if c["count"]], [c for c in cards if not c["count"]]
 
 
+def system_checklist(clear_cards, steps):
+    """Quiet checklist: each clear card, then one setup item. Items are {"label", "ok", "url"}.
+
+    A clear card is always ok. The setup item is ok when every setup step is done; otherwise it
+    links to the first step still to do, so the item that has work points at the work.
+    """
+    items = [{"label": c["title"], "ok": True, "url": c["url"]} for c in clear_cards]
+    todo = next((step for step in steps if not step["done"]), None)
+    if todo is None:
+        items.append({"label": "School setup complete", "ok": True, "url": ""})
+    else:
+        items.append({"label": "Finish school setup", "ok": False, "url": todo["url"]})
+    return items
+
+
 def overview_cards(user):
     today = core_models.business_today()  # looked up late so tests can pin it
     return [build(today) for build, perm in _CARDS if user.has_perm(perm)]

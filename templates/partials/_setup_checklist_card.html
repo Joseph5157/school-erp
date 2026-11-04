@@ -1,4 +1,4 @@
-{# Setup checklist card: progress bar + the steps still to do; completed steps fold into a <details>. #}
+{# Setup checklist card: progress bar + the steps still to do; completed steps fold into a <details>. When setup is complete the Overview shows a quiet "School setup complete" item instead. #}
 {% if not setup_complete %}
 <section class="erp-setup" aria-labelledby="setup-title">
     <header class="erp-setup-head">
@@ -34,6 +34,4 @@
     </details>
     {% endif %}
 </section>
-{% else %}
-<p class="erp-setup-complete"><span class="erp-setup-check" aria-hidden="true">✓</span>School setup complete</p>
 {% endif %}

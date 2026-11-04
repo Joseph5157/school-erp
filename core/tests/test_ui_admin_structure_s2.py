@@ -93,20 +93,20 @@ class Fixture(AuthorizationClientsMixin):
             ("calendar-day-update", reverse("core:calendar-day-update", args=[d]),
              ["Overview", "Academic Years", "Edit exception"], "Academic Years"),
             ("term-create", reverse("core:term-create", args=[y]),
-             ["Overview", "Academic Years", "Terms", "Add Term"], "Academic Years"),
+             ["Overview", "Academic Years", "Terms", "Add term"], "Academic Years"),
             ("term-update", reverse("core:term-update", args=[t]),
              ["Overview", "Academic Years", "Edit Term"], "Academic Years"),
             # batch 2: classes, subjects, offerings
             ("class-grade-create", reverse("core:class-grade-create"),
-             ["Overview", "Classes/Grades", "Create Class/Grade"], "Classes/Grades"),
+             ["Overview", "Classes/Grades", "Create class/grade"], "Classes/Grades"),
             ("class-grade-detail", reverse("core:class-grade-detail", args=[c]),
              ["Overview", "Classes/Grades", "Class/Grade"], "Classes/Grades"),
             ("section-create", reverse("core:section-create", args=[c]),
-             ["Overview", "Classes/Grades", "Class/Grade", "Create Section"], "Classes/Grades"),
+             ["Overview", "Classes/Grades", "Class/Grade", "Create section"], "Classes/Grades"),
             ("subject-create", reverse("core:subject-create"),
-             ["Overview", "Subjects", "Add Subject"], "Subjects"),
+             ["Overview", "Subjects", "Add subject"], "Subjects"),
             ("subject-update", reverse("core:subject-update", args=[sub]),
-             ["Overview", "Subjects", "Edit Subject"], "Subjects"),
+             ["Overview", "Subjects", "Edit subject"], "Subjects"),
             ("offering-create", reverse("core:offering-create", args=[y]),
              ["Overview", "Academic Years", "Subjects offered", "Offer a Subject"], "Academic Years"),
             ("offering-update", reverse("core:offering-update", args=[o]),
@@ -208,8 +208,8 @@ class SharedShellTests(Fixture, TestCase):
 
     def test_subject_edit_keeps_its_retire_note(self):
         page = self.administrator.get(reverse("core:subject-update", args=[self.subject.pk])).content.decode()
-        self.assertIn("To retire a Subject, untick Active", page)
-        self.assertNotIn("To retire a Subject", self.administrator.get(reverse("core:subject-create")).content.decode())
+        self.assertIn("To retire a subject, untick Active", page)
+        self.assertNotIn("To retire a subject", self.administrator.get(reverse("core:subject-create")).content.decode())
 
     def test_offering_choice_field_is_a_fieldset(self):
         page = self.administrator.get(reverse("core:offering-update", args=[self.offering.pk])).content.decode()

@@ -189,10 +189,10 @@ class ApplicantDetailD13BTests(Phase4Fixture, TestCase):
     def test_associate_guardian_permission_gating(self):
         a = self.applicant()
         create = reverse("core:applicant-guardian-create", args=[a.pk])
-        self.assertIn(f'href="{create}">Associate Guardian', self.get(a))
+        self.assertIn(f'href="{create}">Associate guardian', self.get(a))
         viewer = self.client_with("viewer", "view_applicant")
         content = self.get(a, viewer)
         self.assertNotIn(create, content)
-        self.assertNotIn("Associate Guardian", content)
+        self.assertNotIn("Associate guardian", content)
         adder = self.client_with("adder", "view_applicant", "add_applicantguardian")
         self.assertIn(create, self.get(a, adder))

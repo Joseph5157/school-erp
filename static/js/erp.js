@@ -39,6 +39,15 @@
     if (active && active.scrollIntoView) active.scrollIntoView({ block: "nearest" });
   })();
 
+  // Phone menu button: keep aria-expanded in step with the drawer. Bootstrap returns focus to the button on close.
+  (function () {
+    var drawer = document.getElementById("erp-sidebar");
+    var button = document.querySelector(".erp-menu-btn");
+    if (!drawer || !button) return;
+    drawer.addEventListener("shown.bs.offcanvas", function () { button.setAttribute("aria-expanded", "true"); });
+    drawer.addEventListener("hidden.bs.offcanvas", function () { button.setAttribute("aria-expanded", "false"); });
+  })();
+
   // Desktop sidebar: the top-bar button hides or shows it and remembers the choice in this browser.
   // The saved state was already applied in <head>; this only wires the button. Without JS or storage
   // the button stays hidden and the sidebar stays open.
@@ -419,6 +428,21 @@
     refresh();
   });
 
+  // Character counters: update "42 / 120" as the person types. Line breaks count as two characters,
+  // as they do when the browser submits a textarea, so the figure matches the server limit.
+  document.querySelectorAll("[data-erp-counter-for]").forEach(function (counter) {
+    var input = document.getElementById(counter.getAttribute("data-erp-counter-for"));
+    var max = counter.getAttribute("data-erp-counter-max");
+    if (!input) return;
+    function refresh() {
+      var used = input.value.replace(/\r?\n/g, "\r\n").length;
+      counter.textContent = used + " / " + max;
+      counter.classList.toggle("is-over", used > Number(max));
+    }
+    input.addEventListener("input", refresh);
+    refresh();
+  });
+
   // Subjects offered: a link back to a Class/Grade opens its group.
   if (window.location.hash.indexOf("#grade-") === 0) {
     var linkedGroup = document.getElementById(window.location.hash.slice(1));
@@ -544,6 +568,61 @@
   window.addEventListener("appinstalled", function () {
     offered = null;
     button.hidden = true;
+  });
+})();
+
+// Dependent selectors: a field marked data-erp-depends-on="<parent field id>" shows only the options (or
+// checkboxes) whose data-parent matches the parent's choice. A select carries the attribute itself; a checkbox
+// list carries it on each box. If the parent's chosen option itself has a data-parent (a Subject offering
+// carries its Grade), that is the key. Changing the parent clears a choice that no longer fits; on load nothing
+// is cleared, so a re-rendered form keeps what was chosen. Without JS every option stays available and the
+// server rejects a mismatched pair.
+(function () {
+  var groups = {};
+  document.querySelectorAll("[data-erp-depends-on]").forEach(function (element) {
+    var id = element.getAttribute("data-erp-depends-on");
+    var isSelect = element.tagName === "SELECT";
+    if (!isSelect && !element.hasAttribute("data-parent")) return;
+    var key = id + "|" + (isSelect ? element.id : "boxes:" + element.name);
+    if (!groups[key]) groups[key] = { parentId: id, select: isSelect ? element : null, items: [] };
+    if (isSelect) {
+      element.querySelectorAll("option[data-parent]").forEach(function (option) { groups[key].items.push(option); });
+    } else {
+      groups[key].items.push(element);
+    }
+  });
+
+  Object.keys(groups).forEach(function (key) {
+    var group = groups[key];
+    var parent = document.getElementById(group.parentId);
+    if (!parent || !group.items.length) return;
+
+    function parentKey() {
+      var chosen = parent.options ? parent.options[parent.selectedIndex] : null;
+      if (chosen && chosen.hasAttribute("data-parent")) return chosen.getAttribute("data-parent");
+      return parent.value;
+    }
+
+    function apply(clear) {
+      var wanted = parentKey();
+      group.items.forEach(function (item) {
+        var fits = !wanted || item.getAttribute("data-parent") === wanted;
+        var isOption = item.tagName === "OPTION";
+        var holder = isOption ? item : (item.closest("div") || item);
+        holder.hidden = !fits;
+        if (isOption) item.disabled = !fits;
+        if (!fits && clear) {
+          if (isOption) {
+            if (item.selected) group.select.value = "";
+          } else {
+            item.checked = false;
+          }
+        }
+      });
+    }
+
+    apply(false);
+    parent.addEventListener("change", function () { apply(true); });
   });
 })();
 

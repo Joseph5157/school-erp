@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}{% if creating %}Add Subject{% else %}Edit Subject{% endif %}{% endblock %}
+{% block title %}{% if creating %}Add subject{% else %}Edit subject{% endif %}{% endblock %}
 {% block content %}
 {% if creating %}
-{% include "partials/_page_header.html" with eyebrow="Subjects" title="Add Subject" only %}
+{% include "partials/_page_header.html" with eyebrow="Subjects" title="Add subject" only %}
 {% else %}
-{% include "partials/_page_header.html" with eyebrow="Subjects" title="Edit Subject" purpose=subject.name only %}
-<p class="erp-note-text">Renaming keeps all history attached. To retire a Subject, untick Active; it then cannot be offered again.</p>
+{% include "partials/_page_header.html" with eyebrow="Subjects" title="Edit subject" purpose=subject.name only %}
+<p class="erp-note-text">Renaming keeps all history attached. To retire a subject, untick Active. Existing offerings, assignments and finalized results remain on record. An inactive subject cannot be added to a new offering.</p>
 {% endif %}
 <form method="post" class="erp-form">
     {% csrf_token %}

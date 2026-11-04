@@ -39,8 +39,48 @@ from core.models import (
 )
 
 
+class _ParentedChoicesMixin:
+    """Render ``data-parent="<pk>"`` on each option, naming the parent record it belongs to.
+
+    ``parent_attr`` is the attribute of the option's record holding the parent's pk
+    (for a Section, ``class_grade_id``). ``depends_on`` is the id of the field this one
+    narrows by; static/js/erp.js hides the options whose parent does not match.
+    Nothing is filtered here: without JavaScript every option stays usable, and the
+    form's own clean() still rejects a mismatched pair.
+    """
+
+    def __init__(self, *args, parent_attr, depends_on=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.parent_attr = parent_attr
+        if depends_on:
+            self.attrs["data-erp-depends-on"] = depends_on
+
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex, attrs)
+        instance = getattr(value, "instance", None)
+        if instance is not None:
+            option["attrs"]["data-parent"] = getattr(instance, self.parent_attr)
+        return option
+
+
+class ParentedSelect(_ParentedChoicesMixin, forms.Select):
+    pass
+
+
+class ParentedCheckboxSelectMultiple(_ParentedChoicesMixin, forms.CheckboxSelectMultiple):
+    pass
+
+
 class SchoolForm(forms.ModelForm):
     SELECTABLE_MODES = (School.NotificationMode.PORTAL_ONLY, School.NotificationMode.ASSIST)
+    CHANNEL_LABELS = {
+        School.NotificationMode.ASSIST: "Prepare WhatsApp messages for office staff to send",
+    }
+    CHANNEL_HELP = (
+        "The ERP prepares approved message content. It does not send WhatsApp messages "
+        "automatically. Office staff review the message and record whether it was sent or skipped. "
+        "With Portal only, guardians see messages after signing in to the Guardian Portal."
+    )
 
     class Meta:
         model = School
@@ -53,10 +93,13 @@ class SchoolForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Labels and help are wording only; the stored values (PORTAL_ONLY, ASSIST) are unchanged.
         self.fields["notification_channel"].choices = [
-            (value, label) for value, label in School.NotificationMode.choices
+            (value, self.CHANNEL_LABELS.get(value, label))
+            for value, label in School.NotificationMode.choices
             if value in self.SELECTABLE_MODES
         ]
+        self.fields["notification_channel"].help_text = self.CHANNEL_HELP
 
     def clean_notification_channel(self):
         mode = self.cleaned_data["notification_channel"]
@@ -502,7 +545,9 @@ class SubjectOfferingForm(forms.Form):
     sections = forms.ModelMultipleChoiceField(
         queryset=Section.objects.select_related("class_grade"),
         required=False,
-        widget=forms.CheckboxSelectMultiple,
+        widget=ParentedCheckboxSelectMultiple(
+            parent_attr="class_grade_id", depends_on="id_class_grade"
+        ),
         help_text="Leave all unticked to offer the Subject to every Section of the Grade.",
     )
     display_order = forms.IntegerField(
@@ -596,9 +641,14 @@ class TeacherAssignmentForm(forms.Form):
 
     teacher = forms.ModelChoiceField(queryset=get_user_model().objects.none())
     offering = forms.ModelChoiceField(
-        queryset=AcademicSubjectOffering.objects.none(), label="Subject offering"
+        queryset=AcademicSubjectOffering.objects.none(),
+        label="Subject offering",
+        widget=ParentedSelect(parent_attr="class_grade_id"),
     )
-    section = forms.ModelChoiceField(queryset=Section.objects.select_related("class_grade"))
+    section = forms.ModelChoiceField(
+        queryset=Section.objects.select_related("class_grade"),
+        widget=ParentedSelect(parent_attr="class_grade_id", depends_on="id_offering"),
+    )
     start_date = forms.DateField(
         widget=forms.DateInput(attrs={"type": "date"}),
         help_text="If the Subject and Section already have a teacher on this date, "
@@ -860,6 +910,7 @@ class ClassGradeForm(forms.ModelForm):
     class Meta:
         model = ClassGrade
         fields = ["name"]
+        help_texts = {"name": "Examples: Nursery, LKG, Grade 1."}
 
 
 class SectionForm(forms.ModelForm):
@@ -875,6 +926,7 @@ class SectionForm(forms.ModelForm):
     class Meta:
         model = Section
         fields = ["name"]
+        help_texts = {"name": "Examples: A, B, Morning."}
 
     def __init__(self, *args, class_grade=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -1066,7 +1118,10 @@ class AttendanceRegisterForm(forms.ModelForm):
     class Meta:
         model = AttendanceRegister
         fields = ["academic_year", "class_grade", "section", "date"]
-        widgets = {"date": forms.DateInput(attrs={"type": "date"})}
+        widgets = {
+            "date": forms.DateInput(attrs={"type": "date"}),
+            "section": ParentedSelect(parent_attr="class_grade_id", depends_on="id_class_grade"),
+        }
 
     def clean(self):
         cleaned_data = super().clean()

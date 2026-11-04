@@ -3,6 +3,7 @@
 {% block content %}
 {% include "partials/_page_header.html" with eyebrow="Timetable" title="Timetable issues" purpose=academic_year.name only %}
 <p class="text-muted">A read-only check of the timetable. It shows what needs attention; fix it from the Section timetables or the teacher assignments.</p>
+<p class="erp-note-text">This report checks teacher clashes and scheduled slots without teachers. It does not assess timetable completeness or required subject hours.</p>
 <form method="get" class="erp-form erp-schedule-date">
     {% include "partials/_form_error_summary.html" with form=date_form action_text="showing the report" %}
     {% include "partials/_form_field.html" with field=date_form.date only %}

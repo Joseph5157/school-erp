@@ -6,6 +6,7 @@
 {% else %}
 {% include "partials/_page_header.html" with eyebrow="School setup" title="Edit school configuration" only %}
 {% endif %}
+<p class="erp-note-text">Changes appear in the Admin header, future messages and newly issued documents. Previously issued documents keep their original school details.</p>
 <form method="post" class="erp-form">
     {% csrf_token %}
     {% include "partials/_form_required_legend.html" %}

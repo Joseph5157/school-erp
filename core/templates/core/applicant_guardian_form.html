@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Associate Guardian{% endblock %}
+{% block title %}Associate guardian{% endblock %}
 {% block content %}
 <div class="erp-guardian-form-page">
-{% include "partials/_page_header.html" with eyebrow="Admissions" title="Associate Guardian with "|add:applicant.full_name purpose="Choose an existing Guardian and how they relate to this Applicant." only %}
+{% include "partials/_page_header.html" with eyebrow="Admissions" title="Associate guardian with "|add:applicant.full_name purpose="Choose an existing Guardian and how they relate to this Applicant." only %}
 <form method="post" class="erp-form">
     {% csrf_token %}
     {% include "partials/_form_required_legend.html" %}

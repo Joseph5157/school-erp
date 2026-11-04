@@ -937,6 +937,7 @@ def admin_overview(request):
         step["is_next"] = step["key"] == next_key
     cards = dashboard.overview_cards(request.user)
     attention_cards, clear_cards = dashboard.split_cards(cards)
+    checklist = dashboard.system_checklist(clear_cards, steps)
     return render(
         request,
         "core/admin_overview.html",
@@ -945,6 +946,8 @@ def admin_overview(request):
             "glance_cards": dashboard.glance_cards(request.user),
             "attention_cards": attention_cards,
             "clear_cards": clear_cards,
+            "system_checklist": checklist,
+            "checklist_clear": all(item["ok"] for item in checklist),
             "setup_steps": steps,
             "setup_complete": setup_checklist.setup_complete(steps),
             # Until the foundation exists there is nothing operational to show, so setup leads;
