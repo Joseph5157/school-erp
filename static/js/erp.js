@@ -39,6 +39,15 @@
     if (active && active.scrollIntoView) active.scrollIntoView({ block: "nearest" });
   })();
 
+  // Phone menu button: keep aria-expanded in step with the drawer. Bootstrap returns focus to the button on close.
+  (function () {
+    var drawer = document.getElementById("erp-sidebar");
+    var button = document.querySelector(".erp-menu-btn");
+    if (!drawer || !button) return;
+    drawer.addEventListener("shown.bs.offcanvas", function () { button.setAttribute("aria-expanded", "true"); });
+    drawer.addEventListener("hidden.bs.offcanvas", function () { button.setAttribute("aria-expanded", "false"); });
+  })();
+
   // Desktop sidebar: the top-bar button hides or shows it and remembers the choice in this browser.
   // The saved state was already applied in <head>; this only wires the button. Without JS or storage
   // the button stays hidden and the sidebar stays open.

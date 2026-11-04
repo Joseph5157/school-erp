@@ -5,6 +5,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#erp-sidebar" aria-label="Close menu"></button>
     </div>
     <div class="offcanvas-body d-block">
+        {% firstof viewing_year_name current_year_name as drawer_year %}{% if school_name or drawer_year %}<p class="erp-drawer-context d-md-none">{% if school_name %}<span>{{ school_name }}</span>{% endif %}{% if drawer_year %}<span><span class="visually-hidden">Academic year </span>{{ drawer_year }}</span>{% endif %}</p>{% endif %}
         {% if year_choices|length > 1 %}
         <div class="erp-year-drawer d-lg-none">
             <span class="erp-nav-heading">Academic year</span>
