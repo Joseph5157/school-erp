@@ -8,8 +8,8 @@
     <p class="fw-semibold mb-2">This change has the following consequences:</p>
     <ul class="mb-0">
         <li>The student returns to active student lists.</li>
-        <li>The earlier placement, {{ placement|default:"none" }}, is not restored; placement is managed separately.</li>
-        <li>Guardian portal access is not restored automatically.</li>
+        {% if placement %}<li>The current placement, {{ placement }}, is unchanged.</li>{% else %}<li>The student has no current placement. Placement is managed separately.</li>{% endif %}
+        <li>Guardian portal access is not changed. Access revoked when the student was deactivated stays revoked.</li>
         <li>The change and its reason are recorded in the student's status history.</li>
     </ul>
 </div>

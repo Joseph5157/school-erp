@@ -4,7 +4,9 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
 from django.test import TestCase
 from django.urls import reverse
+from django.utils.html import escape
 
+from core import guardian_accounts as ga
 from core.models import (
     Applicant,
     ApplicantGuardian,
@@ -13,6 +15,7 @@ from core.models import (
     Student,
     StudentStatusChange,
 )
+from core.tests.test_phase6_access_boundary import RETAIN, REVOKE, BoundaryFixture
 
 User = get_user_model()
 
@@ -133,6 +136,13 @@ class ReactivateConfirmTests(LifecycleFixture, TestCase):
         self.student.refresh_from_db()
         self.assertEqual(self.student.status, Student.Status.INACTIVE)
 
+    def test_reactivate_page_says_when_there_is_no_placement(self):
+        response = self.client.get(self.url)
+        self.assertContains(
+            response,
+            "The student has no current placement. Placement is managed separately.",
+        )
+
     def test_reactivate_requires_reason(self):
         response = self.client.post(self.url, {"reason": "   "})
         self.assertEqual(response.status_code, 200)
@@ -185,3 +195,42 @@ class ReactivateConfirmTests(LifecycleFixture, TestCase):
         self.assertEqual(response.status_code, 403)
         self.student.refresh_from_db()
         self.assertEqual(self.student.status, Student.Status.INACTIVE)
+
+
+class ReactivateConsequenceTests(BoundaryFixture, TestCase):
+    """The consequence lines describe what reactivation really does."""
+
+    def setUp(self):
+        super().setUp()
+        self.second = ga.grant_student_access(
+            student_guardian=self.relate(self.asha, self.other), actor=self.admin
+        )
+        self.asha.record_status_change(
+            Student.Status.INACTIVE, actor=self.admin,
+            access_decisions={self.asha_grant.pk: RETAIN, self.second.pk: REVOKE},
+            reason="Left",
+        )
+        self.url = reverse("core:student-reactivate-confirm", args=[self.asha.pk])
+
+    def test_reactivate_page_says_placement_is_unchanged(self):
+        response = self.client.get(self.url)
+        self.assertContains(
+            response,
+            f"The current placement, {escape(str(self.asha_e))}, is unchanged.",
+        )
+
+    def test_reactivate_keeps_retained_grant_and_revoked_stays_revoked(self):
+        page = self.client.get(self.url)
+        self.assertContains(
+            page,
+            "Guardian portal access is not changed. Access revoked when the student "
+            "was deactivated stays revoked.",
+        )
+        response = self.client.post(self.url, {"reason": "Returned"})
+        self.assertEqual(response.status_code, 302)
+        self.asha.refresh_from_db()
+        self.assertEqual(self.asha.status, Student.Status.ACTIVE)
+        self.asha_grant.refresh_from_db()
+        self.second.refresh_from_db()
+        self.assertIsNone(self.asha_grant.revoked_at)
+        self.assertIsNotNone(self.second.revoked_at)
