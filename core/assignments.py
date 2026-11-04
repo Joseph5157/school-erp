@@ -108,6 +108,18 @@ def overview(academic_year, on_date):
         "class_gaps": sum(1 for row in class_rows if row["gap"]),
         "subject_gaps": sum(1 for row in subject_rows if row["gap"]),
         "inactive": sum(1 for row in class_rows + subject_rows if row["inactive"]),
+        "summary": {
+            "sections_without_class_teacher": sum(1 for row in class_rows if row["gap"]),
+            "offerings_without_teacher": sum(1 for row in subject_rows if row["gap"]),
+            "active_class_teachers": len({
+                row["assignment"].teacher_id for row in class_rows
+                if row["assignment"] and not row["inactive"]
+            }),
+            "active_subject_teachers": len({
+                row["assignment"].teacher_id for row in subject_rows
+                if row["assignment"] and not row["inactive"]
+            }),
+        },
     }
 
 

@@ -1825,6 +1825,30 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 .erp-setup-card-actions { display: flex; flex-wrap: wrap; gap: var(--erp-space-2); margin-top: var(--erp-space-2); }
 .erp-setup-card-actions .btn { display: inline-flex; align-items: center; min-height: 2.75rem; overflow-wrap: anywhere; }
 .erp-setup-cards-empty { padding: var(--erp-space-4); background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius); }
+/* Academic Year assignment pages and Terms on phones: one card per row instead of the table
+   (shown below 768px by d-md-none; the table keeps wide screens and print). */
+.erp-assign-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--erp-space-2); margin: 0 0 var(--erp-space-4); }
+.erp-assign-summary > div { padding: var(--erp-space-2) var(--erp-space-3); background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius); }
+.erp-assign-summary dt { font-size: var(--erp-text-sm); font-weight: 400; color: var(--erp-ink-soft); overflow-wrap: anywhere; }
+.erp-assign-summary dd { margin: 0; font-size: var(--erp-text-lg, 1.25rem); font-weight: 600; color: var(--erp-ink); }
+@media (min-width: 768px) { .erp-assign-summary { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.erp-assign-cards, .erp-term-cards { display: grid; gap: var(--erp-space-2); margin: 0; padding: 0; list-style: none; }
+.erp-assign-card, .erp-term-card {
+  display: grid; gap: var(--erp-space-1); min-width: 0; padding: var(--erp-space-3) var(--erp-space-4);
+  background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
+}
+.erp-assign-card--warn { border-color: var(--bs-warning-border-subtle, var(--erp-rule)); background: var(--bs-warning-bg-subtle, var(--erp-surface)); }
+.erp-assign-card-title, .erp-term-card-name { min-width: 0; overflow-wrap: anywhere; font-weight: 600; color: var(--erp-ink); }
+.erp-assign-card-teacher { min-width: 0; overflow-wrap: anywhere; color: var(--erp-ink); }
+.erp-assign-card-dates, .erp-term-card-dates, .erp-assign-card-note { min-width: 0; overflow-wrap: anywhere; color: var(--erp-ink-soft); font-size: var(--erp-text-sm); }
+.erp-assign-card-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--erp-space-1) var(--erp-space-3); margin-top: var(--erp-space-2); }
+.erp-assign-secondary { display: inline-flex; align-items: center; min-height: 2.75rem; color: var(--erp-action); }
+.erp-assign-card-history { margin-top: var(--erp-space-1); font-size: var(--erp-text-sm); }
+.erp-assign-card-history summary { display: flex; align-items: center; min-height: 2.75rem; cursor: pointer; color: var(--erp-action); }
+.erp-assign-card-history summary::before { content: "\25B8"; margin-right: var(--erp-space-2); }
+.erp-assign-card-history[open] summary::before { content: "\25BE"; }
+.erp-copy-plan li, .erp-copy-plan td { overflow-wrap: anywhere; }
+.erp-assign-cards-empty { padding: var(--erp-space-4); background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius); }
 
 /* ---------- UI-D1-1: teacher assignment history ---------- */
 /* Each history entry stacks status + teacher, then the date range, then its permitted actions.

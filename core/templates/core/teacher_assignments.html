@@ -11,6 +11,7 @@
     A teacher is a login in the <strong>Teachers</strong> group ({{ teacher_count }} active);
     {% if perms.accounts.manage_teacher_accounts %}add teachers on the <a href="{% url 'core:teacher-list' %}">Teachers page</a>.{% else %}ask a school administrator to add teachers.{% endif %}
 </p>
+<div class="d-none d-md-block d-print-block">
 <div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Teacher assignments" tabindex="0">
 <table class="table erp-assignments-table">
@@ -65,4 +66,51 @@
 </table>
 </div>
 </div>
+</div>
+{% if slots %}
+<ul class="erp-assign-cards d-md-none d-print-none" role="list">
+    {% for slot in slots %}
+    <li class="erp-assign-card{% if slot.inactive or not slot.current %} erp-assign-card--warn{% endif %}">
+        <div class="erp-assign-card-title">{{ slot.offering.class_grade }} {{ slot.section.name }} &middot; {{ slot.offering.subject }}</div>
+        <div class="erp-assign-card-teacher">{% if slot.current %}{{ slot.current.teacher.get_full_name|default:slot.current.teacher.username }}{% else %}No current teacher{% endif %}</div>
+        {% if slot.inactive %}<div class="erp-assign-card-note">Login inactive or not a teacher &mdash; reassign.</div>{% endif %}
+        {% if slot.current %}<div class="erp-assign-card-dates"><span class="text-nowrap">{{ slot.current.start_date }}</span> &ndash; <span class="text-nowrap">{% if slot.current.end_date %}{{ slot.current.end_date }}{% else %}open-ended{% endif %}</span></div>{% endif %}
+        {% if perms.core.add_assessmentteacherassignment or slot.current_item.can_end and perms.core.change_assessmentteacherassignment %}
+        <div class="erp-assign-card-actions">
+            {% if perms.core.add_assessmentteacherassignment %}
+            <a class="btn btn-outline-primary btn-sm" href="{% url 'core:teacher-assignment-create' academic_year.pk %}?offering={{ slot.offering.pk }}&amp;section={{ slot.section.pk }}">Reassign<span class="visually-hidden"> {{ slot.offering.subject }} for {{ slot.offering.class_grade }} {{ slot.section.name }}</span></a>
+            {% endif %}
+            {% if slot.current_item.can_end and perms.core.change_assessmentteacherassignment %}
+            <a class="erp-assign-secondary" href="{% url 'core:teacher-assignment-end' slot.current.pk %}">End<span class="visually-hidden"> current teacher for {{ slot.offering.subject }}, {{ slot.offering.class_grade }} {{ slot.section.name }}</span></a>
+            {% endif %}
+        </div>
+        {% endif %}
+        <details class="erp-assign-card-history">
+            <summary>History ({{ slot.history|length }})</summary>
+            <ol class="erp-assignment-history">
+            {% for item in slot.history %}
+            <li class="erp-assignment-entry">
+                <div class="erp-assignment-who">
+                    <span class="badge text-bg-{% if item.status == 'Current' %}success{% elif item.status == 'Past' %}secondary{% else %}info{% endif %}">{{ item.status }}</span>
+                    <span class="erp-assignment-teacher">{{ item.row.teacher.get_full_name|default:item.row.teacher.username }}</span>
+                </div>
+                <div class="erp-assignment-dates"><span class="text-nowrap">{{ item.row.start_date }}</span> &ndash; <span class="text-nowrap">{% if item.row.end_date %}{{ item.row.end_date }}{% else %}open-ended{% endif %}</span></div>
+                {% if item.can_delete and perms.core.delete_assessmentteacherassignment %}
+                <div class="erp-assignment-actions">
+                    <form method="post" action="{% url 'core:teacher-assignment-delete' item.row.pk %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-link btn-sm text-danger p-0">Delete planned</button>
+                    </form>
+                </div>
+                {% endif %}
+            </li>
+            {% endfor %}
+            </ol>
+        </details>
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<p class="erp-assign-cards-empty d-md-none d-print-none">No teachers assigned in this Academic Year yet.</p>
+{% endif %}
 {% endblock %}

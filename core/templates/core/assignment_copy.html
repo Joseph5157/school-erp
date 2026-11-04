@@ -3,6 +3,7 @@
 {% block content %}
 {% include "partials/_page_header.html" with eyebrow="Assignment overview" title="Copy assignments" purpose=target.name only %}
 <p class="erp-note-text">Preview first: nothing is written until you confirm. Only exact matches are copied; everything else is listed with the reason it was skipped.</p>
+{% if sources %}
 <form method="get" class="erp-toolbar erp-toolbar--inline">
     <div class="erp-field">
         <label for="id_source">Copy from</label>
@@ -12,12 +13,15 @@
     </div>
     <noscript><div class="erp-form-actions"><button type="submit" class="btn btn-outline-secondary">Preview</button></div></noscript>
 </form>
+{% else %}
+<p class="erp-assign-cards-empty">No other academic year is available to copy from.</p>
+{% endif %}
 {% if plan %}
-<section aria-labelledby="copy-will">
+<section class="erp-copy-plan" aria-labelledby="copy-will">
 <h2 class="erp-section-title" id="copy-will">Will be copied ({{ plan.copies|length }})</h2>
 <ul>{% for item in plan.copies %}<li>{{ item.label }}</li>{% empty %}<li class="text-muted">Nothing to copy.</li>{% endfor %}</ul>
 </section>
-<section aria-labelledby="copy-skipped">
+<section class="erp-copy-plan" aria-labelledby="copy-skipped">
 <h2 class="erp-section-title" id="copy-skipped">Skipped ({{ plan.skips|length }})</h2>
 <div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Skipped assignments" tabindex="0">
@@ -38,7 +42,7 @@
     </div>
 </form>
 {% endif %}
-{% else %}
+{% elif sources %}
 <p>Choose an Academic Year to copy from.</p>
 {% endif %}
 <p class="mt-4"><a href="{% url 'core:academic-year-assignments' target.pk %}">Back to overview</a></p>
