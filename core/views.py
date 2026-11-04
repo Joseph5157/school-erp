@@ -3346,6 +3346,20 @@ def student_enroll(request, pk):
             # Changing a placement shows a summary first; the confirm post
             # carries the same values and is validated again here.
             if has_placement and "confirm" not in request.POST and request.POST.get("access_review") != "1":
+                try:
+                    student.check_placement_change(
+                        academic_year=form.cleaned_data["academic_year"],
+                        class_grade=form.cleaned_data["class_grade"],
+                        section=form.cleaned_data["section"],
+                        start_date=form.cleaned_data["start_date"],
+                    )
+                except ValidationError as error:
+                    messages.error(request, error.messages[0])
+                    return render(
+                        request,
+                        "core/enrollment_form.html",
+                        {"form": form, "student": student, "has_placement": has_placement},
+                    )
                 return render(
                     request,
                     "core/enrollment_confirm.html",

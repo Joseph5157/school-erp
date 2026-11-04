@@ -8,6 +8,7 @@ import re
 from datetime import date
 from decimal import Decimal
 from html import unescape
+from unittest import mock
 
 from django.test import TestCase
 from django.urls import reverse
@@ -95,6 +96,24 @@ class StackedRecordTests(HistoryFixture, TestCase):
         self.assertIn("Absent", attendance_card)
         self.assertIn("Grade 6 - A", attendance_card)
 
+    def test_result_cards_match_the_table_for_absent_and_ungraded(self):
+        for name, status, score in (("Marked", ResultStatus.MARKED, Decimal("5")),
+                                    ("Away", ResultStatus.ABSENT, None)):
+            assessment = self.make_assessment(name=name)
+            StudentResult.objects.create(
+                assessment=assessment, academic_enrollment=self.enrollment,
+                status=status, score=score, entered_by=self.rao,
+            )
+            self.force_finalize(assessment)
+        html = self.client.get(reverse("core:report-student-results", args=[self.student.pk])).content.decode()
+        cards = {c.split()[0]: c for c in cards_of(html)}
+        self.assertIn("5.00 / 20.00", cards["Marked"])
+        self.assertIn("Not graded", cards["Marked"])
+        self.assertIn("Absent", cards["Away"])
+        self.assertNotIn("%", cards["Away"])
+        self.assertNotIn("Pass/Fail", cards["Away"])
+        self.assertNotIn("Fail", cards["Away"])
+
     def test_tables_stay_for_wide_screens_and_cards_hide_on_print(self):
         html = self.client.get(reverse("core:student-detail", args=[self.student.pk])).content.decode()
         self.assertIn('<div class="d-none d-md-block d-print-block">', html)
@@ -175,6 +194,38 @@ class ChangePlacementSummaryTests(HistoryFixture, TestCase):
         self.enrollment.refresh_from_db()
         self.assertEqual(self.enrollment.status, AcademicEnrollment.Status.COMPLETED)
         self.assertEqual(self.enrollment.end_date, date(2026, 7, 31))
+        self.assertEqual(self.student.current_enrollment.section, self.six_b)
+
+    def assert_form_with_error_and_no_write(self, response, text):
+        self.assertTemplateUsed(response, "core/enrollment_form.html")
+        self.assertTemplateNotUsed(response, "core/enrollment_confirm.html")
+        self.assertIn(text, text_of(response.content.decode()))
+        self.assertNotContains(response, "will end on")
+        self.assertEqual(AcademicEnrollment.objects.filter(student=self.student).count(), 1)
+        self.enrollment.refresh_from_db()
+        self.assertEqual(self.enrollment.status, AcademicEnrollment.Status.ACTIVE)
+
+    def test_same_placement_shows_the_form_with_the_error_not_a_summary(self):
+        same = {**self.payload, "section": self.six_a.pk}
+        response = self.client.post(self.url, same)
+        self.assert_form_with_error_and_no_write(response, "already has an active enrollment")
+
+    def test_start_date_not_after_current_start_shows_the_form_with_the_error(self):
+        response = self.client.post(self.url, {**self.payload, "start_date": "2026-06-01"})
+        self.assert_form_with_error_and_no_write(response, "must start after")
+
+    def test_future_start_date_shows_the_form_with_the_error(self):
+        with mock.patch("core.models.business_today", new=lambda: date(2026, 7, 1)):
+            response = self.client.post(self.url, {**self.payload, "start_date": "2026-07-02"})
+        self.assert_form_with_error_and_no_write(response, "cannot be in the future")
+
+    def test_second_post_changes_nothing(self):
+        self.client.post(self.url, {**self.payload, "confirm": "1"})
+        self.assertEqual(AcademicEnrollment.objects.filter(student=self.student).count(), 2)
+        response = self.client.post(self.url, {**self.payload, "confirm": "1"})
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(list(response.context["messages"]))
+        self.assertEqual(AcademicEnrollment.objects.filter(student=self.student).count(), 2)
         self.assertEqual(self.student.current_enrollment.section, self.six_b)
 
     def test_confirm_revalidates_the_carried_values(self):
