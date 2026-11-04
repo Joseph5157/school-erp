@@ -1249,6 +1249,9 @@ class AttendanceRegisterFilterForm(AttendanceRangeForm):
     section = forms.ModelChoiceField(
         queryset=Section.objects.select_related("class_grade"), required=False
     )
+    status = forms.ChoiceField(
+        choices=[("", "All")] + list(AttendanceRegister.Status.choices), required=False
+    )
 
 
 # --- Phase 6 Gate 1: guardian accounts (ADR 0013) ----------------------------
