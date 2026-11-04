@@ -2439,10 +2439,23 @@ def guardian_list(request):
     guardians = guardians.prefetch_related(
         Prefetch(
             "student_links",
-            queryset=StudentGuardian.objects.select_related("student").order_by(
-                "student__full_name"
+            queryset=StudentGuardian.objects.select_related("student")
+            .order_by("student__full_name")
+            .prefetch_related(
+                Prefetch(
+                    "access_grants",
+                    queryset=GuardianStudentAccess.objects.filter(revoked_at__isnull=True),
+                    to_attr="active_grants",
+                )
             ),
             to_attr="child_links",
+        ),
+        Prefetch(
+            "accounts",
+            queryset=GuardianAccount.objects.filter(revoked_at__isnull=True).select_related(
+                "user"
+            ),
+            to_attr="active_accounts",
         ),
         # Applicants not yet admitted as students; progressed ones already
         # appear above through their StudentGuardian links.
@@ -2455,6 +2468,8 @@ def guardian_list(request):
         ),
     )
     table = build_table(request, guardians, GUARDIAN_COLUMNS, "name")
+    for guardian in table.page:
+        guardian.portal_state = guardian_accounts.portal_state_label(guardian)
     return render(
         request,
         "core/guardian_list.html",

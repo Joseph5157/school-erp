@@ -15,6 +15,9 @@
     </div>
 </form>
 {% if perms.core.view_guardianaccessreview %}<p class="small"><a href="{% url 'core:guardian-access-reviews' %}">Guardian access reviews</a>{% if perms.accounts.clear_login_lockout %} &middot; <a href="{% url 'core:login-lockouts' %}">Sign-in lockouts</a>{% endif %}</p>{% endif %}
+{# A4 portrait is narrower than the md breakpoint, so printing must pick the table explicitly. #}
+{# With no rows the one empty message lives in the table panel, shown at every width. #}
+<div{% if table.paginator.count %} class="d-none d-md-block d-print-block"{% endif %}>
 <div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Guardians" tabindex="0">
 <table class="table">
@@ -36,5 +39,26 @@
 </table>
 </div>
 </div>
+</div>
+{% if table.paginator.count %}
+{# role="list": Safari drops list semantics from a ul with list-style: none. #}
+<ul class="erp-guardian-cards d-md-none d-print-none" role="list">
+    {% for guardian in guardians %}
+    <li class="erp-guardian-card">
+        <a class="erp-guardian-card-name" href="{% url 'core:guardian-detail' guardian.pk %}">{{ guardian.full_name }}</a>
+        <span class="erp-guardian-card-status">{% if guardian.portal_state == "Access granted" %}{% include "partials/_status_badge.html" with label=guardian.portal_state tone="active" only %}{% elif guardian.portal_state == "Account only" %}{% include "partials/_status_badge.html" with label=guardian.portal_state tone="pending" only %}{% elif guardian.portal_state == "Login inactive" %}{% include "partials/_status_badge.html" with label=guardian.portal_state tone="inactive" only %}{% else %}{% include "partials/_status_badge.html" with label=guardian.portal_state only %}{% endif %}</span>
+        <div class="erp-guardian-card-details">
+            {% for link in guardian.child_links %}<div>{{ link.student.full_name }} ({{ link.get_relationship_type_display }})</div>{% endfor %}{% for link in guardian.applicant_child_links %}<div>{{ link.applicant.full_name }} (Applicant, {{ link.get_relationship_type_display }})</div>{% endfor %}{% if not guardian.child_links and not guardian.applicant_child_links %}<div>No children linked</div>{% endif %}
+        </div>
+        {% if guardian.phone or guardian.email %}
+        <div class="erp-guardian-card-contact">
+            {% if guardian.phone %}<a href="tel:{{ guardian.phone }}">{{ guardian.phone }}</a>{% endif %}
+            {% if guardian.email %}<a href="mailto:{{ guardian.email }}">{{ guardian.email }}</a>{% endif %}
+        </div>
+        {% endif %}
+    </li>
+    {% endfor %}
+</ul>
+{% endif %}
 {% include "partials/_table_footer.html" with table=table only %}
 {% endblock %}
