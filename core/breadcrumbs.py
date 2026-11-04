@@ -28,6 +28,7 @@ _STUDENTS = Crumb("Students", "core:student-list")
 _APPLICANTS = Crumb("Applicants", "core:applicant-list")
 _ATTENDANCE = Crumb("Attendance", "core:attendance-register-list")
 _ANNOUNCEMENTS = Crumb("Announcements", "core:announcement-list", perm="core.view_announcement")
+_ANNOUNCEMENT = Crumb("Announcement", "core:announcement-detail", True)
 _TEACHERS = Crumb("Teachers", "core:teacher-list")
 _TEACHER = Crumb("Teacher", "core:teacher-detail", True)
 _TIMETABLE = Crumb("Timetable", "core:timetable-index")
@@ -104,6 +105,10 @@ RULES = {
     "timetable-slot-end": Rule("timetable-index", (_TIMETABLE,), "End slot"),
     "timetable-slot-delete": Rule("timetable-index", (_TIMETABLE,), "Delete slot"),
     "announcement-detail": Rule("announcement-list", (_ANNOUNCEMENTS,), "Announcement"),
+    "announcement-withdraw": Rule(
+        "announcement-list", (_ANNOUNCEMENTS, _ANNOUNCEMENT), "Withdraw"),
+    "announcement-prepare": Rule(
+        "announcement-list", (_ANNOUNCEMENTS, _ANNOUNCEMENT), "Prepare WhatsApp messages"),
     # Grading scales (D1-5A). The list and create routes take the Academic Year's pk, but the detail and
     # edit routes take the scale's pk, so those two never reuse `pk` for the year's scale list (their
     # page header links back with the real year id instead).
