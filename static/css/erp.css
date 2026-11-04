@@ -1890,6 +1890,8 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 .erp-day-period-label { margin: 0; font-size: var(--erp-text-sm); color: var(--erp-ink-soft); font-weight: 650; }
 .erp-day-action { min-height: 2.75rem; display: inline-flex; align-items: center; }
 
+.erp-clear-list .erp-clear-done { display: inline-flex; align-items: center; min-height: 2rem; padding: 0 var(--erp-space-3); color: var(--erp-ok-strong); font-weight: 600; }
+
 /* ---------- UI-D1-1: teacher assignment history ---------- */
 /* Each history entry stacks status + teacher, then the date range, then its permitted actions.
    The History column keeps a floor width so a narrow container scrolls the table (inside its
