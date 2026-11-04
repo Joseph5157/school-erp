@@ -28,9 +28,9 @@
         {% if section_choices %}
         <div class="col-6 col-md-2">
             <label for="student-section" class="form-label">Section</label>
-            <select id="student-section" name="section" class="form-select">
+            <select id="student-section" name="section" class="form-select" data-erp-depends-on="student-class">
                 <option value="">All sections</option>
-                {% for s in section_choices %}<option value="{{ s.pk }}"{% if s.pk == section_filter %} selected{% endif %}>{{ s.class_grade.name }} {{ s.name }}</option>{% endfor %}
+                {% for s in section_choices %}<option value="{{ s.pk }}" data-parent="{{ s.class_grade_id }}"{% if s.pk == section_filter %} selected{% endif %}>{{ s.class_grade.name }} {{ s.name }}</option>{% endfor %}
             </select>
         </div>
         {% endif %}

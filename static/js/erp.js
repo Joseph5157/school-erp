@@ -556,6 +556,61 @@
   });
 })();
 
+// Dependent selectors: a field marked data-erp-depends-on="<parent field id>" shows only the options (or
+// checkboxes) whose data-parent matches the parent's choice. A select carries the attribute itself; a checkbox
+// list carries it on each box. If the parent's chosen option itself has a data-parent (a Subject offering
+// carries its Grade), that is the key. Changing the parent clears a choice that no longer fits; on load nothing
+// is cleared, so a re-rendered form keeps what was chosen. Without JS every option stays available and the
+// server rejects a mismatched pair.
+(function () {
+  var groups = {};
+  document.querySelectorAll("[data-erp-depends-on]").forEach(function (element) {
+    var id = element.getAttribute("data-erp-depends-on");
+    var isSelect = element.tagName === "SELECT";
+    if (!isSelect && !element.hasAttribute("data-parent")) return;
+    var key = id + "|" + (isSelect ? element.id : "boxes:" + element.name);
+    if (!groups[key]) groups[key] = { parentId: id, select: isSelect ? element : null, items: [] };
+    if (isSelect) {
+      element.querySelectorAll("option[data-parent]").forEach(function (option) { groups[key].items.push(option); });
+    } else {
+      groups[key].items.push(element);
+    }
+  });
+
+  Object.keys(groups).forEach(function (key) {
+    var group = groups[key];
+    var parent = document.getElementById(group.parentId);
+    if (!parent || !group.items.length) return;
+
+    function parentKey() {
+      var chosen = parent.options ? parent.options[parent.selectedIndex] : null;
+      if (chosen && chosen.hasAttribute("data-parent")) return chosen.getAttribute("data-parent");
+      return parent.value;
+    }
+
+    function apply(clear) {
+      var wanted = parentKey();
+      group.items.forEach(function (item) {
+        var fits = !wanted || item.getAttribute("data-parent") === wanted;
+        var isOption = item.tagName === "OPTION";
+        var holder = isOption ? item : (item.closest("div") || item);
+        holder.hidden = !fits;
+        if (isOption) item.disabled = !fits;
+        if (!fits && clear) {
+          if (isOption) {
+            if (item.selected) group.select.value = "";
+          } else {
+            item.checked = false;
+          }
+        }
+      });
+    }
+
+    apply(false);
+    parent.addEventListener("change", function () { apply(true); });
+  });
+})();
+
 // Credential slip copy buttons: hidden until the browser can copy (HTTPS or localhost).
 (function () {
   var buttons = document.querySelectorAll("[data-erp-copy]");
