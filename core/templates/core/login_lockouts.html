@@ -5,7 +5,7 @@
 <div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Locked usernames" tabindex="0">
 <table class="table erp-keep erp-lockout-table">
-    <caption class="visually-hidden">Usernames that are currently locked out of signing in, with a button to clear each lockout.</caption>
+    <caption class="visually-hidden">Usernames that are currently locked out of signing in, with a link to clear each lockout.</caption>
     <thead>
         <tr>
             <th scope="col">Username</th>
@@ -17,7 +17,7 @@
         <tr>
             <th scope="row" class="fw-normal text-break"><code>{{ username }}</code></th>
             <td>
-                <form method="post" class="erp-lockout-clear">{% csrf_token %}<input type="hidden" name="username" value="{{ username }}"><button type="submit" class="btn btn-outline-secondary btn-sm">Clear<span class="visually-hidden"> lockout for {{ username }}</span></button></form>
+                <a class="btn btn-outline-secondary btn-sm erp-lockout-clear" href="{% url 'core:login-lockout-clear-confirm' %}?username={{ username|urlencode }}">Clear<span class="visually-hidden"> lockout for {{ username }}</span></a>
                 <p class="erp-note-text mb-0">Lets this username try to sign in again straight away. The clear is recorded.</p>
             </td>
         </tr>

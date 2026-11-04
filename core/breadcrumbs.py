@@ -285,6 +285,9 @@ RULES = {
     "guardian-account-reset-password": Rule(
         "guardian-list", (Crumb("Guardians", "core:guardian-list", perm="core.view_guardian"),), "Reset password"
     ),
+    "guardian-access-grant": Rule(
+        "guardian-list", (Crumb("Guardians", "core:guardian-list", perm="core.view_guardian"),), "Grant access"
+    ),
     "guardian-access-revoke": Rule(
         "guardian-list", (Crumb("Guardians", "core:guardian-list", perm="core.view_guardian"),), "Revoke access"
     ),
@@ -331,6 +334,9 @@ RULES = {
     "announcement-list": Rule("announcement-list", (), "Announcements"),
     # Security operations (D1-6A). `section` is the sidebar link's route name, not its "Access and security" group label.
     "login-lockouts": Rule("login-lockouts", (), "Sign-in lockouts"),
+    "login-lockout-clear-confirm": Rule(
+        "login-lockouts", (Crumb("Sign-in lockouts", "core:login-lockouts"),), "Clear lockout"
+    ),
 }
 
 _EMPTY = {"breadcrumbs": [], "nav_section": None}

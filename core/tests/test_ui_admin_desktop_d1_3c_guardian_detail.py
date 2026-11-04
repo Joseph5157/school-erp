@@ -320,20 +320,13 @@ class StudentAccessTests(GuardianDetailD13CBase, TestCase):
     def access(self, content=None):
         return self.section(content or self.get(), "student-access")
 
-    def test_not_granted_rows_post_form_with_csrf(self):
+    def test_not_granted_rows_link_to_the_grant_confirmation(self):
         section = self.access()
         self.assertEqual(section.count("Not granted"), 2)
-        action = self.url("guardian-access-grant", self.asha_link.pk)
-        self.assertRegex(
-            section,
-            rf'<form method="post" action="{action}"[^>]*>\s*<input type="hidden" name="csrfmiddlewaretoken"',
-        )
-        self.assertEqual(section.count('method="post"'), 2)
-        self.assertEqual(section.count("csrfmiddlewaretoken"), 2)
-        self.assertEqual(section.count('type="submit"'), 2)
-        self.assertEqual(section.count(">Grant access</button>"), 2)
-        for button in re.findall(r'<button type="submit"[^>]*>Grant access</button>', section):
-            self.assertRegex(button, r'class="[^"]*\btext-nowrap\b')
+        href = self.url("guardian-access-grant", self.asha_link.pk)
+        self.assertRegex(section, rf'<a class="[^"]*text-nowrap[^"]*" href="{href}"[^>]*>Grant access</a>')
+        self.assertNotIn("<form", section)
+        self.assertNotIn("csrfmiddlewaretoken", section)
         self.assertNotIn("Revoke", section)
 
     def test_grant_button_accessible_name_includes_student(self):
@@ -341,11 +334,10 @@ class StudentAccessTests(GuardianDetailD13CBase, TestCase):
         self.assertIn('aria-label="Grant access for Asha Rao"', section)
         self.assertIn('aria-label="Grant access for Ravi Rao"', section)
 
-    def test_get_to_grant_url_does_not_mutate(self):
+    def test_get_to_grant_url_shows_confirmation_and_does_not_mutate(self):
         response = self.client.get(self.url("guardian-access-grant", self.asha_link.pk))
-        self.assertRedirects(
-            response, self.url("guardian-detail", self.asha_link.guardian_id), fetch_redirect_response=False
-        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Grant portal access")
         self.assertFalse(GuardianStudentAccess.objects.exists())
 
     def test_active_grant_shows_revoke_link_and_no_grant_form(self):
@@ -415,7 +407,7 @@ class StudentAccessTests(GuardianDetailD13CBase, TestCase):
         label = r'<span class="erp-row-context text-break">Student: %s</span>'
         self.assertRegex(asha, label % "Asha Rao" + r"<a [^>]*" + re.escape(revoke))
         self.assertNotIn("Ravi Rao</span>", asha)
-        self.assertRegex(ravi, r"<td class=\"text-end text-nowrap\">\s*" + label % "Ravi Rao" + r"\s*<form ")
+        self.assertRegex(ravi, r"<td class=\"text-end text-nowrap\">\s*" + label % "Ravi Rao" + r"\s*<a ")
         self.assertEqual(section.count("erp-row-context"), 2)
         self.assertNotIn('aria-label="Student:', section)
 

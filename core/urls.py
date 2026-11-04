@@ -318,6 +318,11 @@ urlpatterns = [
     path("terms/<int:pk>/publication/", views.term_publication, name="term-publication"),
     path("publications/stale/", views.publications_stale, name="publications-stale"),
     path("sign-in-lockouts/", views.login_lockouts, name="login-lockouts"),
+    path(
+        "sign-in-lockouts/clear/",
+        views.login_lockout_clear_confirm,
+        name="login-lockout-clear-confirm",
+    ),
     path("publications/<int:pk>/", views.publication_detail, name="publication-detail"),
     path(
         "publications/<int:pk>/withdraw/",
