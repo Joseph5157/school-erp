@@ -13,6 +13,7 @@
     <p class="mb-0">None yet.</p>
     {% endif %}
 </section>
+<div class="d-none d-md-block d-print-block">
 <div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Results for {{ student.full_name }}" tabindex="0">
 <table class="table erp-result-table">
@@ -34,6 +35,28 @@
     </tbody>
 </table>
 </div>
+</div>
+</div>
+<div class="d-md-none d-print-none">
+{% if results %}
+<ul class="erp-record-cards" role="list">
+    {% for result in results %}
+    <li class="erp-record-card">
+        <div class="erp-record-title">{{ result.assessment.name }} <span class="erp-record-sub">{{ result.assessment.subject_display }}</span></div>
+        <dl class="erp-record-fields">
+            <div><dt>Marks</dt><dd>{% if result.status == "MARKED" %}{{ result.score }} / {{ result.assessment.maximum_marks }}{% else %}Absent{% endif %}{% if result.percentage is not None %} ({{ result.percentage }}%){% endif %}</dd></div>
+            <div><dt>Grade</dt><dd>{{ result.grade|default:"Not graded" }}</dd></div>
+            {% if result.pass_fail and result.pass_fail != "ABSENT" %}<div><dt>Pass/Fail</dt><dd>{{ result.pass_fail|title }}</dd></div>{% endif %}
+            <div><dt>Date</dt><dd>{{ result.assessment.assessment_date }}</dd></div>
+            <div><dt>Term</dt><dd>{{ result.assessment.term.academic_year.name }} {{ result.assessment.term.name }}</dd></div>
+            <div><dt>Section</dt><dd>{{ result.academic_enrollment.section }}</dd></div>
+        </dl>
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<p class="erp-record-empty">No finalized results yet.</p>
+{% endif %}
 </div>
 <p class="erp-note-text mt-3">Absent is shown as Absent: it is not zero and not a fail. Not graded means no grade was assigned. Totals, averages and ranks are not shown.</p>
 {% endblock %}

@@ -1,0 +1,4 @@
+<input type="hidden" name="academic_year" value="{{ form.cleaned_data.academic_year.pk }}">
+<input type="hidden" name="class_grade" value="{{ form.cleaned_data.class_grade.pk }}">
+<input type="hidden" name="section" value="{{ form.cleaned_data.section.pk }}">
+<input type="hidden" name="start_date" value="{{ form.cleaned_data.start_date|date:'Y-m-d' }}">

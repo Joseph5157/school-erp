@@ -1129,7 +1129,7 @@ class StudentEnrollAuthorizationTests(AuthorizationClientsMixin, TestCase):
 
         response = self.administrator.post(
             self.url,
-            {**self.valid_payload, "section": other_section.pk, "start_date": "2026-09-15"},
+            {**self.valid_payload, "section": other_section.pk, "start_date": "2026-09-15", "confirm": "1"},
         )
 
         self.assertRedirects(
@@ -1148,7 +1148,7 @@ class StudentEnrollAuthorizationTests(AuthorizationClientsMixin, TestCase):
 
         response = self.administrator.post(
             self.url,
-            {**self.valid_payload, "section": other_section.pk, "start_date": "2026-06-01"},
+            {**self.valid_payload, "section": other_section.pk, "start_date": "2026-06-01", "confirm": "1"},
         )
 
         self.assertEqual(response.status_code, 200)

@@ -147,7 +147,7 @@ class GuardianJourneyTests(JourneyFixture, TestCase):
         # 8. Section move requires an explicit decision; retain.
         enroll_url = reverse("core:student-enroll", args=[self.asha.pk])
         data = {"academic_year": self.year.pk, "class_grade": self.grade6.pk,
-                "section": self.six_b.pk, "start_date": "2026-10-12"}
+                "section": self.six_b.pk, "start_date": "2026-10-12", "confirm": "1"}
         self.assertContains(self.client.post(enroll_url, data), "Placement ended")
         self.client.post(enroll_url, {**data, "access_review": "1",
                                       f"decision_{grant.pk}": "RETAINED"})

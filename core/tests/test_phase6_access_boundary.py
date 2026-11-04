@@ -207,7 +207,8 @@ class PlacementEndedReviewTests(BoundaryFixture, TestCase):
     def test_view_flow(self):
         url = reverse("core:student-enroll", args=[self.asha.pk])
         data = {"academic_year": self.year.pk, "class_grade": self.grade6.pk,
-                "section": self.six_b.pk, "start_date": TODAY.isoformat()}
+                "section": self.six_b.pk, "start_date": TODAY.isoformat(),
+                "confirm": "1"}
         page = self.client.post(url, data)
         self.assertContains(page, "Placement ended")
         self.assertEqual(self.asha.enrollments.count(), 1)

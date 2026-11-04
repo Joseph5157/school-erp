@@ -68,7 +68,7 @@ class Phase4AcceptanceJourneyTests(TestCase):
         self.client.post(
             reverse("core:student-enroll", args=[student.pk]),
             {"academic_year": self.year.pk, "class_grade": self.grade.pk,
-             "section": section.pk, "start_date": start},
+             "section": section.pk, "start_date": start, "confirm": "1"},
         )
         return AcademicEnrollment.objects.get(student=student, section=section)
 

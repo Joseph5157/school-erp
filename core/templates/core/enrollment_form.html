@@ -1,14 +1,14 @@
 {% extends "base.html" %}
-{% block title %}Record Enrollment{% endblock %}
+{% block title %}{% if has_placement %}Change placement{% else %}Record enrollment{% endif %}{% endblock %}
 {% block content %}
-{% include "partials/_page_header.html" with eyebrow="Student placement" title="Record enrollment" purpose=student.full_name only %}
+{% if has_placement %}{% include "partials/_page_header.html" with eyebrow="Student placement" title="Change placement" purpose=student.full_name only %}{% else %}{% include "partials/_page_header.html" with eyebrow="Student placement" title="Record enrollment" purpose=student.full_name only %}{% endif %}
 <form method="post" class="erp-form">
     {% csrf_token %}
     {% include "partials/_form_required_legend.html" %}
     {% if form.non_field_errors %}<div class="erp-form-errors" role="alert">{{ form.non_field_errors }}</div>{% endif %}
     {% for field in form %}{% include "partials/_form_field.html" with field=field only %}{% endfor %}
     <div class="erp-form-actions">
-        <button type="submit" class="btn btn-primary">Record enrollment</button>
+        {% if has_placement %}<button type="submit" class="btn btn-primary">Review change</button>{% else %}<button type="submit" class="btn btn-primary">Record enrollment</button>{% endif %}
         <a class="btn btn-link" href="{% url 'core:student-detail' student.pk %}">Cancel</a>
     </div>
 </form>

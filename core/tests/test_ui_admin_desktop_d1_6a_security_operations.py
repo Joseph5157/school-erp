@@ -196,7 +196,8 @@ class EnrollReviewTests(ReviewFlowMixin, BoundaryFixture, TestCase):
         super().setUp()
         self.url = reverse("core:student-enroll", args=[self.asha.pk])
         self.data = {"academic_year": self.year.pk, "class_grade": self.grade6.pk,
-                     "section": self.six_b.pk, "start_date": TODAY.isoformat()}
+                     "section": self.six_b.pk, "start_date": TODAY.isoformat(),
+                     "confirm": "1"}
 
     def test_review_step_renders_and_writes_nothing(self):
         before = self.snapshot()
