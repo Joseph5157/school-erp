@@ -1345,43 +1345,51 @@ class AttendanceRegister(models.Model):
             .get()
         )
 
+    def submission_problem(self):
+        """Why this DRAFT register cannot be submitted right now, or None.
+
+        The date is in the future or not instructional; the effective roster is
+        empty (there is nothing to attest); any entry belongs to an enrollment
+        not on the effective roster; or any roster enrollment lacks an entry.
+        """
+        on_date = _as_date(self.date)
+        if on_date > business_today():
+            return "Attendance cannot be submitted for a future date."
+        if not self.academic_year.is_instructional_day(on_date):
+            return "This date is not an instructional day in the school calendar."
+        if not self.eligible_enrollments().exists():
+            return (
+                "No Students are enrolled in this Section on this date; "
+                "there is no attendance to submit."
+            )
+        if self.ineligible_entries().exists():
+            return (
+                "This register contains entries for Students not enrolled in this "
+                "Section on this date."
+            )
+        unmarked = self.unmarked_enrollments().count()
+        if unmarked:
+            return (
+                f"Attendance is incomplete: {unmarked} Student(s) still need a "
+                "Present or Absent status."
+            )
+        return None
+
     def submit(self, *, actor):
         """Officially submit attendance (DRAFT -> SUBMITTED).
 
         Rejected without any change when: the register is not DRAFT; there is
-        no acting user; the date is in the future or not instructional; the
-        effective roster is empty (there is nothing to attest); any roster
-        enrollment lacks an entry; or any entry belongs to an enrollment not on
-        the effective roster. On success, records the submitting user and time.
+        no acting user; or `submission_problem` names a reason. On success,
+        records the submitting user and time.
         """
         if actor is None or not getattr(actor, "pk", None):
             raise ValidationError("A submitting user is required.")
         with transaction.atomic():
             if self._lock() != self.Status.DRAFT:
                 raise ValidationError("This register has already been submitted.")
-            on_date = _as_date(self.date)
-            if on_date > business_today():
-                raise ValidationError("Attendance cannot be submitted for a future date.")
-            if not self.academic_year.is_instructional_day(on_date):
-                raise ValidationError(
-                    "This date is not an instructional day in the school calendar."
-                )
-            if not self.eligible_enrollments().exists():
-                raise ValidationError(
-                    "No Students are enrolled in this Section on this date; "
-                    "there is no attendance to submit."
-                )
-            if self.ineligible_entries().exists():
-                raise ValidationError(
-                    "This register contains entries for Students not enrolled in this "
-                    "Section on this date."
-                )
-            unmarked = self.unmarked_enrollments().count()
-            if unmarked:
-                raise ValidationError(
-                    f"Attendance is incomplete: {unmarked} Student(s) still need a "
-                    "Present or Absent status."
-                )
+            problem = self.submission_problem()
+            if problem:
+                raise ValidationError(problem)
             self.status = self.Status.SUBMITTED
             self.submitted_by = actor
             self.submitted_at = timezone.now()

@@ -25,6 +25,7 @@ from core import (
     guardian_access,
     guardian_accounts,
     marks_analytics,
+    notification_producers,
     one_time_forms,
     publication,
     reports,
@@ -1204,7 +1205,8 @@ def my_attendance(request, section_pk):
             else:
                 messages.success(request, "Register opened as a draft.")
         elif action in ("save", "submit") and register is not None:
-            _teacher_capture(request, register, submit=action == "submit")
+            if _teacher_capture(request, register, submit=action == "submit"):
+                return redirect("core:my-attendance-submit", section_pk=section.pk)
         return redirect("core:my-attendance", section_pk=section.pk)
 
     context = {
@@ -1229,30 +1231,88 @@ _SUBMITTED_MESSAGE = "Today's attendance is already submitted; ask an administra
 
 
 def _teacher_capture(request, register, *, submit):
+    """Save the posted draft; return True when it is ready for the submit confirmation."""
     if register.is_submitted:
         messages.error(request, _SUBMITTED_MESSAGE)
-        return
+        return False
     form = AttendanceCaptureForm(request.POST, register=register)
     if not form.is_valid():
         errors = [message for field_errors in form.errors.values() for message in field_errors]
         messages.error(request, f"Attendance was not saved. {errors[0]}")
-        return
+        return False
     try:
         with transaction.atomic():
             for enrollment, status, note in form.statuses():
                 register.save_draft_entry(enrollment=enrollment, status=status, absence_note=note)
     except ValidationError as error:
         messages.error(request, error.messages[0])
-        return
+        return False
     if not submit:
         messages.success(request, "Draft saved.")
-        return
-    try:
-        register.submit(actor=request.user)
-    except ValidationError as error:
-        messages.error(request, f"Draft saved but not submitted. {error.messages[0]}")
-    else:
-        messages.success(request, "Attendance saved and submitted.")
+        return False
+    problem = register.submission_problem()
+    if problem:
+        messages.error(request, f"Draft saved but not submitted. {problem}")
+        return False
+    return True
+
+
+def _render_submit_confirmation(request, register, *, cancel_url, correction_text):
+    """The last step before a register becomes official. Renders only; never writes."""
+    rows = list(register.entries.values_list("status", "absence_note"))
+    summary = {
+        "total": len(rows),
+        "present": sum(1 for status, _ in rows if status == AttendanceStatus.PRESENT),
+        "absent": sum(1 for status, _ in rows if status == AttendanceStatus.ABSENT),
+        "notes": sum(1 for _, note in rows if note),
+    }
+    alerts_apply = notification_producers.absence_alerts_apply(register)
+    return render(
+        request,
+        "core/attendance_submit_confirm.html",
+        {
+            "register": register,
+            "summary": summary,
+            "cancel_url": cancel_url,
+            "correction_text": correction_text,
+            "alert_count": summary["absent"] if alerts_apply else 0,
+        },
+    )
+
+
+@teacher_required
+def my_attendance_submit(request, section_pk):
+    """GET confirms today's complete register; POST makes it official."""
+    section = get_object_or_404(Section.objects.select_related("class_grade"), pk=section_pk)
+    today = business_today()
+    if not can_take_attendance(request.user, section, today):
+        raise PermissionDenied
+    register = get_object_or_404(
+        AttendanceRegister.objects.select_related("academic_year", "section__class_grade"),
+        section=section,
+        date=today,
+    )
+    attendance_url = reverse("core:my-attendance", args=[section.pk])
+    if request.method == "POST":
+        try:
+            register.submit(actor=request.user)
+        except ValidationError as error:
+            messages.error(request, f"Attendance was not submitted. {error.messages[0]}")
+        else:
+            messages.success(request, "Attendance saved and submitted.")
+        return redirect(attendance_url)
+    if register.is_submitted:
+        return redirect(attendance_url)
+    problem = register.submission_problem()
+    if problem:
+        messages.error(request, problem)
+        return redirect(attendance_url)
+    return _render_submit_confirmation(
+        request,
+        register,
+        cancel_url=attendance_url,
+        correction_text="After this, only an administrator can change it, through a correction.",
+    )
 
 
 @teacher_required
@@ -3320,7 +3380,11 @@ def attendance_register_detail(request, pk):
 
 @administrator_required("core.change_attendanceregister")
 def attendance_register_submit(request, pk):
-    register = get_object_or_404(AttendanceRegister, pk=pk)
+    """GET confirms a complete draft register; POST makes it official."""
+    register = get_object_or_404(
+        AttendanceRegister.objects.select_related("academic_year", "section__class_grade"), pk=pk
+    )
+    detail_url = reverse("core:attendance-register-detail", args=[register.pk])
     if request.method == "POST":
         try:
             register.submit(actor=request.user)
@@ -3328,7 +3392,22 @@ def attendance_register_submit(request, pk):
             messages.error(request, error.messages[0])
         else:
             messages.success(request, "Attendance submitted.")
-    return redirect("core:attendance-register-detail", pk=register.pk)
+        return redirect(detail_url)
+    if register.is_submitted:
+        return redirect(detail_url)
+    problem = register.submission_problem()
+    if problem:
+        messages.error(request, problem)
+        return redirect(detail_url)
+    return _render_submit_confirmation(
+        request,
+        register,
+        cancel_url=detail_url,
+        correction_text=(
+            "After this, changes can only be made through a correction, "
+            "one student at a time, with a reason."
+        ),
+    )
 
 
 @administrator_required("core.add_attendanceentry")
@@ -3361,12 +3440,11 @@ def attendance_capture(request, pk):
         if not request.user.has_perm("core.change_attendanceregister"):
             messages.error(request, "Draft saved. You do not have permission to submit.")
             return redirect("core:attendance-register-detail", pk=register.pk)
-        try:
-            register.submit(actor=request.user)
-        except ValidationError as error:
-            messages.error(request, f"Draft saved but not submitted. {error.messages[0]}")
-        else:
-            messages.success(request, "Attendance saved and submitted.")
+        problem = register.submission_problem()
+        if problem:
+            messages.error(request, f"Draft saved but not submitted. {problem}")
+            return redirect("core:attendance-register-detail", pk=register.pk)
+        return redirect("core:attendance-register-submit", pk=register.pk)
     else:
         messages.success(request, "Draft saved.")
     return redirect("core:attendance-register-detail", pk=register.pk)

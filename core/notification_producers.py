@@ -94,11 +94,16 @@ def _absence_alert(student, on_date):
                  extra={"date": _display_date(on_date)})
 
 
+def absence_alerts_apply(register):
+    """Whether submitting this register now would prepare absence alerts."""
+    return _assist() and core_models._as_date(register.date) == core_models.business_today()
+
+
 def absence_alerts_for_register(register):
     """Called inside AttendanceRegister.submit(): one alert per absent student."""
-    on_date = core_models._as_date(register.date)
-    if not _assist() or on_date != core_models.business_today():
+    if not absence_alerts_apply(register):
         return
+    on_date = core_models._as_date(register.date)
     entries = register.entries.filter(status=AttendanceStatus.ABSENT).select_related(
         "academic_enrollment__student"
     )

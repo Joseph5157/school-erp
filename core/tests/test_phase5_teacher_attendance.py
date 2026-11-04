@@ -26,6 +26,13 @@ def on(day):
     )
 
 
+def press_confirm(client, response):
+    """Press the confirm button if Save and submit stopped at the confirmation page."""
+    if response.redirect_chain and response.redirect_chain[-1][0].endswith("/submit/"):
+        return client.post(response.redirect_chain[-1][0], follow=True)
+    return response
+
+
 class TeacherAttendanceTests(Phase4Fixture, TestCase):
     def setUp(self):
         self.build_phase4()
@@ -55,7 +62,7 @@ class TeacherAttendanceTests(Phase4Fixture, TestCase):
     def both(self, asha="PRESENT", ravi="ABSENT", action="submit", **extra):
         data = {"action": action, f"status_{self.asha.pk}": asha,
                 f"status_{self.ravi.pk}": ravi, **extra}
-        return self.teacher.post(self.url, data, follow=True)
+        return press_confirm(self.teacher, self.teacher.post(self.url, data, follow=True))
 
     # --- happy path ---
 
@@ -245,7 +252,7 @@ class TeacherAttendanceAutosaveTests(Phase4Fixture, TestCase):
 
     def both(self, asha="PRESENT", ravi="ABSENT", action="submit"):
         data = {"action": action, f"status_{self.asha.pk}": asha, f"status_{self.ravi.pk}": ravi}
-        return self.teacher.post(self.url, data, follow=True)
+        return press_confirm(self.teacher, self.teacher.post(self.url, data, follow=True))
 
     def entry(self, enrollment):
         return self.register().entries.filter(academic_enrollment=enrollment).first()

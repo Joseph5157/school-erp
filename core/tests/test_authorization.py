@@ -2334,7 +2334,12 @@ class AttendanceCaptureUiTests(AuthorizationClientsMixin, TestCase):
             self._payload({self.ravi_a: "PRESENT", self.meera_a: "ABSENT"}, action="submit"),
         )
 
-        self.assertRedirects(response, self.detail_url)
+        confirm_url = reverse("core:attendance-register-submit", args=[self.register.pk])
+        self.assertRedirects(response, confirm_url)
+        self.register.refresh_from_db()
+        self.assertEqual(self.register.status, AttendanceRegister.Status.DRAFT)
+
+        self.assertRedirects(self.administrator.post(confirm_url), self.detail_url)
         self.register.refresh_from_db()
         self.assertEqual(self.register.status, AttendanceRegister.Status.SUBMITTED)
         self.assertEqual(self.register.submitted_by, self.admin_user)

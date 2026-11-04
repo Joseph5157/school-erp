@@ -392,7 +392,12 @@ class Phase2ReconciledAcceptanceJourneyTests(TestCase):
             data[f"note_{enrollment.pk}"] = note
         if action:
             data["action"] = action
-        return self.client.post(reverse("core:attendance-capture", args=[register.pk]), data)
+        response = self.client.post(reverse("core:attendance-capture", args=[register.pk]), data)
+        if action == "submit":  # Save and submit stops at the confirmation page.
+            response = self.client.post(
+                reverse("core:attendance-register-submit", args=[register.pk])
+            )
+        return response
 
     def test_reconciled_phase_2_journey(self):
         # Academic Year with Saturdays off.
