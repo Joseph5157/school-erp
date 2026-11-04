@@ -83,12 +83,12 @@ class TeacherServiceTests(TestCase):
                     self.create(username=bad)
         self.assertEqual(User.objects.filter(username__iexact="asha.rao").count(), 1)
 
-    def test_queryset_lists_only_teachers_with_assignment_counts(self):
+    def test_queryset_lists_only_teachers_with_current_assignment_counts(self):
         teacher, _ = self.create()
         User.objects.create_user(username="plain", password="pass-12345")
         rows = list(teacher_accounts.teacher_queryset())
         self.assertEqual([row.pk for row in rows], [teacher.pk])
-        self.assertEqual(rows[0].assignment_count, 0)
+        self.assertEqual(rows[0].current_assignment_count, 0)
 
     def test_queryset_excludes_superusers_even_in_the_group(self):
         root = User.objects.create_superuser(username="root", password="pass-12345")

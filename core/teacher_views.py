@@ -8,22 +8,31 @@ from django.utils.cache import add_never_cache_headers
 
 from accounts.models import SecurityEvent
 from core import one_time_forms, teacher_accounts
+from core.academic_years import current_academic_year
 from core.authorization import administrator_required
 from core.forms import TeacherCreateForm, TeacherDeactivateForm, TeacherUsernameForm
-from core.models import School
+from core.models import School, business_today
 from core.tables import Column, build_table, parse_choice
 
 PERMISSION = "accounts.manage_teacher_accounts"
 STATUS_CHOICES = [("active", "Active"), ("inactive", "Inactive")]
 
-TEACHER_COLUMNS = (
-    Column("Name", "name", ("first_name", "last_name", "username")),
-    Column("Username", "username", ("username",)),
-    Column("Email"),
-    Column("Status", "status", ("is_active", "username"), ("-is_active", "username")),
-    Column("Assignments (all years)", "assignments", ("assignment_count", "username")),
-    Column("Last sign-in", "last_login", ("last_login", "username")),
-)
+
+
+def teacher_columns(year):
+    """The table columns; the count column names the year it counts, since it is current-year only."""
+    return (
+        Column("Name", "name", ("first_name", "last_name", "username")),
+        Column("Username", "username", ("username",)),
+        Column("Email"),
+        Column("Status", "status", ("is_active", "username"), ("-is_active", "username")),
+        Column(
+            f"Assignments ({year.name})" if year else "Assignments",
+            "assignments",
+            ("current_assignment_count", "username"),
+        ),
+        Column("Last sign-in", "last_login", ("last_login", "username")),
+    )
 
 
 def _teacher_slip(request, user, password, *, heading):
@@ -56,7 +65,8 @@ def teacher_list(request):
         )
     if status:
         teachers = teachers.filter(is_active=(status == "active"))
-    table = build_table(request, teachers, TEACHER_COLUMNS, "name")
+    year = current_academic_year(business_today())
+    table = build_table(request, teachers, teacher_columns(year), "name")
     return render(
         request,
         "core/teacher_list.html",
@@ -66,6 +76,7 @@ def teacher_list(request):
             "query": query,
             "status": status,
             "status_choices": STATUS_CHOICES,
+            "year": year,
         },
     )
 
@@ -172,7 +183,7 @@ def teacher_deactivate(request, pk):
             return redirect("core:teacher-detail", pk=teacher.pk)
     return render(request, "core/teacher_deactivate_confirm.html", {
         "teacher": teacher, "form": form,
-        "assignment_count": teacher.assignment_count,
+        "ongoing_assignments": teacher_accounts.ongoing_assignments(teacher),
     })
 
 
