@@ -3,6 +3,7 @@
 {% block content %}
 {% include "partials/_page_header.html" with eyebrow="Timetable" title="Section timetables" purpose=academic_year.name only %}
 <p class="text-muted">Choose a Section to see and change its weekly timetable. Only Sections whose Class/Grade has Subjects offered in this Academic Year are listed.</p>
+<div class="d-none d-md-block d-print-block">
 <div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Sections" tabindex="0">
 <table class="table">
@@ -21,4 +22,18 @@
 </table>
 </div>
 </div>
+</div>
+{% if sections %}
+<ul class="erp-setup-cards d-md-none d-print-none" role="list">
+    {% for section in sections %}
+    <li class="erp-setup-card">
+        <div class="erp-setup-card-title">{{ section.class_grade.name }}</div>
+        <div class="erp-setup-card-meta">Section {{ section.name }}</div>
+        <div class="erp-setup-card-actions"><a class="btn btn-outline-primary btn-sm" href="{% url 'core:timetable-grid' academic_year.pk section.pk %}">Open timetable<span class="visually-hidden"> for {{ section }}</span></a></div>
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<div class="erp-setup-cards-empty d-md-none d-print-none">No Sections have subject offerings in this Academic Year yet. Offer Subjects to a Class/Grade first.</div>
+{% endif %}
 {% endblock %}
