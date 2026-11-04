@@ -182,3 +182,16 @@ class DeactivatePageTests(TeacherWorkFixture, TestCase):
         html = self.page()
         self.assertIn("No ongoing assignments.", html)
         self.assertNotIn("Mathematics", html)
+
+    def test_ongoing_assignments_follow_class_position_not_name(self):
+        zebra = ClassGrade.objects.create(name="Zebra")
+        ClassGrade.objects.filter(pk=self.grade.pk).update(display_order=20)
+        ClassGrade.objects.filter(pk=zebra.pk).update(display_order=10)
+        zebra_section = Section.objects.create(class_grade=zebra, name="A")
+        self.class_row(self.year, self.year.start_date)
+        SectionClassTeacher.objects.create(
+            teacher=self.teacher, academic_year=self.year, section=zebra_section,
+            start_date=self.year.start_date,
+        )
+        labels = teacher_accounts.ongoing_assignments(self.teacher)
+        self.assertEqual(labels, ["Class teacher: Zebra - A", "Class teacher: Grade 6 - A"])
