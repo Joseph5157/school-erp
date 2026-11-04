@@ -88,10 +88,12 @@ def ongoing_assignments(teacher):
         return []
     class_rows = SectionClassTeacher.objects.filter(
         _ongoing("", today), teacher=teacher, academic_year=year
-    ).select_related("section__class_grade")
+    ).select_related("section__class_grade").order_by("section__class_grade__name", "section__name", "pk")
     subject_rows = AssessmentTeacherAssignment.objects.filter(
         _ongoing("", today), teacher=teacher, offering__academic_year=year
-    ).select_related("offering__subject", "section__class_grade")
+    ).select_related("offering__subject", "section__class_grade").order_by(
+        "offering__subject__name", "section__class_grade__name", "section__name", "pk"
+    )
     labels = [f"Class teacher: {row.section}" for row in class_rows]
     labels += [f"{row.offering.subject.name}: {row.section}" for row in subject_rows]
     return labels

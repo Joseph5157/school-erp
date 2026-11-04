@@ -1750,6 +1750,11 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 .erp-guardian-cards { display: grid; gap: var(--erp-space-2); margin: 0; padding: 0; list-style: none; }
 .erp-guardian-cards + .erp-table-footer { margin-top: var(--erp-space-4); }
 .erp-guardian-card {
+/* Teachers list on phones: one card per teacher instead of the table (shown below 768px by d-md-none).
+   Same shape as .erp-student-card; the name link's ::after covers the card as one tap target. */
+.erp-teacher-cards { display: grid; gap: var(--erp-space-2); margin: 0; padding: 0; list-style: none; }
+.erp-teacher-cards + .erp-table-footer, .erp-teacher-cards-empty + .erp-table-footer { margin-top: var(--erp-space-4); }
+.erp-teacher-card {
   position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--erp-space-3); align-items: center;
   padding: var(--erp-space-3) var(--erp-space-4);
   background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
@@ -1764,6 +1769,14 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 .erp-guardian-card-details { margin-top: var(--erp-space-1); }
 .erp-guardian-card-contact { display: flex; flex-direction: column; margin-top: var(--erp-space-1); }
 .erp-guardian-card-contact a { position: relative; z-index: 1; display: flex; align-items: center; min-height: 2.75rem; color: var(--erp-action); }
+.erp-teacher-card:active { background: var(--erp-paper); }
+.erp-teacher-card-name { min-width: 0; overflow-wrap: anywhere; font-weight: 600; color: var(--erp-ink); text-decoration: none; }
+.erp-teacher-card-name::after { content: ""; position: absolute; inset: 0; border-radius: var(--erp-radius); }
+.erp-teacher-card-name:focus-visible { outline: none; }
+.erp-teacher-card-name:focus-visible::after { outline: 3px solid var(--erp-focus-color); outline-offset: -3px; }
+.erp-teacher-card-status { grid-column: 2; grid-row: 1; }
+.erp-teacher-card-details { grid-column: 1 / -1; grid-row: 2; min-width: 0; margin-top: var(--erp-space-1); overflow-wrap: anywhere; color: var(--erp-ink-soft); font-size: var(--erp-text-sm); }
+.erp-teacher-cards-empty { padding: var(--erp-space-4); background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius); }
 
 /* ---------- UI-D1-1: teacher assignment history ---------- */
 /* Each history entry stacks status + teacher, then the date range, then its permitted actions.
@@ -2010,21 +2023,3 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 /* UI-D1-3D2 review fix: the "Guardian: <name>" purpose line wraps a long unbroken name instead of running
    past the right gutter on phones. Scoped to the Guardian form wrapper so shared headers are unchanged. */
 .erp-guardian-form-page .erp-page-purpose { overflow-wrap: break-word; min-width: 0; }
-
-/* Teachers list on phones: one card per teacher instead of the table (shown below 768px by d-md-none).
-   Same shape as .erp-student-card; the name link's ::after covers the card as one tap target. */
-.erp-teacher-cards { display: grid; gap: var(--erp-space-2); margin: 0; padding: 0; list-style: none; }
-.erp-teacher-cards + .erp-table-footer, .erp-teacher-cards-empty + .erp-table-footer { margin-top: var(--erp-space-4); }
-.erp-teacher-card {
-  position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--erp-space-3); align-items: center;
-  padding: var(--erp-space-3) var(--erp-space-4);
-  background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
-}
-.erp-teacher-card:active { background: var(--erp-paper); }
-.erp-teacher-card-name { min-width: 0; overflow-wrap: anywhere; font-weight: 600; color: var(--erp-ink); text-decoration: none; }
-.erp-teacher-card-name::after { content: ""; position: absolute; inset: 0; border-radius: var(--erp-radius); }
-.erp-teacher-card-name:focus-visible { outline: none; }
-.erp-teacher-card-name:focus-visible::after { outline: 3px solid var(--erp-focus-color); outline-offset: -3px; }
-.erp-teacher-card-status { grid-column: 2; grid-row: 1; }
-.erp-teacher-card-details { grid-column: 1 / -1; grid-row: 2; min-width: 0; margin-top: var(--erp-space-1); overflow-wrap: anywhere; color: var(--erp-ink-soft); font-size: var(--erp-text-sm); }
-.erp-teacher-cards-empty { padding: var(--erp-space-4); background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius); }
