@@ -1300,6 +1300,14 @@ class TeacherDeactivateForm(FieldAccessibilityMixin, forms.Form):
     )
 
 
+class WithdrawalForm(FieldAccessibilityMixin, forms.Form):
+    reason = forms.CharField(
+        max_length=200, label="Reason for withdrawing",
+        help_text="Recorded permanently with the withdrawal.",
+        error_messages={"required": "Give a reason for withdrawing this notice."},
+    )
+
+
 class RevocationForm(forms.Form):
     reason = forms.CharField(max_length=200, help_text="Recorded permanently with the revocation.")
 

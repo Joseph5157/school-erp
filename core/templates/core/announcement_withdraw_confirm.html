@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Withdraw notice{% endblock %}
+{% block content %}
+{% include "partials/_page_header.html" with eyebrow="Announcement" title="Withdraw this notice?" purpose=notice.title|add:" · "|add:notice.audience_label only %}
+<div class="alert alert-warning" role="alert">
+    <p class="fw-semibold mb-2">This change has the following consequences:</p>
+    <ul class="mb-0">
+        <li>Guardians stop seeing this notice in the portal at once.</li>
+        <li>WhatsApp messages still waiting to be sent are dismissed.</li>
+        <li>Messages already sent cannot be recalled.</li>
+        <li>A published notice cannot be edited. To correct it, publish a new one.</li>
+    </ul>
+</div>
+<form method="post" class="erp-form">
+    {% csrf_token %}
+    {% include "partials/_form_required_legend.html" %}
+    {% include "partials/_form_error_summary.html" with form=form action_text="withdrawing" only %}
+    {% for field in form %}{% include "partials/_form_field.html" with field=field only %}{% endfor %}
+    <div class="erp-form-actions">
+        <button type="submit" class="btn btn-danger">Confirm withdrawal</button>
+        <a class="btn btn-link" href="{% url 'core:announcement-detail' notice.pk %}">Cancel</a>
+    </div>
+</form>
+{% endblock %}

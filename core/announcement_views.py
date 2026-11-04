@@ -3,11 +3,12 @@
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
-from django.views.decorators.http import require_POST
+from django.urls import reverse
+from django.utils.html import format_html
 
 from core import announcements, notifications
 from core.authorization import administrator_required
-from core.forms import AnnouncementForm
+from core.forms import AnnouncementForm, WithdrawalForm
 from core.models import Announcement, School
 
 
@@ -65,33 +66,60 @@ def announcement_detail(request, pk):
     })
 
 
+def _stale_notice(notice, *, preparing):
+    """Message for a notice that can no longer take this action, else None."""
+    if notice.is_withdrawn:
+        return ("This notice has been withdrawn." if preparing
+                else "This notice has already been withdrawn.")
+    if preparing and notifications.school_mode() != School.NotificationMode.ASSIST:
+        return "WhatsApp sending is switched off for this school."
+    return None
+
+
 @administrator_required("core.send_notification")
-@require_POST
 def announcement_prepare(request, pk):
     notice = get_object_or_404(Announcement, pk=pk)
-    try:
-        result = announcements.prepare_messages(notice)
-    except ValidationError as problem:
-        messages.error(request, problem.messages[0])
-    else:
-        text = (f"Messages ready on the Message queue page: {result['prepared']}. "
-                f"Not sent (no WhatsApp consent): {result['skipped']}.")
-        if result["done"]:
-            text += f" Already sent or dismissed: {result['done']}."
-        if result["failed"]:
-            text += f" Could not prepare: {result['failed']}."
-        messages.success(request, text)
-    return redirect("core:announcement-detail", pk=pk)
+    stale = _stale_notice(notice, preparing=True)
+    if stale:
+        messages.error(request, stale)
+        return redirect("core:announcement-detail", pk=pk)
+    if request.method == "POST":
+        try:
+            result = announcements.prepare_messages(notice)
+        except ValidationError as problem:
+            messages.error(request, problem.messages[0])
+        else:
+            text = (f"Messages ready on the Message queue page: {result['prepared']}. "
+                    f"Not sent (no WhatsApp consent): {result['skipped']}.")
+            if result["done"]:
+                text += f" Already sent or dismissed: {result['done']}."
+            if result["failed"]:
+                text += f" Could not prepare: {result['failed']}."
+            messages.success(request, format_html(
+                '{} <a href="{}">Open the Message queue</a>.',
+                text, reverse("core:notifications-to-send")))
+        return redirect("core:announcement-detail", pk=pk)
+    return render(request, "core/announcement_prepare_confirm.html", {
+        "notice": notice, "counts": announcements.audience_counts(notice),
+    })
 
 
 @administrator_required("core.withdraw_announcement")
-@require_POST
 def announcement_withdraw(request, pk):
     notice = get_object_or_404(Announcement, pk=pk)
-    try:
-        announcements.withdraw(notice, actor=request.user, reason=request.POST.get("reason"))
-    except ValidationError as problem:
-        messages.error(request, problem.messages[0])
-    else:
-        messages.info(request, "Notice withdrawn. Guardians no longer see it.")
-    return redirect("core:announcement-detail", pk=pk)
+    stale = _stale_notice(notice, preparing=False)
+    if stale:
+        messages.error(request, stale)
+        return redirect("core:announcement-detail", pk=pk)
+    form = WithdrawalForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            announcements.withdraw(notice, actor=request.user, reason=form.cleaned_data["reason"])
+        except ValidationError as problem:
+            messages.error(request, problem.messages[0])
+        else:
+            messages.info(request, "Notice withdrawn. Guardians no longer see it.")
+        return redirect("core:announcement-detail", pk=pk)
+    return render(request, "core/announcement_withdraw_confirm.html", {
+        "notice": notice, "form": form,
+    })

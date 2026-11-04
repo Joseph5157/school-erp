@@ -226,14 +226,16 @@ class DetailTests(Base, TestCase):
         self.assertIn(f'<a href="{LIST}">All announcements</a>', page)
 
     def test_withdraw_form_has_a_visible_label_and_the_same_field(self):
+        # The reason field moved from the detail page to its own confirmation page.
         notice = self.notice()
-        page = html(self.administrator.get(self.detail_url(notice)))
-        form = re.search(r'<form method="post" action="{}"[^>]*>(.*?)</form>'.format(reverse("core:announcement-withdraw", args=[notice.pk])), page, re.S).group(1)
-        self.assertRegex(form, r'<label for="withdraw-reason">Reason for withdrawing')
+        page = html(self.administrator.get(reverse("core:announcement-withdraw", args=[notice.pk])))
+        form = re.search(r'<form method="post" class="erp-form">(.*?)</form>', page, re.S).group(1)
+        self.assertRegex(form, r'<label for="id_reason">Reason for withdrawing')
         self.assertNotIn("visually-hidden\" for", form)
-        self.assertIn('id="withdraw-reason" name="reason" maxlength="200"', form)
+        self.assertIn('name="reason"', form)
+        self.assertIn('maxlength="200"', form)
         self.assertNotIn("placeholder", form)
-        self.assertIn(">Withdraw</button>", form)
+        self.assertIn(">Confirm withdrawal</button>", form)
 
     def test_withdrawn_notice_is_distinct_and_has_no_actions(self):
         notice = self.notice()

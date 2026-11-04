@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Prepare WhatsApp messages{% endblock %}
+{% block content %}
+{% include "partials/_page_header.html" with eyebrow="Announcement" title="Prepare WhatsApp messages?" purpose=notice.title|add:" · "|add:notice.audience_label only %}
+{% if counts.opted_in %}
+<div class="alert alert-warning" role="alert">
+    <p class="mb-0">This queues a message for {{ counts.opted_in }} opted-in guardian(s). Nothing is sent from here.</p>
+</div>
+<p>Office staff send the messages from the <a href="{% url 'core:notifications-to-send' %}">Message queue</a>.</p>
+<form method="post" class="erp-form">
+    {% csrf_token %}
+    <div class="erp-form-actions">
+        <button type="submit" class="btn btn-success">Prepare messages</button>
+        <a class="btn btn-link" href="{% url 'core:announcement-detail' notice.pk %}">Cancel</a>
+    </div>
+</form>
+{% else %}
+<div class="alert alert-info" role="status">
+    <p class="mb-0">No opted-in guardians for this audience, so there is nothing to prepare.</p>
+</div>
+<div class="erp-form-actions">
+    <a class="btn btn-link" href="{% url 'core:announcement-detail' notice.pk %}">Back to notice</a>
+</div>
+{% endif %}
+{% endblock %}
