@@ -302,8 +302,10 @@ urlpatterns = [
         name="applicant-guardian-create",
     ),
     path("applicants/<int:pk>/progress/", views.applicant_progress, name="applicant-progress"),
+    path("applicants/<int:pk>/edit/", views.applicant_edit, name="applicant-edit"),
     path("students/", views.student_list, name="student-list"),
     path("students/<int:pk>/", views.student_detail, name="student-detail"),
+    path("students/<int:pk>/edit/", views.student_edit, name="student-edit"),
     path(
         "students/<int:pk>/guardians/add/",
         views.student_guardian_add,

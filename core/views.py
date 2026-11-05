@@ -86,6 +86,7 @@ from core.forms import (
     MissingAttendanceForm,
     MonthlySectionSummaryForm,
     OfferedSubjectsLookupForm,
+    RecordCorrectionForm,
     ResultCorrectionForm,
     ResultEntryForm,
     RevocationForm,
@@ -122,6 +123,7 @@ from core.models import (
     GuardianAccessReview,
     GuardianAccount,
     GuardianStudentAccess,
+    RecordCorrection,
     School,
     SchoolCalendarDay,
     SchoolLogo,
@@ -2330,6 +2332,7 @@ def applicant_detail(request, pk):
             "guardian_links": guardian_links,
             "student": student,
             "can_add_guardian": not _applicant_guardian_lock(applicant),
+            "corrections": applicant.corrections.select_related("changed_by"),
         },
     )
 
@@ -2848,6 +2851,62 @@ def publications_stale(request):
 
 
 # --- Phase 6 Gate 4: admission and roll numbers (ADR 0014, OD-1) ----------
+
+
+def _record_correction(request, record, detail_name, context):
+    """The shared correction form for an Applicant or a Student."""
+    if request.method == "POST":
+        form = RecordCorrectionForm(request.POST)
+        if form.is_valid():
+            values = {field: form.cleaned_data[field] for field in RecordCorrection.FIELDS}
+            try:
+                RecordCorrection.apply(
+                    record, values, reason=form.cleaned_data["reason"], actor=request.user
+                )
+            except ValidationError as error:
+                form.add_error(None, error)
+                form.apply_error_state()
+            else:
+                messages.success(request, "Details corrected. The change is in the history.")
+                return redirect(detail_name, pk=record.pk)
+    else:
+        form = RecordCorrectionForm(
+            initial={field: getattr(record, field) for field in RecordCorrection.FIELDS}
+        )
+    return render(
+        request,
+        "core/record_correction_form.html",
+        {"form": form, "record": record, "cancel_url": reverse(detail_name, args=[record.pk]), **context},
+    )
+
+
+@administrator_required("core.change_applicant")
+def applicant_edit(request, pk):
+    applicant = get_object_or_404(Applicant, pk=pk)
+    if Student.objects.filter(applicant=applicant).exists():
+        messages.error(request, "This Applicant already has a Student record. Correct details there.")
+        return redirect("core:applicant-detail", pk=applicant.pk)
+    return _record_correction(
+        request, applicant, "core:applicant-detail",
+        {
+            "eyebrow": "Applicant record",
+            "note": "These details are copied to the Student record when the Applicant progresses.",
+        },
+    )
+
+
+@administrator_required("core.change_student")
+def student_edit(request, pk):
+    student = get_object_or_404(Student, pk=pk)
+    return _record_correction(
+        request, student, "core:student-detail",
+        {
+            "eyebrow": "Student record",
+            "note": "Documents already issued keep the old details. Results, report cards shown "
+            "on screen and new documents use the corrected details. The Applicant record stays "
+            "as it was at application.",
+        },
+    )
 
 
 @administrator_required("core.change_student")
@@ -3428,6 +3487,7 @@ def student_detail(request, pk):
             "guardian_links": guardian_links,
             "current_enrollment": current_enrollment,
             "enrollments": enrollments,
+            "corrections": student.corrections.select_related("changed_by"),
             **profile_sections(
                 ("status-change", "Change status", request.user.has_perm("core.change_student")),
                 ("status-history", "Status history", True),

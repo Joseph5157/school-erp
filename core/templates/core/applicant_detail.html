@@ -22,7 +22,9 @@
     <dt class="col-sm-3">Phone</dt>
     <dd class="col-sm-9">{{ applicant.phone|default:"-" }}</dd>
 </dl>
+{% if perms.core.change_applicant and not student %}<a class="btn btn-outline-secondary mt-3" href="{% url 'core:applicant-edit' applicant.pk %}">Correct details</a>{% endif %}
 </section>
+{% include "partials/_record_corrections.html" with corrections=corrections only %}
 
 {% if perms.core.change_applicant and applicant.admission_status == "PENDING" and not student %}
 <section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="applicant-decision-heading">

@@ -43,6 +43,14 @@ _ACADEMIC_YEARS = Crumb("Academic Years", "core:academic-year-list", perm="core.
 
 RULES = {
     "student-detail": Rule("student-list", (_STUDENTS,), "Student"),
+    "student-edit": Rule(
+        "student-list", (_STUDENTS, Crumb("Student", "core:student-detail", True)), "Correct details"
+    ),
+    "applicant-edit": Rule(
+        "applicant-list",
+        (_APPLICANTS, Crumb("Applicant", "core:applicant-detail", True)),
+        "Correct details",
+    ),
     "student-deactivate-confirm": Rule(
         "student-list", (_STUDENTS, Crumb("Student", "core:student-detail", True)), "Deactivate"
     ),
