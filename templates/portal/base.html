@@ -12,7 +12,7 @@
 <body class="erp has-tabbar">
     <a class="visually-hidden-focusable" href="#main">Skip to content</a>
     <header class="erp-topbar">
-        <a class="erp-brand" href="{% url 'portal:home' %}">Guardian Portal</a>
+        <a class="erp-brand" href="{% url 'portal:home' %}">{% include "partials/_brand_mark.html" %}Guardian Portal</a>
         {% include "portal/_portal_nav.html" with nav_class="erp-portal-nav d-none d-lg-flex" %}
         <span class="erp-spacer"></span>
         {% include "partials/_account_menu.html" %}
