@@ -1227,13 +1227,22 @@ class RecordCorrection(models.Model):
             )
 
 
+class StudentGuardianQuerySet(models.QuerySet):
+    def current(self):
+        """Relationships that have not been ended (ADR 0024)."""
+        return self.filter(ended_at__isnull=True)
+
+
 class StudentGuardian(models.Model):
     """An explicit Student-Guardian association carrying a relationship type.
 
     Separate from ApplicantGuardian (docs/adr/0002-applicant-student-and-
     guardian-lifecycle.md). During progression the ApplicantGuardian
     relationships are copied here; the ApplicantGuardian history is left
-    intact. A given Guardian appears at most once per Student.
+    intact. A given Guardian has at most one current relationship per Student.
+    Ending one keeps the row as history (ADR 0024): use `current()` wherever a
+    relationship should still count. Database triggers refuse any UPDATE or
+    DELETE of an ended row.
     """
 
     student = models.ForeignKey(
@@ -1245,14 +1254,30 @@ class StudentGuardian(models.Model):
     relationship_type = models.CharField(max_length=20, choices=RelationshipType.choices)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    ended_at = models.DateTimeField(null=True, blank=True)
+    ended_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name="+"
+    )
+    end_reason = models.CharField(max_length=200, blank=True)
+
+    objects = StudentGuardianQuerySet.as_manager()
 
     class Meta:
         ordering = ["student", "guardian"]
         constraints = [
             models.UniqueConstraint(
                 fields=["student", "guardian"],
-                name="studentguardian_unique_student_guardian",
-            )
+                condition=models.Q(ended_at__isnull=True),
+                name="studentguardian_one_current_per_student_guardian",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(ended_at__isnull=True, ended_by__isnull=True, end_reason="")
+                    | (models.Q(ended_at__isnull=False, ended_by__isnull=False)
+                       & ~models.Q(end_reason=""))
+                ),
+                name="studentguardian_end_complete",
+            ),
         ]
 
     def __str__(self):

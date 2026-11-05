@@ -77,6 +77,7 @@ from core.forms import (
     ClassTeacherAssignForm,
     ClassTeacherEndForm,
     ContactConsentForm,
+    EndRelationshipForm,
     GradeBoundaryForm,
     GradingScaleForm,
     GuardianAccountCreateForm,
@@ -1598,7 +1599,7 @@ def my_student_detail(request, pk):
             "results": _teacher_visible_results(request.user, student, year),
             "show_guardians": show_guardians,
             "guardian_links": (
-                student.guardian_links.select_related("guardian") if show_guardians else []
+                student.guardian_links.current().select_related("guardian") if show_guardians else []
             ),
         },
     )
@@ -2531,7 +2532,7 @@ def _guardian_search(query):
         | Q(phone__icontains=query)
         | Q(email__icontains=query)
         | Exists(
-            StudentGuardian.objects.filter(
+            StudentGuardian.objects.current().filter(
                 guardian=OuterRef("pk"), student__full_name__icontains=query
             )
         )
@@ -2547,7 +2548,8 @@ def _guardians_with_links(guardians):
     return guardians.prefetch_related(
         Prefetch(
             "student_links",
-            queryset=StudentGuardian.objects.select_related("student")
+            queryset=StudentGuardian.objects.current()
+            .select_related("student")
             .order_by("student__full_name")
             .prefetch_related(
                 Prefetch(
@@ -2660,7 +2662,9 @@ def student_guardian_add(request, pk):
     else:
         form = StudentGuardianForm(student=student, initial={"guardian": request.GET.get("guardian")})
     linked_ids = set(
-        StudentGuardian.objects.filter(student=student).values_list("guardian_id", flat=True)
+        StudentGuardian.objects.current()
+        .filter(student=student)
+        .values_list("guardian_id", flat=True)
     )
     context = _guardian_lookup_context(request, form, linked_ids, "for_student", student.pk)
     return render(request, "core/student_guardian_form.html", {**context, "student": student})
@@ -2669,6 +2673,9 @@ def student_guardian_add(request, pk):
 @administrator_required("core.change_studentguardian")
 def student_guardian_edit(request, pk):
     link = get_object_or_404(StudentGuardian.objects.select_related("student", "guardian"), pk=pk)
+    if link.ended_at is not None:
+        messages.error(request, "This relationship has ended, so it cannot be changed.")
+        return redirect("core:student-detail", pk=link.student_id)
     if request.method == "POST":
         form = StudentGuardianRelationshipForm(request.POST, instance=link)
         if form.is_valid():
@@ -2681,6 +2688,56 @@ def student_guardian_edit(request, pk):
         request,
         "core/student_guardian_form.html",
         {"form": form, "student": link.student, "link": link},
+    )
+
+
+@administrator_required(("core.change_studentguardian", "core.change_guardianstudentaccess"))
+def student_guardian_end(request, pk):
+    link = get_object_or_404(StudentGuardian.objects.select_related("student", "guardian"), pk=pk)
+    if link.ended_at is not None:
+        messages.info(request, "This relationship had already ended, so nothing was changed.")
+        return redirect("core:student-detail", pk=link.student_id)
+    form = EndRelationshipForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            guardian_accounts.end_relationship(
+                link=link, actor=request.user, reason=form.cleaned_data["reason"]
+            )
+        except ValidationError as error:
+            form.add_error(None, error)
+            form.apply_error_state()
+        else:
+            messages.success(request, "Relationship ended.")
+            return redirect("core:student-detail", pk=link.student_id)
+    guardian, student = link.guardian, link.student
+    consequences = [f"{guardian} will no longer be listed as a guardian of {student}."]
+    if link.access_grants.filter(revoked_at__isnull=True).exists():
+        consequences += [
+            f"Their portal access to {student} ends now, and they stop receiving messages about this child.",
+            "Access to their other children does not change, and their login stays active.",
+        ]
+    else:
+        consequences.append("They have no portal access to this child, so no access changes.")
+    consequences.append(
+        "The relationship stays on the record as ended. To link them again, associate them as new."
+    )
+    return render(
+        request,
+        "core/guardian_revoke_form.html",
+        {
+            "heading": "End guardian relationship",
+            "eyebrow": "Student record",
+            "details": [
+                ("Student", str(student)),
+                ("Guardian", str(guardian)),
+                ("Relationship", link.get_relationship_type_display()),
+            ],
+            "consequences": consequences,
+            "form": form,
+            "button_label": "End relationship",
+            "guardian": guardian,
+            "cancel_url": reverse("core:student-detail", args=[link.student_id]),
+        },
     )
 
 
@@ -2698,7 +2755,7 @@ def guardian_detail(request, pk):
         )
     if request.user.has_perm("core.view_guardianstudentaccess"):
         relationships = []
-        for link in guardian.student_links.select_related("student").prefetch_related(
+        for link in guardian.student_links.select_related("student", "ended_by").prefetch_related(
             "access_grants__granted_by", "access_grants__revoked_by"
         ):
             grants = list(link.access_grants.all())
@@ -3216,6 +3273,9 @@ def guardian_access_grant(request, pk):
         else:
             messages.success(request, "Portal access granted for this Student.")
         return redirect("core:guardian-detail", pk=link.guardian_id)
+    if link.ended_at is not None:
+        messages.error(request, "This relationship has ended, so access cannot be granted.")
+        return redirect("core:guardian-detail", pk=link.guardian_id)
     if link.access_grants.filter(revoked_at__isnull=True).exists():
         messages.info(request, "Access is already granted for this relationship, so nothing was changed.")
         return redirect("core:guardian-detail", pk=link.guardian_id)
@@ -3342,7 +3402,7 @@ def student_list(request):
             | Q(email__icontains=query)
             | Q(phone__icontains=query)
             | Exists(
-                StudentGuardian.objects.filter(student=OuterRef("pk")).filter(
+                StudentGuardian.objects.current().filter(student=OuterRef("pk")).filter(
                     Q(guardian__full_name__icontains=query)
                     | Q(guardian__phone__icontains=query)
                     | Q(guardian__email__icontains=query)
@@ -3365,9 +3425,9 @@ def student_list(request):
     ).prefetch_related(
         Prefetch(
             "guardian_links",
-            queryset=StudentGuardian.objects.select_related("guardian").order_by(
-                "relationship_type", "guardian__full_name"
-            ),
+            queryset=StudentGuardian.objects.current()
+            .select_related("guardian")
+            .order_by("relationship_type", "guardian__full_name"),
             to_attr="guardian_rows",
         )
     )
@@ -3459,7 +3519,12 @@ def profile_sections(*candidates):
 @administrator_required("core.view_student")
 def student_detail(request, pk):
     student = get_object_or_404(Student, pk=pk)
-    guardian_links = student.guardian_links.select_related("guardian")
+    guardian_links = student.guardian_links.current().select_related("guardian")
+    ended_links = (
+        student.guardian_links.filter(ended_at__isnull=False)
+        .select_related("guardian", "ended_by")
+        .order_by("-ended_at", "-pk")
+    )
     enrollments = student.enrollments.select_related(
         "academic_year", "class_grade", "section__class_grade"
     )
@@ -3485,6 +3550,7 @@ def student_detail(request, pk):
             "attendance_months": charts.columns(months),
             "attendance_months_low": any(month["low"] for month in months),
             "guardian_links": guardian_links,
+            "ended_links": ended_links,
             "current_enrollment": current_enrollment,
             "enrollments": enrollments,
             "corrections": student.corrections.select_related("changed_by"),

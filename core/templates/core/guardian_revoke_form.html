@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ heading }}{% endblock %}
 {% block content %}
-{% include "partials/_page_header.html" with eyebrow="Guardian access" title=heading only %}
+{% include "partials/_page_header.html" with eyebrow=eyebrow|default:"Guardian access" title=heading only %}
 <dl class="erp-details-list mb-3">
     {% for label, value in details %}<div><dt>{{ label }}</dt><dd class="text-break">{{ value }}</dd></div>{% endfor %}
 </dl>
@@ -18,7 +18,7 @@
     {% include "partials/_form_fields.html" with form=form only %}
     <div class="erp-form-actions">
         <button type="submit" class="btn btn-danger">{{ button_label }}</button>
-        <a class="btn btn-link" href="{% url 'core:guardian-detail' guardian.pk %}">Cancel</a>
+        <a class="btn btn-link" href="{% if cancel_url %}{{ cancel_url }}{% else %}{% url 'core:guardian-detail' guardian.pk %}{% endif %}">Cancel</a>
     </div>
 </form>
 {% endblock %}
