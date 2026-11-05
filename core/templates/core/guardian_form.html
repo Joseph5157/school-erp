@@ -9,11 +9,17 @@
 {% endif %}
 <form method="post" class="erp-form">
     {% csrf_token %}
+    {% if duplicate_guardians %}{% include "core/_duplicate_guardians.html" %}{% endif %}
     {% include "partials/_form_required_legend.html" %}
     {% if form.non_field_errors %}<div class="erp-form-errors" role="alert">{{ form.non_field_errors }}</div>{% endif %}
     {% for field in form %}{% include "partials/_form_field.html" with field=field only %}{% endfor %}
     <div class="erp-form-actions">
+        {% if duplicate_guardians %}
+        <button type="submit" class="btn btn-primary">Check again</button>
+        <button type="submit" name="confirm_new" value="1" class="btn btn-outline-secondary">Save as new anyway</button>
+        {% else %}
         <button type="submit" class="btn btn-primary">Save guardian</button>
+        {% endif %}
         {% if guardian %}<a class="btn btn-link" href="{% url 'core:guardian-detail' guardian.pk %}">Cancel</a>{% elif return_url %}<a class="btn btn-link" href="{{ return_url }}">Cancel</a>{% else %}<a class="btn btn-link" href="{% url 'core:guardian-list' %}">Cancel</a>{% endif %}
     </div>
 </form>

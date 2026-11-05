@@ -4,11 +4,17 @@
 {% include "partials/_page_header.html" with eyebrow="Admissions" title="Register applicant" purpose="Create an application record. Admission decisions are recorded separately after review." only %}
 <form method="post" class="erp-form">
     {% csrf_token %}
+    {% if duplicate_applicants or duplicate_students %}{% include "core/_duplicate_applicants.html" %}{% endif %}
     {% include "partials/_form_required_legend.html" %}
     {% include "partials/_form_error_summary.html" with form=form only %}
     {% for field in form %}{% include "partials/_form_field.html" with field=field only %}{% endfor %}
     <div class="erp-form-actions">
+        {% if duplicate_applicants or duplicate_students %}
+        <button type="submit" class="btn btn-primary">Check again</button>
+        <button type="submit" name="confirm_new" value="1" class="btn btn-outline-secondary">Register as new anyway</button>
+        {% else %}
         <button type="submit" class="btn btn-primary">Register applicant</button>
+        {% endif %}
         <a class="btn btn-link" href="{% url 'core:applicant-list' %}">Cancel</a>
     </div>
 </form>

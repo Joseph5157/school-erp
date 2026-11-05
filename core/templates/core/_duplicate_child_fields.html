@@ -1,0 +1,6 @@
+<dl class="erp-record-fields">
+    <div><dt>Why</dt><dd>{{ record.duplicate_reasons|join:"; " }}</dd></div>
+    {% if record.date_of_birth %}<div><dt>Date of birth</dt><dd>{{ record.date_of_birth|date:"j M Y" }}</dd></div>{% endif %}
+    {% if record.phone %}<div><dt>Phone</dt><dd>{{ record.phone }}</dd></div>{% endif %}
+    {% if record.email %}<div><dt>Email</dt><dd>{{ record.email }}</dd></div>{% endif %}
+</dl>

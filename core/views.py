@@ -23,6 +23,7 @@ from core import (
     assignments,
     charts,
     dashboard,
+    duplicate_checks,
     guardian_access,
     guardian_accounts,
     marks_analytics,
@@ -2307,14 +2308,35 @@ def applicant_list(request):
     )
 
 
+def _applicant_duplicate_matches(user, details):
+    """Possible matches among the records this user may already view."""
+    return {
+        "duplicate_applicants": (
+            duplicate_checks.matching_applicants(details)
+            if user.has_perm("core.view_applicant")
+            else []
+        ),
+        "duplicate_students": (
+            duplicate_checks.matching_students(details)
+            if user.has_perm("core.view_student")
+            else []
+        ),
+    }
+
+
 @administrator_required("core.add_applicant")
 def applicant_create(request):
     if request.method == "POST":
         form = ApplicantForm(request.POST)
         if form.is_valid():
-            form.save()
-            messages.success(request, "Applicant registered.")
-            return redirect("core:applicant-list")
+            matches = {}
+            if "confirm_new" not in request.POST:
+                matches = _applicant_duplicate_matches(request.user, form.cleaned_data)
+            if not any(matches.values()):
+                form.save()
+                messages.success(request, "Applicant registered.")
+                return redirect("core:applicant-list")
+            return render(request, "core/applicant_form.html", {"form": form, **matches})
     else:
         form = ApplicantForm()
     return render(request, "core/applicant_form.html", {"form": form})
@@ -2620,17 +2642,39 @@ def _guardian_lookup_return_url(request):
     return ""
 
 
+def _guardian_duplicate_matches(user, details):
+    """Possible matches with their linked children, for a user who may view Guardians."""
+    if not user.has_perm("core.view_guardian"):
+        return []
+    reasons = duplicate_checks.matching_guardian_reasons(details)
+    guardians = list(
+        _guardians_with_links(Guardian.objects.filter(pk__in=reasons)).order_by("full_name", "pk")
+    )
+    for guardian in guardians:
+        guardian.duplicate_reasons = reasons[guardian.pk]
+    return guardians
+
+
 @administrator_required("core.add_guardian")
 def guardian_create(request):
     return_url = _guardian_lookup_return_url(request)
     if request.method == "POST":
         form = GuardianForm(request.POST)
         if form.is_valid():
-            guardian = form.save()
-            messages.success(request, "Guardian created.")
-            if return_url:
-                return redirect(f"{return_url}?guardian={guardian.pk}")
-            return redirect("core:guardian-list")
+            matches = []
+            if "confirm_new" not in request.POST:
+                matches = _guardian_duplicate_matches(request.user, form.cleaned_data)
+            if not matches:
+                guardian = form.save()
+                messages.success(request, "Guardian created.")
+                if return_url:
+                    return redirect(f"{return_url}?guardian={guardian.pk}")
+                return redirect("core:guardian-list")
+            return render(
+                request,
+                "core/guardian_form.html",
+                {"form": form, "return_url": return_url, "duplicate_guardians": matches},
+            )
     else:
         form = GuardianForm()
     return render(request, "core/guardian_form.html", {"form": form, "return_url": return_url})
