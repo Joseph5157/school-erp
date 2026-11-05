@@ -2,7 +2,8 @@
 {% block title %}{{ class_grade.name }}{% endblock %}
 {% block content %}
 {% if perms.core.add_section %}{% url 'core:section-create' class_grade.pk as create_url %}{% endif %}
-{% include "partials/_page_header.html" with eyebrow="Classes/Grades" title=class_grade.name primary_url=create_url primary_label="Create section" only %}
+{% if perms.core.change_classgrade %}{% url 'core:class-grade-rename' class_grade.pk as rename_url %}{% endif %}
+{% include "partials/_page_header.html" with eyebrow="Classes/Grades" title=class_grade.name primary_url=create_url primary_label="Create section" secondary_url=rename_url secondary_label="Rename" only %}
 <section aria-labelledby="class-sections">
 <h2 class="erp-section-title" id="class-sections">Sections</h2>
 <div class="erp-panel">
@@ -11,16 +12,18 @@
     <thead>
         <tr>
             <th scope="col">Name</th>
+            {% if perms.core.change_section %}<th scope="col"><span class="visually-hidden">Actions</span></th>{% endif %}
         </tr>
     </thead>
     <tbody>
         {% for section in sections %}
         <tr>
             <td>{{ section.name }}</td>
+            {% if perms.core.change_section %}<td class="text-end"><a href="{% url 'core:section-rename' section.pk %}">Rename<span class="visually-hidden"> section {{ section.name }}</span></a></td>{% endif %}
         </tr>
         {% empty %}
         <tr>
-            <td>No Sections yet.</td>
+            <td{% if perms.core.change_section %} colspan="2"{% endif %}>No Sections yet.</td>
         </tr>
         {% endfor %}
     </tbody>
