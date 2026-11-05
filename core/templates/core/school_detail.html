@@ -25,9 +25,16 @@
     <p class="text-muted">No logo. The header and documents show the school name as text.</p>
     {% endif %}
     {% if logo_form %}
-    <form method="post" action="{% url 'core:school-logo-upload' %}" enctype="multipart/form-data" class="mb-2">
+    <form method="post" action="{% url 'core:school-logo-upload' %}" enctype="multipart/form-data" class="mb-2" data-erp-logo-form>
         {% csrf_token %}
         {% include "partials/_form_field.html" with field=logo_form.image %}
+        {# Starts hidden; erp.js fills it in. Without JS the form works as before, and the server checks the file either way. #}
+        <div class="mb-3" data-erp-logo-preview hidden>
+            <p class="fw-semibold mb-1">Selected image</p>
+            <p class="mb-1"><img data-erp-logo-preview-image alt="Preview of the selected logo" style="max-height: 96px; max-width: 100%;"></p>
+            <p class="erp-field-help mb-1" data-erp-logo-preview-details aria-live="polite"></p>
+            <button type="button" class="btn btn-link btn-sm p-0" data-erp-logo-preview-cancel>Cancel selection</button>
+        </div>
         <button type="submit" class="btn btn-outline-primary">{% if logo %}Replace logo{% else %}Upload logo{% endif %}</button>
     </form>
     {% if logo %}

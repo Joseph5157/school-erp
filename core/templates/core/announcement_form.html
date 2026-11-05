@@ -2,6 +2,7 @@
 {% block title %}New notice{% endblock %}
 {% block content %}
 {% include "partials/_page_header.html" with eyebrow="Announcements" title="New notice" purpose="You'll see a preview before anything is sent. Published notices can't be edited; withdraw and republish to correct one." only %}
+{% if copied_from %}<div class="alert alert-info" role="note">Copied from &ldquo;{{ copied_from.title }}&rdquo;. Change anything you need. Nothing is published until you confirm the preview.</div>{% endif %}
 <form method="post" class="erp-form" data-erp-audience-form>
     {% csrf_token %}
     {% include "partials/_form_required_legend.html" %}

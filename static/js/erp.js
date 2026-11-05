@@ -443,6 +443,47 @@
     refresh();
   });
 
+  // School logo: show the chosen image before it replaces the current one. This is only a
+  // preview; the server still checks the file.
+  document.querySelectorAll("[data-erp-logo-form]").forEach(function (form) {
+    var input = form.querySelector('input[type="file"]');
+    var box = form.querySelector("[data-erp-logo-preview]");
+    if (!input || !box) return;
+    var image = box.querySelector("[data-erp-logo-preview-image]");
+    var details = box.querySelector("[data-erp-logo-preview-details]");
+    var url = null;
+    function clear() {
+      if (url) URL.revokeObjectURL(url);
+      url = null;
+      image.onload = image.onerror = null;
+      image.removeAttribute("src");
+      image.hidden = false;
+      details.textContent = "";
+      box.hidden = true;
+    }
+    input.addEventListener("change", function () {
+      clear();
+      var file = input.files[0];
+      if (!file) return;
+      box.hidden = false;
+      details.textContent = file.name;
+      image.onload = function () {
+        details.textContent = file.name + ", " + image.naturalWidth + " \u00d7 " + image.naturalHeight + " pixels";
+      };
+      image.onerror = function () {
+        image.hidden = true;
+        details.textContent = file.name + " cannot be shown as an image, so it will probably be refused.";
+      };
+      url = URL.createObjectURL(file);
+      image.src = url;
+    });
+    box.querySelector("[data-erp-logo-preview-cancel]").addEventListener("click", function () {
+      input.value = "";
+      clear();
+      input.focus();
+    });
+  });
+
   // Subjects offered: a link back to a Class/Grade opens its group.
   if (window.location.hash.indexOf("#grade-") === 0) {
     var linkedGroup = document.getElementById(window.location.hash.slice(1));
