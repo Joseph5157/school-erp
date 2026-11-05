@@ -48,12 +48,32 @@ def announcement_list(request):
     })
 
 
+def _copy_source(request):
+    """The notice named by ?from=, if this user may read it. Creating alone does not allow that."""
+    source = request.GET.get("from", "")
+    if not (source.isascii() and source.isdigit() and len(source) <= 18):
+        return None
+    if not request.user.has_perm("core.view_announcement"):
+        return None
+    return Announcement.objects.filter(pk=source).first()
+
+
 @administrator_required("core.add_announcement")
 def announcement_create(request):
     """Form -> preview -> publish. Nothing is stored until `confirm` is posted, and
     confirm re-validates everything the preview carried in hidden fields."""
     if request.method != "POST":
-        return render(request, "core/announcement_form.html", {"form": AnnouncementForm()})
+        source = _copy_source(request)
+        initial = {}
+        if source is not None:
+            # An archived class or section is no longer on the form, so it is simply not chosen.
+            initial = {
+                "title": source.title, "body": source.body, "audience": source.audience,
+                "class_grade": source.class_grade_id, "section": source.section_id,
+            }
+        return render(request, "core/announcement_form.html", {
+            "form": AnnouncementForm(initial=initial), "copied_from": source,
+        })
     if "edit" in request.POST:
         # Back from the preview: refill the form without showing validation noise.
         form = AnnouncementForm(initial=request.POST.dict())
@@ -84,10 +104,14 @@ def announcement_create(request):
 @administrator_required("core.view_announcement")
 def announcement_detail(request, pk):
     notice = get_object_or_404(_announcements(), pk=pk)
+    assist = notifications.school_mode() == School.NotificationMode.ASSIST
+    can_send = request.user.has_perm("core.send_notification")
+    message_counts = announcements.message_counts(notice) if can_send else None
     return render(request, "core/announcement_detail.html", {
         "notice": notice,
         "counts": announcements.audience_counts(notice),
-        "assist": notifications.school_mode() == School.NotificationMode.ASSIST,
+        "can_prepare": assist and can_send and not notice.is_withdrawn,
+        "message_counts": message_counts,
     })
 
 

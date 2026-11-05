@@ -32,14 +32,28 @@
 </dl>
 </section>
 
-{% if not notice.is_withdrawn %}
-{% if assist and perms.core.send_notification %}
+{% if can_prepare or message_counts.total %}
 <section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="notice-whatsapp-heading">
 <h2 class="h5 mb-2" id="notice-whatsapp-heading">WhatsApp</h2>
+{% if message_counts.total %}
+<dl class="row mb-3">
+    {% if message_counts.ready %}<dt class="col-sm-5">Ready to send</dt><dd class="col-sm-7"><strong>{{ message_counts.ready }}</strong></dd>{% endif %}
+    {% if message_counts.sent %}<dt class="col-sm-5">Sent</dt><dd class="col-sm-7"><strong>{{ message_counts.sent }}</strong></dd>{% endif %}
+    {% if message_counts.dismissed %}<dt class="col-sm-5">Dismissed</dt><dd class="col-sm-7"><strong>{{ message_counts.dismissed }}</strong></dd>{% endif %}
+    {% if message_counts.skipped %}<dt class="col-sm-5">Skipped, no WhatsApp consent</dt><dd class="col-sm-7"><strong>{{ message_counts.skipped }}</strong></dd>{% endif %}
+    {% if message_counts.problem %}<dt class="col-sm-5">Could not prepare</dt><dd class="col-sm-7"><strong>{{ message_counts.problem }}</strong></dd>{% endif %}
+</dl>
+<p><a href="{% url 'core:notifications-to-send' %}">Open the Message queue</a></p>
+{% else %}
+<p class="erp-note-text">No messages prepared yet.</p>
+{% endif %}
+{% if can_prepare %}
 <p class="erp-note-text">Queues a message for each opted-in guardian on the Message queue page. Nothing is sent from here.</p>
 <a class="btn btn-success" href="{% url 'core:announcement-prepare' notice.pk %}">Prepare WhatsApp messages&hellip;</a>
+{% endif %}
 </section>
 {% endif %}
+{% if not notice.is_withdrawn %}
 {% if perms.core.withdraw_announcement %}
 <section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="notice-withdraw-heading">
 <h2 class="h5 mb-2" id="notice-withdraw-heading">Withdraw this notice</h2>
@@ -49,6 +63,9 @@
 {% endif %}
 {% else %}
 <p class="erp-note-text">This notice was withdrawn. Guardians no longer see it, and it is kept as a record.</p>
+{% endif %}
+{% if perms.core.add_announcement %}
+<p><a class="btn btn-outline-secondary" href="{% url 'core:announcement-create' %}?from={{ notice.pk }}">Use as new notice</a></p>
 {% endif %}
 <p class="mt-3"><a href="{% url 'core:announcement-list' %}">All announcements</a></p>
 {% endblock %}

@@ -11,7 +11,7 @@ import logging
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.urls import reverse
 from django.utils import timezone
 
@@ -143,6 +143,38 @@ def notice_url(announcement):
             "Set the portal address (PORTAL_BASE_URL) before sending WhatsApp messages."
         )
     return settings.PORTAL_BASE_URL + reverse("portal:notice", args=[announcement.public_id])
+
+
+_MESSAGE_GROUPS = {
+    Notification.Status.PREPARED: "ready",
+    Notification.Status.SENT: "sent",
+    Notification.Status.DELIVERED: "sent",
+    Notification.Status.DISMISSED: "dismissed",
+    Notification.Status.SKIPPED_NO_CONSENT: "skipped",
+    Notification.Status.QUEUED: "problem",
+    Notification.Status.FAILED: "problem",
+}
+
+
+def message_counts(announcement):
+    """What happened to this notice's WhatsApp messages, for showing on the notice.
+
+    Messages are tied to a notice only through their idempotency key (see `prepare_messages`);
+    the leading colon keeps notice 5 from matching notice 15.
+    """
+    counts = {"ready": 0, "sent": 0, "dismissed": 0, "skipped": 0, "problem": 0}
+    rows = (
+        Notification.objects.filter(
+            type=Notification.Type.ANNOUNCEMENT,
+            idempotency_key__endswith=f":announcement-{announcement.pk}",
+        )
+        .order_by()
+        .values("status")
+        .annotate(number=Count("pk"))
+    )
+    for row in rows:
+        counts[_MESSAGE_GROUPS[row["status"]]] += row["number"]
+    return {**counts, "total": sum(counts.values())}
 
 
 def prepare_messages(announcement):
