@@ -127,7 +127,8 @@ class GuardianFormsD13D1Tests(Phase4Fixture, TestCase):
         return reverse("core:applicant-guardian-create", args=[self.applicant.pk])
 
     def test_applicant_guardian_layout_and_fields(self):
-        content = self.get(self.applicant_url())
+        # The save form appears once a Guardian is chosen; test_guardian_lookup covers the search.
+        content = self.get(f"{self.applicant_url()}?guardian={self.guardian.pk}")
         self.assert_shared_layout(content, "Admissions", "Save guardian link")
         self.assertIn("Asha Testfield", content)
         self.assert_cancel(content, reverse("core:applicant-detail", args=[self.applicant.pk]))
@@ -139,7 +140,8 @@ class GuardianFormsD13D1Tests(Phase4Fixture, TestCase):
         self.assertEqual(response.status_code, 200)
         content = response.content.decode()
         self.assertEqual(ApplicantGuardian.objects.count(), 0)
-        self.assertEqual(content.count("erp-field-errors"), 2)
+        # Only the search is on the page until a Guardian is chosen, so one error to fix.
+        self.assertEqual(content.count("erp-field-errors"), 1)
         self.assertEqual(content.count("<h1"), 1)
 
     def test_applicant_guardian_duplicate_shows_form_error_once_and_keeps_values(self):
@@ -156,7 +158,7 @@ class GuardianFormsD13D1Tests(Phase4Fixture, TestCase):
         self.assertEqual(content.count("This Guardian is already associated with this Applicant."), 1)
         self.assertIn("erp-form-errors", content)
         self.assertIn('role="alert"', content)
-        self.assertRegex(content, rf'<option value="{self.guardian.pk}" selected>')
+        self.assertIn(f'type="hidden" name="guardian" value="{self.guardian.pk}"', content)
         self.assertRegex(content, r'<option value="FATHER" selected>')
 
     def test_applicant_guardian_valid_post_redirects(self):
@@ -172,7 +174,7 @@ class GuardianFormsD13D1Tests(Phase4Fixture, TestCase):
         return reverse("core:student-guardian-add", args=[self.student.pk])
 
     def test_student_guardian_create_layout_and_fields(self):
-        content = self.get(self.add_url())
+        content = self.get(f"{self.add_url()}?guardian={self.guardian.pk}")
         self.assert_shared_layout(content, "People", "Save guardian link")
         self.assertIn("Associate guardian with Ravi Testfield", content)
         self.assert_cancel(content, reverse("core:student-detail", args=[self.student.pk]))
@@ -208,7 +210,7 @@ class GuardianFormsD13D1Tests(Phase4Fixture, TestCase):
         self.assertEqual(content.count("This Guardian is already associated with this Student."), 1)
         self.assertRegex(content, r'<option value="FATHER" selected>')
         response = self.client.post(self.add_url(), {"guardian": "", "relationship_type": ""})
-        self.assertEqual(response.content.decode().count("erp-field-errors"), 2)
+        self.assertEqual(response.content.decode().count("erp-field-errors"), 1)
         self.assertEqual(StudentGuardian.objects.count(), 1)
 
     def test_student_relationship_edit_invalid_and_valid(self):

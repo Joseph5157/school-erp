@@ -1765,6 +1765,13 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 .erp-guardian-card-contact { display: flex; flex-direction: column; margin-top: var(--erp-space-1); }
 .erp-guardian-card-contact a { position: relative; z-index: 1; display: flex; align-items: center; min-height: 2.75rem; color: var(--erp-action); }
 
+/* Guardian search on the add-guardian pages: phone and email always readable, one clear action.
+   The name has its own class because .erp-guardian-card-name::after covers the card and would block Select. */
+.erp-guardian-lookup-name { min-width: 0; overflow-wrap: anywhere; font-weight: 600; color: var(--erp-ink); }
+.erp-guardian-lookup-contact { grid-column: 1 / -1; min-width: 0; margin-top: var(--erp-space-1); overflow-wrap: anywhere; color: var(--erp-ink); font-size: var(--erp-text-sm); }
+.erp-guardian-lookup-select { grid-column: 1 / -1; justify-self: start; margin-top: var(--erp-space-2); }
+.erp-guardian-lookup-selected { display: grid; gap: var(--erp-space-2); margin-bottom: var(--erp-space-3); }
+
 /* Teachers list on phones: one card per teacher instead of the table (shown below 768px by d-md-none).
    Same shape as .erp-student-card; the name link's ::after covers the card as one tap target. */
 .erp-teacher-cards { display: grid; gap: var(--erp-space-2); margin: 0; padding: 0; list-style: none; }

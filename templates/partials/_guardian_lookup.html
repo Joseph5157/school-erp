@@ -1,0 +1,49 @@
+{# Find a Guardian, then confirm them with a relationship. Works with JavaScript off. #}
+{% if selected %}
+<form method="post" class="erp-form">
+    {% csrf_token %}
+    {% include "partials/_form_required_legend.html" %}
+    {% include "partials/_form_error_summary.html" with form=form only %}
+    {{ form.guardian }}
+    <div class="erp-guardian-lookup-selected">
+        <div class="erp-guardian-card">{% include "partials/_guardian_lookup_card.html" with guardian=selected only %}</div>
+        <a href="{{ lookup_url }}{% if query %}?q={{ query|urlencode }}{% endif %}">Choose someone else</a>
+    </div>
+    {% include "partials/_form_field.html" with field=form.relationship_type only %}
+    <div class="erp-form-actions">
+        <button type="submit" class="btn btn-primary">Save guardian link</button>
+        <a class="btn btn-link" href="{{ cancel_url }}">Cancel</a>
+    </div>
+</form>
+{% else %}
+{% include "partials/_form_error_summary.html" with form=form only %}
+{% if already_linked %}<div class="alert alert-warning" role="alert">That guardian is already linked. Search for someone else.</div>{% endif %}
+<form method="get" class="erp-toolbar" role="search" aria-label="Search guardians">
+    <div class="row g-2 align-items-end">
+        <div class="col-12 col-md-6 col-lg-5">
+            <label for="{{ form.guardian.id_for_label }}" class="form-label">Search guardians</label>
+            <input type="search" id="{{ form.guardian.id_for_label }}" name="q" value="{{ query }}" class="form-control" placeholder="Name, phone, email, or child's name"{% if form.guardian.errors %} aria-invalid="true" aria-describedby="{{ form.guardian.id_for_label }}_error" autofocus{% endif %}>
+        </div>
+        <div class="col-auto"><button type="submit" class="btn btn-outline-secondary">Search</button></div>
+    </div>
+    {% if form.guardian.errors %}<ul class="erp-field-errors" id="{{ form.guardian.id_for_label }}_error">{% for error in form.guardian.errors %}<li>{{ error }}</li>{% endfor %}</ul>{% endif %}
+</form>
+{% if results %}
+{# role="list": Safari drops list semantics from a ul with list-style: none. #}
+<ul class="erp-guardian-cards" role="list">
+    {% for guardian in results %}
+    <li class="erp-guardian-card">
+        {% include "partials/_guardian_lookup_card.html" with guardian=guardian only %}
+        {% if not guardian.already_linked %}<a class="btn btn-outline-primary erp-guardian-lookup-select" href="{{ lookup_url }}?q={{ query|urlencode }}&amp;guardian={{ guardian.pk }}" aria-label="Select {{ guardian.full_name }}{% if guardian.phone %}, {{ guardian.phone }}{% endif %}">Select</a>{% endif %}
+    </li>
+    {% endfor %}
+</ul>
+{% if more_results %}<p class="small mt-2">Showing the first {{ lookup_limit }}. Add more of the name, or search by phone, to narrow this down.</p>{% endif %}
+{% elif query %}
+<p>No guardians match this search.</p>
+{% endif %}
+<div class="erp-form-actions mt-3">
+    {% if create_url %}<a class="btn btn-outline-secondary" href="{{ create_url }}">Create new guardian</a>{% endif %}
+    <a class="btn btn-link" href="{{ cancel_url }}">Cancel</a>
+</div>
+{% endif %}
