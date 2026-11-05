@@ -13,8 +13,8 @@ from django.views.decorators.cache import cache_control
 from django.views.decorators.http import require_safe
 
 APP_NAME = "School ERP"
-# Cobalt is the design system's info blue (--erp-info in static/css/erp.css); the bar is the white topbar.
-ICON_COLOUR = "#1d5fa8"
+# The tile of the School ERP mark: --erp-accent-strong in static/css/erp.css. The bar is the white topbar.
+ICON_COLOUR = "#185842"
 THEME_COLOR = "#ffffff"
 BACKGROUND_COLOR = "#f5f6f3"  # --erp-paper
 

@@ -195,12 +195,12 @@ class IconTests(TestCase):
         for name in ("icon-192.png", "icon-512.png"):
             self.assertEqual(self.open(name).getpixel((0, 0))[3], 0, name)
 
-    def test_icons_use_the_cobalt_token(self):
-        cobalt = tuple(int(pwa_views.ICON_COLOUR[i:i + 2], 16) for i in (1, 3, 5))
+    def test_icons_use_the_brand_tile_colour(self):
+        tile = tuple(int(pwa_views.ICON_COLOUR[i:i + 2], 16) for i in (1, 3, 5))
         for name in ("icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png"):
             image = self.open(name)
             width, height = image.size
-            self.assertEqual(image.getpixel((width // 2, int(height * 0.08)))[:3], cobalt, name)
+            self.assertEqual(image.getpixel((width // 2, int(height * 0.04)))[:3], tile, name)
 
 
 class InstallPageTests(TestCase):

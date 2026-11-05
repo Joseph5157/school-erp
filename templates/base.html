@@ -18,7 +18,7 @@
         {# Desktop only: hides/shows the fixed sidebar. Starts hidden; erp.js reveals it, so no-JS users never see a dead button. #}
         <button class="btn btn-outline-secondary btn-sm erp-sidebar-toggle" type="button" data-erp-sidebar-toggle aria-controls="erp-sidebar" aria-expanded="true" aria-label="Menu" title="Hide menu" hidden><svg class="erp-sidebar-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg></button>
         {% endif %}
-        <a class="erp-brand" href="{% url 'home' %}">{% if brand_logo %}<img class="erp-brand-logo" src="{{ brand_logo.url }}" alt="{{ brand_logo.school_name }} logo" height="28">{% endif %}School ERP</a>
+        <a class="erp-brand" href="{% url 'home' %}">{% if brand_logo %}<img class="erp-brand-logo" src="{{ brand_logo.url }}" alt="{{ brand_logo.school_name }} logo" height="28">{% else %}{% include "partials/_brand_mark.html" %}{% endif %}School ERP</a>
         {% if school_name %}<span class="erp-topbar-school d-none d-md-inline">{{ school_name }}</span>{% endif %}
         {% if current_year_name %}
         {% if year_choices|length > 1 %}

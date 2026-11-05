@@ -169,6 +169,7 @@ body.erp { min-height: 100vh; }
 }
 .erp-brand { font-weight: 700; color: var(--erp-ink); text-decoration: none; white-space: nowrap; }
 .erp-brand-logo { height: 28px; width: auto; max-width: 96px; object-fit: contain; margin-right: .5rem; vertical-align: middle; }
+.erp-brand-mark { width: 28px; height: 28px; margin-right: .5rem; vertical-align: middle; }
 /* Hamburger button: icon only, label via aria-label; square 40px (44px on phones) */
 .erp-menu-btn { display: inline-flex; align-items: center; justify-content: center; width: 2.5rem; padding: 0; flex: 0 0 auto; }
 @media (min-width: 768px) { .btn.erp-menu-btn { min-height: var(--erp-btn-height); } }
@@ -569,12 +570,13 @@ body.erp { min-height: 100vh; }
     padding: 1rem max(1.5rem, calc(50% - 13rem)) 1.5rem; border: 0; border-radius: 0;
   }
   .erp-login-form > .erp-login-eyebrow, .erp-login-form > h1, .erp-login-form > p { text-align: center; text-wrap: balance; }
-  .erp-login-art-top { margin-bottom: .5rem; text-align: center; }
-  .erp-login-art-top svg { display: inline-block; width: auto; height: 7rem; }
-  /* The artwork was drawn for the dark desktop panel: its white cap and pale halo need colour on white. */
-  .erp-login-art-top .erp-login-art-halo { fill: var(--erp-brand-wash); }
-  .erp-login-art-top .erp-login-art-cap { fill: var(--erp-brand-strong); }
-  .erp-login-art-top .erp-login-art-cap-base { fill: var(--erp-brand); }
+  /* The scene runs edge to edge from the top bar, whatever the form's side padding. */
+  .erp-login-art-top {
+    width: 100vw; height: min(47.5vw, 24rem); margin: -1rem calc(50% - 50vw) 1rem;
+  }
+  .erp-login-scene { display: block; width: 100%; height: 100%; }
+  /* After a failed sign-in the message takes the scene's place, so the Log in button stays in view. */
+  .erp-login-form:has(.alert, .is-invalid) .erp-login-art-top { display: none; }
 }
 /* Short screens: the Log in button stays in the first view. */
 @media (max-width: 991.98px) and (max-height: 620px) {
