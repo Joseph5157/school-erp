@@ -1094,7 +1094,7 @@ class StudentGuardianForm(FieldAccessibilityMixin, forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
         guardian = cleaned_data.get("guardian")
-        if guardian is not None and StudentGuardian.objects.filter(
+        if guardian is not None and StudentGuardian.objects.current().filter(
             student=self.student, guardian=guardian
         ).exists():
             raise ValidationError("This Guardian is already associated with this Student.")
@@ -1368,6 +1368,12 @@ class WithdrawalForm(FieldAccessibilityMixin, forms.Form):
         max_length=200, label="Reason for withdrawing",
         help_text="Recorded permanently with the withdrawal.",
         error_messages={"required": "Give a reason for withdrawing this notice."},
+    )
+
+
+class EndRelationshipForm(FieldAccessibilityMixin, forms.Form):
+    reason = forms.CharField(
+        max_length=200, help_text="Kept permanently with this Student's record."
     )
 
 

@@ -196,6 +196,8 @@ def grant_student_access(*, student_guardian, actor):
             student_guardian = StudentGuardian.objects.select_for_update().get(
                 pk=student_guardian.pk
             )
+            if student_guardian.ended_at is not None:
+                raise ValidationError("This relationship has ended, so access cannot be granted.")
             if GuardianStudentAccess.objects.filter(
                 student_guardian=student_guardian, revoked_at__isnull=True
             ).exists():
@@ -209,6 +211,27 @@ def grant_student_access(*, student_guardian, actor):
     except IntegrityError as error:
         raise ValidationError("Access is already granted for this relationship.") from error
     return grant
+
+
+def end_relationship(*, link, actor, reason):
+    """End a Student-Guardian relationship and remove portal access to that child (ADR 0024).
+
+    All or nothing. The Guardian's login and their access to other children are untouched.
+    """
+    reason = _require_reason(reason)
+    with transaction.atomic():
+        link = StudentGuardian.objects.select_for_update().get(pk=link.pk)
+        if link.ended_at is not None:
+            raise ValidationError("This relationship has already ended.")
+        for grant in link.access_grants.filter(revoked_at__isnull=True):
+            revoke_student_access(
+                grant=grant, actor=actor, reason=f"Relationship ended: {reason}"[:200]
+            )
+        link.ended_at = timezone.now()
+        link.ended_by = actor
+        link.end_reason = reason
+        link.save(update_fields=["ended_at", "ended_by", "end_reason", "updated_at"])
+    return link
 
 
 def revoke_student_access(*, grant, actor, reason):

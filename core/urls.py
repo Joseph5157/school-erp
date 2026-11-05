@@ -316,6 +316,11 @@ urlpatterns = [
         views.student_guardian_edit,
         name="student-guardian-edit",
     ),
+    path(
+        "student-guardians/<int:pk>/end/",
+        views.student_guardian_end,
+        name="student-guardian-end",
+    ),
     path("students/<int:pk>/enroll/", views.student_enroll, name="student-enroll"),
     path("terms/<int:pk>/publication/", views.term_publication, name="term-publication"),
     path("publications/stale/", views.publications_stale, name="publications-stale"),

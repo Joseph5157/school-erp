@@ -199,7 +199,7 @@
         <tr>
             <td><a href="{% url 'core:guardian-detail' link.guardian.pk %}">{{ link.guardian.full_name }}</a></td>
             <td>{{ link.get_relationship_type_display }}</td>
-            {% if perms.core.change_studentguardian %}<td><a href="{% url 'core:student-guardian-edit' link.pk %}">Change relationship</a></td>{% endif %}
+            {% if perms.core.change_studentguardian %}<td><a href="{% url 'core:student-guardian-edit' link.pk %}">Change relationship</a>{% if perms.core.change_guardianstudentaccess %}<a class="ms-3 text-danger" href="{% url 'core:student-guardian-end' link.pk %}">End<span class="visually-hidden"> relationship with {{ link.guardian.full_name }}</span></a>{% endif %}</td>{% endif %}
         </tr>
         {% empty %}
         <tr>
@@ -210,5 +210,21 @@
 </table>
 </div>
 </div>
+{% if ended_links %}
+<h3 class="h6">Ended relationships</h3>
+{# role="list": Safari drops list semantics from a ul with list-style: none. #}
+<ul class="erp-record-cards mb-4" role="list">
+    {% for link in ended_links %}
+    <li class="erp-record-card">
+        <div class="erp-record-title"><a href="{% url 'core:guardian-detail' link.guardian.pk %}">{{ link.guardian.full_name }}</a> <span class="erp-record-sub">{{ link.get_relationship_type_display }}</span></div>
+        <dl class="erp-record-fields">
+            <div><dt>Ended</dt><dd>{{ link.ended_at }}</dd></div>
+            <div><dt>Reason</dt><dd>{{ link.end_reason }}</dd></div>
+            <div><dt>By</dt><dd>{{ link.ended_by }}</dd></div>
+        </dl>
+    </li>
+    {% endfor %}
+</ul>
+{% endif %}
 </section>
 {% endblock %}
