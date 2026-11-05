@@ -219,7 +219,7 @@ RULES = {
         (_ACADEMIC_YEARS, Crumb("Terms", "core:academic-year-terms", True, perm="core.view_academicyear")),
         "Add term",
     ),
-    "term-update": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Edit Term"),
+    "term-update": Rule("academic-year-list", (_ACADEMIC_YEARS,), "Edit term"),
     # Classes, subjects and subject offerings (S2). Section create takes the class's pk, so it links back to the class;
     # subject edit and offering edit take their own pk, so they show only the no-id ancestor.
     "class-grade-create": Rule(

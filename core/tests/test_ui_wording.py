@@ -6,7 +6,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from core.forms import AnnouncementForm
-from core.models import AcademicYear, Applicant, ClassGrade, School, Student, Subject
+from core.models import AcademicTerm, AcademicYear, Applicant, ClassGrade, School, Student, Subject
 from core.tests.test_authorization import AuthorizationClientsMixin
 
 
@@ -31,6 +31,23 @@ class WordingTests(AuthorizationClientsMixin, TestCase):
         self.assertIn("Office staff review the message and record whether it was sent or skipped.", page)
         # The stored value is not renamed.
         self.assertIn('value="ASSIST"', page)
+
+    def test_school_page_describes_whatsapp_preparation_without_jargon(self):
+        School.objects.filter(pk=self.school.pk).update(
+            notification_channel=School.NotificationMode.ASSIST
+        )
+        page = self.page("core:school-detail")
+        self.assertIn("Prepare WhatsApp messages for office staff to send", page)
+        self.assertNotIn("(ASSIST)", page)
+
+    def test_edit_term_page_uses_sentence_case(self):
+        term = AcademicTerm.objects.create(
+            academic_year=self.year, name="Term 1", start_date=self.year.start_date,
+            end_date=self.year.end_date, display_order=1,
+        )
+        page = self.page("core:term-update", term.pk)
+        self.assertIn("Edit term", page)
+        self.assertNotIn("Edit Term", page)
 
     def test_school_form_note_says_when_changes_take_effect(self):
         self.assertIn(
