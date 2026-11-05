@@ -358,6 +358,40 @@ def _renumber(model, rows, submitted):
     return True
 
 
+class ArchivableQuerySet(models.QuerySet):
+    """Class/Grade and Section lists (ADR 0025)."""
+
+    def active(self):
+        """What may be picked for new work. History and lookups use the whole list."""
+        return self.filter(archived_at__isnull=True)
+
+    def archived(self):
+        return self.filter(archived_at__isnull=False)
+
+    def active_or(self, pks):
+        """Active records plus those an existing record already uses, so editing keeps them."""
+        return self.filter(models.Q(archived_at__isnull=True) | models.Q(pk__in=pks))
+
+
+_ARCHIVE_RECORD_COMPLETE = models.Q(archived_at__isnull=True, archived_by__isnull=True) | models.Q(
+    archived_at__isnull=False, archived_by__isnull=False
+)
+
+
+def _refuse_archived_on_new(record):
+    """A new record cannot use an archived Class/Grade or Section (ADR 0025).
+
+    Existing records are left alone, so their history can still be read and corrected.
+    """
+    if record.pk is not None:
+        return
+    for field in ("class_grade", "section"):
+        if getattr(record, f"{field}_id", None):
+            target = getattr(record, field)
+            if target.archived_at is not None:
+                raise ValidationError(f"{target} is archived. Restore it before using it.")
+
+
 class ClassGrade(models.Model):
     """A reusable, year-agnostic Class/Grade reference record.
 
@@ -377,6 +411,13 @@ class ClassGrade(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    archived_at = models.DateTimeField(null=True, blank=True, editable=False)
+    archived_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True,
+        editable=False, related_name="+",
+    )
+
+    objects = ArchivableQuerySet.as_manager()
 
     class Meta:
         ordering = ["display_order"]
@@ -387,6 +428,10 @@ class ClassGrade(models.Model):
             models.CheckConstraint(
                 condition=models.Q(display_order__gte=1),
                 name="classgrade_display_order_positive",
+            ),
+            models.CheckConstraint(
+                condition=_ARCHIVE_RECORD_COMPLETE,
+                name="classgrade_archive_record_complete",
             ),
         ]
 
@@ -430,6 +475,13 @@ class Section(models.Model):
     name = models.CharField(max_length=100)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    archived_at = models.DateTimeField(null=True, blank=True, editable=False)
+    archived_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True,
+        editable=False, related_name="+",
+    )
+
+    objects = ArchivableQuerySet.as_manager()
 
     class Meta:
         ordering = ["class_grade", "name"]
@@ -437,7 +489,11 @@ class Section(models.Model):
             models.UniqueConstraint(
                 fields=["class_grade", "name"],
                 name="section_unique_name_per_class_grade",
-            )
+            ),
+            models.CheckConstraint(
+                condition=_ARCHIVE_RECORD_COMPLETE,
+                name="section_archive_record_complete",
+            ),
         ]
 
     def __str__(self):
@@ -1050,6 +1106,7 @@ class AcademicEnrollment(models.Model):
 
     def clean(self):
         super().clean()
+        _refuse_archived_on_new(self)
         if (
             self.section_id
             and self.class_grade_id
@@ -1399,6 +1456,7 @@ class AttendanceRegister(models.Model):
 
     def clean(self):
         super().clean()
+        _refuse_archived_on_new(self)
         if self.pk is None and self.status != self.Status.DRAFT:
             raise ValidationError("A new attendance register always starts as a draft.")
         if self.pk is None and self.date and self.academic_year_id:
@@ -2296,6 +2354,7 @@ class AssessmentTeacherAssignment(models.Model):
 
     def clean(self):
         super().clean()
+        _refuse_archived_on_new(self)
         # Only new rows need an active teacher, so a departed teacher's row can
         # still be ended (ADR 0018 D9).
         if self.pk is None and self.teacher_id:
@@ -2513,6 +2572,7 @@ class SectionClassTeacher(models.Model):
 
     def clean(self):
         super().clean()
+        _refuse_archived_on_new(self)
         if self.pk is None and self.teacher_id:
             teacher = self.teacher
             if not teacher.is_active or not teacher.groups.filter(
@@ -2942,6 +3002,7 @@ class Assessment(models.Model):
 
     def clean(self):
         super().clean()
+        _refuse_archived_on_new(self)
         if self.pk is None and self.status != self.Status.DRAFT:
             raise ValidationError("A new assessment always starts as a draft.")
         if self.pk is not None and self.is_locked:
@@ -4238,6 +4299,7 @@ class TimetableSlot(models.Model):
 
     def clean(self):
         super().clean()
+        _refuse_archived_on_new(self)
         if not (self.period_id and self.section_id and self.offering_id):
             return
         year = self.period.academic_year

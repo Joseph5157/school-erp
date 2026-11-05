@@ -61,8 +61,8 @@ def setup_steps(today=None):
     year = _year()
 
     school = School.objects.first()
-    has_classes = ClassGrade.objects.exists()
-    has_sections = Section.objects.exists()
+    has_classes = ClassGrade.objects.active().exists()
+    has_sections = Section.objects.active().exists()
     has_subjects = Subject.objects.filter(is_active=True).exists()
     has_teachers = get_user_model().objects.filter(
         groups__name=TEACHERS_GROUP_NAME, is_active=True

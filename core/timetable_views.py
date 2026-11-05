@@ -170,7 +170,8 @@ def _teacher_name(user):
 
 def _sections_with_offerings(academic_year):
     return (
-        Section.objects.filter(class_grade__subject_offerings__academic_year=academic_year)
+        Section.objects.active()
+        .filter(class_grade__subject_offerings__academic_year=academic_year)
         .select_related("class_grade")
         .distinct()
         .order_by("class_grade__display_order", "name")

@@ -19,6 +19,7 @@ from django.views.decorators.http import condition, require_POST, require_safe
 from accounts.models import SecurityEvent
 from core import (
     analytics,
+    archiving,
     assessment_reports,
     assignments,
     charts,
@@ -2057,6 +2058,8 @@ def academic_year_class_teachers(request, pk):
         "class_grade__display_order", "name"
     ):
         history = by_section.get(section.pk, [])
+        if section.archived_at is not None and not history:
+            continue
         current = next((row for row in history if row.is_effective_on(today)), None)
         sections.append({"section": section, "current": current, "history": history})
     return render(
@@ -2213,8 +2216,14 @@ def assignment_copy(request, pk):
 
 @administrator_required("core.view_classgrade")
 def class_grade_list(request):
-    class_grades = ClassGrade.objects.all()
-    return render(request, "core/class_grade_list.html", {"class_grades": class_grades})
+    return render(
+        request,
+        "core/class_grade_list.html",
+        {
+            "class_grades": ClassGrade.objects.active(),
+            "archived_classes": ClassGrade.objects.archived(),
+        },
+    )
 
 
 @administrator_required("core.view_classgrade")
@@ -2223,7 +2232,11 @@ def class_grade_detail(request, pk):
     return render(
         request,
         "core/class_grade_detail.html",
-        {"class_grade": class_grade, "sections": class_grade.sections.all()},
+        {
+            "class_grade": class_grade,
+            "sections": class_grade.sections.active(),
+            "archived_sections": class_grade.sections.archived(),
+        },
     )
 
 
@@ -2244,7 +2257,11 @@ def class_grade_create(request):
 @require_POST
 def class_grade_reorder(request):
     try:
-        changed = ClassGrade.reorder(request.POST.getlist("class_grade"))
+        # Archived Classes/Grades are not on the page; they keep their places after the rest.
+        changed = ClassGrade.reorder(
+            request.POST.getlist("class_grade")
+            + list(ClassGrade.objects.archived().values_list("pk", flat=True))
+        )
     except (ValidationError, IntegrityError):
         messages.error(
             request,
@@ -2262,6 +2279,9 @@ def class_grade_reorder(request):
 @administrator_required("core.add_section")
 def section_create(request, pk):
     class_grade = get_object_or_404(ClassGrade, pk=pk)
+    if class_grade.archived_at is not None:
+        messages.error(request, "This Class/Grade is archived. Restore it before adding a Section.")
+        return redirect("core:class-grade-detail", pk=class_grade.pk)
     if request.method == "POST":
         form = SectionForm(request.POST, class_grade=class_grade)
         if form.is_valid():
@@ -2321,6 +2341,91 @@ def section_rename(request, pk):
         class_grade=section.class_grade,
         purpose=section.class_grade.name,
     )
+
+
+def _archive_record(request, record, archive, *, noun, class_grade, consequences, purpose=""):
+    """Confirm (GET) and archive (POST) a reusable record, then return to its Class/Grade."""
+    back = redirect("core:class-grade-detail", pk=class_grade.pk)
+    if record.archived_at is not None:
+        messages.info(request, f"This {noun} is already archived, so nothing was changed.")
+        return back
+    if request.method == "POST":
+        try:
+            archive(record, request.user)
+        except ValidationError:
+            pass  # The page below lists what is still in the way.
+        else:
+            messages.success(request, f"{noun} archived.")
+            return back
+    return render(
+        request,
+        "core/archive_confirm.html",
+        {
+            "title": f"Archive {record.name}",
+            "purpose": purpose,
+            "noun": noun,
+            "class_grade": class_grade,
+            "blockers": archiving.blockers(record),
+            "consequences": consequences,
+        },
+    )
+
+
+@administrator_required("core.change_classgrade")
+def class_grade_archive(request, pk):
+    class_grade = get_object_or_404(ClassGrade, pk=pk)
+    return _archive_record(
+        request,
+        class_grade,
+        archiving.archive_class,
+        noun="Class/Grade",
+        class_grade=class_grade,
+        consequences=[
+            "This Class/Grade and its Sections cannot be picked for anything new.",
+            "Past placements, attendance, marks and report cards stay exactly as they are.",
+            "You can restore it at any time.",
+        ],
+    )
+
+
+@administrator_required("core.change_section")
+def section_archive(request, pk):
+    section = get_object_or_404(Section.objects.select_related("class_grade"), pk=pk)
+    return _archive_record(
+        request,
+        section,
+        archiving.archive_section,
+        noun="Section",
+        class_grade=section.class_grade,
+        purpose=section.class_grade.name,
+        consequences=[
+            "This Section cannot be picked for anything new.",
+            "Past placements, attendance, marks and report cards stay exactly as they are.",
+            "You can restore it at any time.",
+        ],
+    )
+
+
+@administrator_required("core.change_classgrade")
+@require_POST
+def class_grade_restore(request, pk):
+    class_grade = get_object_or_404(ClassGrade, pk=pk)
+    archiving.restore_class(class_grade)
+    messages.success(request, "Class/Grade restored.")
+    return redirect("core:class-grade-detail", pk=class_grade.pk)
+
+
+@administrator_required("core.change_section")
+@require_POST
+def section_restore(request, pk):
+    section = get_object_or_404(Section.objects.select_related("class_grade"), pk=pk)
+    try:
+        archiving.restore_section(section)
+    except ValidationError as error:
+        messages.error(request, " ".join(error.messages))
+    else:
+        messages.success(request, "Section restored.")
+    return redirect("core:class-grade-detail", pk=section.class_grade_id)
 
 
 APPLICANT_COLUMNS = (

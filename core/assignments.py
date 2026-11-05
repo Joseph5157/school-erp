@@ -39,7 +39,8 @@ def _offering_sections(offerings, sections_by_grade):
     for offering in offerings:
         linked = [link.section for link in offering.section_links.all()]
         for section in linked or sections_by_grade.get(offering.class_grade_id, []):
-            yield offering, section
+            if section.archived_at is None:
+                yield offering, section
 
 
 def overview(academic_year, on_date):
@@ -52,7 +53,7 @@ def overview(academic_year, on_date):
     """
     on_date = min(max(on_date, academic_year.start_date), academic_year.end_date)
     teachers = active_teacher_ids()
-    sections = list(Section.objects.select_related("class_grade").order_by(
+    sections = list(Section.objects.active().select_related("class_grade").order_by(
         "class_grade__display_order", "name"
     ))
     sections_by_grade = {}
@@ -199,6 +200,8 @@ def plan_copy(source, target):
         label = f"Class teacher {row.section}: {_name(row.teacher)}"
         if effective_at_end.get(row.section_id) is not row:
             skips.append(Skip(label, "Not the class teacher at the end of the source year."))
+        elif row.section.archived_at is not None:
+            skips.append(Skip(label, "This Section is archived."))
         elif row.teacher_id not in teachers:
             skips.append(Skip(label, "Login is inactive or not in the Teachers group."))
         elif row.section_id in taken_sections:
@@ -232,7 +235,9 @@ def plan_copy(source, target):
         matches = target_offerings.get(
             (assignment.offering.class_grade_id, assignment.offering.subject_id), []
         )
-        if assignment.teacher_id not in teachers:
+        if assignment.section.archived_at is not None:
+            skips.append(Skip(label, "This Section is archived."))
+        elif assignment.teacher_id not in teachers:
             skips.append(Skip(label, "Login is inactive or not in the Teachers group."))
         elif not matches:
             skips.append(Skip(label, "This Subject is not offered for this Class/Grade in the "

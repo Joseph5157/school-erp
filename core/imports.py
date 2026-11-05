@@ -370,6 +370,16 @@ def validate(sheets, academic_year, enrollment_start_date):
             warn(SHEET_CLASSES, row, "", "This Class and Section is listed twice.")
             continue
         existing_class = context.classes.get(class_key)
+        if existing_class is not None and (
+            existing_class.archived_at is not None
+            or getattr(
+                context.sections.get((existing_class.pk, section_key)), "archived_at", None
+            )
+            is not None
+        ):
+            error(SHEET_CLASSES, row, "", f'"{class_name[:100]}" "{section_name[:100]}" is '
+                                          "archived. Restore it first or use another.")
+            continue
         if existing_class is None:
             new_classes.setdefault(class_key, class_name)
             plan.sections.append((class_key, section_name))
@@ -456,6 +466,11 @@ def validate(sheets, academic_year, enrollment_start_date):
                 error(SHEET_STUDENTS, row, "Section",
                       f'Class "{class_name[:100]}" Section "{section_name[:100]}" does not '
                       "exist. Create it first or list it on the Classes sheet.")
+                ok = False
+            elif getattr(section, "archived_at", None) is not None:
+                error(SHEET_STUDENTS, row, "Section",
+                      f'Class "{class_name[:100]}" Section "{section_name[:100]}" is archived. '
+                      "Restore it first or use another.")
                 ok = False
 
         roll_number = None

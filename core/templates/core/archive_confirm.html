@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+{% include "partials/_page_header.html" with eyebrow="Classes/Grades" title=title purpose=purpose only %}
+{% if blockers %}
+<div class="alert alert-warning" role="alert">
+    <p class="mb-2"><strong>This {{ noun }} is still in use, so it cannot be archived yet.</strong> Move or end these first:</p>
+    <ul class="mb-0">{% for reason in blockers %}<li>{{ reason }}</li>{% endfor %}</ul>
+</div>
+<p><a class="btn btn-link" href="{% url 'core:class-grade-detail' class_grade.pk %}">Back to {{ class_grade.name }}</a></p>
+{% else %}
+<div class="alert alert-warning" role="alert">
+    <ul class="mb-0">{% for line in consequences %}<li>{{ line }}</li>{% endfor %}</ul>
+</div>
+<form method="post" class="erp-form">
+    {% csrf_token %}
+    <div class="erp-form-actions">
+        <button type="submit" name="confirm_archive" value="1" class="btn btn-danger" data-erp-once>Archive {{ noun }}</button>
+        <a class="btn btn-link" href="{% url 'core:class-grade-detail' class_grade.pk %}">Cancel</a>
+    </div>
+</form>
+{% endif %}
+{% endblock %}

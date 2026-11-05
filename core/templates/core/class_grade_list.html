@@ -19,7 +19,7 @@
         {% for class_grade in class_grades %}
         <tr>
             <td class="fw-semibold"><a href="{% url 'core:class-grade-detail' class_grade.pk %}">{{ class_grade.name }}</a></td>
-            <td class="text-nowrap">{{ class_grade.sections.count }}</td>
+            <td class="text-nowrap">{{ class_grade.sections.active.count }}</td>
         </tr>
         {% empty %}
         <tr>
@@ -30,6 +30,18 @@
 </table>
 </div>
 </div>
+
+{% if archived_classes %}
+<section aria-labelledby="archived-classes" class="mt-4">
+<h2 class="erp-section-title" id="archived-classes">Archived classes</h2>
+{# role="list": Safari drops list semantics from a ul with list-style: none. #}
+<ul class="erp-record-cards" role="list">
+    {% for class_grade in archived_classes %}
+    <li class="erp-record-card"><a class="erp-record-title" href="{% url 'core:class-grade-detail' class_grade.pk %}">{{ class_grade.name }}</a></li>
+    {% endfor %}
+</ul>
+</section>
+{% endif %}
 
 {% if perms.core.change_classgrade and count > 1 %}
 <div class="modal fade" id="class-order" tabindex="-1" aria-labelledby="class-order-title" aria-hidden="true">

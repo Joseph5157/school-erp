@@ -173,7 +173,7 @@ def glance_cards(user):
             reverse("core:teacher-list"), user, "accounts.manage_teacher_accounts",
         ),
         _glance_card(
-            "classes", "Classes", ClassGrade.objects.count(), "Classes set up for the school.",
+            "classes", "Classes", ClassGrade.objects.active().count(), "Classes set up for the school.",
             reverse("core:class-grade-list"), user, "core.view_classgrade",
         ),
         _glance_card(

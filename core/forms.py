@@ -541,10 +541,10 @@ class SubjectOfferingForm(forms.Form):
     of the Grade (ADR 0009).
     """
 
-    class_grade = forms.ModelChoiceField(queryset=ClassGrade.objects.all(), label="Class/Grade")
+    class_grade = forms.ModelChoiceField(queryset=ClassGrade.objects.active(), label="Class/Grade")
     subject = forms.ModelChoiceField(queryset=Subject.objects.filter(is_active=True))
     sections = forms.ModelMultipleChoiceField(
-        queryset=Section.objects.select_related("class_grade"),
+        queryset=Section.objects.active().select_related("class_grade"),
         required=False,
         widget=ParentedCheckboxSelectMultiple(
             parent_attr="class_grade_id", depends_on="id_class_grade"
@@ -572,7 +572,9 @@ class SubjectOfferingForm(forms.Form):
             # Grade and Subject are fixed once offered; only the scope and order change.
             del self.fields["class_grade"]
             del self.fields["subject"]
-            self.fields["sections"].queryset = offering.class_grade.sections.all()
+            self.fields["sections"].queryset = offering.class_grade.sections.active_or(
+                offering.sections.values("pk")
+            )
             order_field = self.fields["display_order"]
             order_field.help_text = order_field.help_text.replace(
                 "place a new Subject last", "keep the current number"
@@ -605,7 +607,7 @@ class SubjectOfferingForm(forms.Form):
 class ClassTeacherAssignForm(forms.Form):
     """Make a teacher class teacher of a Section from a date (ADR 0011)."""
 
-    section = forms.ModelChoiceField(queryset=Section.objects.select_related("class_grade"))
+    section = forms.ModelChoiceField(queryset=Section.objects.active().select_related("class_grade"))
     teacher = forms.ModelChoiceField(queryset=get_user_model().objects.none())
     start_date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
 
@@ -647,7 +649,7 @@ class TeacherAssignmentForm(forms.Form):
         widget=ParentedSelect(parent_attr="class_grade_id"),
     )
     section = forms.ModelChoiceField(
-        queryset=Section.objects.select_related("class_grade"),
+        queryset=Section.objects.active().select_related("class_grade"),
         widget=ParentedSelect(parent_attr="class_grade_id", depends_on="id_offering"),
     )
     start_date = forms.DateField(
@@ -688,7 +690,7 @@ class GradingScaleForm(forms.Form):
 
     name = forms.CharField(max_length=100)
     class_grades = forms.ModelMultipleChoiceField(
-        queryset=ClassGrade.objects.all(),
+        queryset=ClassGrade.objects.active(),
         required=False,
         widget=forms.CheckboxSelectMultiple,
         label="Applies to Class/Grades",
@@ -699,6 +701,10 @@ class GradingScaleForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.academic_year = academic_year
         self.scale = scale
+        if scale is not None:
+            self.fields["class_grades"].queryset = ClassGrade.objects.active_or(
+                scale.class_grades.values("pk")
+            )
         if scale is not None and not self.is_bound:
             self.fields["name"].initial = scale.name
             self.fields["class_grades"].initial = list(scale.class_grades)
@@ -755,7 +761,9 @@ class AssessmentForm(forms.ModelForm):
             self.fields["offering"].queryset = AcademicSubjectOffering.objects.filter(
                 academic_year=year
             ).select_related("class_grade", "subject", "academic_year")
-        self.fields["section"].queryset = Section.objects.select_related("class_grade")
+        self.fields["section"].queryset = Section.objects.active_or(
+            [self.instance.section_id] if self.instance.pk else []
+        ).select_related("class_grade")
         if self.instance.pk and self.instance.is_locked:
             for name in ("term", "offering", "section", "assessment_date", "maximum_marks"):
                 self.fields[name].disabled = True
@@ -967,6 +975,11 @@ class AcademicEnrollmentForm(forms.ModelForm):
         labels = {"start_date": "Effective start date"}
         widgets = {"start_date": forms.DateInput(attrs={"type": "date"})}
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["class_grade"].queryset = ClassGrade.objects.active()
+        self.fields["section"].queryset = Section.objects.active()
+
     def clean(self):
         cleaned_data = super().clean()
         class_grade = cleaned_data.get("class_grade")
@@ -1127,6 +1140,11 @@ class AttendanceRegisterForm(forms.ModelForm):
             "date": forms.DateInput(attrs={"type": "date"}),
             "section": ParentedSelect(parent_attr="class_grade_id", depends_on="id_class_grade"),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["class_grade"].queryset = ClassGrade.objects.active()
+        self.fields["section"].queryset = Section.objects.active()
 
     def clean(self):
         cleaned_data = super().clean()
@@ -1516,10 +1534,12 @@ class AnnouncementForm(forms.Form):
                            help_text="Plain text. Line breaks are kept.")
     audience = forms.ChoiceField(choices=Announcement.Audience.choices,
                                  widget=forms.RadioSelect, initial=Announcement.Audience.ALL)
-    class_grade = forms.ModelChoiceField(ClassGrade.objects.all(), required=False,
+    class_grade = forms.ModelChoiceField(ClassGrade.objects.active(), required=False,
                                          label="Class")
     section = forms.ModelChoiceField(
-        Section.objects.select_related("class_grade").order_by("class_grade__display_order", "name"),
+        Section.objects.active().select_related("class_grade").order_by(
+            "class_grade__display_order", "name"
+        ),
         required=False,
     )
 
