@@ -1052,6 +1052,8 @@ class ApplicantGuardianForm(FieldAccessibilityMixin, forms.ModelForm):
 
     def __init__(self, *args, applicant=None, **kwargs):
         super().__init__(*args, **kwargs)
+        # Chosen through the search on the page, so no dropdown of every Guardian.
+        self.fields["guardian"].widget = forms.HiddenInput()
         self.applicant = applicant
         if applicant is not None:
             self.instance.applicant = applicant
@@ -1083,6 +1085,8 @@ class StudentGuardianForm(FieldAccessibilityMixin, forms.ModelForm):
 
     def __init__(self, *args, student, **kwargs):
         super().__init__(*args, **kwargs)
+        # Chosen through the search on the page, so no dropdown of every Guardian.
+        self.fields["guardian"].widget = forms.HiddenInput()
         self.student = student
         self.instance.student = student
 

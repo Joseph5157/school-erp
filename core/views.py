@@ -2415,7 +2415,55 @@ def applicant_progress(request, pk):
     )
 
 
-@administrator_required("core.add_applicantguardian")
+GUARDIAN_LOOKUP_LIMIT = 20
+
+
+def _is_id(value):
+    """A value safe to use as a primary key: plain digits within bigint range."""
+    return value.isascii() and value.isdigit() and len(value) <= 18
+
+
+def _guardian_lookup_context(request, form, linked_ids, create_param, target_pk):
+    """Search results, or the one Guardian chosen from them, for the add-Guardian pages."""
+    query = request.GET.get("q", "").strip()
+    chosen = form.data.get("guardian", "") if form.is_bound else request.GET.get("guardian", "")
+    selected = None
+    if _is_id(chosen):
+        selected = _guardians_with_links(Guardian.objects.filter(pk=chosen)).first()
+    already_linked = selected is not None and not form.is_bound and selected.pk in linked_ids
+    if already_linked:
+        selected = None
+    if form.is_bound and selected is None:
+        # Only the search is on the page, so there is no relationship field to correct yet.
+        form.errors.pop("relationship_type", None)
+        form.apply_error_state()
+    results, more_results = [], False
+    if query and selected is None:
+        found = list(
+            _guardians_with_links(Guardian.objects.filter(_guardian_search(query))).order_by(
+                "full_name", "pk"
+            )[: GUARDIAN_LOOKUP_LIMIT + 1]
+        )
+        results, more_results = found[:GUARDIAN_LOOKUP_LIMIT], len(found) > GUARDIAN_LOOKUP_LIMIT
+        for guardian in results:
+            guardian.already_linked = guardian.pk in linked_ids
+    create_url = ""
+    if request.user.has_perm("core.add_guardian"):
+        create_url = f"{reverse('core:guardian-create')}?{create_param}={target_pk}"
+    return {
+        "form": form,
+        "query": query,
+        "selected": selected,
+        "results": results,
+        "more_results": more_results,
+        "lookup_limit": GUARDIAN_LOOKUP_LIMIT,
+        "already_linked": already_linked,
+        "create_url": create_url,
+        "lookup_url": request.path,
+    }
+
+
+@administrator_required(("core.add_applicantguardian", "core.view_guardian"))
 def applicant_guardian_create(request, pk):
     applicant = get_object_or_404(Applicant, pk=pk)
     if request.method == "POST":
@@ -2425,11 +2473,15 @@ def applicant_guardian_create(request, pk):
             messages.success(request, "Guardian associated with Applicant.")
             return redirect("core:applicant-detail", pk=applicant.pk)
     else:
-        form = ApplicantGuardianForm(applicant=applicant)
+        form = ApplicantGuardianForm(
+            applicant=applicant, initial={"guardian": request.GET.get("guardian")}
+        )
+    linked_ids = set(applicant.guardian_links.values_list("guardian_id", flat=True))
+    context = _guardian_lookup_context(request, form, linked_ids, "for_applicant", applicant.pk)
     return render(
         request,
         "core/applicant_guardian_form.html",
-        {"form": form, "applicant": applicant},
+        {**context, "applicant": applicant},
     )
 
 
@@ -2441,27 +2493,27 @@ GUARDIAN_COLUMNS = (
 )
 
 
-@administrator_required("core.view_guardian")
-def guardian_list(request):
-    query = request.GET.get("q", "").strip()
-    guardians = Guardian.objects.all()
-    if query:
-        guardians = guardians.filter(
-            Q(full_name__icontains=query)
-            | Q(phone__icontains=query)
-            | Q(email__icontains=query)
-            | Exists(
-                StudentGuardian.objects.filter(
-                    guardian=OuterRef("pk"), student__full_name__icontains=query
-                )
-            )
-            | Exists(
-                ApplicantGuardian.objects.filter(
-                    guardian=OuterRef("pk"), applicant__full_name__icontains=query
-                )
+def _guardian_search(query):
+    """Match a Guardian's name, phone or email, or the name of a linked child."""
+    return (
+        Q(full_name__icontains=query)
+        | Q(phone__icontains=query)
+        | Q(email__icontains=query)
+        | Exists(
+            StudentGuardian.objects.filter(
+                guardian=OuterRef("pk"), student__full_name__icontains=query
             )
         )
-    guardians = guardians.prefetch_related(
+        | Exists(
+            ApplicantGuardian.objects.filter(
+                guardian=OuterRef("pk"), applicant__full_name__icontains=query
+            )
+        )
+    )
+
+
+def _guardians_with_links(guardians):
+    return guardians.prefetch_related(
         Prefetch(
             "student_links",
             queryset=StudentGuardian.objects.select_related("student")
@@ -2492,6 +2544,15 @@ def guardian_list(request):
             to_attr="applicant_child_links",
         ),
     )
+
+
+@administrator_required("core.view_guardian")
+def guardian_list(request):
+    query = request.GET.get("q", "").strip()
+    guardians = Guardian.objects.all()
+    if query:
+        guardians = guardians.filter(_guardian_search(query))
+    guardians = _guardians_with_links(guardians)
     table = build_table(request, guardians, GUARDIAN_COLUMNS, "name")
     for guardian in table.page:
         guardian.portal_state = guardian_accounts.portal_state_label(guardian)
@@ -2502,17 +2563,41 @@ def guardian_list(request):
     )
 
 
+def _guardian_lookup_return_url(request):
+    """The add-Guardian page that sent the user to create someone, if it is one they can use.
+
+    Built from a record id, never taken from the request as a URL, so it cannot redirect
+    anywhere else.
+    """
+    targets = (
+        ("for_applicant", Applicant, "core.add_applicantguardian", "core:applicant-guardian-create"),
+        ("for_student", Student, "core.add_studentguardian", "core:student-guardian-add"),
+    )
+    for param, model, perm, url_name in targets:
+        value = request.GET.get(param, "")
+        if (
+            _is_id(value)
+            and request.user.has_perms((perm, "core.view_guardian"))
+            and model.objects.filter(pk=value).exists()
+        ):
+            return reverse(url_name, args=[value])
+    return ""
+
+
 @administrator_required("core.add_guardian")
 def guardian_create(request):
+    return_url = _guardian_lookup_return_url(request)
     if request.method == "POST":
         form = GuardianForm(request.POST)
         if form.is_valid():
-            form.save()
+            guardian = form.save()
             messages.success(request, "Guardian created.")
+            if return_url:
+                return redirect(f"{return_url}?guardian={guardian.pk}")
             return redirect("core:guardian-list")
     else:
         form = GuardianForm()
-    return render(request, "core/guardian_form.html", {"form": form})
+    return render(request, "core/guardian_form.html", {"form": form, "return_url": return_url})
 
 
 @administrator_required("core.change_guardian")
@@ -2529,7 +2614,7 @@ def guardian_edit(request, pk):
     return render(request, "core/guardian_form.html", {"form": form, "guardian": guardian})
 
 
-@administrator_required("core.add_studentguardian")
+@administrator_required(("core.add_studentguardian", "core.view_guardian"))
 def student_guardian_add(request, pk):
     student = get_object_or_404(Student, pk=pk)
     if request.method == "POST":
@@ -2539,8 +2624,12 @@ def student_guardian_add(request, pk):
             messages.success(request, "Guardian associated with Student.")
             return redirect("core:student-detail", pk=student.pk)
     else:
-        form = StudentGuardianForm(student=student)
-    return render(request, "core/student_guardian_form.html", {"form": form, "student": student})
+        form = StudentGuardianForm(student=student, initial={"guardian": request.GET.get("guardian")})
+    linked_ids = set(
+        StudentGuardian.objects.filter(student=student).values_list("guardian_id", flat=True)
+    )
+    context = _guardian_lookup_context(request, form, linked_ids, "for_student", student.pk)
+    return render(request, "core/student_guardian_form.html", {**context, "student": student})
 
 
 @administrator_required("core.change_studentguardian")

@@ -16,7 +16,10 @@ STUDENT = {"pk": 1, "full_name": "Asha Rao"}
 
 # template -> (extra context, expected submit label)
 SAVE_FORMS = {
-    "applicant_guardian_form": ({"applicant": STUDENT}, "Save guardian link"),
+    # The save button appears once a Guardian has been chosen from the search.
+    "applicant_guardian_form": (
+        {"applicant": STUDENT, "selected": {"full_name": "Meena Rao"}}, "Save guardian link"
+    ),
     "assessment_form": ({"academic_year": YEAR}, "Save assessment"),
     "calendar_day_form": ({"academic_year": YEAR}, "Save calendar exception"),
     "class_grade_form": ({}, "Save class/grade"),

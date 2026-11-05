@@ -1,0 +1,10 @@
+{# One Guardian with what tells them apart from others of the same name. #}
+<span class="erp-guardian-lookup-name">{{ guardian.full_name }}</span>
+{% if guardian.already_linked %}<span class="erp-guardian-card-status">{% include "partials/_status_badge.html" with label="Already linked" only %}</span>{% endif %}
+<div class="erp-guardian-card-details">
+    {% for link in guardian.child_links %}<div>{{ link.student.full_name }} ({{ link.get_relationship_type_display }})</div>{% endfor %}{% for link in guardian.applicant_child_links %}<div>{{ link.applicant.full_name }} (Applicant, {{ link.get_relationship_type_display }})</div>{% endfor %}{% if not guardian.child_links and not guardian.applicant_child_links %}<div>No children linked</div>{% endif %}
+</div>
+<div class="erp-guardian-lookup-contact">
+    <div>{{ guardian.phone|default:"No phone" }}</div>
+    <div>{{ guardian.email|default:"No email" }}</div>
+</div>
