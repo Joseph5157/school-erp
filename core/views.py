@@ -2277,6 +2277,52 @@ def section_create(request, pk):
     )
 
 
+def _rename_record(request, record, form_class, *, noun, class_grade, purpose=""):
+    """Rename a reusable record, then return to its Class/Grade."""
+    # A refused name is written onto the instance during validation, so keep the saved one.
+    saved_name = record.name
+    form = form_class(request.POST if request.method == "POST" else None, instance=record)
+    if request.method == "POST" and form.is_valid():
+        if form.has_changed():
+            form.save()
+            messages.success(request, f"{noun} renamed.")
+        else:
+            messages.info(request, "The name was not changed.")
+        return redirect("core:class-grade-detail", pk=class_grade.pk)
+    return render(
+        request,
+        "core/rename_form.html",
+        {
+            "form": form,
+            "title": f"Rename {saved_name}",
+            "purpose": purpose,
+            "noun": noun,
+            "class_grade": class_grade,
+        },
+    )
+
+
+@administrator_required("core.change_classgrade")
+def class_grade_rename(request, pk):
+    class_grade = get_object_or_404(ClassGrade, pk=pk)
+    return _rename_record(
+        request, class_grade, ClassGradeForm, noun="Class/Grade", class_grade=class_grade
+    )
+
+
+@administrator_required("core.change_section")
+def section_rename(request, pk):
+    section = get_object_or_404(Section.objects.select_related("class_grade"), pk=pk)
+    return _rename_record(
+        request,
+        section,
+        SectionForm,
+        noun="Section",
+        class_grade=section.class_grade,
+        purpose=section.class_grade.name,
+    )
+
+
 APPLICANT_COLUMNS = (
     Column("Name", "name", ("full_name",)),
     Column("Admission status", "status", ("admission_status",)),
