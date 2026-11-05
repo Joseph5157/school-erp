@@ -62,13 +62,15 @@ class WordingTests(AuthorizationClientsMixin, TestCase):
         grade = ClassGrade.objects.create(name="Grade 1")
         applicant = Applicant.objects.create(admission_status="ACCEPTED", full_name="Asha Rao")
         student = Student.objects.create(applicant=applicant, full_name="Asha Rao")
+        # A progressed Applicant no longer offers Associate guardian, so these use a pending one.
+        pending = Applicant.objects.create(full_name="Ravi Iyer")
         pages = {
             "core:term-create": ((self.year.pk,), ["Add term"], ["Add Term"]),
             "core:subject-create": ((), ["Add subject"], ["Add Subject"]),
             "core:subject-list": ((), ["Add subject", "No subjects yet"], ["Add Subject", "No Subjects yet"]),
-            "core:applicant-detail": ((applicant.pk,), ["Associate guardian"], ["Associate Guardian"]),
+            "core:applicant-detail": ((pending.pk,), ["Associate guardian"], ["Associate Guardian"]),
             "core:applicant-guardian-create": (
-                (applicant.pk,), ["Associate guardian"], ["Associate Guardian"]),
+                (pending.pk,), ["Associate guardian"], ["Associate Guardian"]),
             "core:student-detail": ((student.pk,), ["Associate guardian"], ["Associate Guardian"]),
             "core:student-guardian-add": ((student.pk,), ["Associate guardian"], ["Associate Guardian"]),
             "core:class-grade-create": ((), ["Create class/grade"], ["Create Class/Grade"]),

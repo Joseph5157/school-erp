@@ -52,10 +52,11 @@
 <section class="erp-panel mb-4" aria-labelledby="applicant-guardians-heading">
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 p-3 p-md-4 pb-0">
     <h2 class="h5 mb-0" id="applicant-guardians-heading">Guardians</h2>
-    {% if perms.core.add_applicantguardian %}
+    {% if perms.core.add_applicantguardian and can_add_guardian %}
     <a class="btn btn-primary" href="{% url 'core:applicant-guardian-create' applicant.pk %}">Associate guardian</a>
     {% endif %}
 </div>
+{% if student %}<p class="small text-muted mb-0 px-3 px-md-4 pt-2">Recorded at application. Manage guardians on the <a href="{% url 'core:student-detail' student.pk %}">Student record</a>.</p>{% endif %}
 <div class="erp-table-scroll mt-3" role="region" aria-label="Guardians" tabindex="0">
 <table class="table mb-0">
     <thead>

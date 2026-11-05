@@ -2282,9 +2282,14 @@ APPLICANT_COLUMNS = (
 @administrator_required("core.view_applicant")
 def applicant_list(request):
     status = parse_choice(request, "status", Applicant.AdmissionStatus.choices)
+    query = request.GET.get("q", "").strip()
     applicants = Applicant.objects.all()
     if status:
         applicants = applicants.filter(admission_status=status)
+    if query:
+        applicants = applicants.filter(
+            Q(full_name__icontains=query) | Q(phone__icontains=query) | Q(email__icontains=query)
+        )
     table = build_table(request, applicants, APPLICANT_COLUMNS, "name")
     return render(
         request,
@@ -2293,6 +2298,7 @@ def applicant_list(request):
             "applicants": table.page,
             "table": table,
             "status": status,
+            "query": query,
             "status_choices": Applicant.AdmissionStatus.choices,
         },
     )
@@ -2319,7 +2325,12 @@ def applicant_detail(request, pk):
     return render(
         request,
         "core/applicant_detail.html",
-        {"applicant": applicant, "guardian_links": guardian_links, "student": student},
+        {
+            "applicant": applicant,
+            "guardian_links": guardian_links,
+            "student": student,
+            "can_add_guardian": not _applicant_guardian_lock(applicant),
+        },
     )
 
 
@@ -2463,9 +2474,26 @@ def _guardian_lookup_context(request, form, linked_ids, create_param, target_pk)
     }
 
 
+def _applicant_guardian_lock(applicant):
+    """Why no Guardian can be added to this Applicant now, or "" if one can.
+
+    A Student's Guardian links are copied once at progression, so a later change on the
+    Applicant would never reach the Student and the two records would disagree.
+    """
+    if Student.objects.filter(applicant=applicant).exists():
+        return "This Applicant already has a Student record. Manage Guardians on the Student record."
+    if applicant.admission_status == Applicant.AdmissionStatus.REJECTED:
+        return "This Applicant was rejected, so no Guardian can be added."
+    return ""
+
+
 @administrator_required(("core.add_applicantguardian", "core.view_guardian"))
 def applicant_guardian_create(request, pk):
     applicant = get_object_or_404(Applicant, pk=pk)
+    lock = _applicant_guardian_lock(applicant)
+    if lock:
+        messages.error(request, lock)
+        return redirect("core:applicant-detail", pk=applicant.pk)
     if request.method == "POST":
         form = ApplicantGuardianForm(request.POST, applicant=applicant)
         if form.is_valid():
@@ -2569,16 +2597,19 @@ def _guardian_lookup_return_url(request):
     Built from a record id, never taken from the request as a URL, so it cannot redirect
     anywhere else.
     """
-    targets = (
-        ("for_applicant", Applicant, "core.add_applicantguardian", "core:applicant-guardian-create"),
-        ("for_student", Student, "core.add_studentguardian", "core:student-guardian-add"),
+    open_applicants = Applicant.objects.filter(student__isnull=True).exclude(
+        admission_status=Applicant.AdmissionStatus.REJECTED
     )
-    for param, model, perm, url_name in targets:
+    targets = (
+        ("for_applicant", open_applicants, "core.add_applicantguardian", "core:applicant-guardian-create"),
+        ("for_student", Student.objects.all(), "core.add_studentguardian", "core:student-guardian-add"),
+    )
+    for param, records, perm, url_name in targets:
         value = request.GET.get(param, "")
         if (
             _is_id(value)
             and request.user.has_perms((perm, "core.view_guardian"))
-            and model.objects.filter(pk=value).exists()
+            and records.filter(pk=value).exists()
         ):
             return reverse(url_name, args=[value])
     return ""

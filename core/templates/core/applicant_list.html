@@ -7,6 +7,10 @@
     {% if table.sort_param %}<input type="hidden" name="sort" value="{{ table.sort_param }}">{% endif %}
     <div class="row g-2 align-items-end">
         <div class="col-12 col-md-5 col-lg-4">
+            <label for="applicant-search" class="form-label">Search applicants</label>
+            <input type="search" id="applicant-search" name="q" value="{{ query }}" class="form-control" placeholder="Name, phone, or email">
+        </div>
+        <div class="col-12 col-md-4 col-lg-3">
             <label for="applicant-status" class="form-label">Admission status</label>
             <select id="applicant-status" name="status" class="form-select">
                 <option value="">All admission statuses</option>
@@ -16,7 +20,7 @@
         <div class="col-auto">
             <button type="submit" class="btn btn-outline-secondary">Filter</button>
         </div>
-        {% if status %}
+        {% if status or query %}
         <div class="col-auto">
             <a class="btn btn-link" href="{% url 'core:applicant-list' %}">Clear filters</a>
         </div>
@@ -30,12 +34,12 @@
     <tbody>
         {% for applicant in table.page %}
         <tr>
-            <td><a href="{% url 'core:applicant-detail' applicant.pk %}">{{ applicant.full_name }}</a></td>
+            <td><a href="{% url 'core:applicant-detail' applicant.pk %}">{{ applicant.full_name }}</a>{% if query %}{# Search results can share a name, so show what tells them apart. #}<div class="small text-muted text-break">{% if applicant.date_of_birth %}<div>Born {{ applicant.date_of_birth }}</div>{% endif %}{% if applicant.phone %}<div>{{ applicant.phone }}</div>{% endif %}{% if applicant.email %}<div>{{ applicant.email }}</div>{% endif %}</div>{% endif %}</td>
             <td>{% include "partials/_status_badge.html" with label=applicant.get_admission_status_display tone=applicant.admission_status|lower only %}</td>
         </tr>
         {% empty %}
         <tr>
-            <td colspan="2">{% if status %}No applicants match the selected admission status.{% else %}No applicants yet.{% if perms.core.add_applicant %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:applicant-create' %}">Register applicant</a>{% endif %}{% endif %}</td>
+            <td colspan="2">{% if query %}No applicants match this search.{% elif status %}No applicants match the selected admission status.{% else %}No applicants yet.{% if perms.core.add_applicant %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:applicant-create' %}">Register applicant</a>{% endif %}{% endif %}</td>
         </tr>
         {% endfor %}
     </tbody>
