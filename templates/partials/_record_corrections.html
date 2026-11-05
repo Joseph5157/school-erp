@@ -1,0 +1,19 @@
+{# Permanent history of corrected details. Stays out of the way until there is some. #}
+{% if corrections %}
+<section class="mb-4" id="corrections" aria-labelledby="corrections-heading">
+<h2 class="h5" id="corrections-heading">Corrections</h2>
+{# role="list": Safari drops list semantics from a ul with list-style: none. #}
+<ul class="erp-record-cards" role="list">
+    {% for correction in corrections %}
+    <li class="erp-record-card">
+        <div class="erp-record-title">{{ correction.created_at }}</div>
+        <dl class="erp-record-fields">
+            {% for row in correction.rows %}<div><dt>{{ row.label }}</dt><dd>{{ row.old }} <span aria-hidden="true">&rarr;</span><span class="visually-hidden">changed to</span> {{ row.new }}</dd></div>{% endfor %}
+            <div><dt>Reason</dt><dd>{{ correction.reason }}</dd></div>
+            <div><dt>By</dt><dd>{{ correction.changed_by }}</dd></div>
+        </dl>
+    </li>
+    {% endfor %}
+</ul>
+</section>
+{% endif %}

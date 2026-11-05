@@ -24,6 +24,8 @@
     <dt class="col-sm-3">Admission outcome</dt>
     <dd class="col-sm-9">{% if student.applicant.admission_status == "ACCEPTED" %}{% if student.applicant.admission_decided_at %}Accepted on {{ student.applicant.admission_decided_at|date:"j M Y" }}{% else %}Accepted{% endif %}{% else %}{{ student.applicant.get_admission_status_display }}{% endif %}</dd>
 </dl>
+{% if perms.core.change_student %}<p><a class="btn btn-outline-secondary" href="{% url 'core:student-edit' student.pk %}">Correct details</a></p>{% endif %}
+{% include "partials/_record_corrections.html" with corrections=corrections only %}
 {% if student.applicant.admission_status != "ACCEPTED" %}
 <div class="alert alert-warning" role="status">Needs reconciliation: this Student's source Applicant is still {{ student.applicant.get_admission_status_display }}. An administrator can run <code>manage.py reconcile_applicants</code>.</div>
 {% endif %}

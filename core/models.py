@@ -1140,6 +1140,93 @@ class StudentStatusChange(models.Model):
         ordering = ["-created_at", "-pk"]
 
 
+class RecordCorrection(models.Model):
+    """One correction to an Applicant's or Student's details (ADR 0023).
+
+    `changes` holds what moved as plain text: a list of {field, old, new}. Database
+    triggers refuse every UPDATE and DELETE, so this history cannot be rewritten.
+    """
+
+    FIELDS = {
+        "full_name": "Full name",
+        "date_of_birth": "Date of birth",
+        "email": "Email",
+        "phone": "Phone",
+    }
+
+    applicant = models.ForeignKey(
+        Applicant, null=True, blank=True, on_delete=models.PROTECT, related_name="corrections"
+    )
+    student = models.ForeignKey(
+        Student, null=True, blank=True, on_delete=models.PROTECT, related_name="corrections"
+    )
+    changes = models.JSONField()
+    reason = models.TextField()
+    changed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(applicant__isnull=False, student__isnull=True)
+                | models.Q(applicant__isnull=True, student__isnull=False),
+                name="recordcorrection_exactly_one_record",
+            ),
+        ]
+
+    @property
+    def rows(self):
+        """The changes with readable labels, for the history on the record."""
+        return [
+            {
+                "label": self.FIELDS.get(change["field"], change["field"]),
+                "old": change["old"] or "-",
+                "new": change["new"] or "-",
+            }
+            for change in self.changes
+        ]
+
+    @staticmethod
+    def _as_text(value):
+        return value.isoformat() if hasattr(value, "isoformat") else (value or "")
+
+    @classmethod
+    def apply(cls, record, values, *, reason, actor):
+        """Save corrected details and their history together, or change nothing.
+
+        Raises ValidationError when an Applicant already has a Student, or when no
+        value differs. Values are compared against the row locked here, not the form's
+        copy, so the history always shows what was really replaced.
+        """
+        is_applicant = isinstance(record, Applicant)
+        with transaction.atomic():
+            locked = type(record).objects.select_for_update().get(pk=record.pk)
+            if is_applicant and Student.objects.filter(applicant=locked).exists():
+                raise ValidationError(
+                    "This Applicant already has a Student record. Correct details there."
+                )
+            changes = []
+            for field in cls.FIELDS:
+                old, new = getattr(locked, field), values[field]
+                if old != new:
+                    changes.append(
+                        {"field": field, "old": cls._as_text(old), "new": cls._as_text(new)}
+                    )
+                    setattr(locked, field, new)
+            if not changes:
+                raise ValidationError("Nothing has changed, so nothing was saved.")
+            locked.save()
+            return cls.objects.create(
+                changes=changes,
+                reason=reason,
+                changed_by=actor,
+                **{"applicant" if is_applicant else "student": locked},
+            )
+
+
 class StudentGuardian(models.Model):
     """An explicit Student-Guardian association carrying a relationship type.
 

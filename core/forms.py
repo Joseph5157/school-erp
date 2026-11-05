@@ -10,6 +10,7 @@ from accounts.usernames import USERNAME_HELP
 from core import school_logo
 from core.documents import bonafide
 from core.models import (
+    ENGLISH_NAME_VALIDATOR,
     TEACHERS_GROUP_NAME,
     AcademicEnrollment,
     AcademicSubjectOffering,
@@ -1375,6 +1376,31 @@ class RevocationForm(forms.Form):
 
 
 # --- Phase 6 Gate 4: administrator-entered identifiers (ADR 0014, OD-1) ------
+
+
+class RecordCorrectionForm(FieldAccessibilityMixin, forms.Form):
+    """Correct an Applicant's or Student's details, with the reason kept in their history.
+
+    Status and admission number are deliberately absent: each keeps its own workflow.
+    """
+
+    full_name = forms.CharField(max_length=255, validators=[ENGLISH_NAME_VALIDATOR])
+    date_of_birth = forms.DateField(
+        required=False, widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")
+    )
+    email = forms.EmailField(required=False)
+    phone = forms.CharField(max_length=50, required=False)
+    reason = forms.CharField(
+        max_length=500,
+        widget=forms.Textarea(attrs={"rows": 3}),
+        help_text="Kept permanently with this record, with your name and the old values.",
+    )
+
+    def clean_date_of_birth(self):
+        value = self.cleaned_data["date_of_birth"]
+        if value and value > business_today():
+            raise ValidationError("Date of birth cannot be in the future.")
+        return value
 
 
 class AdmissionNumberForm(forms.Form):
