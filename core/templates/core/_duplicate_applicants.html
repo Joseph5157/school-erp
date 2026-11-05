@@ -1,0 +1,19 @@
+<div class="alert alert-warning" role="alert">
+    <strong>Possible duplicate.</strong> Nothing has been saved yet. Check these records, then change the details below or register this child as new.
+</div>
+<ul class="erp-record-cards mb-3" role="list">
+    {% for student in duplicate_students %}
+    <li class="erp-record-card">
+        <div class="erp-record-title">{{ student.full_name }} <span class="erp-record-sub">Student, {{ student.get_status_display }}</span></div>
+        {% include "core/_duplicate_child_fields.html" with record=student only %}
+        <a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:student-detail' student.pk %}">Open<span class="visually-hidden"> {{ student.full_name }}</span></a>
+    </li>
+    {% endfor %}
+    {% for applicant in duplicate_applicants %}
+    <li class="erp-record-card">
+        <div class="erp-record-title">{{ applicant.full_name }} <span class="erp-record-sub">Applicant, {{ applicant.get_admission_status_display }}</span></div>
+        {% include "core/_duplicate_child_fields.html" with record=applicant only %}
+        <a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:applicant-detail' applicant.pk %}">Open<span class="visually-hidden"> {{ applicant.full_name }}</span></a>
+    </li>
+    {% endfor %}
+</ul>

@@ -1,0 +1,20 @@
+<div class="alert alert-warning" role="alert">
+    <strong>Possible duplicate.</strong> Nothing has been saved yet. Check these Guardians, then change the details below or save this person as new.
+</div>
+<ul class="erp-record-cards mb-3" role="list">
+    {% for existing in duplicate_guardians %}
+    <li class="erp-record-card">
+        <div class="erp-record-title">{{ existing.full_name }}</div>
+        <dl class="erp-record-fields">
+            <div><dt>Why</dt><dd>{{ existing.duplicate_reasons|join:"; " }}</dd></div>
+            {% if existing.phone %}<div><dt>Phone</dt><dd>{{ existing.phone }}</dd></div>{% endif %}
+            {% if existing.email %}<div><dt>Email</dt><dd>{{ existing.email }}</dd></div>{% endif %}
+            {% if existing.child_links or existing.applicant_child_links %}
+            <div><dt>Linked children</dt><dd>{% for link in existing.child_links %}{{ link.student.full_name }}{% if not forloop.last %}, {% endif %}{% endfor %}{% if existing.child_links and existing.applicant_child_links %}, {% endif %}{% for link in existing.applicant_child_links %}{{ link.applicant.full_name }}{% if not forloop.last %}, {% endif %}{% endfor %}</dd></div>
+            {% endif %}
+        </dl>
+        {% if return_url %}<a class="btn btn-primary btn-sm mt-2" href="{{ return_url }}?guardian={{ existing.pk }}">Use this Guardian<span class="visually-hidden">: {{ existing.full_name }}</span></a>{% endif %}
+        <a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:guardian-detail' existing.pk %}">Open<span class="visually-hidden"> {{ existing.full_name }}</span></a>
+    </li>
+    {% endfor %}
+</ul>
