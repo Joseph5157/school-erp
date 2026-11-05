@@ -65,7 +65,7 @@ def enqueue(*, guardian, student, type, template_key, parameters, subject):
     if mode == School.NotificationMode.PORTAL_ONLY:
         return None
     if mode != School.NotificationMode.ASSIST:
-        raise NotificationError("Only WhatsApp sent by office staff (ASSIST) is available.")
+        raise NotificationError("Only WhatsApp sent by office staff is available.")
     template = (
         NotificationTemplate.objects.filter(
             key=template_key, channel=WHATSAPP, language="en", approved=True

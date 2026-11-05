@@ -74,7 +74,7 @@ class School(models.Model):
 
     class NotificationMode(models.TextChoices):
         PORTAL_ONLY = "PORTAL_ONLY", "Portal only (no WhatsApp messages)"
-        ASSIST = "ASSIST", "WhatsApp, sent by office staff (ASSIST)"
+        ASSIST = "ASSIST", "Prepare WhatsApp messages for office staff to send"
         API = "API", "WhatsApp Business API"
         SMS = "SMS", "SMS"
 

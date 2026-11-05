@@ -95,7 +95,7 @@ class Fixture(AuthorizationClientsMixin):
             ("term-create", reverse("core:term-create", args=[y]),
              ["Overview", "Academic Years", "Terms", "Add term"], "Academic Years"),
             ("term-update", reverse("core:term-update", args=[t]),
-             ["Overview", "Academic Years", "Edit Term"], "Academic Years"),
+             ["Overview", "Academic Years", "Edit term"], "Academic Years"),
             # batch 2: classes, subjects, offerings
             ("class-grade-create", reverse("core:class-grade-create"),
              ["Overview", "Classes/Grades", "Create class/grade"], "Classes/Grades"),
