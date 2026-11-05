@@ -556,12 +556,32 @@ body.erp { min-height: 100vh; }
 }
 .erp-auth .form-text ul { padding-left: 1.1rem; margin: .35rem 0 0; }
 
-/* Login: phones keep the single card; from 992px a split screen with a brand showcase panel. */
+/* Login: phones get a full white page with the artwork above centred text; from 992px a split screen with a brand showcase panel. */
 .erp-login-eyebrow {
   margin: 0 0 .25rem; color: var(--erp-brand); font-size: var(--erp-text-sm); font-weight: 600;
 }
 .erp-login-showcase { display: none; }
+@media (max-width: 991.98px) {
+  .erp-content:has(> .erp-login) { max-width: none; padding: 0; }
+  /* The side padding keeps the form one 26rem column on tablets. */
+  .erp-login .erp-login-form {
+    max-width: none; min-height: calc(100vh - var(--erp-topbar-h)); margin: 0;
+    padding: 1rem max(1.5rem, calc(50% - 13rem)) 1.5rem; border: 0; border-radius: 0;
+  }
+  .erp-login-form > .erp-login-eyebrow, .erp-login-form > h1, .erp-login-form > p { text-align: center; text-wrap: balance; }
+  .erp-login-art-top { margin-bottom: .5rem; text-align: center; }
+  .erp-login-art-top svg { display: inline-block; width: auto; height: 7rem; }
+  /* The artwork was drawn for the dark desktop panel: its white cap and pale halo need colour on white. */
+  .erp-login-art-top .erp-login-art-halo { fill: var(--erp-brand-wash); }
+  .erp-login-art-top .erp-login-art-cap { fill: var(--erp-brand-strong); }
+  .erp-login-art-top .erp-login-art-cap-base { fill: var(--erp-brand); }
+}
+/* Short screens: the Log in button stays in the first view. */
+@media (max-width: 991.98px) and (max-height: 620px) {
+  .erp-login-art-top { display: none; }
+}
 @media (min-width: 992px) {
+  .erp-login-art-top { display: none; }
   /* .erp-content is only centred in the admin shell; centre it here too so the card stays mid-screen past 96rem. */
   .erp-content:has(> .erp-login) { margin-inline: auto; }
   .erp-login {
