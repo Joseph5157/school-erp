@@ -93,7 +93,10 @@ service's variables, so it must receive the same ones.
 On/off variables (`DJANGO_HTTPS`, `DJANGO_HSTS_PRELOAD`, `EMAIL_USE_TLS`) accept
 `True`/`False` in any capitalisation, and also `1`/`0`, `yes`/`no`, `on`/`off`.
 Any other value stops startup, so a typo can no longer silently switch HTTPS or
-mail encryption off.
+mail encryption off. A blank value (for example `EMAIL_USE_TLS=`) counts as unset
+and takes the variable's default: HTTPS on in production, mail encryption on, HSTS
+preload off. Mail encryption is turned off only by an explicit `False`, `0`, `no`
+or `off`.
 
 ### Local development, tests and CI
 
@@ -116,8 +119,9 @@ without discarding the values.
 
 1. List only the variable **names** on each service:
    `railway variables --service <service> --kv | cut -d= -f1`. `DJANGO_SECRET_KEY`,
-   `DJANGO_ALLOWED_HOSTS`, `DJANGO_HTTPS` and `DJANGO_TRUSTED_PROXIES` must appear on
-   the web and cron services.
+   `DJANGO_ALLOWED_HOSTS` and `DJANGO_TRUSTED_PROXIES` must appear on the web and
+   cron services. `DJANGO_HTTPS` is optional: when it is absent, HTTPS is on. If it
+   does appear, its value must not be `False`.
 2. From the service shell, run `python manage.py check --deploy`. It prints no
    secrets and should report no errors. Warning `security.W021` (HSTS preload) is
    expected until `DJANGO_HSTS_PRELOAD` is set.

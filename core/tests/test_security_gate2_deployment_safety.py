@@ -61,9 +61,15 @@ class FlagParsingTests(SimpleTestCase):
         for raw in ("True", "true", "TRUE", " 1 ", "yes", "on"):
             with self.subTest(raw):
                 self.assertTrue(parse_flag("DJANGO_HTTPS", raw))
-        for raw in ("False", "false", "0", "no", "off", ""):
+        for raw in ("False", "false", "FALSE", " 0 ", "no", "off"):
             with self.subTest(raw):
                 self.assertFalse(parse_flag("DJANGO_HTTPS", raw, default=True))
+
+    def test_blank_counts_as_unset_and_uses_the_default(self):
+        for raw in ("", "   "):
+            with self.subTest(repr(raw)):
+                self.assertTrue(parse_flag("EMAIL_USE_TLS", raw, default=True))
+                self.assertFalse(parse_flag("DJANGO_HSTS_PRELOAD", raw, default=False))
 
     def test_unset_uses_the_default(self):
         self.assertFalse(parse_flag("DJANGO_HTTPS", None))
@@ -267,3 +273,48 @@ class SettingsImportTests(SimpleTestCase):
                                     EMAIL_USE_TLS="flase")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("EMAIL_USE_TLS", result.stderr)
+
+    def email_tls(self, **extra):
+        env = {"DJANGO_SECRET_KEY": STRONG_KEY, "EMAIL_HOST": "smtp.example.test"}
+        env.update(extra)
+        return self.read_settings(("EMAIL_USE_TLS",), **env)
+
+    def test_email_tls_defaults_to_on_when_unset(self):
+        values, result = self.email_tls()
+        self.assertEqual(values, [True], result.stderr)
+
+    def test_email_tls_defaults_to_on_when_blank(self):
+        for raw in ("", "   "):
+            with self.subTest(repr(raw)):
+                values, result = self.email_tls(EMAIL_USE_TLS=raw)
+                self.assertEqual(values, [True], result.stderr)
+
+    def test_email_tls_explicit_true_stays_on(self):
+        for raw in ("True", "true", "1", "yes", "on"):
+            with self.subTest(raw):
+                values, result = self.email_tls(EMAIL_USE_TLS=raw)
+                self.assertEqual(values, [True], result.stderr)
+
+    def test_email_tls_can_be_turned_off_only_explicitly(self):
+        for raw in ("False", "false", "0", "no", "off"):
+            with self.subTest(raw):
+                values, result = self.email_tls(EMAIL_USE_TLS=raw)
+                self.assertEqual(values, [False], result.stderr)
+
+    def test_email_tls_invalid_values_refuse_startup_without_echoing_them(self):
+        for raw in ("flase", "disabled", "2"):
+            with self.subTest(raw):
+                values, result = self.email_tls(EMAIL_USE_TLS=raw)
+                self.assertIsNone(values)
+                self.assertIn("EMAIL_USE_TLS", result.stderr)
+                self.assertNotIn(f"'{raw}'", result.stderr)
+
+    def test_blank_flags_use_their_own_defaults(self):
+        """Blank means unset: preload off, HTTPS on in production, plain HTTP in debug."""
+        values, result = self.read_settings(
+            ("SECURE_HSTS_PRELOAD", "HTTPS"), DJANGO_SECRET_KEY=STRONG_KEY,
+            DJANGO_HSTS_PRELOAD="", DJANGO_HTTPS="",
+        )
+        self.assertEqual(values, [False, True], result.stderr)
+        values, result = self.read_settings(("HTTPS",), DJANGO_DEBUG="True", DJANGO_HTTPS="")
+        self.assertEqual(values, [False], result.stderr)

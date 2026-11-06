@@ -11,7 +11,7 @@ from django.core.exceptions import ImproperlyConfigured
 
 INSECURE_KEY_PREFIX = "django-insecure-"
 _TRUE = {"true", "1", "yes", "on"}
-_FALSE = {"false", "0", "no", "off", ""}
+_FALSE = {"false", "0", "no", "off"}
 
 
 def check_secret_key(key, *, debug, testing):
@@ -31,9 +31,11 @@ def parse_flag(name, raw, default=False):
     """Read an on/off environment variable; refuse a value that is not clearly one or the other.
 
     A flag such as DJANGO_HTTPS used to be compared with the exact text "True", so a value
-    like "true" or a typo silently switched the protection off.
+    like "true" or a typo silently switched the protection off. A blank value counts as
+    unset and uses the flag's own default, so an empty `EMAIL_USE_TLS=` cannot switch
+    encryption off either.
     """
-    if raw is None:
+    if raw is None or not raw.strip():
         return default
     value = raw.strip().lower()
     if value in _TRUE:
@@ -54,8 +56,6 @@ def resolve_https(raw, *, debug, testing):
     """
     if debug or testing:
         return parse_flag("DJANGO_HTTPS", raw)
-    if raw is not None and not raw.strip():
-        raw = None
     if parse_flag("DJANGO_HTTPS", raw, default=True):
         return True
     raise ImproperlyConfigured(
