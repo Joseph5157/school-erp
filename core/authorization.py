@@ -139,18 +139,21 @@ def can_write_term_remarks(user, term, section):
         return False
     if user.has_perm("core.change_termremark"):
         return True
-    return class_teacher_on(user, section, term_remark_date(term))
+    return class_teacher_on(
+        user, section, term_remark_date(term), academic_year=term.academic_year_id
+    )
 
 
 # --- Phase 5: class teacher scope (ADR 0011, ADR 0012) ----------------------
 
 
-def class_teacher_assignments(user, on_date=None):
+def class_teacher_assignments(user, on_date=None, academic_year=None):
     """SectionClassTeacher rows that currently grant `user` class teacher rights.
 
     Empty unless the user is an active Teachers-group login (ADR 0011 D14):
     losing teacher status removes access without touching the rows. With
-    `on_date`, only assignments effective on that date.
+    `on_date`, only assignments effective on that date. With `academic_year` (an
+    AcademicYear or its id), only that year's assignments.
     """
     from core.models import SectionClassTeacher
 
@@ -159,28 +162,74 @@ def class_teacher_assignments(user, on_date=None):
     rows = SectionClassTeacher.objects.filter(teacher=user)
     if on_date is not None:
         rows = rows.effective_on(on_date)
+    if academic_year is not None:
+        rows = rows.filter(academic_year=academic_year)
     return rows
 
 
-def class_teacher_on(user, section, on_date):
-    """Is `user` the class teacher of `section` on `on_date`?"""
-    return class_teacher_assignments(user, on_date).filter(section=section).exists()
+# Security Gate 3A. A class teacher assignment belongs to one Academic Year and gives
+# authority only over that year's records. Sections are year-agnostic and academic years may
+# overlap, and the one-class-teacher-per-Section rule (ADR 0011 D2) is enforced only inside a
+# single year, so two different teachers can both hold a Section on the same date. Every check
+# that guards a record therefore takes the record's academic year, as a required keyword, so
+# no caller can forget to bind it.
 
 
-def class_teacher_sections(user, on_date):
-    """Sections of which `user` is class teacher on `on_date`."""
+def class_teacher_on(user, section, on_date, *, academic_year):
+    """Is `user` the class teacher of `section` on `on_date` for `academic_year`?
+
+    `academic_year` is the year of the record being accessed (an AcademicYear or its id).
+    """
+    return (
+        class_teacher_assignments(user, on_date, academic_year).filter(section=section).exists()
+    )
+
+
+def class_teacher_duty(user, section, on_date, *, academic_year):
+    """The class teacher assignment `user` holds for `section` on `on_date` in `academic_year`.
+
+    None when there is none. At most one can exist: assignments for one Section and year
+    may not overlap (ADR 0011 D2).
+    """
+    return (
+        class_teacher_assignments(user, on_date, academic_year)
+        .filter(section=section)
+        .select_related("academic_year")
+        .first()
+    )
+
+
+def sole_class_teacher_duty(user, section, on_date):
+    """The one class teacher assignment `user` holds for `section` on `on_date` in ANY year.
+
+    Only for opening today's register when none exists yet, the one case with no record whose
+    academic year could decide. A teacher who holds the Section in two overlapping years has
+    two assignments, which is ambiguous, so None is returned and nothing is opened. Never use
+    this to authorise access to an existing record: use `class_teacher_duty` or
+    `class_teacher_on` with that record's year.
+    """
+    duties = list(
+        class_teacher_assignments(user, on_date)
+        .filter(section=section)
+        .select_related("academic_year")[:2]
+    )
+    return duties[0] if len(duties) == 1 else None
+
+
+def class_teacher_sections(user, on_date, *, academic_year):
+    """Sections of which `user` is class teacher on `on_date` in `academic_year`."""
     from core.models import Section
 
     return Section.objects.filter(
-        pk__in=class_teacher_assignments(user, on_date).values("section_id")
+        pk__in=class_teacher_assignments(user, on_date, academic_year).values("section_id")
     ).select_related("class_grade")
 
 
-def can_take_attendance(user, section, on_date):
+def can_take_attendance(user, section, on_date, *, academic_year):
     """May a teacher take or submit `section`'s register for `on_date`? (ADR 0012)
 
-    Only the class teacher effective on that date, and only for the
-    school-local business date (D5). Whether the date is instructional is
+    Only the class teacher effective on that date for the register's Academic Year, and
+    only for the school-local business date (D5). Whether the date is instructional is
     enforced by the register itself. Administrators use the Phase 2
     administrator workflow and permissions instead.
     """
@@ -188,15 +237,17 @@ def can_take_attendance(user, section, on_date):
 
     if on_date != models.business_today():
         return False
-    return class_teacher_on(user, section, on_date)
+    return class_teacher_on(user, section, on_date, academic_year=academic_year)
 
 
 def teacher_student_scope(user, on_date):
     """AcademicEnrollments effective on `on_date` that a teacher may look up.
 
     Per ADR 0012 D8/D9: enrollments in a Section where the user is class
-    teacher on that date, or in a Section where the user holds a subject
-    teacher assignment for that enrollment's Academic Year and Class/Grade.
+    teacher on that date for that enrollment's Academic Year (Security Gate 3A: a
+    class teacher assignment never reaches another year's cohort), or in a Section where
+    the user holds a subject teacher assignment for that enrollment's Academic Year and
+    Class/Grade.
     """
     from django.db.models import Q
 
@@ -204,7 +255,11 @@ def teacher_student_scope(user, on_date):
 
     if not is_teacher(user):
         return AcademicEnrollment.objects.none()
-    scope = Q(section_id__in=class_teacher_assignments(user, on_date).values("section_id"))
+    scope = Q(pk__in=[])
+    for section_id, academic_year_id in class_teacher_assignments(user, on_date).values_list(
+        "section_id", "academic_year_id"
+    ):
+        scope |= Q(section_id=section_id, academic_year_id=academic_year_id)
     for academic_year_id, class_grade_id, section_id in current_teacher_assignments(
         user, on_date
     ).values_list(
@@ -223,8 +278,14 @@ def can_view_student_as_teacher(user, student, on_date):
 
 
 def guardian_contact_visible(user, enrollment, on_date):
-    """Guardian names and contacts: only the Student's class teacher (D8)."""
-    return enrollment is not None and class_teacher_on(user, enrollment.section, on_date)
+    """Guardian names and contacts: only the Student's class teacher (D8).
+
+    The class teacher of the enrollment's own Academic Year, not of another year's cohort
+    in the same Section (Security Gate 3A).
+    """
+    return enrollment is not None and class_teacher_on(
+        user, enrollment.section, on_date, academic_year=enrollment.academic_year_id
+    )
 
 
 def term_remark_date(term):
@@ -242,17 +303,22 @@ def term_remark_date(term):
 
 
 def term_remark_sections(user, term):
-    """Sections whose remarks for `term` the teacher may write."""
-    return class_teacher_sections(user, term_remark_date(term)).filter(
-        class_teacher_assignments__academic_year_id=term.academic_year_id
-    ).distinct()
+    """Sections whose remarks for `term` the teacher may write.
+
+    Only the teacher's own assignments in the Term's Academic Year count. The earlier
+    filter joined any teacher's assignment row for that year, so another teacher's row
+    could satisfy it (Security Gate 3A).
+    """
+    return class_teacher_sections(
+        user, term_remark_date(term), academic_year=term.academic_year_id
+    )
 
 
 def can_view_report_card_as_teacher(user, student, term):
     """Class teacher of the Student's Term placement Section (D8, D10)."""
     placement = term.enrollment_for(student)
     return placement is not None and class_teacher_on(
-        user, placement.section, term_remark_date(term)
+        user, placement.section, term_remark_date(term), academic_year=term.academic_year_id
     )
 
 

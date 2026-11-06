@@ -46,11 +46,13 @@ from core.authorization import (
     can_view_report_card_as_teacher,
     can_write_term_remarks,
     class_teacher_assignments,
+    class_teacher_duty,
     class_teacher_on,
     current_teacher_assignments,
     guardian_contact_visible,
     historical_teacher_assignments,
     is_teacher,
+    sole_class_teacher_duty,
     teacher_required,
     teacher_result_windows,
     teacher_student_scope,
@@ -1200,25 +1202,37 @@ def my_home(request):
 # --- Phase 5 Gate 3: class teacher attendance (ADR 0012 D4, D5, D7) -------
 
 
+def _attendance_year(user, section, today, register):
+    """The Academic Year `user` may take `section`'s register for `today` in, or PermissionDenied.
+
+    Security Gate 3A: a register belongs to its own Academic Year, and only that year's class
+    teacher may act on it, never another year's class teacher of the same Section. With no
+    register yet, the teacher must hold exactly one assignment for the Section today.
+    """
+    if register is None:
+        duty = sole_class_teacher_duty(user, section, today)
+    else:
+        duty = class_teacher_duty(
+            user, section, today, academic_year=register.academic_year_id
+        )
+    if duty is None or not can_take_attendance(
+        user, section, today, academic_year=duty.academic_year_id
+    ):
+        raise PermissionDenied
+    return duty.academic_year
+
+
 @teacher_required
 def my_attendance(request, section_pk):
     """Today's register for a Section the user is class teacher of today."""
     section = get_object_or_404(Section.objects.select_related("class_grade"), pk=section_pk)
     today = business_today()
-    if not can_take_attendance(request.user, section, today):
-        raise PermissionDenied
-    duty = (
-        class_teacher_assignments(request.user, today)
-        .filter(section=section)
-        .select_related("academic_year")
-        .get()
-    )
-    year = duty.academic_year
     register = (
         AttendanceRegister.objects.filter(section=section, date=today)
         .select_related("submitted_by")
         .first()
     )
+    year = _attendance_year(request.user, section, today, register)
     if request.method == "POST":
         action = request.POST.get("action")
         if action == "open" and register is None:
@@ -1316,13 +1330,14 @@ def my_attendance_submit(request, section_pk):
     """GET confirms today's complete register; POST makes it official."""
     section = get_object_or_404(Section.objects.select_related("class_grade"), pk=section_pk)
     today = business_today()
-    if not can_take_attendance(request.user, section, today):
-        raise PermissionDenied
-    register = get_object_or_404(
-        AttendanceRegister.objects.select_related("academic_year", "section__class_grade"),
-        section=section,
-        date=today,
+    register = (
+        AttendanceRegister.objects.select_related("academic_year", "section__class_grade")
+        .filter(section=section, date=today)
+        .first()
     )
+    _attendance_year(request.user, section, today, register)
+    if register is None:
+        raise Http404("No register for today.")
     attendance_url = reverse("core:my-attendance", args=[section.pk])
     if request.method == "POST":
         try:
@@ -1358,9 +1373,10 @@ def my_attendance_autosave(request, section_pk):
         return HttpResponse("Autosave needs HTMX; use the Save draft button.", status=400)
     section = get_object_or_404(Section, pk=section_pk)
     today = business_today()
-    if not can_take_attendance(request.user, section, today):
-        raise PermissionDenied
-    register = get_object_or_404(AttendanceRegister, section=section, date=today)
+    register = AttendanceRegister.objects.filter(section=section, date=today).first()
+    _attendance_year(request.user, section, today, register)
+    if register is None:
+        raise Http404("No register for today.")
 
     def reply(state, enrollment, message, status):
         context = {"state": state, "enrollment": enrollment, "message": message}
@@ -1443,9 +1459,11 @@ def my_attendance_assignment(request, pk):
     previous_month = months[index - 1] if index > 0 else None
     next_month = months[index + 1] if index + 1 < len(months) else None
     start, end = max(first, month_start), min(last, month_end)
-    summary = reports.section_summary(row.section, start, end)
+    summary = reports.section_summary(row.section, start, end, academic_year=row.academic_year)
     registers = list(
-        AttendanceRegister.objects.filter(section=row.section, date__gte=start, date__lte=end)
+        AttendanceRegister.objects.filter(
+            section=row.section, academic_year=row.academic_year, date__gte=start, date__lte=end
+        )
         .annotate(
             present=Count("entries", filter=Q(entries__status=AttendanceStatus.PRESENT)),
             absent=Count("entries", filter=Q(entries__status=AttendanceStatus.ABSENT)),
@@ -1454,7 +1472,10 @@ def my_attendance_assignment(request, pk):
     )
     taken = {register.date for register in registers}
     missing = [
-        item for item in reports.missing_attendance(start, end, section=row.section)
+        item
+        for item in reports.missing_attendance(
+            start, end, section=row.section, academic_year=row.academic_year
+        )
         if item["date"] not in taken
     ]
     return render(
@@ -1485,7 +1506,7 @@ def my_attendance_register(request, pk):
         pk=pk,
     )
     if register.date > business_today() or not class_teacher_on(
-        request.user, register.section, register.date
+        request.user, register.section, register.date, academic_year=register.academic_year_id
     ):
         raise PermissionDenied
     entries = register.entries.select_related("academic_enrollment__student").order_by(

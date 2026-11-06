@@ -155,7 +155,7 @@ class TeacherAttendanceTests(Phase4Fixture, TestCase):
     def test_lost_teacher_status(self):
         self.rao.is_active = False
         self.rao.save()
-        self.assertFalse(can_take_attendance(self.rao, self.six_a, MONDAY))
+        self.assertFalse(can_take_attendance(self.rao, self.six_a, MONDAY, academic_year=self.year))
 
     def test_administrator_and_plain_users_use_admin_workflow(self):
         self.client.login(username="admin", password="pass-12345")
@@ -164,9 +164,9 @@ class TeacherAttendanceTests(Phase4Fixture, TestCase):
     # --- D5: today only, instructional only ---
 
     def test_only_business_date(self):
-        self.assertTrue(can_take_attendance(self.rao, self.six_a, MONDAY))
-        self.assertFalse(can_take_attendance(self.rao, self.six_a, date(2026, 10, 9)))
-        self.assertFalse(can_take_attendance(self.rao, self.six_a, date(2026, 10, 13)))
+        self.assertTrue(can_take_attendance(self.rao, self.six_a, MONDAY, academic_year=self.year))
+        self.assertFalse(can_take_attendance(self.rao, self.six_a, date(2026, 10, 9), academic_year=self.year))
+        self.assertFalse(can_take_attendance(self.rao, self.six_a, date(2026, 10, 13), academic_year=self.year))
 
     def test_yesterdays_draft_is_not_reachable(self):
         AttendanceRegister.objects.create(

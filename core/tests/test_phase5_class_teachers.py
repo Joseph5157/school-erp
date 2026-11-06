@@ -130,27 +130,27 @@ class ClassTeacherHelperTests(ClassTeacherFixture, TestCase):
     def test_helpers_follow_dates(self):
         self.assign_ct(self.rao, self.six_a, date(2026, 6, 1))
         self.assign_ct(self.iyer, self.six_a, date(2026, 11, 1))
-        self.assertTrue(class_teacher_on(self.rao, self.six_a, date(2026, 10, 31)))
-        self.assertFalse(class_teacher_on(self.rao, self.six_a, date(2026, 11, 1)))
-        self.assertTrue(class_teacher_on(self.iyer, self.six_a, date(2026, 11, 1)))
-        self.assertEqual(list(class_teacher_sections(self.rao, TODAY)), [self.six_a])
-        self.assertEqual(list(class_teacher_sections(self.iyer, TODAY)), [])
+        self.assertTrue(class_teacher_on(self.rao, self.six_a, date(2026, 10, 31), academic_year=self.year))
+        self.assertFalse(class_teacher_on(self.rao, self.six_a, date(2026, 11, 1), academic_year=self.year))
+        self.assertTrue(class_teacher_on(self.iyer, self.six_a, date(2026, 11, 1), academic_year=self.year))
+        self.assertEqual(list(class_teacher_sections(self.rao, TODAY, academic_year=self.year)), [self.six_a])
+        self.assertEqual(list(class_teacher_sections(self.iyer, TODAY, academic_year=self.year)), [])
 
     def test_losing_teacher_status_removes_access_but_keeps_rows(self):
         row = self.assign_ct(self.rao, self.six_a, date(2026, 6, 1))
         self.rao.groups.remove(self.teachers)
-        self.assertFalse(class_teacher_on(self.rao, self.six_a, TODAY))
+        self.assertFalse(class_teacher_on(self.rao, self.six_a, TODAY, academic_year=self.year))
         self.assertFalse(class_teacher_assignments(self.rao).exists())
         self.rao.groups.add(self.teachers)
         self.rao.is_active = False
         self.rao.save()
-        self.assertFalse(class_teacher_on(self.rao, self.six_a, TODAY))
+        self.assertFalse(class_teacher_on(self.rao, self.six_a, TODAY, academic_year=self.year))
         row.refresh_from_db()
         self.assertIsNone(row.end_date)
         self.assertEqual(SectionClassTeacher.objects.count(), 1)
 
     def test_administrator_is_not_a_class_teacher(self):
-        self.assertFalse(class_teacher_on(self.admin, self.six_a, TODAY))
+        self.assertFalse(class_teacher_on(self.admin, self.six_a, TODAY, academic_year=self.year))
 
 
 @today_patch
@@ -247,7 +247,7 @@ class CrossYearTests(ClassTeacherFixture, TestCase):
         self.assertTrue(row.is_effective_on(date(2027, 3, 31)))
         self.assertFalse(row.is_effective_on(date(2027, 6, 1)))
         self.assertFalse(SectionClassTeacher.objects.effective_on(date(2027, 6, 1)).exists())
-        self.assertFalse(class_teacher_on(self.rao, self.six_a, date(2027, 7, 1)))
+        self.assertFalse(class_teacher_on(self.rao, self.six_a, date(2027, 7, 1), academic_year=self.year))
 
     def test_next_year_assignment_does_not_touch_previous_year(self):
         old = self.assign_ct(self.rao, self.six_a, date(2026, 6, 1))
