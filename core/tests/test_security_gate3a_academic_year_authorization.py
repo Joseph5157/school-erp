@@ -29,10 +29,13 @@ from core.authorization import (
     term_remark_sections,
 )
 from core.models import (
+    AcademicSubjectOffering,
     AcademicTerm,
     AcademicYear,
     Applicant,
+    AssessmentTeacherAssignment,
     AttendanceRegister,
+    AttendanceStatus,
     Guardian,
     SectionClassTeacher,
     Student,
@@ -220,6 +223,75 @@ class DashboardIsYearBoundTests(OverlappingYearFixture, TestCase):
         (y1_row,) = self.home_rows(self.client_y1)
         self.assertEqual(y1_row["state"], "NOT_TAKEN")
         self.assertIsNone(y1_row["register"])
+
+
+class MyStudentsGroupsAreYearBoundTests(OverlappingYearFixture, TestCase):
+    """My Students groups, class-teacher label and submitted state are per (section, year)."""
+
+    def groups(self, client):
+        return client.get(reverse("core:my-students")).context["groups"]
+
+    def submit_y1_register(self):
+        register = AttendanceRegister.objects.create(
+            academic_year=self.year1, class_grade=self.grade6, section=self.six_a, date=TODAY
+        )
+        register.save_draft_entry(
+            enrollment=self.y1_enrollment, status=AttendanceStatus.PRESENT, absence_note=""
+        )
+        AttendanceRegister.objects.filter(pk=register.pk).update(
+            status=AttendanceRegister.Status.SUBMITTED, submitted_by=self.rao,
+            submitted_at="2026-10-12T10:00:00+05:30",
+        )
+        return register
+
+    def test_a_submitted_register_of_one_year_does_not_mark_the_other_years_group_submitted(self):
+        self.submit_y1_register()
+        (y1_group,) = self.groups(self.client_y1)
+        self.assertTrue(y1_group["is_class_teacher"])
+        self.assertTrue(y1_group["attendance_submitted"])
+        self.assertEqual([e.today_status for e in y1_group["enrollments"]], ["PRESENT"])
+        (y2_group,) = self.groups(self.client_y2)
+        self.assertTrue(y2_group["is_class_teacher"])
+        self.assertFalse(y2_group["attendance_submitted"])
+        self.assertEqual([e.today_status for e in y2_group["enrollments"]], [None])
+
+    def test_class_teacher_of_one_year_and_subject_teacher_of_the_other_gets_separate_groups(self):
+        y2_maths = AcademicSubjectOffering.objects.create(
+            academic_year=self.year2, class_grade=self.grade6, subject=self.maths_subject
+        )
+        AssessmentTeacherAssignment.objects.create(
+            teacher=self.rao, offering=y2_maths, section=self.six_a,
+            start_date=self.year2.start_date,
+        )
+        self.submit_y1_register()
+        groups = self.groups(self.client_y1)
+        self.assertEqual(len(groups), 2)
+        by_year = {group["academic_year"]: group for group in groups}
+        y1_group, y2_group = by_year[self.year1], by_year[self.year2]
+        self.assertTrue(y1_group["is_class_teacher"])
+        self.assertTrue(y1_group["attendance_submitted"])
+        self.assertEqual([e.student for e in y1_group["enrollments"]], [self.y1_student])
+        self.assertFalse(y2_group["is_class_teacher"])
+        self.assertFalse(y2_group["attendance_submitted"])
+        self.assertEqual([e.student for e in y2_group["enrollments"]], [self.y2_student])
+        self.assertEqual([e.today_status for e in y2_group["enrollments"]], [None])
+
+    def test_two_groups_of_one_section_are_labelled_with_their_year(self):
+        y2_maths = AcademicSubjectOffering.objects.create(
+            academic_year=self.year2, class_grade=self.grade6, subject=self.maths_subject
+        )
+        AssessmentTeacherAssignment.objects.create(
+            teacher=self.rao, offering=y2_maths, section=self.six_a,
+            start_date=self.year2.start_date,
+        )
+        page = self.client_y1.get(reverse("core:my-students"))
+        self.assertContains(page, "(2026-27 overlapping session)")
+        self.assertEqual(page.content.decode().count("Class teacher</span>"), 1)
+        for group in page.context["groups"]:
+            self.assertTrue(group["show_year"])
+        # a single group needs no year label
+        single = self.client_y2.get(reverse("core:my-students"))
+        self.assertNotContains(single, "(2026-27 overlapping session)")
 
 
 class AmbiguousDutyTests(OverlappingYearFixture, TestCase):

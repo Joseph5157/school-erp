@@ -1527,37 +1527,50 @@ def my_students(request):
     today = business_today()
     enrollments = list(
         teacher_student_scope(request.user, today)
-        .select_related("student", "section__class_grade")
-        .order_by("section__class_grade__display_order", "section__name", "student__full_name")
+        .select_related("student", "section__class_grade", "academic_year")
+        .order_by(
+            "section__class_grade__display_order", "section__name",
+            "academic_year__start_date", "student__full_name",
+        )
     )
-    class_sections = set(
-        class_teacher_assignments(request.user, today).values_list("section_id", flat=True)
+    # Security Gate 3A: everything below is keyed by (Section, Academic Year). Overlapping
+    # years can share a Section, so a Section alone would mix two cohorts, label the other
+    # year's cohort "Class teacher", and take its register state for the wrong year.
+    class_duties = set(
+        class_teacher_assignments(request.user, today).values_list("section_id", "academic_year_id")
     )
-    submitted_sections = set(
-        AttendanceRegister.objects.filter(
-            date=today, section_id__in=class_sections,
+    submitted_registers = {
+        (section_id, academic_year_id): register_id
+        for register_id, section_id, academic_year_id in AttendanceRegister.objects.filter(
+            date=today,
+            section_id__in={section_id for section_id, _ in class_duties},
             status=AttendanceRegister.Status.SUBMITTED,
-        ).values_list("section_id", flat=True)
-    )
+        ).values_list("pk", "section_id", "academic_year_id")
+        if (section_id, academic_year_id) in class_duties
+    }
     today_status = dict(
         AttendanceEntry.objects.filter(
-            register__date=today, register__section_id__in=submitted_sections,
-            register__status=AttendanceRegister.Status.SUBMITTED,
+            register_id__in=submitted_registers.values()
         ).values_list("academic_enrollment_id", "status")
     )
-    groups = []
+    groups = {}
     for enrollment in enrollments:
         enrollment.today_status = today_status.get(enrollment.pk)
-        if not groups or groups[-1]["section"].pk != enrollment.section_id:
-            groups.append(
-                {
-                    "section": enrollment.section,
-                    "is_class_teacher": enrollment.section_id in class_sections,
-                    "attendance_submitted": enrollment.section_id in submitted_sections,
-                    "enrollments": [],
-                }
-            )
-        groups[-1]["enrollments"].append(enrollment)
+        key = (enrollment.section_id, enrollment.academic_year_id)
+        if key not in groups:
+            groups[key] = {
+                "section": enrollment.section,
+                "academic_year": enrollment.academic_year,
+                "is_class_teacher": key in class_duties,
+                "attendance_submitted": key in submitted_registers,
+                "enrollments": [],
+            }
+        groups[key]["enrollments"].append(enrollment)
+    groups = list(groups.values())
+    sections_shown = [group["section"].pk for group in groups]
+    for group in groups:
+        # Name the year only when one Section appears for two years, so headings stay distinct.
+        group["show_year"] = sections_shown.count(group["section"].pk) > 1
     return render(request, "core/my_students.html", {"groups": groups, "today": today})
 
 
