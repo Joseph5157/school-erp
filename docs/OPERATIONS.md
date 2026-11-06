@@ -74,3 +74,45 @@ who holds the permission:
 
 Do not link the login again until it has only the Teachers group. Use a
 separate guardian login instead.
+
+## Production settings
+
+Set these on the Railway web service. The cron service references the web
+service's variables, so it must receive the same ones.
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `DJANGO_SECRET_KEY` | Yes | A unique, secret value per installation. The application **refuses to start** if it is missing, blank or begins with `django-insecure-` (the development default in the repository). Generate one with `python -c "import secrets; print(secrets.token_urlsafe(64))"`. Changing it signs every user out. |
+| `DJANGO_ALLOWED_HOSTS` | Yes | Comma-separated host names this installation answers to. |
+| `DJANGO_HTTPS` | Yes, behind TLS | `True` turns on Secure cookies, the HTTPS redirect and HSTS. Left unset it is off. |
+| `DJANGO_TRUSTED_PROXIES` | Yes, behind Railway | Comma-separated proxy addresses or CIDR ranges whose `X-Forwarded-*` headers are believed. A malformed entry stops startup. Together with `DJANGO_HTTPS` it also enables the proxy HTTPS header. |
+| `DJANGO_SOURCE_HASH_KEY` | Recommended | Key for hashing network addresses. If unset it is derived from the secret key, so changing the secret key also changes it. |
+| `DJANGO_HSTS_PRELOAD` | Optional | `True` only once the site is ready for the browser preload list. |
+| `DJANGO_DEBUG` | Never in production | `True` is for local development only. It is also what lets a development machine start without a secret key. |
+
+On/off variables (`DJANGO_HTTPS`, `DJANGO_HSTS_PRELOAD`, `EMAIL_USE_TLS`) accept
+`True`/`False` in any capitalisation, and also `1`/`0`, `yes`/`no`, `on`/`off`.
+Any other value stops startup, so a typo can no longer silently switch HTTPS or
+mail encryption off.
+
+### Check a deployment without exposing secrets
+
+Never print variable values: do not run `railway variables` or `printenv`
+without discarding the values.
+
+1. List only the variable **names** on each service:
+   `railway variables --service <service> --kv | cut -d= -f1`. `DJANGO_SECRET_KEY`,
+   `DJANGO_ALLOWED_HOSTS`, `DJANGO_HTTPS` and `DJANGO_TRUSTED_PROXIES` must appear on
+   the web and cron services.
+2. From the service shell, run `python manage.py check --deploy`. It prints no
+   secrets and should report no errors. Warning `security.W021` (HSTS preload) is
+   expected until `DJANGO_HSTS_PRELOAD` is set.
+3. From outside, `curl -sI https://<host>/accounts/login/` should show
+   `strict-transport-security`, `x-frame-options: DENY`, `x-content-type-options:
+   nosniff` and a `csrftoken` cookie marked `Secure`. `curl -sI http://<host>/...`
+   should answer `301` to the `https://` address.
+
+If a deployment fails with "DJANGO_SECRET_KEY must be set", add the variable to
+the service and redeploy. The build step runs `collectstatic`, which loads the
+settings, so a missing key fails the build and the previous deployment keeps
+serving.
