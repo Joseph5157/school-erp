@@ -161,11 +161,18 @@ class HelperContractTests(OverlappingYearFixture, TestCase):
             class_teacher_duty(self.admin, self.six_a, TODAY, academic_year=self.year1)
         )
 
-    def test_sole_duty_is_only_for_the_no_record_case_and_is_never_a_default(self):
-        self.assertEqual(sole_class_teacher_duty(self.rao, self.six_a, TODAY), self.duty_y1)
-        self.assertEqual(sole_class_teacher_duty(self.iyer, self.six_a, TODAY), self.duty_y2)
-        self.assertIsNone(sole_class_teacher_duty(self.admin, self.six_a, TODAY))
-        self.assertIsNone(sole_class_teacher_duty(self.rao, self.six_b, TODAY))
+    def test_sole_duty_is_refused_for_everyone_when_the_section_has_two_class_teachers(self):
+        for teacher in (self.rao, self.iyer, self.admin):
+            self.assertIsNone(sole_class_teacher_duty(teacher, self.six_a, TODAY))
+
+    def test_sole_duty_needs_exactly_one_assignment_and_it_must_be_the_users(self):
+        only = SectionClassTeacher.assign(
+            teacher=self.rao, academic_year=self.year1, section=self.six_b,
+            start_date=date(2026, 6, 1),
+        )
+        self.assertEqual(sole_class_teacher_duty(self.rao, self.six_b, TODAY), only)
+        self.assertIsNone(sole_class_teacher_duty(self.iyer, self.six_b, TODAY))
+        self.assertIsNone(sole_class_teacher_duty(self.admin, self.six_b, TODAY))
 
     def test_report_helpers_filter_by_year_when_asked_and_keep_their_default(self):
         everyone = {row["student"].full_name for row in reports.section_summary(
@@ -182,6 +189,37 @@ class HelperContractTests(OverlappingYearFixture, TestCase):
         for year in (self.year1, self.year2):
             rows = reports.missing_attendance(TODAY, TODAY, section=self.six_a, academic_year=year)
             self.assertEqual(len(rows), 1)
+
+
+class DashboardIsYearBoundTests(OverlappingYearFixture, TestCase):
+    """The teacher home page shows register state for the teacher's own year only."""
+
+    def home_rows(self, client):
+        return client.get(reverse("core:my-home")).context["attendance"]
+
+    def test_a_submitted_register_of_one_year_is_not_shown_to_the_other_years_teacher(self):
+        AttendanceRegister.objects.create(
+            academic_year=self.year1, class_grade=self.grade6, section=self.six_a, date=TODAY,
+            status=AttendanceRegister.Status.SUBMITTED, submitted_by=self.rao,
+            submitted_at="2026-10-12T10:00:00+05:30",
+        )
+        (y1_row,) = self.home_rows(self.client_y1)
+        self.assertEqual(y1_row["state"], "SUBMITTED")
+        self.assertEqual(y1_row["register"].academic_year, self.year1)
+        (y2_row,) = self.home_rows(self.client_y2)
+        self.assertEqual(y2_row["state"], "NOT_TAKEN")
+        self.assertIsNone(y2_row["register"])
+
+    def test_a_draft_register_of_the_second_year_is_not_shown_to_the_first_years_teacher(self):
+        AttendanceRegister.objects.create(
+            academic_year=self.year2, class_grade=self.grade6, section=self.six_a, date=TODAY
+        )
+        (y2_row,) = self.home_rows(self.client_y2)
+        self.assertEqual(y2_row["state"], "DRAFT")
+        self.assertEqual(y2_row["register"].academic_year, self.year2)
+        (y1_row,) = self.home_rows(self.client_y1)
+        self.assertEqual(y1_row["state"], "NOT_TAKEN")
+        self.assertIsNone(y1_row["register"])
 
 
 class AmbiguousDutyTests(OverlappingYearFixture, TestCase):
@@ -316,13 +354,21 @@ class AttendanceIsYearBoundTests(OverlappingYearFixture, TestCase):
         self.assertEqual(self.client_y2.get(readonly).status_code, 403)
         self.assertEqual(self.client_y1.get(readonly).status_code, 200)
 
-    def test_a_register_belongs_to_the_year_of_the_teacher_who_opens_it(self):
+    def test_no_register_can_be_opened_while_two_class_teachers_hold_the_section(self):
+        """First-teacher-wins is gone: with two class teachers, opening is refused for both."""
         page = reverse("core:my-attendance", args=[self.six_a.pk])
-        self.client_y2.post(page, {"action": "open"})
+        for client in (self.client_y1, self.client_y2):
+            self.assertEqual(client.post(page, {"action": "open"}).status_code, 403)
+            self.assertEqual(client.get(page).status_code, 403)
+        self.assertFalse(AttendanceRegister.objects.exists())
+
+    def test_a_register_can_be_opened_once_the_overlap_is_resolved(self):
+        self.duty_y2.end(date(2026, 10, 11))  # an administrator ends Iyer's overlapping Y2 duty
+        page = reverse("core:my-attendance", args=[self.six_a.pk])
+        self.assertEqual(self.client_y2.post(page, {"action": "open"}).status_code, 403)
+        self.client_y1.post(page, {"action": "open"})
         register = AttendanceRegister.objects.get(section=self.six_a, date=TODAY)
-        self.assertEqual(register.academic_year, self.year2)
-        self.assertEqual(self.client_y2.get(page).status_code, 200)
-        self.assertEqual(self.client_y1.get(page).status_code, 403)
+        self.assertEqual(register.academic_year, self.year1)
 
     def test_assignment_report_shows_only_the_rows_own_year(self):
         self.y1_register()

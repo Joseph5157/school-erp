@@ -200,20 +200,28 @@ def class_teacher_duty(user, section, on_date, *, academic_year):
 
 
 def sole_class_teacher_duty(user, section, on_date):
-    """The one class teacher assignment `user` holds for `section` on `on_date` in ANY year.
+    """The class teacher assignment `user` holds for `section` on `on_date`, if it is the only one.
 
     Only for opening today's register when none exists yet, the one case with no record whose
-    academic year could decide. A teacher who holds the Section in two overlapping years has
-    two assignments, which is ambiguous, so None is returned and nothing is opened. Never use
-    this to authorise access to an existing record: use `class_teacher_duty` or
-    `class_teacher_on` with that record's year.
+    academic year could decide. There must be exactly one class teacher assignment for the
+    Section on that date across ALL teachers and ALL academic years, and it must be the
+    user's. If the Section has two (two teachers in overlapping years, or one teacher in
+    both), which cohort the register belongs to is ambiguous, so it is refused for everyone:
+    an administrator must resolve the overlapping assignments first. An existing register
+    keeps its stored year. Never use this to authorise access to an existing record: use
+    `class_teacher_duty` or `class_teacher_on` with that record's year.
     """
-    duties = list(
-        class_teacher_assignments(user, on_date)
-        .filter(section=section)
+    from core.models import SectionClassTeacher
+
+    rows = list(
+        SectionClassTeacher.objects.filter(section=section)
+        .effective_on(on_date)
         .select_related("academic_year")[:2]
     )
-    return duties[0] if len(duties) == 1 else None
+    if len(rows) != 1:
+        return None
+    duty = rows[0]
+    return duty if is_teacher(user) and duty.teacher_id == user.pk else None
 
 
 def class_teacher_sections(user, on_date, *, academic_year):

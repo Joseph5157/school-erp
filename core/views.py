@@ -1096,8 +1096,10 @@ def my_home(request):
     subject_duties = list(
         current_teacher_assignments(request.user, today).select_related("section__class_grade")
     )
+    # Keyed by (Section, Academic Year): a register belongs to one year, and overlapping years
+    # can share a Section, so a Section alone would show another year's register (Gate 3A).
     registers = {
-        register.section_id: register
+        (register.section_id, register.academic_year_id): register
         for register in AttendanceRegister.objects.filter(
             date=today, section_id__in=[duty.section_id for duty in duties]
         )
@@ -1108,7 +1110,7 @@ def my_home(request):
         year = duty.academic_year
         if year.pk not in instructional:
             instructional[year.pk] = year.is_instructional_day(today)
-        register = registers.get(duty.section_id)
+        register = registers.get((duty.section_id, duty.academic_year_id))
         if not instructional[year.pk]:
             state = "NOT_INSTRUCTIONAL"
         elif register is None:
