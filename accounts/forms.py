@@ -1,4 +1,5 @@
 from django import forms
+from django.contrib.admin.forms import AdminAuthenticationForm
 from django.contrib.auth import authenticate
 from django.contrib.auth.forms import AuthenticationForm
 
@@ -11,12 +12,14 @@ GENERIC_ERROR = (
 )
 
 
-class ThrottledAuthenticationForm(AuthenticationForm):
+class ThrottledLoginMixin:
     """Sign-in with database-backed throttling and one generic error (ADR 0013).
 
-    Unknown username, wrong password, inactive login and throttled attempts
-    all produce the same message, so nothing reveals whether a username
-    exists. Events never contain the attempted text.
+    Unknown username, wrong password, inactive login, a login this door does not
+    accept (for example a non-staff login at the Django admin) and throttled attempts
+    all produce the same message, so nothing reveals whether a username exists.
+    Events never contain the attempted text. Every password-checking door uses this
+    mixin (Security Gate 1), so they share one throttle and one audit trail.
     """
 
     error_messages = {"invalid_login": GENERIC_ERROR, "inactive": GENERIC_ERROR}
@@ -44,7 +47,15 @@ class ThrottledAuthenticationForm(AuthenticationForm):
             security.record_failure(username, source)
             self._event(SecurityEvent.EventType.LOGIN_FAILED, subject, source)
             raise forms.ValidationError(GENERIC_ERROR, code="invalid_login")
-        self.confirm_login_allowed(self.user_cache)
+        try:
+            self.confirm_login_allowed(self.user_cache)
+        except forms.ValidationError:
+            # A correct password at a door that refuses this login (the admin's staff-only
+            # rule) is a failure: it counts toward the throttle and is audited.
+            self.user_cache = None
+            security.record_failure(username, source)
+            self._event(SecurityEvent.EventType.LOGIN_FAILED, subject, source)
+            raise forms.ValidationError(GENERIC_ERROR, code="invalid_login") from None
         security.clear_source_failures(username, source)
         self._event(SecurityEvent.EventType.LOGIN_SUCCEEDED, self.user_cache, source)
         return self.cleaned_data
@@ -56,3 +67,15 @@ class ThrottledAuthenticationForm(AuthenticationForm):
             subject_user=subject, source_key=source,
         )
         event.save()
+
+
+class ThrottledAuthenticationForm(ThrottledLoginMixin, AuthenticationForm):
+    """The ERP sign-in form (accounts/login/)."""
+
+
+class ThrottledAdminAuthenticationForm(ThrottledLoginMixin, AdminAuthenticationForm):
+    """The Django admin sign-in form: the same throttle and audit, and still staff-only.
+
+    AdminAuthenticationForm.confirm_login_allowed still refuses non-staff logins; the mixin
+    turns that refusal into a counted, audited failure with the generic message.
+    """
