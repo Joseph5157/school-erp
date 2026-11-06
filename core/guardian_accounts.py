@@ -27,10 +27,16 @@ from core.models import (
 
 TEMPORARY_PASSWORD_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789"
 Event = SecurityEvent.EventType
-NOT_PORTAL_MANAGEABLE = (
+_OTHER_AUTHORITY = (
     "This login holds other authority (superuser, staff, a role other than Teachers, or "
-    "direct permissions), so the guardian workflow cannot manage it. Manage it in the "
-    "Django admin."
+    "direct permissions), so the guardian workflow cannot "
+)
+# Not linked yet: the Django admin can manage the login directly.
+NOT_PORTAL_MANAGEABLE = _OTHER_AUTHORITY + "link it. Manage it in the Django admin."
+# Already linked: the Django admin refuses guardian-linked logins, so the link comes off first.
+LINKED_NOT_PORTAL_MANAGEABLE = _OTHER_AUTHORITY + (
+    "reset or rename it. Revoke its guardian account link first (revoking is always "
+    "allowed and ends its sessions), then manage the login in the Django admin."
 )
 
 
@@ -49,9 +55,9 @@ def is_portal_manageable(user):
     return not user.groups.exclude(name=TEACHERS_GROUP_NAME).exists()
 
 
-def require_portal_manageable(user):
+def require_portal_manageable(user, *, linked=False):
     if not is_portal_manageable(user):
-        raise ValidationError(NOT_PORTAL_MANAGEABLE)
+        raise ValidationError(LINKED_NOT_PORTAL_MANAGEABLE if linked else NOT_PORTAL_MANAGEABLE)
 
 
 def generate_temporary_password():
@@ -180,7 +186,7 @@ def _lock_account(account, *, require_manageable=False):
     if not account.is_active:
         raise ValidationError("This guardian account link has been revoked.")
     if require_manageable:
-        require_portal_manageable(account.user)
+        require_portal_manageable(account.user, linked=True)
     return account
 
 

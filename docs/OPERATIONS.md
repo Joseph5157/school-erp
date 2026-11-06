@@ -49,3 +49,28 @@ After setting the variables, from the Railway service shell:
 ```
 python manage.py sendtestemail --admins
 ```
+
+## Privileged login linked to a guardian
+
+The guardian workflow only links, resets or renames a login that is not a
+superuser or staff, holds no direct permission and belongs to no group other
+than Teachers (`core/guardian_accounts.py:is_portal_manageable`). A teacher who
+is also a parent is still allowed. Django admin refuses password changes and
+username edits for a login with an **active** guardian link
+(`accounts/admin.py`), and that protection stays.
+
+If a linked login gains other authority, or an administrator needs to manage a
+login that cannot be linked, use this order. Both steps need an administrator
+who holds the permission:
+
+1. Revoke the guardian account link: Guardians, open the guardian, Revoke
+   account link, give a reason. Revoking is never blocked, is recorded as an
+   audit event (account link revoked) and ends every session of that login. It
+   does not change the student access grants; revoke those separately if they
+   should end too.
+2. Manage the login in the Django admin (`/admin/`) as a superuser, or as staff
+   who hold the user permissions: change its password or username there. Once
+   the link is revoked the admin protection no longer applies.
+
+Do not link the login again until it has only the Teachers group. Use a
+separate guardian login instead.

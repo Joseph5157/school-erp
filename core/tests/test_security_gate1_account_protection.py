@@ -37,6 +37,21 @@ class PrivilegedTargetFixture(GuardianFixture):
             note="Seen in person", actor=self.admin,
         )
 
+    def promote(self, user, kind):
+        """Give an already-linked login authority beyond a teacher or parent."""
+        if kind == "superuser":
+            user.is_superuser = True
+            user.save(update_fields=["is_superuser"])
+        elif kind == "staff":
+            user.is_staff = True
+            user.save(update_fields=["is_staff"])
+        elif kind == "disallowed group":
+            user.groups.add(Group.objects.get(name="School Administrators"))
+        elif kind == "direct permission":
+            user.user_permissions.add(Permission.objects.get(codename="view_student"))
+        else:
+            raise AssertionError(kind)
+
     def privileged_logins(self):
         """One login per way of holding authority beyond a plain teacher or parent."""
         superuser = self.make_login("root", is_superuser=True)
@@ -141,6 +156,89 @@ class ExistingLinkRecheckTests(PrivilegedTargetFixture, TestCase):
                                         actor=self.admin),
             "meena.t2",
         )
+
+
+class EveryLaterPromotionTests(PrivilegedTargetFixture, TestCase):
+    """Reset and rename are refused for every kind of authority gained after linking."""
+
+    KINDS = ("superuser", "staff", "disallowed group", "direct permission")
+
+    def test_refusal_leaves_credentials_and_username_unchanged(self):
+        for kind in self.KINDS:
+            with self.subTest(kind):
+                slug = kind.replace(" ", "-")
+                user = self.make_login(f"parent.{slug}")
+                account = self.link(user.username)
+                self.promote(user, kind)
+                before = User.objects.get(pk=user.pk)
+
+                with self.assertRaises(ValidationError):
+                    ga.reset_guardian_password(account=account, actor=self.admin)
+                with self.assertRaises(ValidationError):
+                    ga.change_guardian_username(account=account, new_username=f"renamed.{slug}",
+                                                actor=self.admin)
+
+                after = User.objects.get(pk=user.pk)
+                self.assertEqual(after.username, before.username)
+                self.assertEqual(after.password, before.password)  # hash untouched
+                self.assertTrue(after.check_password(PASSWORD))
+                self.assertFalse(after.must_change_password)
+                self.assertEqual(after.session_version, before.session_version)
+                self.assertFalse(SecurityEvent.objects.filter(
+                    subject_user=user,
+                    event_type__in=[Event.PASSWORD_RESET_BY_ADMIN, Event.USERNAME_CHANGED],
+                ).exists())
+                ga.revoke_account_link(account=account, actor=self.admin, reason="Cleanup")
+
+    def test_a_teacher_who_gains_another_role_after_linking_is_refused(self):
+        teacher = self.make_login("meena.teacher")
+        teacher.groups.add(Group.objects.get(name=TEACHERS_GROUP_NAME))
+        account = self.link("meena.teacher")
+        self.promote(teacher, "disallowed group")
+        with self.assertRaises(ValidationError):
+            ga.reset_guardian_password(account=account, actor=self.admin)
+
+
+class RecoveryGuidanceTests(PrivilegedTargetFixture, TestCase):
+    """The error text must name a step that works while keeping the admin protection."""
+
+    def test_unlinked_refusal_points_to_the_django_admin(self):
+        self.make_login("root", is_superuser=True)
+        with self.assertRaises(ValidationError) as caught:
+            self.link("root")
+        message = " ".join(caught.exception.messages)
+        self.assertIn("Django admin", message)
+        self.assertNotIn("Revoke", message)
+
+    def test_linked_refusal_says_to_revoke_the_link_first(self):
+        user = self.make_login("meena.parent")
+        account = self.link("meena.parent")
+        self.promote(user, "superuser")
+        with self.assertRaises(ValidationError) as caught:
+            ga.reset_guardian_password(account=account, actor=self.admin)
+        message = " ".join(caught.exception.messages)
+        self.assertIn("Revoke its guardian account link first", message)
+        self.assertIn("Django admin", message)
+
+    def test_django_admin_stays_blocked_until_the_link_is_revoked(self):
+        user = self.make_login("meena.parent")
+        account = self.link("meena.parent")
+        self.promote(user, "superuser")
+        site_admin = self.make_login("site.admin", is_staff=True, is_superuser=True)
+        client = self.client_class()
+        client.force_login(site_admin)
+        url = reverse("admin:auth_user_password_change", args=[user.pk])
+        self.assertEqual(client.get(url).status_code, 403)  # protection kept while linked
+        ga.revoke_account_link(account=account, actor=self.admin, reason="Gained authority")
+        self.assertEqual(client.get(url).status_code, 200)  # documented recovery path works
+
+    def test_revoking_ends_the_sessions_of_the_login(self):
+        user = self.make_login("meena.parent")
+        account = self.link("meena.parent")
+        self.promote(user, "staff")
+        version = User.objects.get(pk=user.pk).session_version
+        ga.revoke_account_link(account=account, actor=self.admin, reason="Gained authority")
+        self.assertGreater(User.objects.get(pk=user.pk).session_version, version)
 
 
 class AdminLoginThrottleTests(TestCase):
