@@ -46,11 +46,13 @@ from core.authorization import (
     can_view_report_card_as_teacher,
     can_write_term_remarks,
     class_teacher_assignments,
+    class_teacher_duty,
     class_teacher_on,
     current_teacher_assignments,
     guardian_contact_visible,
     historical_teacher_assignments,
     is_teacher,
+    sole_class_teacher_duty,
     teacher_required,
     teacher_result_windows,
     teacher_student_scope,
@@ -1094,8 +1096,10 @@ def my_home(request):
     subject_duties = list(
         current_teacher_assignments(request.user, today).select_related("section__class_grade")
     )
+    # Keyed by (Section, Academic Year): a register belongs to one year, and overlapping years
+    # can share a Section, so a Section alone would show another year's register (Gate 3A).
     registers = {
-        register.section_id: register
+        (register.section_id, register.academic_year_id): register
         for register in AttendanceRegister.objects.filter(
             date=today, section_id__in=[duty.section_id for duty in duties]
         )
@@ -1106,7 +1110,7 @@ def my_home(request):
         year = duty.academic_year
         if year.pk not in instructional:
             instructional[year.pk] = year.is_instructional_day(today)
-        register = registers.get(duty.section_id)
+        register = registers.get((duty.section_id, duty.academic_year_id))
         if not instructional[year.pk]:
             state = "NOT_INSTRUCTIONAL"
         elif register is None:
@@ -1200,25 +1204,37 @@ def my_home(request):
 # --- Phase 5 Gate 3: class teacher attendance (ADR 0012 D4, D5, D7) -------
 
 
+def _attendance_year(user, section, today, register):
+    """The Academic Year `user` may take `section`'s register for `today` in, or PermissionDenied.
+
+    Security Gate 3A: a register belongs to its own Academic Year, and only that year's class
+    teacher may act on it, never another year's class teacher of the same Section. With no
+    register yet, the teacher must hold exactly one assignment for the Section today.
+    """
+    if register is None:
+        duty = sole_class_teacher_duty(user, section, today)
+    else:
+        duty = class_teacher_duty(
+            user, section, today, academic_year=register.academic_year_id
+        )
+    if duty is None or not can_take_attendance(
+        user, section, today, academic_year=duty.academic_year_id
+    ):
+        raise PermissionDenied
+    return duty.academic_year
+
+
 @teacher_required
 def my_attendance(request, section_pk):
     """Today's register for a Section the user is class teacher of today."""
     section = get_object_or_404(Section.objects.select_related("class_grade"), pk=section_pk)
     today = business_today()
-    if not can_take_attendance(request.user, section, today):
-        raise PermissionDenied
-    duty = (
-        class_teacher_assignments(request.user, today)
-        .filter(section=section)
-        .select_related("academic_year")
-        .get()
-    )
-    year = duty.academic_year
     register = (
         AttendanceRegister.objects.filter(section=section, date=today)
         .select_related("submitted_by")
         .first()
     )
+    year = _attendance_year(request.user, section, today, register)
     if request.method == "POST":
         action = request.POST.get("action")
         if action == "open" and register is None:
@@ -1316,13 +1332,14 @@ def my_attendance_submit(request, section_pk):
     """GET confirms today's complete register; POST makes it official."""
     section = get_object_or_404(Section.objects.select_related("class_grade"), pk=section_pk)
     today = business_today()
-    if not can_take_attendance(request.user, section, today):
-        raise PermissionDenied
-    register = get_object_or_404(
-        AttendanceRegister.objects.select_related("academic_year", "section__class_grade"),
-        section=section,
-        date=today,
+    register = (
+        AttendanceRegister.objects.select_related("academic_year", "section__class_grade")
+        .filter(section=section, date=today)
+        .first()
     )
+    _attendance_year(request.user, section, today, register)
+    if register is None:
+        raise Http404("No register for today.")
     attendance_url = reverse("core:my-attendance", args=[section.pk])
     if request.method == "POST":
         try:
@@ -1358,9 +1375,10 @@ def my_attendance_autosave(request, section_pk):
         return HttpResponse("Autosave needs HTMX; use the Save draft button.", status=400)
     section = get_object_or_404(Section, pk=section_pk)
     today = business_today()
-    if not can_take_attendance(request.user, section, today):
-        raise PermissionDenied
-    register = get_object_or_404(AttendanceRegister, section=section, date=today)
+    register = AttendanceRegister.objects.filter(section=section, date=today).first()
+    _attendance_year(request.user, section, today, register)
+    if register is None:
+        raise Http404("No register for today.")
 
     def reply(state, enrollment, message, status):
         context = {"state": state, "enrollment": enrollment, "message": message}
@@ -1443,9 +1461,11 @@ def my_attendance_assignment(request, pk):
     previous_month = months[index - 1] if index > 0 else None
     next_month = months[index + 1] if index + 1 < len(months) else None
     start, end = max(first, month_start), min(last, month_end)
-    summary = reports.section_summary(row.section, start, end)
+    summary = reports.section_summary(row.section, start, end, academic_year=row.academic_year)
     registers = list(
-        AttendanceRegister.objects.filter(section=row.section, date__gte=start, date__lte=end)
+        AttendanceRegister.objects.filter(
+            section=row.section, academic_year=row.academic_year, date__gte=start, date__lte=end
+        )
         .annotate(
             present=Count("entries", filter=Q(entries__status=AttendanceStatus.PRESENT)),
             absent=Count("entries", filter=Q(entries__status=AttendanceStatus.ABSENT)),
@@ -1454,7 +1474,10 @@ def my_attendance_assignment(request, pk):
     )
     taken = {register.date for register in registers}
     missing = [
-        item for item in reports.missing_attendance(start, end, section=row.section)
+        item
+        for item in reports.missing_attendance(
+            start, end, section=row.section, academic_year=row.academic_year
+        )
         if item["date"] not in taken
     ]
     return render(
@@ -1485,7 +1508,7 @@ def my_attendance_register(request, pk):
         pk=pk,
     )
     if register.date > business_today() or not class_teacher_on(
-        request.user, register.section, register.date
+        request.user, register.section, register.date, academic_year=register.academic_year_id
     ):
         raise PermissionDenied
     entries = register.entries.select_related("academic_enrollment__student").order_by(
@@ -1504,37 +1527,50 @@ def my_students(request):
     today = business_today()
     enrollments = list(
         teacher_student_scope(request.user, today)
-        .select_related("student", "section__class_grade")
-        .order_by("section__class_grade__display_order", "section__name", "student__full_name")
+        .select_related("student", "section__class_grade", "academic_year")
+        .order_by(
+            "section__class_grade__display_order", "section__name",
+            "academic_year__start_date", "student__full_name",
+        )
     )
-    class_sections = set(
-        class_teacher_assignments(request.user, today).values_list("section_id", flat=True)
+    # Security Gate 3A: everything below is keyed by (Section, Academic Year). Overlapping
+    # years can share a Section, so a Section alone would mix two cohorts, label the other
+    # year's cohort "Class teacher", and take its register state for the wrong year.
+    class_duties = set(
+        class_teacher_assignments(request.user, today).values_list("section_id", "academic_year_id")
     )
-    submitted_sections = set(
-        AttendanceRegister.objects.filter(
-            date=today, section_id__in=class_sections,
+    submitted_registers = {
+        (section_id, academic_year_id): register_id
+        for register_id, section_id, academic_year_id in AttendanceRegister.objects.filter(
+            date=today,
+            section_id__in={section_id for section_id, _ in class_duties},
             status=AttendanceRegister.Status.SUBMITTED,
-        ).values_list("section_id", flat=True)
-    )
+        ).values_list("pk", "section_id", "academic_year_id")
+        if (section_id, academic_year_id) in class_duties
+    }
     today_status = dict(
         AttendanceEntry.objects.filter(
-            register__date=today, register__section_id__in=submitted_sections,
-            register__status=AttendanceRegister.Status.SUBMITTED,
+            register_id__in=submitted_registers.values()
         ).values_list("academic_enrollment_id", "status")
     )
-    groups = []
+    groups = {}
     for enrollment in enrollments:
         enrollment.today_status = today_status.get(enrollment.pk)
-        if not groups or groups[-1]["section"].pk != enrollment.section_id:
-            groups.append(
-                {
-                    "section": enrollment.section,
-                    "is_class_teacher": enrollment.section_id in class_sections,
-                    "attendance_submitted": enrollment.section_id in submitted_sections,
-                    "enrollments": [],
-                }
-            )
-        groups[-1]["enrollments"].append(enrollment)
+        key = (enrollment.section_id, enrollment.academic_year_id)
+        if key not in groups:
+            groups[key] = {
+                "section": enrollment.section,
+                "academic_year": enrollment.academic_year,
+                "is_class_teacher": key in class_duties,
+                "attendance_submitted": key in submitted_registers,
+                "enrollments": [],
+            }
+        groups[key]["enrollments"].append(enrollment)
+    groups = list(groups.values())
+    sections_shown = [group["section"].pk for group in groups]
+    for group in groups:
+        # Name the year only when one Section appears for two years, so headings stay distinct.
+        group["show_year"] = sections_shown.count(group["section"].pk) > 1
     return render(request, "core/my_students.html", {"groups": groups, "today": today})
 
 

@@ -201,22 +201,26 @@ def expected_registers(start, end, section=None):
     return expected
 
 
-def missing_attendance(start, end, section=None):
+def missing_attendance(start, end, section=None, academic_year=None):
     """Report 5: expected Section/dates whose register is missing or DRAFT.
 
     Non-instructional dates are never listed. Returns dicts sorted by date
     then Section, each with `state` NOT_TAKEN or DRAFT and the register (or
-    None).
+    None). With `academic_year` (an AcademicYear or its id), only that year's
+    expected dates and registers count (Security Gate 3A).
     """
+    year_id = getattr(academic_year, "pk", academic_year)
     expected = expected_registers(start, end, section=section)
+    if year_id is not None:
+        expected = {item for item in expected if item[2] == year_id}
     if not expected:
         return []
-    registers = {
-        (register.date, register.section_id): register
-        for register in AttendanceRegister.objects.filter(
-            date__gte=start, date__lte=end, section_id__in={s for _, s, _ in expected}
-        )
-    }
+    register_rows = AttendanceRegister.objects.filter(
+        date__gte=start, date__lte=end, section_id__in={s for _, s, _ in expected}
+    )
+    if year_id is not None:
+        register_rows = register_rows.filter(academic_year_id=year_id)
+    registers = {(register.date, register.section_id): register for register in register_rows}
     sections = Section.objects.select_related("class_grade").in_bulk(
         {section_id for _, section_id, _ in expected}
     )
@@ -258,14 +262,21 @@ def monthly_section_summary(section, year, month):
     return section_summary(section, start, end)
 
 
-def section_summary(section, start, end):
+def section_summary(section, start, end, academic_year=None):
     """Report 6 over any inclusive date window (used by month and by Phase 5
-    teacher views limited to a class teacher's assignment dates)."""
-    entries = reportable_entries(
-        AttendanceEntry.objects.filter(
-            register__section=section, register__date__gte=start, register__date__lte=end
-        )
+    teacher views limited to a class teacher's assignment dates).
+
+    With `academic_year` (an AcademicYear or its id), only that year's registers,
+    enrollments and expected days count. A class teacher's view passes it, because
+    Sections are year-agnostic and years may overlap (Security Gate 3A).
+    """
+    year_id = getattr(academic_year, "pk", academic_year)
+    entry_rows = AttendanceEntry.objects.filter(
+        register__section=section, register__date__gte=start, register__date__lte=end
     )
+    if year_id is not None:
+        entry_rows = entry_rows.filter(register__academic_year_id=year_id)
+    entries = reportable_entries(entry_rows)
     per_student = defaultdict(lambda: {"present": 0, "absent": 0})
     for student_id, status, n in (
         entries.order_by()
@@ -275,11 +286,13 @@ def section_summary(section, start, end):
         key = "present" if status == AttendanceStatus.PRESENT else "absent"
         per_student[student_id][key] += n
 
-    enrollments = (
-        AcademicEnrollment.objects.filter(section=section, start_date__lte=end)
-        .filter(Q(end_date__isnull=True) | Q(end_date__gte=start))
-        .select_related("student")
-        .order_by("student__full_name", "start_date")
+    enrollments = AcademicEnrollment.objects.filter(
+        section=section, start_date__lte=end
+    ).filter(Q(end_date__isnull=True) | Q(end_date__gte=start))
+    if year_id is not None:
+        enrollments = enrollments.filter(academic_year_id=year_id)
+    enrollments = enrollments.select_related("student").order_by(
+        "student__full_name", "start_date"
     )
     rows = []
     seen = set()
@@ -298,15 +311,20 @@ def section_summary(section, start, end):
             }
         )
 
-    expected_days = {d for d, _, _ in expected_registers(start, end, section=section)}
-    submitted_days = set(
-        AttendanceRegister.objects.filter(
-            section=section,
-            date__gte=start,
-            date__lte=end,
-            status=AttendanceRegister.Status.SUBMITTED,
-        ).values_list("date", flat=True)
+    expected_days = {
+        d
+        for d, _, expected_year in expected_registers(start, end, section=section)
+        if year_id is None or expected_year == year_id
+    }
+    submitted = AttendanceRegister.objects.filter(
+        section=section,
+        date__gte=start,
+        date__lte=end,
+        status=AttendanceRegister.Status.SUBMITTED,
     )
+    if year_id is not None:
+        submitted = submitted.filter(academic_year_id=year_id)
+    submitted_days = set(submitted.values_list("date", flat=True))
     totals = counts(entries)
     totals.update(
         {

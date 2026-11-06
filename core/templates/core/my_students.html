@@ -6,7 +6,7 @@
 <p class="text-muted">Students enrolled today ({{ today }}) in Sections you are class teacher of or teach a Subject in.</p>
 {% for group in groups %}
 <section class="erp-students-group" aria-labelledby="students-section-{{ forloop.counter }}">
-<h2 class="erp-section-title" id="students-section-{{ forloop.counter }}">{{ group.section }} {% if group.is_class_teacher %}<span class="erp-pill is-accepted">Class teacher</span>{% endif %}</h2>
+<h2 class="erp-section-title" id="students-section-{{ forloop.counter }}">{{ group.section }}{% if group.show_year %} <span class="text-muted small">({{ group.academic_year }})</span>{% endif %} {% if group.is_class_teacher %}<span class="erp-pill is-accepted">Class teacher</span>{% endif %}</h2>
 {% if group.is_class_teacher and not group.attendance_submitted %}<p class="text-muted small mb-2">Today's attendance not submitted yet.</p>{% endif %}
 <ul class="erp-students list-unstyled">
     {% for enrollment in group.enrollments %}
