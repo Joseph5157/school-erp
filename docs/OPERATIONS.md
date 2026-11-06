@@ -104,8 +104,9 @@ or `off`.
   `migrate`, `shell` and `runserver` (see `.env.example`). A debug run may leave the
   secret key unset, stays on plain HTTP and needs no proxy setting. You can still set
   `DJANGO_HTTPS=True` locally to try the HTTPS behaviour.
-- **Tests:** `manage.py test` runs on plain HTTP with a fast password hasher whatever
-  the variables say, and needs no key.
+- **Tests:** `manage.py test` uses plain HTTP by default. An explicit
+  `DJANGO_HTTPS=True` enables HTTPS behavior during tests. Tests also use a fast
+  password hasher and need no key.
 - **CI** (`.github/workflows/ci.yml`): sets `DJANGO_SECRET_KEY` to a placeholder and
   `DJANGO_DEBUG=False`, then runs `manage.py check`, `makemigrations --check --dry-run`
   and `manage.py test`. HTTPS is on by default in the first two, which send no
