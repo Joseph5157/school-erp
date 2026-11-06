@@ -84,16 +84,30 @@ service's variables, so it must receive the same ones.
 |---|---|---|
 | `DJANGO_SECRET_KEY` | Yes | A unique, secret value per installation. The application **refuses to start** if it is missing, blank or begins with `django-insecure-` (the development default in the repository). Generate one with `python -c "import secrets; print(secrets.token_urlsafe(64))"`. Changing it signs every user out. |
 | `DJANGO_ALLOWED_HOSTS` | Yes | Comma-separated host names this installation answers to. |
-| `DJANGO_HTTPS` | Yes, behind TLS | `True` turns on Secure cookies, the HTTPS redirect and HSTS. Left unset it is off. |
+| `DJANGO_HTTPS` | Leave unset, or `True` | In production HTTPS is **on by default**: Secure cookies, the HTTPS redirect and HSTS. An explicit `False` stops startup, so HTTPS cannot be lost silently. Behind Railway it needs `DJANGO_TRUSTED_PROXIES` as well, or the HTTPS redirect loops. |
 | `DJANGO_TRUSTED_PROXIES` | Yes, behind Railway | Comma-separated proxy addresses or CIDR ranges whose `X-Forwarded-*` headers are believed. A malformed entry stops startup. Together with `DJANGO_HTTPS` it also enables the proxy HTTPS header. |
 | `DJANGO_SOURCE_HASH_KEY` | Recommended | Key for hashing network addresses. If unset it is derived from the secret key, so changing the secret key also changes it. |
-| `DJANGO_HSTS_PRELOAD` | Optional | `True` only once the site is ready for the browser preload list. |
+| `DJANGO_HSTS_PRELOAD` | Optional | Default and valid value `False`. Set `True` only once the site is ready for the browser preload list. |
 | `DJANGO_DEBUG` | Never in production | `True` is for local development only. It is also what lets a development machine start without a secret key. |
 
 On/off variables (`DJANGO_HTTPS`, `DJANGO_HSTS_PRELOAD`, `EMAIL_USE_TLS`) accept
 `True`/`False` in any capitalisation, and also `1`/`0`, `yes`/`no`, `on`/`off`.
 Any other value stops startup, so a typo can no longer silently switch HTTPS or
 mail encryption off.
+
+### Local development, tests and CI
+
+- **Local development:** set `DJANGO_DEBUG=True` before `manage.py` commands such as
+  `migrate`, `shell` and `runserver` (see `.env.example`). A debug run may leave the
+  secret key unset, stays on plain HTTP and needs no proxy setting. You can still set
+  `DJANGO_HTTPS=True` locally to try the HTTPS behaviour.
+- **Tests:** `manage.py test` runs on plain HTTP with a fast password hasher whatever
+  the variables say, and needs no key.
+- **CI** (`.github/workflows/ci.yml`): sets `DJANGO_SECRET_KEY` to a placeholder and
+  `DJANGO_DEBUG=False`, then runs `manage.py check`, `makemigrations --check --dry-run`
+  and `manage.py test`. HTTPS is on by default in the first two, which send no
+  requests, so CI needs no HTTPS or proxy variables. Never copy the placeholder key to
+  a deployment.
 
 ### Check a deployment without exposing secrets
 

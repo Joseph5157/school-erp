@@ -45,6 +45,25 @@ def parse_flag(name, raw, default=False):
     )
 
 
+def resolve_https(raw, *, debug, testing):
+    """The DJANGO_HTTPS setting for this run, so HTTPS is never silently lost in production.
+
+    Debug and test runs keep the plain-HTTP default, because local servers and the test
+    client have no TLS. In production an unset or blank variable means HTTPS on (Secure
+    cookies, HTTPS redirect, HSTS), and an explicit false is refused rather than honoured.
+    """
+    if debug or testing:
+        return parse_flag("DJANGO_HTTPS", raw)
+    if raw is not None and not raw.strip():
+        raw = None
+    if parse_flag("DJANGO_HTTPS", raw, default=True):
+        return True
+    raise ImproperlyConfigured(
+        "DJANGO_HTTPS is turned off, but production must serve over HTTPS. Remove the "
+        "variable or set it to True. For local development set DJANGO_DEBUG=True."
+    )
+
+
 def parse_trusted_proxies(raw):
     """Split DJANGO_TRUSTED_PROXIES and refuse any entry that is not an address or CIDR range."""
     entries = [value.strip() for value in raw.split(",") if value.strip()]
