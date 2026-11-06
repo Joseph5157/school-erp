@@ -6,6 +6,13 @@ import os
 import sys
 from pathlib import Path
 
+from config.deployment_safety import (
+    check_secret_key,
+    parse_flag,
+    parse_trusted_proxies,
+    resolve_https,
+)
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
@@ -17,6 +24,9 @@ SECRET_KEY = os.environ.get(
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get("DJANGO_DEBUG", "False") == "True"
+
+# True only under `manage.py test`. Tests run on plain HTTP with fast hashers.
+TESTING = len(sys.argv) > 1 and sys.argv[1] == "test"
 
 ALLOWED_HOSTS = [
     host.strip()
@@ -121,26 +131,24 @@ SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SAMESITE = "Lax"
 
-# Production HTTPS (set DJANGO_HTTPS=True behind TLS): Secure cookies, HTTPS
-# redirect and HSTS. Off by default so local development and tests run on
-# plain HTTP.
-HTTPS = os.environ.get("DJANGO_HTTPS", "False") == "True"
+# Production HTTPS: Secure cookies, HTTPS redirect and HSTS. On by default outside debug
+# and test runs; an explicit DJANGO_HTTPS=False is refused there, so HTTPS cannot be lost
+# silently. Local development and tests use plain HTTP by default; an explicit
+# DJANGO_HTTPS=True enables HTTPS behavior.
+HTTPS = resolve_https(os.environ.get("DJANGO_HTTPS"), debug=DEBUG, testing=TESTING)
 SESSION_COOKIE_SECURE = HTTPS
 CSRF_COOKIE_SECURE = HTTPS
 SECURE_SSL_REDIRECT = HTTPS
 SECURE_HSTS_SECONDS = 31536000 if HTTPS else 0
 SECURE_HSTS_INCLUDE_SUBDOMAINS = HTTPS
-SECURE_HSTS_PRELOAD = os.environ.get("DJANGO_HSTS_PRELOAD", "False") == "True"
+SECURE_HSTS_PRELOAD = parse_flag("DJANGO_HSTS_PRELOAD", os.environ.get("DJANGO_HSTS_PRELOAD"))
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 
 # OD-3: forwarded headers are trusted only from these proxy addresses/CIDRs
-# (comma-separated). Empty: X-Forwarded-For is ignored.
-TRUSTED_PROXIES = [
-    value.strip()
-    for value in os.environ.get("DJANGO_TRUSTED_PROXIES", "").split(",")
-    if value.strip()
-]
+# (comma-separated). Empty: X-Forwarded-For is ignored. A malformed entry stops startup
+# instead of being skipped, which would silently drop the proxy's trust.
+TRUSTED_PROXIES = parse_trusted_proxies(os.environ.get("DJANGO_TRUSTED_PROXIES", ""))
 if TRUSTED_PROXIES and HTTPS:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 # Dedicated key for hashing network sources; defaults to a value derived from
@@ -206,7 +214,10 @@ STORAGES = {
 
 # The manifest storage needs `collectstatic` first; tests and local DEBUG use plain storage
 # so `{% static %}` works without it. Production (DEBUG off, not testing) is unchanged.
-TESTING = len(sys.argv) > 1 and sys.argv[1] == "test"
+# Security Gate 2: production refuses to start with a missing, blank or development-default
+# secret key. Debug and test runs are unchanged.
+check_secret_key(SECRET_KEY, debug=DEBUG, testing=TESTING)
+
 if DEBUG or TESTING:
     STORAGES["staticfiles"]["BACKEND"] = "django.contrib.staticfiles.storage.StaticFilesStorage"
 
@@ -242,7 +253,7 @@ if EMAIL_HOST:
     EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
     EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
     EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
-    EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True") == "True"
+    EMAIL_USE_TLS = parse_flag("EMAIL_USE_TLS", os.environ.get("EMAIL_USE_TLS"), default=True)
     EMAIL_TIMEOUT = 10
 else:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
