@@ -133,7 +133,8 @@ CSRF_COOKIE_SAMESITE = "Lax"
 
 # Production HTTPS: Secure cookies, HTTPS redirect and HSTS. On by default outside debug
 # and test runs; an explicit DJANGO_HTTPS=False is refused there, so HTTPS cannot be lost
-# silently. Local development (DJANGO_DEBUG=True) and tests stay on plain HTTP.
+# silently. Local development and tests use plain HTTP by default; an explicit
+# DJANGO_HTTPS=True enables HTTPS behavior.
 HTTPS = resolve_https(os.environ.get("DJANGO_HTTPS"), debug=DEBUG, testing=TESTING)
 SESSION_COOKIE_SECURE = HTTPS
 CSRF_COOKIE_SECURE = HTTPS
