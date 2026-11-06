@@ -17,10 +17,47 @@ from django.utils import timezone
 
 from accounts.models import SecurityEvent
 from accounts.usernames import clean_new_username, normalize_username
-from core.models import Guardian, GuardianAccount, GuardianStudentAccess, StudentGuardian
+from core.models import (
+    TEACHERS_GROUP_NAME,
+    Guardian,
+    GuardianAccount,
+    GuardianStudentAccess,
+    StudentGuardian,
+)
 
 TEMPORARY_PASSWORD_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789"
 Event = SecurityEvent.EventType
+_OTHER_AUTHORITY = (
+    "This login holds other authority (superuser, staff, a role other than Teachers, or "
+    "direct permissions), so the guardian workflow cannot "
+)
+# Not linked yet: the Django admin can manage the login directly.
+NOT_PORTAL_MANAGEABLE = _OTHER_AUTHORITY + "link it. Manage it in the Django admin."
+# Already linked: the Django admin refuses guardian-linked logins, so the link comes off first.
+LINKED_NOT_PORTAL_MANAGEABLE = _OTHER_AUTHORITY + (
+    "reset or rename it. Revoke its guardian account link first (revoking is always "
+    "allowed and ends its sessions), then manage the login in the Django admin."
+)
+
+
+def is_portal_manageable(user):
+    """The one rule for which logins the guardian workflow may link, reset or rename.
+
+    Security Gate 1. A target is not a superuser or staff, holds no direct permission and
+    belongs to no group other than Teachers. A teacher who is also a parent stays eligible
+    (ADR 0013, P4). Anyone with other authority is managed in the Django admin: letting a
+    guardian-account permission reset their password would be privilege escalation.
+    """
+    if user.is_superuser or user.is_staff:
+        return False
+    if user.user_permissions.exists():
+        return False
+    return not user.groups.exclude(name=TEACHERS_GROUP_NAME).exists()
+
+
+def require_portal_manageable(user, *, linked=False):
+    if not is_portal_manageable(user):
+        raise ValidationError(LINKED_NOT_PORTAL_MANAGEABLE if linked else NOT_PORTAL_MANAGEABLE)
 
 
 def generate_temporary_password():
@@ -121,6 +158,8 @@ def link_existing_login(*, guardian, username, method, note, actor):
             guardian = _lock_guardian(guardian)
             if active_account(guardian) is not None:
                 raise ValidationError("This guardian already has an active portal account.")
+            user = get_user_model().objects.select_for_update().get(pk=user.pk)
+            require_portal_manageable(user)
             if GuardianAccount.objects.filter(user=user, revoked_at__isnull=True).exists():
                 raise ValidationError("That login is already linked to another guardian.")
             account = GuardianAccount.objects.create(
@@ -135,12 +174,19 @@ def link_existing_login(*, guardian, username, method, note, actor):
     return account
 
 
-def _lock_account(account):
+def _lock_account(account, *, require_manageable=False):
+    """Lock an active link. Reset and rename also re-check the login's current authority.
+
+    Revoking never needs the check, so an administrator can always end a link, including
+    one whose login gained privileges after it was linked.
+    """
     account = GuardianAccount.objects.select_for_update().select_related("user").get(
         pk=account.pk
     )
     if not account.is_active:
         raise ValidationError("This guardian account link has been revoked.")
+    if require_manageable:
+        require_portal_manageable(account.user, linked=True)
     return account
 
 
@@ -161,7 +207,7 @@ def revoke_account_link(*, account, actor, reason):
 
 def change_guardian_username(*, account, new_username, actor):
     with transaction.atomic():
-        account = _lock_account(account)
+        account = _lock_account(account, require_manageable=True)
         user = account.user
         username = clean_new_username(new_username, exclude_user=user)
         try:
@@ -178,7 +224,7 @@ def reset_guardian_password(*, account, actor):
     """New temporary password, forced change, every session ended. Returns the password."""
     password = generate_temporary_password()
     with transaction.atomic():
-        account = _lock_account(account)
+        account = _lock_account(account, require_manageable=True)
         user = account.user
         user.set_password(password)
         user.must_change_password = True

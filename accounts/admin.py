@@ -3,8 +3,12 @@ from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.forms import UserChangeForm, UserCreationForm
 from django.core.exceptions import PermissionDenied
 
+from accounts.forms import ThrottledAdminAuthenticationForm
 from accounts.models import User
 from accounts.usernames import USERNAME_HELP, clean_new_username, normalize_username
+
+# Security Gate 1: /admin/login/ shares the ERP sign-in throttle, lockout and audit events.
+admin.site.login_form = ThrottledAdminAuthenticationForm
 
 
 def is_guardian_linked(user):
