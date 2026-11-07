@@ -12,7 +12,10 @@ or local variables. The Railway console log keeps the full detail for the operat
 Django's own reporter is used (for example the technical 500 page).
 """
 
+import os
+import sysconfig
 import traceback
+from pathlib import PurePosixPath
 
 from django.conf import settings
 from django.utils import timezone
@@ -68,17 +71,49 @@ def _route(request):
     return route if route.startswith("/") else "/" + route
 
 
+def _compare_parts(path):
+    """Path components for comparison, whatever the separator style or platform case rules."""
+    return PurePosixPath(os.path.normcase(str(path)).replace("\\", "/")).parts
+
+
+def _shown_parts(path):
+    """The same components with their original spelling, for display."""
+    return PurePosixPath(str(path).replace("\\", "/")).parts
+
+
+def _under(path, root):
+    """True when `path` is inside the directory `root`, compared by whole components, so
+    /app/school-private/x.py is not inside /app/school."""
+    inside, base = _compare_parts(path), _compare_parts(root)
+    return len(inside) > len(base) and inside[: len(base)] == base
+
+
+def _safe_location(filename):
+    """A file location that never reveals where the service is installed.
+
+    Project file: relative to the project. Installed package: site-packages/... Standard
+    library: stdlib/... Anything else: external/<file name> (the name only, no directories).
+    """
+    if filename.startswith("<") and "/" not in filename and "\\" not in filename:
+        return filename  # pseudo files such as <frozen importlib._bootstrap> or <string>
+    shown, compared = _shown_parts(filename), _compare_parts(filename)
+    for marker in ("site-packages", "dist-packages"):
+        if marker in compared:
+            return "site-packages/" + "/".join(shown[compared.index(marker) + 1 :])
+    if _under(filename, settings.BASE_DIR):
+        return "/".join(shown[len(_compare_parts(settings.BASE_DIR)) :])
+    paths = sysconfig.get_paths()
+    for root in {paths.get("stdlib"), paths.get("platstdlib")} - {None}:
+        if _under(filename, root):
+            return "stdlib/" + "/".join(shown[len(_compare_parts(root)) :])
+    return "external/" + (shown[-1] if shown else "unknown")
+
+
 def _frames(tb):
-    root = str(settings.BASE_DIR)
-    lines = []
-    for frame in traceback.extract_tb(tb)[-_MAX_FRAMES:]:
-        name = frame.filename.replace("\\", "/")
-        if "/site-packages/" in name:  # library code: no need to reveal where it is installed
-            name = "site-packages/" + name.split("/site-packages/", 1)[1]
-        elif name.startswith(root.replace("\\", "/")):
-            name = name[len(root):].lstrip("/")
-        lines.append(f"    {name}:{frame.lineno} in {frame.name}")
-    return lines
+    return [
+        f"    {_safe_location(frame.filename)}:{frame.lineno} in {frame.name}"
+        for frame in traceback.extract_tb(tb)[-_MAX_FRAMES:]
+    ]
 
 
 def build_report(record):

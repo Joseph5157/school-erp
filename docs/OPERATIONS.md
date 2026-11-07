@@ -50,7 +50,10 @@ only:
   `/students/<int:pk>/edit/`, never the concrete address;
 - the **exception types** in the chain (for example `IntegrityError`, caused by
   `KeyError`);
-- the traceback locations as `file:line in function`.
+- the traceback locations as `file:line in function`, never as a full path on the
+  server: project files are relative to the project, installed packages start
+  `site-packages/`, the standard library starts `stdlib/`, and any other file shows
+  only `external/<file name>`.
 
 They never contain query-string parameters (search terms), client IP addresses or
 other request headers, cookies, form values, the signed-in username, exception

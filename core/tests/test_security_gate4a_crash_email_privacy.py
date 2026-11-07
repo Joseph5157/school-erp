@@ -11,6 +11,9 @@ Everything here uses Django's in-memory mail backend; nothing is sent.
 """
 
 import logging
+import os
+import sysconfig
+from pathlib import Path
 from unittest import mock
 
 from django.contrib.auth import get_user_model
@@ -19,6 +22,8 @@ from django.db import IntegrityError
 from django.http import HttpResponse
 from django.test import Client, SimpleTestCase, TestCase, override_settings
 from django.urls import path
+
+from config import error_reporting
 
 NAME = "Asha Verma"
 PHONE = "9876543210"
@@ -49,11 +54,21 @@ def crash_plain(request):
     raise RuntimeError("plain")
 
 
+SECRET_FILE = "/home/jdoe/private-dir/secret_module.py"
+
+
+def crash_external(request):
+    """A traceback frame whose file lives outside the project, with a private path."""
+    code = compile("def boom():\n    raise RuntimeError('external')\n\nboom()\n", SECRET_FILE, "exec")
+    exec(code, {})  # noqa: S102 - synthetic code, only to give a frame a sensitive filename
+
+
 def ok_view(request):
     return HttpResponse("ok")
 
 
 urlpatterns = [
+    path("crash/external/", crash_external),
     path("crash/value/", crash_value),
     path("crash/database/", crash_database),
     path("crash/chained/", crash_chained),
@@ -156,6 +171,11 @@ class CrashEmailPrivacyTests(TestCase):
         self.assertTrue(any("site-packages/django/" in line for line in frames))
         self.assertTrue(any("core/tests/test_security_gate4a" in line for line in frames))
 
+    def test_a_frame_from_an_external_file_shows_only_a_neutral_name(self):
+        message, text = self.report("/crash/external/")
+        self.assert_absent(text, "/home", "jdoe", "private-dir", SECRET_FILE)
+        self.assertIn("external/secret_module.py", message.body)
+
     def test_traceback_local_variables_are_not_emailed(self):
         _, text = self.report("/crash/plain/")
         self.assert_absent(text, PHONE, "guardian_phone =")
@@ -187,6 +207,84 @@ class CrashEmailPrivacyTests(TestCase):
     def test_no_administrators_means_no_email(self):
         self.client.get("/crash/plain/")
         self.assertEqual(mail.outbox, [])
+
+
+class FrameLocationTests(SimpleTestCase):
+    """Where a frame's file is shown from, whatever the platform or directory layout."""
+
+    PROJECT = Path("/app/school")
+
+    def location(self, filename):
+        with override_settings(BASE_DIR=self.PROJECT):
+            return error_reporting._safe_location(filename)
+
+    def frames_of(self, filename):
+        """Frame lines of a real traceback whose innermost frames come from `filename`."""
+        code = compile("def boom():\n    raise ValueError('x')\n\nboom()\n", filename, "exec")
+        try:
+            exec(code, {})  # noqa: S102 - synthetic code, only to name the frame's file
+        except ValueError as error:
+            tb = error.__traceback__
+        with override_settings(BASE_DIR=self.PROJECT):
+            return "\n".join(error_reporting._frames(tb))
+
+    def test_project_file_is_shown_relative_to_the_project(self):
+        self.assertEqual(self.location("/app/school/core/views.py"), "core/views.py")
+
+    def test_a_sibling_directory_is_not_mistaken_for_the_project(self):
+        self.assertEqual(
+            self.location("/app/school-private/secret_module.py"), "external/secret_module.py"
+        )
+        self.assertEqual(self.location("/app/schoolhouse/core/x.py"), "external/x.py")
+
+    def test_installed_package_is_shown_from_site_packages(self):
+        self.assertEqual(
+            self.location("/usr/lib/python3.13/site-packages/django/http/response.py"),
+            "site-packages/django/http/response.py",
+        )
+        self.assertEqual(
+            self.location("/app/school/.venv/lib/site-packages/pkg/mod.py"),
+            "site-packages/pkg/mod.py",
+        )
+
+    def test_standard_library_is_shown_from_stdlib(self):
+        stdlib = sysconfig.get_paths()["stdlib"]
+        shown = self.location(os.path.join(stdlib, "json", "decoder.py"))
+        self.assertEqual(shown, "stdlib/json/decoder.py")
+
+    def test_any_other_file_shows_only_its_name(self):
+        for filename in (
+            "/home/jdoe/private-dir/secret_module.py",
+            "C:\\Users\\jdoe\\private-dir\\secret_module.py",
+            "/opt/vendor/custom/secret_module.py",
+        ):
+            with self.subTest(filename=filename):
+                self.assertEqual(self.location(filename), "external/secret_module.py")
+
+    def test_pseudo_file_names_are_kept(self):
+        for name in ("<string>", "<frozen importlib._bootstrap>"):
+            with self.subTest(name=name):
+                self.assertEqual(self.location(name), name)
+
+    def test_a_traceback_frame_never_carries_the_private_path(self):
+        for filename in (
+            "/home/jdoe/private-dir/secret_module.py",
+            "C:\\Users\\jdoe\\private-dir\\secret_module.py",
+            "/app/school-private/secret_module.py",
+        ):
+            with self.subTest(filename=filename):
+                text = self.frames_of(filename)
+                self.assertIn("external/secret_module.py", text)
+                for private in ("jdoe", "private-dir", "school-private", "/home", "C:\\", "Users"):
+                    self.assertNotIn(private, text)
+
+    def test_no_shown_location_is_ever_an_absolute_path(self):
+        for filename in (
+            "/home/jdoe/x.py", "C:\\Users\\jdoe\\x.py", "/app/school/core/x.py",
+            "/usr/lib/python3.13/site-packages/a/b.py", "relative/dir/x.py",
+        ):
+            with self.subTest(filename=filename):
+                self.assertNotRegex(self.location(filename), r"^([A-Za-z]:|/|\\)")
 
 
 class MailStaysOffUntilConfiguredTests(SimpleTestCase):
