@@ -380,8 +380,9 @@ def validate(sheets, academic_year, enrollment_start_date):
             )
             is not None
         ):
-            error(SHEET_CLASSES, row, "", f'"{class_name[:100]}" "{section_name[:100]}" is '
-                                          "archived. Restore it first or use another.")
+            # No cell values in any problem message (Security Gate 4B): the row number says where.
+            error(SHEET_CLASSES, row, "",
+                  "This Class and Section is archived. Restore it first or use another.")
             continue
         if existing_class is None:
             new_classes.setdefault(class_key, class_name)
@@ -467,13 +468,12 @@ def validate(sheets, academic_year, enrollment_start_date):
             section = resolve_section(class_name, section_name)
             if section is None:
                 error(SHEET_STUDENTS, row, "Section",
-                      f'Class "{class_name[:100]}" Section "{section_name[:100]}" does not '
-                      "exist. Create it first or list it on the Classes sheet.")
+                      "This Class and Section does not exist. Create it first or list it on "
+                      "the Classes sheet.")
                 ok = False
             elif getattr(section, "archived_at", None) is not None:
                 error(SHEET_STUDENTS, row, "Section",
-                      f'Class "{class_name[:100]}" Section "{section_name[:100]}" is archived. '
-                      "Restore it first or use another.")
+                      "This Class and Section is archived. Restore it first or use another.")
                 ok = False
 
         roll_number = None

@@ -788,7 +788,9 @@
   },
   "core:import-list": {
     "flags": [],
-    "inner": [],
+    "inner": [
+      "core.run_import"
+    ],
     "perms": [
       "core.view_importbatch"
     ],
@@ -1705,5 +1707,72 @@
     "perms": [],
     "route": "children/<uuid:public_id>/report-cards/",
     "view": "portal_views.report_cards"
+  },
+  "root:admin": {
+    "flags": [
+      "framework_owned"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "admin/",
+    "view": "admin.site.urls"
+  },
+  "root:choose-area": {
+    "flags": [],
+    "inner": [],
+    "perms": [],
+    "route": "choose-area/",
+    "view": "core_views.choose_area"
+  },
+  "root:home": {
+    "flags": [],
+    "inner": [],
+    "perms": [],
+    "route": "",
+    "view": "core_views.home"
+  },
+  "root:login": {
+    "flags": [
+      "framework_owned"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "accounts/login/",
+    "view": "auth_views.LoginView.as_view"
+  },
+  "root:logout": {
+    "flags": [
+      "framework_owned"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "accounts/logout/",
+    "view": "auth_views.LogoutView.as_view"
+  },
+  "root:password_change": {
+    "flags": [
+      "framework_owned"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "accounts/password/change/",
+    "view": "account_views.password_change"
+  },
+  "root:pwa-install": {
+    "flags": [],
+    "inner": [],
+    "perms": [],
+    "route": "install/",
+    "view": "pwa_views.install_help"
+  },
+  "root:pwa-manifest": {
+    "flags": [
+      "cache_control",
+      "require_safe"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "MANIFEST_PATH.lstrip('/')",
+    "view": "pwa_views.manifest"
   }
 }

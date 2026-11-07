@@ -32,6 +32,7 @@ the limits below ever apply to anyone.
 | Attendance entries (a student's status, notes, absences) | `core.view_attendanceentry` | Register rows; the student page's monthly card; the student list's absent filter; the Overview's absentee and attention lists; attendance summary documents |
 | Marks (scores, grades, percentages, pass/fail, who entered them) | `core.view_studentresult` | Assessment results; publication preview and detail; report cards (page and PDF) |
 | Staged import rows (names, dates of birth, admission numbers) | `core.run_import` | The pending-batch preview |
+| The uploaded file's original name (it can hold a student's name) | `core.run_import` | The import list and the import page; others see "Not shown" |
 | Students (for choosing one) | `core.view_student` | The student choosers for certificates and report cards; certificates |
 
 The Overview's absentee list also needs `core.view_student`, because it names students, and its
@@ -50,7 +51,7 @@ attention list needs students, marks and attendance together.
 | Overview | `view_school` | Absentee list needs `view_student` + `view_attendanceentry`; attention list also needs `view_studentresult` |
 | Assessment page | `view_assessment` | Roster names only; no scores, grades, pass/fail or entered-by |
 | Publication preview and detail | `view_termpublication` | The workflow and student names; no marks or remark. The confirm token is unchanged, so publishing still publishes exactly the plan |
-| Import batch | `view_importbatch` | Status, counts and sanitised problems; staged rows need `run_import` |
+| Import batch | `view_importbatch` | Status, counts, the uploader and sanitised problems. Staged rows and the original file name need `run_import`. Problems never repeat a cell value (a name, date, admission number, header, class or section from the file); a test fails if a problem message formats one in |
 | Teacher workload | `view_sectionclassteacher` | Only teacher accounts open (Teachers group, or anyone who holds or held a teaching assignment). Any other login is a 404 |
 | Documents | `issue_document` | See below |
 
@@ -123,3 +124,11 @@ added or removed, or a view stops checking a data permission, `test_security_gat
 fails with a diff. After reviewing the change, refresh the pin:
 
     python core/tests/route_inventory.py --write
+
+The scan covers the root URLconf (`config/urls.py`) as well as `core/urls.py` and
+`core/portal_urls.py`, and a test compares it name for name with Django's live URL table. It is
+strict: a route form it cannot read (an imported function, a class-based view, an `include()` of
+anything else, `re_path`, a route without a name) makes the scan fail instead of being skipped,
+so a new kind of route has to be added to the tool in a reviewed change. Django's own routes
+(the admin and the stock sign-in, sign-out and password views) are listed in
+`FRAMEWORK_OWNED` in `core/tests/route_inventory.py`, each with a reason.

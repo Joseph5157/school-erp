@@ -25,10 +25,10 @@
     <tbody>
     {% for batch in batches %}
         <tr>
-            <th scope="row" class="fw-semibold"><a href="{% url 'core:import-detail' batch.pk %}">{{ batch.pk }}<span class="visually-hidden"> ({{ batch.file_name }})</span></a></th>
+            <th scope="row" class="fw-semibold"><a href="{% url 'core:import-detail' batch.pk %}">{{ batch.pk }}{% if show_file_name %}<span class="visually-hidden"> ({{ batch.file_name }})</span>{% endif %}</a></th>
             <td class="text-nowrap">{{ batch.uploaded_at|date:"j M Y, H:i" }}</td>
             <td class="text-break">{{ batch.uploaded_by }}</td>
-            <td class="text-break">{{ batch.file_name }}</td>
+            <td class="text-break">{% if show_file_name %}{{ batch.file_name }}{% else %}<span class="text-muted">Not shown</span>{% endif %}</td>
             <td class="text-nowrap">{{ batch.academic_year }}</td>
             <td>{{ batch.student_rows }}</td>
             <td>{% include "core/_import_status.html" with batch=batch only %}</td>

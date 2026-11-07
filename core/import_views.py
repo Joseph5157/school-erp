@@ -15,7 +15,12 @@ from core.models import ImportBatch
 def import_list(request):
     imports.expire_stale_batches()
     batches = ImportBatch.objects.select_related("academic_year", "uploaded_by")[:50]
-    return render(request, "core/import_list.html", {"batches": batches})
+    # The original file name is user-controlled and can hold a student's name, so it is working
+    # data for whoever may run imports, not batch metadata (Security Gate 4B).
+    return render(request, "core/import_list.html", {
+        "batches": batches,
+        "show_file_name": request.user.has_perm(data_access.RUN_IMPORT),
+    })
 
 
 @administrator_required("core.run_import")
@@ -75,6 +80,7 @@ def import_detail(request, pk):
         "errors": [r for r in results if r.level == "ERROR"],
         "warnings": warnings,
         "can_run": can_run,
+        "file_label": batch.file_name if can_run else "",
     })
 
 
