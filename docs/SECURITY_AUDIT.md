@@ -18,8 +18,9 @@ variables and recovery steps are in `docs/OPERATIONS.md`.
 - `c6284df` is only the snapshot that was audited. Remediation was built on the newer
   `origin/main` of the day, so later gates sit on top of earlier ones. A second, read-only pass
   on 2026-11-07 audited an exact export of `main` at `76e091e`, with a mechanical map of all
-  routes to the permission each view enforces. It confirmed leads 7 to 12 on that newer code
-  and found two more places that showed another class of data.
+  routes to the permission each view enforces. It confirmed the remaining office-authorization
+  leads addressed by Gate 4B on that newer code, and found two more places that showed another
+  class of data.
 - The raw report and the lead ledger live outside the repository, in the maintainer's
   `security-audit-skill/school-erp/run-1/` folder. This page does not claim every lead in the
   ledger is closed, only what the gates below changed.
@@ -31,21 +32,24 @@ variables and recovery steps are in `docs/OPERATIONS.md`.
 | 1 | #201 | `88b6db3` | One shared rule decides which logins a guardian link, password reset or rename may touch (`is_portal_manageable`). The Django admin sign-in shares the ERP's throttle and audit. |
 | 2 | #202 | `2b74722` | Production refuses to start with a blank or `django-insecure-` secret key or a malformed `DJANGO_TRUSTED_PROXIES`. On/off flags are read case-insensitively (`true`, `1`, `yes`, `on` and their opposites). A **blank value uses the flag's documented safe default**; a **non-blank value that is not clearly on or off fails startup**, naming the variable but never printing the value. In production `DJANGO_HTTPS` defaults to on, and `DJANGO_HTTPS=False` is refused. |
 | 3A | #203 | `14cba05` | Class-teacher authority is tied to the record's academic year, so a teacher who led a section last year has no authority over this year's records. Student scope, guardian contacts, report cards, remarks, attendance and the teacher home all key on (section, year). |
-| 3B | #204 | `e05bbd2` | The WhatsApp send queue rechecks portal access three times (listing, opening the message, marking sent). A guardian who lost access is dismissed with a system reason. |
-| 4A | #205 | `76e091e` | Crash emails are built from an allow-list (route pattern, exception types, `file:line in function`) with no URLs, IPs, usernames, messages or variables, and absolute server paths are never shown. Mail stays off until an email host and recipients are both configured. |
-| 4B | #206 | `8e312e8` | Each class of personal data needs its own view permission (guardians, attendance entries, marks, staged import rows). Import problems never repeat a cell value, the uploaded file's name needs `run_import`, and a route inventory test pins the permission of every route, including the root ones. |
+| 3B | #204 | `e05bbd2` | The WhatsApp send queue rechecks **portal access and consent** when listing, opening and marking a message sent. A guardian who lost access is dismissed with a system reason. |
+| 4A | #205 | `76e091e` | Crash emails are built from an allow-list (route pattern, exception types, `file:line in function`) with no concrete request URLs or query strings, IPs, usernames, messages or variables (the safe route pattern is kept on purpose), and absolute server paths are never shown. Mail stays off until an email host and recipients are both configured. |
+| 4B | #206 | `8e312e8` | Each class of personal data needs its own view permission (guardians, attendance entries, marks, staged import rows). Import problems never repeat a cell value, the uploaded file's name needs `run_import`, and a route inventory test pins every project route and records framework-owned root routes (the Django admin and the stock sign-in, sign-out and password views) through an explicit allowlist; it does not read Django admin's internal permissions. |
 
 Full rules for 4B are in `docs/PERMISSIONS.md`. Superusers and the School Administrators group
 hold every permission, so Gate 4B changes nothing for them; only a custom role can be narrower.
 
 ## Staging
 
-All six gates are deployed on staging, web and cron, at `8e312e8`. For each gate the previous
-deployments were retired, the logs showed no tracebacks or `ImproperlyConfigured` errors, public
-pages returned 200, protected pages redirected to sign-in, an anonymous POST without a CSRF
-token returned 403, and HTTPS redirect and security headers (HSTS, `nosniff`, `DENY`) were
-correct. The staging secret key was rotated on 2026-11-06 and an independent
-`DJANGO_SOURCE_HASH_KEY` was set.
+All six gates are deployed on staging, web and cron, and staging runs `8e312e8`.
+
+- Every gate deployed successfully, the previous deployments were retired, startup logs showed
+  no tracebacks or `ImproperlyConfigured` errors, and route smoke checks passed (public pages
+  returned 200, protected pages redirected to sign-in).
+- After the final Gate 4B deployment, the anonymous POST without a CSRF token (403), the HTTPS
+  redirect and the full header check (HSTS, `nosniff`, `DENY`, same-origin) also passed.
+- The staging secret key was rotated on 2026-11-06 and an independent `DJANGO_SOURCE_HASH_KEY`
+  was set.
 
 ## Known limits and open follow-ups
 
@@ -64,10 +68,10 @@ correct. The staging secret key was rotated on 2026-11-06 and an independent
   set `EMAIL_HOST` and `DJANGO_ADMINS`, and test with the in-memory backend first, never with
   real mail on staging.
 - **Other installs.** Only staging has been inventoried. Any other school install needs the
-  environment variable check from Gates 1 and 2 before it gets those changes, because a missing
-  secret key now stops the build.
-- **Teacher and register rules left alone.** Subject-teacher authorization was not changed in
-  3A. Publication remarks stay under `view_studentresult` and security events under
+  Gate 1 account-link/role inventory and the Gate 2 deployment-variable check before it gets
+  those changes, because a missing secret key now stops the build.
+- **Intentional boundaries.** Subject-teacher authorization was not changed in 3A.
+  Publication remarks stay under `view_studentresult` and security events under
   `manage_teacher_accounts`, as documented bundles in `docs/PERMISSIONS.md`.
 
 ## Keeping it this way
