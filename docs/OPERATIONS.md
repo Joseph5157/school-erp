@@ -16,7 +16,12 @@ Traceback (most recent call last):
 ```
 
 Search Railway logs for `ERROR` to find crashes. Every unhandled crash (a 500
-page) is also emailed to the administrators.
+page) can also be emailed to the administrators, but **nothing is emailed until
+both `DJANGO_ADMINS` and `EMAIL_HOST` are set**. Until a mail service is chosen
+and its credentials are added as Railway variables, crash reporting is the
+Railway log only. The email is deliberately short (see "What the email
+contains"): it says which crash and where, and you read the full detail in the
+Railway log.
 
 ### Environment variables
 
@@ -24,7 +29,7 @@ page) is also emailed to the administrators.
 |---|---|---|
 | `ERP_INSTANCE_NAME` | `st-marys` | Names the installation in email subjects: `[school-erp st-marys] ERROR ...`. Default `local`. |
 | `DJANGO_ADMINS` | `ops@example.com,dev@example.com` | Comma-separated addresses that receive crash emails. Empty: no emails, logging only. |
-| `EMAIL_HOST` | `smtp.gmail.com` | SMTP server. Empty: mail is printed to the console instead of sent. |
+| `EMAIL_HOST` | `smtp.gmail.com` | SMTP server. Empty: no mail is sent. Production discards mail; local development (`DJANGO_DEBUG=True`) prints it to the console. |
 | `EMAIL_PORT` | `587` | Default `587`. |
 | `EMAIL_HOST_USER` | `alerts@example.com` | SMTP login. |
 | `EMAIL_HOST_PASSWORD` | (app password) | SMTP password. For Gmail, use an [app password](https://myaccount.google.com/apppasswords), not the account password. |
@@ -36,11 +41,30 @@ Outgoing SMTP needs the Railway Pro plan.
 
 ### What the email contains
 
-The traceback (files, line numbers, code), the URL, the view and the signed-in
-user. Submitted form values, cookies and the traceback's local variables are
-replaced with `********************` (`config/error_reporting.py`) so no
-student or guardian details are emailed. Query-string parameters (e.g.
-`?section=4`) are kept.
+Crash emails go to a mail provider outside the school's installation, so they are
+built from an allow-list (`config/error_reporting.py`, Security Gate 4A) and carry
+only:
+
+- the instance name, the time (UTC), the level and the status code;
+- the request method and the **route pattern** that handled it, for example
+  `/students/<int:pk>/edit/`, never the concrete address;
+- the **exception types** in the chain (for example `IntegrityError`, caused by
+  `KeyError`);
+- the traceback locations as `file:line in function`.
+
+They never contain query-string parameters (search terms), client IP addresses or
+other request headers, cookies, form values, the signed-in username, exception
+messages (a database error can quote the row it rejected), source lines or the
+traceback's local variables. If a report cannot be built the email says so and
+nothing else.
+
+The Railway log keeps the full detail, including the exception message and
+traceback, because only the person running the service reads it. Match an email to
+its log entry by the time and the route.
+
+To check what an email would contain without sending anything, run the tests:
+`python manage.py test core.tests.test_security_gate4a_crash_email_privacy` (they
+use Django's in-memory mail backend).
 
 ### Check it works
 

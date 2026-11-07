@@ -57,7 +57,8 @@ class CrashReportingTests(TestCase):
         self.assertEqual(message.to, ["ops@example.com"])
         self.assertTrue(message.subject.startswith("[school-erp st-marys] ERROR"))
         self.assertIn("/crash/", message.subject)
-        self.assertIn("boom in crash_view", message.body)
+        self.assertIn("RuntimeError", message.body)  # the type is kept, the message is not
+        self.assertNotIn("boom in crash_view", message.body)
         self.assertIn("crash_view", message.body)  # traceback frames are kept
         self.assertEqual(message.alternatives, [])  # no HTML copy
 
@@ -87,7 +88,7 @@ class LoggingConfigTests(SimpleTestCase):
     def test_request_errors_are_emailed_and_reach_the_console(self):
         request_logger = logging.getLogger("django.request")
         self.assertTrue(
-            any(h.__class__.__name__ == "AdminEmailHandler" for h in request_logger.handlers)
+            any(h.__class__.__name__ == "PrivacyAdminEmailHandler" for h in request_logger.handlers)
         )
         self.assertTrue(request_logger.propagate)
 

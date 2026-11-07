@@ -8,6 +8,7 @@ from pathlib import Path
 
 from config.deployment_safety import (
     check_secret_key,
+    mail_backend_for,
     parse_flag,
     parse_trusted_proxies,
     resolve_https,
@@ -235,8 +236,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Crash reporting: errors are written to the console (Railway logs) and every
 # unhandled 500 is emailed to DJANGO_ADMINS (comma-separated addresses). Each
 # installation sets ERP_INSTANCE_NAME (e.g. "st-marys") so the email subject
-# says which school it came from. config.error_reporting masks form data,
-# cookies and traceback variables so no personal data is emailed.
+# says which school it came from. The email is an allow-list report built by
+# config.error_reporting (exception types, route pattern and traceback locations only;
+# no query strings, client details, usernames, messages or variables). Nothing is sent
+# until both DJANGO_ADMINS and an SMTP host (EMAIL_HOST) are set.
 ERP_INSTANCE_NAME = os.environ.get("ERP_INSTANCE_NAME", "local").strip() or "local"
 ADMINS = [
     (address.strip(), address.strip())
@@ -246,17 +249,16 @@ ADMINS = [
 EMAIL_SUBJECT_PREFIX = f"[school-erp {ERP_INSTANCE_NAME}] "
 DEFAULT_EXCEPTION_REPORTER_FILTER = "config.error_reporting.PrivacyExceptionReporterFilter"
 
-# Outgoing mail over SMTP. Without EMAIL_HOST, mail is printed to the console.
+# Outgoing mail over SMTP, only when EMAIL_HOST is set. Without it, production discards
+# mail and local development (DJANGO_DEBUG=True) prints it to the console.
 EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
+EMAIL_BACKEND = mail_backend_for(EMAIL_HOST, debug=DEBUG)
 if EMAIL_HOST:
-    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
     EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
     EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
     EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
     EMAIL_USE_TLS = parse_flag("EMAIL_USE_TLS", os.environ.get("EMAIL_USE_TLS"), default=True)
     EMAIL_TIMEOUT = 10
-else:
-    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 SERVER_EMAIL = os.environ.get("SERVER_EMAIL", EMAIL_HOST_USER if EMAIL_HOST else "root@localhost")
 DEFAULT_FROM_EMAIL = SERVER_EMAIL
 
@@ -275,7 +277,7 @@ LOGGING = {
     "handlers": {
         "console": {"class": "logging.StreamHandler", "formatter": "plain", "level": LOG_LEVEL},
         "mail_admins": {
-            "class": "django.utils.log.AdminEmailHandler",
+            "class": "config.error_reporting.PrivacyAdminEmailHandler",
             "level": "ERROR",
             "filters": ["require_debug_false"],
             "include_html": False,
