@@ -132,6 +132,8 @@ SESSION_SAVE_EVERY_REQUEST = True
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SAMESITE = "Lax"
+# A stale form shows a plain-words "page has expired" page, not Django's technical one.
+CSRF_FAILURE_VIEW = "accounts.views.csrf_failure"
 
 # Production HTTPS: Secure cookies, HTTPS redirect and HSTS. On by default outside debug
 # and test runs; an explicit DJANGO_HTTPS=False is refused there, so HTTPS cannot be lost
