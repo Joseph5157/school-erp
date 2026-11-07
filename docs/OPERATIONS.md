@@ -253,3 +253,66 @@ Treat every school deployment as a new security environment, even when it uses t
 
 Complete these checks before the new school is opened to staff or guardians.
 
+## Deferred extra work: automated guardian email
+
+**Status: deferred; no current launch blocker.** The ERP continues to use the Guardian Portal
+and the manually assisted WhatsApp queue. The SMTP settings in this document are currently for
+privacy-safe administrator crash reports only; configuring them does not make the ERP send
+parent communications.
+
+### Current foundation that can be reused
+
+- Guardian records already have an optional email address.
+- Absence, report-card-published and announcement events already create audited notifications.
+- Templates are versioned, duplicate preparation is prevented by an idempotency key, and message
+  statuses preserve what happened.
+- Recipient selection already requires current portal access. The WhatsApp queue rechecks access
+  and consent before it opens the external channel and before it records a message as sent.
+- Guardian Portal notices remain the source of truth. Notification text contains only the
+  minimum needed data and a portal link.
+
+There is no guardian-email channel, email preference or consent history, parent-email template,
+delivery worker, retry loop, bounce/complaint handling or provider delivery tracking yet. The
+reserved WhatsApp API and SMS modes are also not implemented.
+
+### Direction to review when this work resumes
+
+Amazon SES is the preferred candidate for automated application mail because it supports low-cost
+SMTP/API delivery and can scale across schools. Google Workspace may still be used for human
+mailboxes and replies. This is a recommendation, not a frozen provider decision.
+
+Keep these rules regardless of provider:
+
+1. The portal remains the authoritative place for attendance details, marks, reports and notices.
+   Emails should be short link notifications; do not attach report cards or include sensitive
+   student data.
+2. Record an email-specific guardian preference or consent decision and provide an immediate
+   opt-out where policy requires it.
+3. Recheck current portal access and email eligibility immediately before dispatch, following the
+   same fail-closed principle as the WhatsApp queue.
+4. Send asynchronously through an outbox worker or management command. Do not call an external
+   provider inside a web request or the database transaction that records attendance, publishes
+   results or creates an announcement.
+5. Preserve idempotency, template versions and an audit trail. Record attempts, provider message
+   IDs, permanent failures and the final delivery state.
+6. Handle bounces and complaints, suppress unusable addresses, retry only temporary failures and
+   set rate limits.
+7. Give each school a verified sender identity or subdomain, a monitored reply-to address and
+   separate usage/delivery reporting.
+
+### Proposed implementation gates
+
+- **E1 — Foundation:** email channel, guardian preference/consent, channel-specific templates and
+  per-school sender configuration.
+- **E2 — Transactional alerts:** absence and report-card-available messages, with current-access
+  rechecks and portal links only.
+- **E3 — Delivery worker:** provider adapter, asynchronous dispatch, retries, idempotency,
+  provider IDs and failure handling.
+- **E4 — Announcements:** audience preview, opt-out rules, throttling and withdrawal behaviour.
+- **E5 — Multi-school operations:** verified identities, per-school tagging, quotas, monitoring
+  and reputation protection.
+
+Before implementation, write and approve an email communication architecture/ADR, confirm the
+provider and school consent policy, estimate real recipient volume, and decide how bounces and
+complaints reach the ERP. Add each gate on its own branch and PR with tests first.
+
