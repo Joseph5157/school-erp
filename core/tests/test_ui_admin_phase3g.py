@@ -87,7 +87,7 @@ class StudentPageTests(SectionAssertions, AuthorizationClientsMixin, TestCase):
 
     def test_view_only_user_has_no_status_change_link_or_anchor(self):
         user = User.objects.create_user(username="viewer", password="pass-12345")
-        user.user_permissions.add(Permission.objects.get(codename="view_student"))
+        user.user_permissions.add(*Permission.objects.filter(codename__in=["view_student", "view_guardian"]))
         self.client.login(username="viewer", password="pass-12345")
 
         response = self.client.get(self.url)

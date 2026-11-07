@@ -210,7 +210,7 @@ class SubmittedDetailTests(DetailFixture, TestCase):
         self.assertNotContains(response, "Roster")
 
     def test_view_only_sees_three_columns_and_no_correct_links(self):
-        response = self.viewer("view_attendanceregister").get(self.url)
+        response = self.viewer("view_attendanceregister", "view_attendanceentry").get(self.url)
         self.assertEqual(re.findall(r'<th scope="col">([^<]+)</th>', self.table(response)),
                          ["Student", "Status", "Absence note"])
         self.assertNotContains(response, "Correct</a>")
@@ -229,7 +229,7 @@ class SubmittedDetailTests(DetailFixture, TestCase):
     def test_empty_submitted_register_colspan_matches_the_rendered_columns(self):
         empty = self.register(on_date=date(2026, 7, 7), section=self.six_b, submitted=True)
         self.assertContains(self.client.get(self.detail_url(empty)), 'colspan="4">No attendance entries.')
-        viewer = self.viewer("view_attendanceregister").get(self.detail_url(empty))
+        viewer = self.viewer("view_attendanceregister", "view_attendanceentry").get(self.detail_url(empty))
         self.assertContains(viewer, 'colspan="3">No attendance entries.')
 
 

@@ -29,6 +29,7 @@
     {% endif %}
 </dl>
 </section>
+{% if show_marks %}
 <section class="erp-panel mb-4" aria-labelledby="publication-entries-heading">
 <div class="erp-panel-head p-3 pb-2"><h2 class="h5" id="publication-entries-heading">Results as released</h2></div>
 <div class="erp-table-scroll" role="region" aria-label="Results as released in version {{ pub.version }}" tabindex="0">
@@ -49,6 +50,12 @@
 <h2 class="h5" id="publication-remark-heading">Teacher's remark</h2>
 <p class="mb-0">{{ pub.remark_text|default:"None" }}</p>
 </section>
+{% else %}
+<section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="publication-entries-heading">
+<h2 class="h5" id="publication-entries-heading">Results as released</h2>
+<p class="erp-note-text mb-0">The released results and the teacher's remark are shown to people who can view results.</p>
+</section>
+{% endif %}
 {% if pub.is_current and perms.core.publish_termpublication %}
 <section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="publication-actions-heading">
 <h2 class="h5" id="publication-actions-heading">Actions</h2>

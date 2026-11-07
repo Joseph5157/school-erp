@@ -62,6 +62,26 @@ def _ongoing(prefix, today):
     return Q(**{f"{prefix}end_date__isnull": True}) | Q(**{f"{prefix}end_date__gte": today})
 
 
+def workload_queryset():
+    """The logins the teacher workload page may open (Security Gate 4B).
+
+    A teacher account: a member of the Teachers group, or anyone who holds or held a teaching
+    assignment (a former teacher keeps their history). Looser than `teacher_queryset`, which is
+    the set a manager may change, because reading a workload must keep working for a teacher who
+    is also a guardian. It never admits an arbitrary login such as a guardian or administrator
+    with no teaching role.
+    """
+    return (
+        get_user_model()
+        .objects.filter(
+            Q(groups__name=TEACHERS_GROUP_NAME)
+            | Q(assessment_assignments__isnull=False)
+            | Q(class_teacher_assignments__isnull=False)
+        )
+        .distinct()
+    )
+
+
 def teacher_queryset():
     """Manageable Teachers-group logins (active and inactive).
 

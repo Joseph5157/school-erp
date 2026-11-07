@@ -303,7 +303,10 @@ class ReportCardTests(Base, TestCase):
         self.assertEqual(self.guardian_client().get(url).status_code, 403)
         _, nobody = self.client_with("view_school")
         self.assertEqual(nobody.get(url).status_code, 403)
-        _, issuer = self.client_with("issue_document")
+        # Report cards carry marks, so issuing alone is not enough (Gate 4B).
+        _, issuer_only = self.client_with("issue_document")
+        self.assertEqual(issuer_only.get(url).status_code, 403)
+        _, issuer = self.client_with("issue_document", "view_studentresult")
         self.assertEqual(issuer.get(url).status_code, 200)
 
     def test_issued_card_that_is_no_longer_current_still_redirects_with_the_message(self):

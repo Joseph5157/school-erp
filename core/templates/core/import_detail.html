@@ -33,6 +33,10 @@
 </dl>
 </section>
 
+{% if batch.is_pending and not can_run %}
+<p class="erp-note-text">The students in this file are shown to people who can run imports.</p>
+{% endif %}
+
 {% if batch.status == "COMMITTED" %}
     <div class="erp-note-text erp-import-notice mb-4" role="status">
         {% include "partials/_status_badge.html" with label="Imported" tone="finalized" only %}

@@ -179,6 +179,7 @@
 </div>
 </section>
 
+{% if "guardians" in profile_section_ids %}
 <section id="guardians" aria-labelledby="guardians-heading">
 <h2 class="h5" id="guardians-heading">Guardians</h2>
 {% if perms.core.add_studentguardian %}
@@ -227,4 +228,5 @@
 </ul>
 {% endif %}
 </section>
+{% endif %}
 {% endblock %}

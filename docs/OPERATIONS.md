@@ -130,6 +130,25 @@ that nothing was sent, only that the ERP will not claim it was sent to someone w
 is no longer eligible. Keep that window short: open WhatsApp, send, and choose Mark
 as sent straight away.
 
+## Roles and permissions
+
+Which screens a login can use, and which kinds of personal data they show, is described in
+[PERMISSIONS.md](PERMISSIONS.md): the permission each class of data needs, what a limited
+custom role sees, the deliberate bundles and the recommended registrar, communications,
+attendance, results and import roles.
+
+To take an inventory of the custom roles in an installation, run from the service shell:
+
+```
+python manage.py role_permission_gaps
+```
+
+It is read-only. It lists the custom groups, and the logins with permissions assigned directly,
+whose permissions leave a page limited or a file refused, and prints names only (no emails,
+passwords or personal data). Running it on a live installation is safe, and it is the way to
+check a deployment before relying on a narrow role. A gap it reports is information, not an
+error.
+
 ## Production settings
 
 Set these on the Railway web service. The cron service references the web
