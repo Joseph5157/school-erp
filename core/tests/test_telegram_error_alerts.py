@@ -212,6 +212,7 @@ class PairedVariableTests(SimpleTestCase):
                     telegram_alert_settings(TOKEN, chat, debug=False, testing=False)
                 message = str(caught.exception)
                 self.assertIn("TELEGRAM_ERROR_CHAT_ID", message)
+                self.assertNotIn("TELEGRAM_ERROR_BOT_TOKEN", message)
                 self.assert_secret_free(message)
 
     def test_chat_id_without_token_stops_startup_naming_only_the_missing_variable(self):
@@ -221,6 +222,7 @@ class PairedVariableTests(SimpleTestCase):
                     telegram_alert_settings(token, CHAT_ID, debug=False, testing=False)
                 message = str(caught.exception)
                 self.assertIn("TELEGRAM_ERROR_BOT_TOKEN", message)
+                self.assertNotIn("TELEGRAM_ERROR_CHAT_ID", message)
                 self.assert_secret_free(message)
 
     def test_a_half_configured_pair_is_refused_in_debug_and_test_runs_too(self):
@@ -280,15 +282,27 @@ class SettingsImportTests(SimpleTestCase):
     def test_production_with_only_the_token_does_not_start_and_does_not_echo_it(self):
         values, result = self.read_settings(TELEGRAM_ERROR_BOT_TOKEN=TOKEN)
         self.assertIsNone(values)
-        self.assertIn("TELEGRAM_ERROR_CHAT_ID", result.stderr)
+        error = self.startup_error(result)
+        self.assertIn("TELEGRAM_ERROR_CHAT_ID", error)
+        self.assertNotIn("TELEGRAM_ERROR_BOT_TOKEN", error)
         self.assertNotIn(TOKEN, result.stderr + result.stdout)
         self.assertNotIn("fake-token", result.stderr + result.stdout)
 
     def test_production_with_only_the_chat_id_does_not_start_and_does_not_echo_it(self):
         values, result = self.read_settings(TELEGRAM_ERROR_CHAT_ID=CHAT_ID)
         self.assertIsNone(values)
-        self.assertIn("TELEGRAM_ERROR_BOT_TOKEN", result.stderr)
+        error = self.startup_error(result)
+        self.assertIn("TELEGRAM_ERROR_BOT_TOKEN", error)
+        self.assertNotIn("TELEGRAM_ERROR_CHAT_ID", error)
         self.assertNotIn(CHAT_ID, result.stderr + result.stdout)
+        self.assertNotIn("9999000042", result.stderr + result.stdout)
+
+    def startup_error(self, result):
+        """The ImproperlyConfigured line itself (the traceback above it quotes source code)."""
+        lines = [line for line in result.stderr.splitlines()
+                 if line.startswith("django.core.exceptions.ImproperlyConfigured")]
+        self.assertEqual(len(lines), 1, result.stderr)
+        return lines[0]
 
     def test_debug_with_both_variables_keeps_alerts_off(self):
         values, result = self.read_settings(
@@ -310,6 +324,13 @@ class LoggingConfigTests(SimpleTestCase):
             "debug runs must never send",
         )
         self.assertTrue(logger.propagate, "the full traceback must still reach the console")
+
+    def test_telegram_runs_before_the_crash_email(self):
+        """SMTP may wait up to EMAIL_TIMEOUT (10 s); the Telegram ping must not wait behind it."""
+        names = [type(handler).__name__ for handler in logging.getLogger("django.request").handlers]
+        self.assertLess(names.index("TelegramAlertHandler"), names.index("PrivacyAdminEmailHandler"))
+        self.assertEqual(settings.LOGGING["loggers"]["django.request"]["handlers"],
+                         ["telegram_alerts", "mail_admins"])
 
 
 @override_settings(**CONFIGURED)

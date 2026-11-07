@@ -88,15 +88,10 @@ def telegram_alert_settings(token_raw, chat_raw, *, debug, testing):
     """
     token, chat_id = (token_raw or "").strip(), (chat_raw or "").strip()
     if bool(token) != bool(chat_id):
-        missing, present = (
-            ("TELEGRAM_ERROR_CHAT_ID", "TELEGRAM_ERROR_BOT_TOKEN")
-            if token
-            else ("TELEGRAM_ERROR_BOT_TOKEN", "TELEGRAM_ERROR_CHAT_ID")
-        )
+        missing = "TELEGRAM_ERROR_CHAT_ID" if token else "TELEGRAM_ERROR_BOT_TOKEN"
         raise ImproperlyConfigured(
-            f"{present} is set but {missing} is not. Telegram crash alerts need both "
-            "variables; set the missing one, or remove both to turn the alerts off "
-            "(see docs/OPERATIONS.md)."
+            f"{missing} is missing. Telegram crash alerts need both of their variables: "
+            "set it, or remove the other one to turn the alerts off (see docs/OPERATIONS.md)."
         )
     if debug or testing:
         return "", ""

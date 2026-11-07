@@ -305,8 +305,9 @@ LOGGING = {
         # for everything) so records just propagate to the root console.
         "django": {"handlers": [], "level": "INFO", "propagate": True},
         # Unhandled exceptions (500s); propagates to the console as well.
+        # Telegram first: its 3 s timeout must not wait behind SMTP's 10 s EMAIL_TIMEOUT.
         "django.request": {
-            "handlers": ["mail_admins", "telegram_alerts"],
+            "handlers": ["telegram_alerts", "mail_admins"],
             "level": "INFO",
             "propagate": True,
         },

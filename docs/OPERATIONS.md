@@ -202,7 +202,8 @@ the time and the route.
 - The alert is sent during the failing request, as one HTTPS request with a
   **3-second timeout**. The page has already failed, so this only delays the error
   page a little. Telegram is never retried. (The timeout does not cover the DNS
-  lookup, so in rare network trouble the wait can be longer.)
+  lookup, so in rare network trouble the wait can be longer.) The alert is tried
+  before the crash email, so a slow mail server (up to 10 seconds) never delays it.
 - If Telegram cannot be reached, refuses the message or answers strangely, the
   error page and the Railway traceback are unaffected. The log gets one extra line:
   `Telegram crash alert delivery failed; see the Railway log.` That line never
