@@ -77,6 +77,12 @@ def notification_mark_sent(request, pk):
     else:
         if result.status == Notification.Status.SENT:
             messages.success(request, "Marked as sent.")
+        elif result.status == Notification.Status.DISMISSED:
+            messages.info(
+                request,
+                "The guardian no longer has portal access, so this message was dismissed "
+                "and not sent.",
+            )
         else:
             messages.info(
                 request, "The guardian has opted out, so this message is recorded as not sent."

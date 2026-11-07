@@ -1,5 +1,6 @@
 """Phase 7 Gate 1: consent, notification outbox and ASSIST sending (ADR 0015)."""
 
+from datetime import date
 from unittest import mock
 
 from django.core.exceptions import ValidationError
@@ -7,9 +8,11 @@ from django.db import DatabaseError, transaction
 from django.test import TestCase
 from django.urls import reverse
 
+from core import guardian_accounts as ga
 from core import notifications
 from core.models import (
     Guardian,
+    GuardianAccount,
     GuardianContactConsent,
     Notification,
     NotificationTemplate,
@@ -24,16 +27,31 @@ BODY = "Dear parent, {first_name} was absent on {date}. Details: {portal_url}"
 
 
 class NotificationFixture(Phase4Fixture):
+    """ASSIST school; Ravi Kumar can open the portal for Asha (login and active grant).
+
+    The business date is pinned inside the academic year so the grant never drifts into
+    the pending date-based review as real time passes.
+    """
+
     def setUp(self):
+        pinned = mock.patch("core.models.business_today", new=lambda: date(2026, 10, 12))
+        pinned.start()
+        self.addCleanup(pinned.stop)
         self.build_phase4()
         self.school = School.objects.create(
             name="Greenwood High", notification_channel=School.NotificationMode.ASSIST
         )
         self.guardian = Guardian.objects.create(full_name="Ravi Kumar", phone="98765 43210")
         self.asha, _ = self.make_student("Asha Reddy")
-        StudentGuardian.objects.create(
+        self.asha_link = StudentGuardian.objects.create(
             student=self.asha, guardian=self.guardian, relationship_type=RelationshipType.FATHER
         )
+        self.account, _ = ga.create_guardian_account(
+            guardian=self.guardian, username="ravi.kumar",
+            method=GuardianAccount.VerificationMethod.EXISTING_RECORDS, note="known",
+            actor=self.admin,
+        )
+        self.asha_grant = ga.grant_student_access(student_guardian=self.asha_link, actor=self.admin)
         self.template = NotificationTemplate.objects.create(
             key="absence_alert", version=1, body=BODY, approved=True
         )
@@ -157,9 +175,15 @@ class ServiceTests(NotificationFixture, TestCase):
         self.opt_in()
         self.enqueue()
         other = Guardian.objects.create(full_name="Sita Rao", phone="98765 00000")
-        StudentGuardian.objects.create(
+        other_link = StudentGuardian.objects.create(
             student=self.asha, guardian=other, relationship_type=RelationshipType.MOTHER
         )
+        ga.create_guardian_account(
+            guardian=other, username="sita.rao",
+            method=GuardianAccount.VerificationMethod.EXISTING_RECORDS, note="known",
+            actor=self.admin,
+        )
+        ga.grant_student_access(student_guardian=other_link, actor=self.admin)
         self.opt_in(other)
         real = notifications._opted_in_ids
         created = []
