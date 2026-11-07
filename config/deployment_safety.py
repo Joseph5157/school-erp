@@ -27,6 +27,19 @@ def check_secret_key(key, *, debug, testing):
         )
 
 
+def mail_backend_for(host, *, debug):
+    """Mail goes out only when an SMTP host is configured.
+
+    Without one, production discards mail (so crash emails stay off until a provider is
+    chosen and its credentials are set) and local development prints it to the console.
+    """
+    if (host or "").strip():
+        return "django.core.mail.backends.smtp.EmailBackend"
+    if debug:
+        return "django.core.mail.backends.console.EmailBackend"
+    return "django.core.mail.backends.dummy.EmailBackend"
+
+
 def parse_flag(name, raw, default=False):
     """Read an on/off environment variable; refuse a value that is not clearly one or the other.
 
