@@ -6,6 +6,9 @@ rows (names, dates of birth, admission numbers) are the uploader's working data 
 including a column header, and that holds for everyone, whatever their permissions.
 """
 
+import ast
+import inspect
+
 from django.urls import reverse
 from django.utils import timezone
 
@@ -13,6 +16,39 @@ from core import imports
 from core.models import ClassGrade, Section
 from core.tests.gate4b_support import holders
 from core.tests.test_phase7_import import STUDENT_HEADER, ImportFixture, student_row, workbook
+
+# The only values a problem message may format in: a fixed label or a row number.
+ALLOWED_INTERPOLATIONS = {
+    "label",
+    "file_admission_numbers[key]",
+    "file_roll_numbers[section_ref, roll_number]",
+    "file_identities[identity]",
+    "file_names[name_key(full_name)]",
+}
+
+
+def unsafe_message(node):
+    """Why a problem-message expression could carry a cell value, or None when it cannot.
+
+    A message must be a fixed string, or an f-string whose every interpolation is in
+    ALLOWED_INTERPOLATIONS (with no conversion or format spec). Anything else (concatenation,
+    .format(), % formatting, a variable, a call) is refused, because it could carry a value.
+    """
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return None
+    if isinstance(node, ast.JoinedStr):
+        for part in node.values:
+            if isinstance(part, ast.Constant):
+                continue
+            if not isinstance(part, ast.FormattedValue):
+                return f"unexpected f-string part {ast.dump(part)}"
+            if part.conversion != -1 or part.format_spec is not None:
+                return "an interpolation with a conversion or format spec"
+            if ast.unparse(part.value) not in ALLOWED_INTERPOLATIONS:
+                return f"interpolates {ast.unparse(part.value)!r}"
+        return None
+    return f"message is {type(node).__name__}, not a string constant or an allowlisted f-string"
+
 
 VIEW_BATCH = "core.view_importbatch"
 RUN_IMPORT = "core.run_import"
@@ -129,16 +165,6 @@ class ImportBatchPermissionTests(ImportFixture):
         The leak tests above prove the paths we know of; this fails the moment anyone writes a
         message that formats a cell value, a name or a header into stored problem text.
         """
-        import ast
-        import inspect
-
-        allowed = {  # the only values a message may format in: a fixed label or a row number
-            "label",
-            "file_admission_numbers[key]",
-            "file_roll_numbers[section_ref, roll_number]",
-            "file_identities[identity]",
-            "file_names[name_key(full_name)]",
-        }
         tree = ast.parse(inspect.getsource(imports))
         validate = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "validate")
         checked = 0
@@ -146,12 +172,36 @@ class ImportBatchPermissionTests(ImportFixture):
             if not (isinstance(node, ast.Call) and getattr(node.func, "id", "") in ("error", "warn")):
                 continue
             checked += 1
-            message = node.args[3]
-            for part in ast.walk(message):
-                if isinstance(part, ast.FormattedValue):
-                    self.assertIn(ast.unparse(part.value), allowed,
-                                  f"line {part.lineno} formats a value into a problem message")
+            problem = unsafe_message(node.args[3])
+            self.assertIsNone(problem, f"line {node.lineno}: {problem}")
         self.assertGreater(checked, 30)
+
+    def test_the_message_guard_rejects_every_unsafe_form(self):
+        unsafe = {
+            "concatenation": '"Bad " + class_name',
+            "reversed concatenation": 'class_name + " is bad"',
+            ".format()": '"Bad {}".format(class_name)',
+            "% formatting": '"Bad %s" % class_name',
+            "a variable": "message",
+            "a call": "describe(class_name)",
+            "an f-string with a cell value": 'f"Bad {class_name}"',
+            "an f-string with an unlisted slice": 'f"Bad {class_name[:100]}"',
+            "an f-string with a format spec": 'f"Bad {label:>{class_name}}"',
+        }
+        for label, source in unsafe.items():
+            with self.subTest(label):
+                node = ast.parse(source, mode="eval").body
+                self.assertIsNotNone(unsafe_message(node), source)
+        safe = {
+            "fixed text": '"Class is required."',
+            "adjacent literals": '"Class and " "Section are required."',
+            "a fixed label": 'f"{label} name is required."',
+            "a row number": 'f"Same admission number as row {file_admission_numbers[key]}."',
+        }
+        for label, source in safe.items():
+            with self.subTest(label):
+                node = ast.parse(source, mode="eval").body
+                self.assertIsNone(unsafe_message(node), source)
 
     def test_original_file_name_needs_run_import(self):
         file_name = "Priya Nair Admissions 2026.xlsx"

@@ -1619,11 +1619,17 @@ class StudentsNeedingAttentionViewTests(MarksFixture, TestCase):
         touching = [q["sql"] for q in ctx if "core_studentresult" in q["sql"]]
         self.assertEqual(touching, [])
 
-    def test_list_needs_both_view_student_and_view_results(self):
+    def test_list_needs_students_results_and_attendance(self):
+        """Gate 4B: the list names students and shows marks and attendance, so it needs all three."""
         self.fail_two(self.s1)
-        both = self.login_with("both", "view_school", "view_student", "view_studentresult")
-        self.assertContains(both.get(self.url), "Students needing attention")
+        all_three = self.login_with(
+            "all-three", "view_school", "view_student", "view_studentresult", "view_attendanceentry"
+        )
+        self.assertContains(all_three.get(self.url), "Students needing attention")
         for name, codenames in (
+            ("no-attendance", ("view_school", "view_student", "view_studentresult")),
+            ("no-results", ("view_school", "view_student", "view_attendanceentry")),
+            ("no-students", ("view_school", "view_studentresult", "view_attendanceentry")),
             ("students-only", ("view_school", "view_student")),
             ("results-only", ("view_school", "view_studentresult")),
             ("school-only", ("view_school",)),
