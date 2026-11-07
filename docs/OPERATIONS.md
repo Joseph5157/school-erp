@@ -209,3 +209,110 @@ If a deployment fails with "DJANGO_SECRET_KEY must be set", add the variable to
 the service and redeploy. The build step runs `collectstatic`, which loads the
 settings, so a missing key fails the build and the previous deployment keeps
 serving.
+
+## Future security checklist
+
+These are precautions for future changes. They are not current incidents and do not block the
+existing staging installation.
+
+### Before enabling a custom role
+
+Run this read-only command:
+
+```
+python manage.py role_permission_gaps
+```
+
+A custom role might be allowed to open a page without having every permission needed for the
+personal data on that page. Review every reported gap before giving the role to a real user.
+Either add the missing permission or confirm that the restriction is intentional, then run the
+command again. The shipped School Administrators, Teachers and Guardians roles do not need this
+extra check unless their permissions are changed.
+
+### Email can be configured later
+
+The ERP works normally without an email provider. When `EMAIL_HOST` and `DJANGO_ADMINS` are
+not configured, crash reports are not emailed. Login, attendance, assessments, guardian access
+and the WhatsApp-assisted queue are unaffected.
+
+When a provider is chosen, configure it using the crash-reporting instructions above and test
+the configuration before relying on it. Do not send a deliberate crash through real staging
+mail just to test the report.
+
+### Before deploying a separate school installation
+
+Treat every school deployment as a new security environment, even when it uses the same code.
+
+1. **Gate 1 account check:** inspect guardian-linked logins and confirm none is a superuser,
+   staff login, School Administrators member, holder of a direct permission or member of another
+   privileged group. Run `role_permission_gaps` too if that installation has custom roles.
+2. **Gate 2 deployment check:** give the installation its own strong `DJANGO_SECRET_KEY`,
+   allowed hosts and trusted proxies. Confirm HTTPS is enabled, run
+   `python manage.py check --deploy`, and perform the header and redirect checks described
+   above without printing secret values.
+
+Complete these checks before the new school is opened to staff or guardians.
+
+## Deferred extra work: automated guardian email
+
+**Status: deferred; no current launch blocker.** The ERP continues to use the Guardian Portal
+and the manually assisted WhatsApp queue. The SMTP settings in this document are currently for
+privacy-safe administrator crash reports only; configuring them does not make the ERP send
+parent communications.
+
+### Current foundation that can be reused
+
+- Guardian records already have an optional email address.
+- Absence, report-card-published and announcement events already create audited notifications.
+- Templates are versioned, duplicate preparation is prevented by an idempotency key, and message
+  statuses preserve what happened.
+- Recipient selection already requires current portal access. The WhatsApp queue rechecks access
+  and consent before it opens the external channel and before it records a message as sent.
+- Guardian Portal notices remain the source of truth. Notification text contains only the
+  minimum needed data and a portal link.
+
+There is no guardian-email channel, email preference or consent history, parent-email template,
+delivery worker, retry loop, bounce/complaint handling or provider delivery tracking yet. The
+reserved WhatsApp API and SMS modes are also not implemented.
+
+### Direction to review when this work resumes
+
+Amazon SES is the preferred candidate for automated application mail because it supports low-cost
+SMTP/API delivery and can scale across schools. Google Workspace may still be used for human
+mailboxes and replies. This is a recommendation, not a frozen provider decision.
+
+Keep these rules regardless of provider:
+
+1. The portal remains the authoritative place for attendance details, marks, reports and notices.
+   Emails should be short link notifications; do not attach report cards or include sensitive
+   student data.
+2. Record an email-specific guardian preference or consent decision and provide an immediate
+   opt-out where policy requires it.
+3. Recheck current portal access and email eligibility immediately before dispatch, following the
+   same fail-closed principle as the WhatsApp queue.
+4. Send asynchronously through an outbox worker or management command. Do not call an external
+   provider inside a web request or the database transaction that records attendance, publishes
+   results or creates an announcement.
+5. Preserve idempotency, template versions and an audit trail. Record attempts, provider message
+   IDs, permanent failures and the final delivery state.
+6. Handle bounces and complaints, suppress unusable addresses, retry only temporary failures and
+   set rate limits.
+7. Give each school a verified sender identity or subdomain, a monitored reply-to address and
+   separate usage/delivery reporting.
+
+### Proposed implementation gates
+
+- **E1 — Foundation:** email channel, guardian preference/consent, channel-specific templates and
+  per-school sender configuration.
+- **E2 — Transactional alerts:** absence and report-card-available messages, with current-access
+  rechecks and portal links only.
+- **E3 — Delivery worker:** provider adapter, asynchronous dispatch, retries, idempotency,
+  provider IDs and failure handling.
+- **E4 — Announcements:** audience preview, opt-out rules, throttling and withdrawal behaviour.
+- **E5 — Multi-school operations:** verified identities, per-school tagging, quotas, monitoring
+  and reputation protection.
+
+Before implementation, write and approve an email communication architecture/ADR, confirm the
+provider and school consent policy, estimate real recipient volume, and decide how bounces and
+complaints reach the ERP. Add each gate on its own branch and PR with tests first.
+
