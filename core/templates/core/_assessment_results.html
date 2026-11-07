@@ -1,4 +1,23 @@
-{# Read-only roster with results. Context: assessment, rows, marked_count, ineligible_results #}
+{# Read-only roster with results. Context: assessment, rows, marked_count, ineligible_results, show_results #}
+{% if not show_results %}
+<p class="erp-note-text">
+    Roster on {{ assessment.assessment_date }}: {{ rows|length }} Student(s); results entered: {{ marked_count }}.
+    Each Student's result is shown to people who can view results.
+</p>
+<div class="erp-table-scroll" role="region" aria-label="Roster for {{ assessment.name }}" tabindex="0">
+<table class="table erp-assessment-table">
+    <caption class="visually-hidden">Roster for {{ assessment.name }}: each Student on the roster.</caption>
+    <thead><tr><th scope="col">Student</th></tr></thead>
+    <tbody>
+        {% for enrollment, result in rows %}
+        <tr><th scope="row" class="fw-semibold">{{ enrollment.student.full_name }}</th></tr>
+        {% empty %}
+        <tr><td>No Students are on this roster.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+{% else %}
 <p class="erp-note-text">
     Roster on {{ assessment.assessment_date }}: {{ rows|length }} Student(s); results entered: {{ marked_count }}.
     A Student without a result is <strong>not</strong> absent &mdash; entry is incomplete.
@@ -30,4 +49,5 @@
     {{ ineligible_results|length }} result(s) belong to Students no longer on this assessment's roster:
     {% for result in ineligible_results %}{{ result.academic_enrollment.student.full_name }}{% if not forloop.last %}, {% endif %}{% endfor %}.
 </div>
+{% endif %}
 {% endif %}

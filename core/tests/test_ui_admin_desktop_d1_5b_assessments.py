@@ -382,7 +382,8 @@ class DetailTests(AssessmentFixture, TestCase):
         self.assertNotIn(correct, page)
         self.assertNotIn(sheet, page)
         for codename, needle in (("correct_studentresult", correct), ("view_studentresult", sheet)):
-            _, client = self.client_with("view_assessment", codename)
+            # Marks are their own data class (Gate 4B), so both links need view_studentresult.
+            _, client = self.client_with("view_assessment", "view_studentresult", codename)
             self.assertIn(needle, html(client.get(self.final_url)), codename)
 
     def test_corrected_badge_after_a_correction(self):
@@ -439,7 +440,7 @@ class DetailTests(AssessmentFixture, TestCase):
         return assessment
 
     def test_empty_roster_colspan_matches_the_visible_columns(self):
-        _, viewer = self.client_with("view_assessment")
+        _, viewer = self.client_with("view_assessment", "view_studentresult")
         cases = (  # (pass mark, finalized, client, expected visible columns)
             (None, False, self.client, 6),
             ("8", False, self.client, 7),

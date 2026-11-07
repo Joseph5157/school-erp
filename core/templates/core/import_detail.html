@@ -5,21 +5,21 @@
 {% blocktrans asvar page_title with pk=batch.pk %}Import {{ pk }}{% endblocktrans %}
 {% url 'core:import-list' as list_url %}
 {% if batch.status == "VALIDATED" %}
-{% include "partials/_page_header.html" with eyebrow="Bulk imports" title=page_title purpose=batch.file_name status_label=batch.get_status_display status_tone="pending" secondary_url=list_url secondary_label="All imports" only %}
+{% include "partials/_page_header.html" with eyebrow="Bulk imports" title=page_title purpose=file_label status_label=batch.get_status_display status_tone="pending" secondary_url=list_url secondary_label="All imports" only %}
 {% elif batch.status == "COMMITTED" %}
-{% include "partials/_page_header.html" with eyebrow="Bulk imports" title=page_title purpose=batch.file_name status_label=batch.get_status_display status_tone="finalized" secondary_url=list_url secondary_label="All imports" only %}
+{% include "partials/_page_header.html" with eyebrow="Bulk imports" title=page_title purpose=file_label status_label=batch.get_status_display status_tone="finalized" secondary_url=list_url secondary_label="All imports" only %}
 {% elif batch.status == "DISCARDED" %}
-{% include "partials/_page_header.html" with eyebrow="Bulk imports" title=page_title purpose=batch.file_name status_label=batch.get_status_display status_tone="inactive" secondary_url=list_url secondary_label="All imports" only %}
+{% include "partials/_page_header.html" with eyebrow="Bulk imports" title=page_title purpose=file_label status_label=batch.get_status_display status_tone="inactive" secondary_url=list_url secondary_label="All imports" only %}
 {% elif batch.status == "EXPIRED" %}
-{% include "partials/_page_header.html" with eyebrow="Bulk imports" title=page_title purpose=batch.file_name status_label=batch.get_status_display status_tone="stale" secondary_url=list_url secondary_label="All imports" only %}
+{% include "partials/_page_header.html" with eyebrow="Bulk imports" title=page_title purpose=file_label status_label=batch.get_status_display status_tone="stale" secondary_url=list_url secondary_label="All imports" only %}
 {% else %}
-{% include "partials/_page_header.html" with eyebrow="Bulk imports" title=page_title purpose=batch.file_name status_label=batch.get_status_display status_tone="revoked" secondary_url=list_url secondary_label="All imports" only %}
+{% include "partials/_page_header.html" with eyebrow="Bulk imports" title=page_title purpose=file_label status_label=batch.get_status_display status_tone="revoked" secondary_url=list_url secondary_label="All imports" only %}
 {% endif %}
 
 <section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="import-facts-heading">
 <h2 class="h5 mb-3" id="import-facts-heading">This import</h2>
 <dl class="row mb-0">
-    <dt class="col-sm-3">File</dt><dd class="col-sm-9 text-break">{{ batch.file_name }}</dd>
+    <dt class="col-sm-3">File</dt><dd class="col-sm-9 text-break">{% if can_run %}{{ batch.file_name }}{% else %}Not shown without permission to run imports{% endif %}</dd>
     <dt class="col-sm-3">Uploaded</dt><dd class="col-sm-9">{{ batch.uploaded_at|date:"j M Y, H:i" }} by {{ batch.uploaded_by }}</dd>
     <dt class="col-sm-3">Academic Year</dt><dd class="col-sm-9">{{ batch.academic_year }}</dd>
     <dt class="col-sm-3">Enrollment start date</dt><dd class="col-sm-9">{{ batch.enrollment_start_date|date:"j M Y" }}</dd>
@@ -32,6 +32,10 @@
     {% endif %}
 </dl>
 </section>
+
+{% if batch.is_pending and not can_run %}
+<p class="erp-note-text">The students in this file are shown to people who can run imports.</p>
+{% endif %}
 
 {% if batch.status == "COMMITTED" %}
     <div class="erp-note-text erp-import-notice mb-4" role="status">

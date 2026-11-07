@@ -62,7 +62,7 @@ class ProgressPageTests(ProgressFixture, TestCase):
     def test_marks_charts_need_results_permission(self):
         self.subjects(3)
         self.day(datetime.date(2026, 7, 6), {self.s1: P, self.s2: P})
-        response = self.get(client=self.limited_client("view_student"))
+        response = self.get(client=self.limited_client("view_student", "view_attendanceentry"))
         self.assertContains(response, "erp-col")  # months shown
         self.assertNotContains(response, "erp-bullet")
         self.assertNotContains(response, "erp-radar")

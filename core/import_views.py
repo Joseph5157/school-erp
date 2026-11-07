@@ -5,7 +5,7 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
-from core import imports
+from core import data_access, imports
 from core.authorization import administrator_required
 from core.forms import ImportUploadForm
 from core.models import ImportBatch
@@ -15,7 +15,12 @@ from core.models import ImportBatch
 def import_list(request):
     imports.expire_stale_batches()
     batches = ImportBatch.objects.select_related("academic_year", "uploaded_by")[:50]
-    return render(request, "core/import_list.html", {"batches": batches})
+    # The original file name is user-controlled and can hold a student's name, so it is working
+    # data for whoever may run imports, not batch metadata (Security Gate 4B).
+    return render(request, "core/import_list.html", {
+        "batches": batches,
+        "show_file_name": request.user.has_perm(data_access.RUN_IMPORT),
+    })
 
 
 @administrator_required("core.run_import")
@@ -53,7 +58,11 @@ def import_detail(request, pk):
     new_warnings = []
     results = batch.row_results.all()
     warnings = [r for r in results if r.level == "WARNING"]
-    if batch.is_pending:
+    # view_importbatch shows a batch's status, counts and sanitised problems. The staged student
+    # rows (names, dates of birth, admission numbers) are the uploader's working data and need
+    # run_import, so the preview is only built for them (Security Gate 4B).
+    can_run = request.user.has_perm(data_access.RUN_IMPORT)
+    if batch.is_pending and can_run:
         plan, live = imports.preview(batch)
         live_errors = [issue for issue in live if issue.level == "ERROR"]
         recorded = {(r.sheet, r.row_number, r.column, r.message) for r in warnings}
@@ -70,7 +79,8 @@ def import_detail(request, pk):
         "needs_review": bool(warnings or new_warnings),
         "errors": [r for r in results if r.level == "ERROR"],
         "warnings": warnings,
-        "can_run": request.user.has_perm("core.run_import"),
+        "can_run": can_run,
+        "file_label": batch.file_name if can_run else "",
     })
 
 

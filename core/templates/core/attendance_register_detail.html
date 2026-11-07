@@ -53,6 +53,7 @@
 {% else %}
 <section aria-labelledby="register-submitted-heading">
 <h2 class="h5" id="register-submitted-heading">Submitted attendance</h2>
+{% if can_see_entries %}
 <div class="d-none d-md-block d-print-block">
 <div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Submitted attendance" tabindex="0">
@@ -102,6 +103,9 @@
 <p class="erp-record-empty">No attendance entries.</p>
 {% endif %}
 </div>
+{% else %}
+<p class="erp-note-text">{{ marked_count }} student{{ marked_count|pluralize }} marked. Each student's status and absence note are shown to people who can view attendance entries.</p>
+{% endif %}
 </section>
 {% endif %}
 </div>

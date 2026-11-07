@@ -3,7 +3,6 @@ from datetime import timedelta
 from urllib.parse import urlencode
 
 from django.contrib import messages
-from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
@@ -24,6 +23,7 @@ from core import (
     assignments,
     charts,
     dashboard,
+    data_access,
     duplicate_checks,
     guardian_access,
     guardian_accounts,
@@ -689,16 +689,25 @@ def assessment_create(request, pk):
 @administrator_required("core.view_assessment")
 def assessment_detail(request, pk):
     assessment = get_object_or_404(_assessments(), pk=pk)
-    return render(
-        request, "core/assessment_detail.html", _assessment_context(assessment)
+    # The roster belongs to view_assessment; scores, grades, pass/fail and who entered them are
+    # marks, which need view_studentresult (Security Gate 4B).
+    show_results = request.user.has_perm(data_access.STUDENT_RESULT)
+    context = _assessment_context(assessment, include_results=show_results)
+    context["show_results"] = show_results
+    return render(request, "core/assessment_detail.html", context)
+
+
+def _assessment_context(assessment, include_results=True):
+    results = (
+        {
+            r.academic_enrollment_id: r
+            for r in assessment.results.select_related("entered_by").prefetch_related(
+                "corrections"
+            )
+        }
+        if include_results
+        else {}
     )
-
-
-def _assessment_context(assessment):
-    results = {
-        r.academic_enrollment_id: r
-        for r in assessment.results.select_related("entered_by").prefetch_related("corrections")
-    }
     roster = list(assessment.roster())
     rows = [(enrollment, results.get(enrollment.pk)) for enrollment in roster]
     teacher = assessment.offering.teacher_assignments.filter(
@@ -710,9 +719,17 @@ def _assessment_context(assessment):
             assessment.finalization_problems() if not assessment.is_finalized else []
         ),
         "rows": rows,
-        "marked_count": sum(1 for _, r in rows if r is not None),
-        "ineligible_results": assessment.ineligible_results().select_related(
-            "academic_enrollment__student"
+        "marked_count": (
+            sum(1 for _, r in rows if r is not None)
+            if include_results
+            else assessment.results.filter(
+                academic_enrollment_id__in=[enrollment.pk for enrollment in roster]
+            ).count()
+        ),
+        "ineligible_results": (
+            assessment.ineligible_results().select_related("academic_enrollment__student")
+            if include_results
+            else assessment.ineligible_results().none()
         ),
         "teacher": teacher.teacher if teacher else None,
     }
@@ -963,15 +980,21 @@ def admin_overview(request):
             "setup_done": done_count,
             "setup_total": len(steps),
             "attendance_analytics": analytics.overview_context(
-                include_absentees=request.user.has_perm("core.view_student"),
-                include_marks=request.user.has_perm("core.view_studentresult"),
+                # Named absentees are student names plus attendance: both classes of data.
+                include_absentees=(
+                    request.user.has_perm(data_access.STUDENT)
+                    and request.user.has_perm(data_access.ATTENDANCE_ENTRY)
+                ),
+                include_marks=request.user.has_perm(data_access.STUDENT_RESULT),
                 include_publications=request.user.has_perm("core.view_termpublication"),
                 # Links appear only where the viewer can open the target (the same permission
                 # as the views' own decorators).
                 include_class_links=request.user.has_perm("core.view_classgrade"),
+                # Names, marks and absent-day counts together.
                 include_attention=(
-                    request.user.has_perm("core.view_student")
-                    and request.user.has_perm("core.view_studentresult")
+                    request.user.has_perm(data_access.STUDENT)
+                    and request.user.has_perm(data_access.STUDENT_RESULT)
+                    and request.user.has_perm(data_access.ATTENDANCE_ENTRY)
                 ),
                 missing_attendance_url=(
                     reverse("core:report-missing-attendance")
@@ -2192,7 +2215,8 @@ def academic_year_assignments(request, pk):
 
 @administrator_required("core.view_sectionclassteacher")
 def teacher_load(request, pk):
-    teacher = get_object_or_404(get_user_model(), pk=pk)
+    # Only teacher accounts: this page is not a lookup of any login by primary key (Security Gate 4B).
+    teacher = get_object_or_404(teacher_accounts.workload_queryset(), pk=pk)
     years = assignments.teacher_load(teacher)
     active = is_teacher(teacher)
     return render(
@@ -2532,13 +2556,20 @@ def applicant_create(request):
 @administrator_required("core.view_applicant")
 def applicant_detail(request, pk):
     applicant = get_object_or_404(Applicant, pk=pk)
-    guardian_links = applicant.guardian_links.select_related("guardian")
+    # Guardians are their own class of data (Security Gate 4B).
+    can_see_guardians = request.user.has_perm(data_access.GUARDIAN)
+    guardian_links = (
+        applicant.guardian_links.select_related("guardian")
+        if can_see_guardians
+        else applicant.guardian_links.none()
+    )
     student = Student.objects.filter(applicant=applicant).first()
     return render(
         request,
         "core/applicant_detail.html",
         {
             "applicant": applicant,
+            "can_see_guardians": can_see_guardians,
             "guardian_links": guardian_links,
             "student": student,
             "can_add_guardian": not _applicant_guardian_lock(applicant),
@@ -2734,23 +2765,37 @@ GUARDIAN_COLUMNS = (
 )
 
 
-def _guardian_search(query):
-    """Match a Guardian's name, phone or email, or the name of a linked child."""
-    return (
-        Q(full_name__icontains=query)
-        | Q(phone__icontains=query)
-        | Q(email__icontains=query)
-        | Exists(
+def _guardian_search(query, *, include_students=True, include_applicants=True):
+    """Match a Guardian's name, phone or email, or the name of a linked child.
+
+    Children are students and applicants, each its own class of data (Security Gate 4B): a
+    search only reaches the child names the searcher may see, so it cannot reveal them.
+    """
+    match = Q(full_name__icontains=query) | Q(phone__icontains=query) | Q(email__icontains=query)
+    if include_students:
+        match |= Exists(
             StudentGuardian.objects.current().filter(
                 guardian=OuterRef("pk"), student__full_name__icontains=query
             )
         )
-        | Exists(
+    if include_applicants:
+        match |= Exists(
             ApplicantGuardian.objects.filter(
                 guardian=OuterRef("pk"), applicant__full_name__icontains=query
             )
         )
-    )
+    return match
+
+
+def _without_unseen_children(user, guardians):
+    """Empty the child lists a login may not see (students need view_student, applicants
+    view_applicant). Done on the loaded objects, after anything that needs the links."""
+    for guardian in guardians:
+        if not user.has_perm(data_access.STUDENT):
+            guardian.child_links = []
+        if not user.has_perm(data_access.APPLICANT):
+            guardian.applicant_child_links = []
+    return guardians
 
 
 def _guardians_with_links(guardians):
@@ -2793,11 +2838,18 @@ def guardian_list(request):
     query = request.GET.get("q", "").strip()
     guardians = Guardian.objects.all()
     if query:
-        guardians = guardians.filter(_guardian_search(query))
+        guardians = guardians.filter(
+            _guardian_search(
+                query,
+                include_students=request.user.has_perm(data_access.STUDENT),
+                include_applicants=request.user.has_perm(data_access.APPLICANT),
+            )
+        )
     guardians = _guardians_with_links(guardians)
     table = build_table(request, guardians, GUARDIAN_COLUMNS, "name")
     for guardian in table.page:
         guardian.portal_state = guardian_accounts.portal_state_label(guardian)
+    _without_unseen_children(request.user, table.page)
     return render(
         request,
         "core/guardian_list.html",
@@ -2839,7 +2891,7 @@ def _guardian_duplicate_matches(user, details):
     )
     for guardian in guardians:
         guardian.duplicate_reasons = reasons[guardian.pk]
-    return guardians
+    return _without_unseen_children(user, guardians)
 
 
 @administrator_required("core.add_guardian")
@@ -3086,12 +3138,29 @@ def term_publication(request, pk):
         query = "&".join([f"section={section.pk}"] + [f"include={i}" for i in include])
         return redirect(f"{reverse('core:term-publication', args=[term.pk])}?{query}")
     plan = publication.plan_publication(term, section, include) if section else None
+    if plan is not None and not request.user.has_perm(data_access.STUDENT_RESULT):
+        plan = _plan_without_marks(plan)
     return render(
         request,
         "core/term_publication.html",
         {"term": term, "sections": sections, "section": section, "plan": plan,
-         "include": include},
+         "include": include, "show_marks": request.user.has_perm(data_access.STUDENT_RESULT)},
     )
+
+
+def _plan_without_marks(plan):
+    """The publication preview with every Student's scores, grades and remark taken out.
+
+    Marks need view_studentresult (Security Gate 4B). The confirm token and each row's action are
+    untouched, so confirming still publishes exactly what the full plan said.
+    """
+    rows = []
+    for row in plan["rows"]:
+        content = row.get("content")
+        if content is not None:
+            content = {**content, "entries": [], "remark": None}
+        rows.append({**row, "content": content})
+    return {**plan, "rows": rows}
 
 
 @administrator_required("core.view_termpublication")
@@ -3106,10 +3175,13 @@ def publication_detail(request, pk):
     versions = TermPublication.objects.filter(student=pub.student, term=pub.term).select_related(
         "published_by", "status_changed_by"
     ).order_by("-version")
+    # Scores, grades and the remark are marks: they need view_studentresult (Security Gate 4B).
+    show_marks = request.user.has_perm(data_access.STUDENT_RESULT)
     return render(
         request,
         "core/publication_detail.html",
-        {"pub": pub, "entries": pub.entries.all(), "versions": versions,
+        {"pub": pub, "entries": pub.entries.all() if show_marks else pub.entries.none(),
+         "show_marks": show_marks, "versions": versions,
          "live_matches": publication.live_fingerprint(pub) == pub.fingerprint},
     )
 
@@ -3598,12 +3670,17 @@ def _parse_id(request, name, valid_ids):
     return value if value in valid_ids else None
 
 
-def _student_chips(request, chip):
-    """Chip links: each keeps the other filters, only the active one is marked."""
+def _student_chips(request, chip, include_absent=True):
+    """Chip links: each keeps the other filters, only the active one is marked.
+
+    The absent chip is only offered to logins who may see attendance (Security Gate 4B).
+    """
     active = chip or "all"
     base = {k: v for k, v in request.GET.items() if v and k not in ("sort", "page", "chip")}
     chips = []
     for key, label in STUDENT_CHIP_CHOICES:
+        if key == "absent" and not include_absent:
+            continue
         data = dict(base)
         if key != "all":
             data["chip"] = key
@@ -3625,21 +3702,27 @@ def student_list(request):
     status = parse_choice(request, "status", Student.Status.choices)
     chip = parse_choice(request, "chip", STUDENT_CHIP_CHOICES)
     current_year = _current_academic_year(business_today())
+    # Guardian details and attendance are their own classes of data (Security Gate 4B):
+    # without their permissions the query leaves them out, so search and filters cannot reveal them.
+    can_see_guardians = request.user.has_perm(data_access.GUARDIAN)
+    can_see_absences = request.user.has_perm(data_access.ATTENDANCE_ENTRY)
+    if chip == "absent" and not can_see_absences:
+        chip = None
 
     students = Student.objects.all()
     if query:
-        students = students.filter(
-            Q(full_name__icontains=query)
-            | Q(email__icontains=query)
-            | Q(phone__icontains=query)
-            | Exists(
+        match = (
+            Q(full_name__icontains=query) | Q(email__icontains=query) | Q(phone__icontains=query)
+        )
+        if can_see_guardians:
+            match |= Exists(
                 StudentGuardian.objects.current().filter(student=OuterRef("pk")).filter(
                     Q(guardian__full_name__icontains=query)
                     | Q(guardian__phone__icontains=query)
                     | Q(guardian__email__icontains=query)
                 )
             )
-        )
+        students = students.filter(match)
     if status:
         students = students.filter(status=status)
 
@@ -3653,15 +3736,17 @@ def student_list(request):
     students = students.annotate(
         current_class=Subquery(active_enrollments.values("class_grade__name")[:1]),
         current_section=Subquery(active_enrollments.values("section__name")[:1]),
-    ).prefetch_related(
-        Prefetch(
-            "guardian_links",
-            queryset=StudentGuardian.objects.current()
-            .select_related("guardian")
-            .order_by("relationship_type", "guardian__full_name"),
-            to_attr="guardian_rows",
-        )
     )
+    if can_see_guardians:
+        students = students.prefetch_related(
+            Prefetch(
+                "guardian_links",
+                queryset=StudentGuardian.objects.current()
+                .select_related("guardian")
+                .order_by("relationship_type", "guardian__full_name"),
+                to_attr="guardian_rows",
+            )
+        )
 
     if chip == "new":
         students = students.filter(created_at__gte=timezone.now() - timedelta(days=30))
@@ -3703,7 +3788,12 @@ def student_list(request):
                 enrollments__academic_year=current_year,
             )
 
-    table = build_table(request, students, STUDENT_COLUMNS, "name")
+    columns = (
+        STUDENT_COLUMNS
+        if can_see_guardians
+        else tuple(column for column in STUDENT_COLUMNS if column.label != "Guardian")
+    )
+    table = build_table(request, students, columns, "name")
 
     has_filters = bool(
         query or status or chip or class_filter is not None or section_filter is not None
@@ -3722,7 +3812,8 @@ def student_list(request):
             "status": status,
             "status_choices": Student.Status.choices,
             "chip": chip,
-            "chips": _student_chips(request, chip),
+            "chips": _student_chips(request, chip, include_absent=can_see_absences),
+            "can_see_guardians": can_see_guardians,
             "class_filter": class_filter,
             "section_filter": section_filter,
             "class_choices": class_choices,
@@ -3750,12 +3841,18 @@ def profile_sections(*candidates):
 @administrator_required("core.view_student")
 def student_detail(request, pk):
     student = get_object_or_404(Student, pk=pk)
-    guardian_links = student.guardian_links.current().select_related("guardian")
-    ended_links = (
-        student.guardian_links.filter(ended_at__isnull=False)
-        .select_related("guardian", "ended_by")
-        .order_by("-ended_at", "-pk")
-    )
+    # Guardians and attendance are their own classes of data (Security Gate 4B).
+    can_see_guardians = request.user.has_perm(data_access.GUARDIAN)
+    can_see_attendance = request.user.has_perm(data_access.ATTENDANCE_ENTRY)
+    if can_see_guardians:
+        guardian_links = student.guardian_links.current().select_related("guardian")
+        ended_links = (
+            student.guardian_links.filter(ended_at__isnull=False)
+            .select_related("guardian", "ended_by")
+            .order_by("-ended_at", "-pk")
+        )
+    else:
+        guardian_links = ended_links = student.guardian_links.none()
     enrollments = student.enrollments.select_related(
         "academic_year", "class_grade", "section__class_grade"
     )
@@ -3766,7 +3863,7 @@ def student_detail(request, pk):
         progress = marks_analytics.student_progress_context(student, request.GET.get("term"))
     months = []
     year = _current_academic_year(today)
-    if year is not None:
+    if can_see_attendance and year is not None:
         months = analytics.student_attendance_by_month(student, year, today)
     for month in months:
         month["low"] = month["percentage"] < analytics.ATTENDANCE_TARGET_PERCENT
@@ -3778,7 +3875,8 @@ def student_detail(request, pk):
         {
             "student": student,
             "progress": progress,
-            "attendance_months": charts.columns(months),
+            # None leaves the card out altogether (see _student_progress.html).
+            "attendance_months": charts.columns(months) if can_see_attendance else None,
             "attendance_months_low": any(month["low"] for month in months),
             "guardian_links": guardian_links,
             "ended_links": ended_links,
@@ -3791,7 +3889,7 @@ def student_detail(request, pk):
                 ("placement", "Current placement", True),
                 ("progress", "Progress", True),
                 ("enrollment-history", "Enrollment history", True),
-                ("guardians", "Guardians", True),
+                ("guardians", "Guardians", can_see_guardians),
             ),
         },
     )
@@ -4106,7 +4204,11 @@ def attendance_register_detail(request, pk):
         ),
         pk=pk,
     )
-    entries = register.entries.select_related("academic_enrollment__student")
+    all_entries = register.entries.select_related("academic_enrollment__student")
+    # The register, its workflow state and its counts belong to view_attendanceregister;
+    # each student's status and absence note need view_attendanceentry (Security Gate 4B).
+    can_see_entries = request.user.has_perm(data_access.ATTENDANCE_ENTRY)
+    entries = all_entries if can_see_entries else all_entries.none()
     capture_form = AttendanceCaptureForm(register=register)
     return render(
         request,
@@ -4114,8 +4216,9 @@ def attendance_register_detail(request, pk):
         {
             "register": register,
             "entries": entries,
+            "can_see_entries": can_see_entries,
             "capture_form": capture_form,
-            "marked_count": entries.count(),
+            "marked_count": all_entries.count(),
         },
     )
 

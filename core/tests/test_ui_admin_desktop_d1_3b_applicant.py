@@ -194,5 +194,5 @@ class ApplicantDetailD13BTests(Phase4Fixture, TestCase):
         content = self.get(a, viewer)
         self.assertNotIn(create, content)
         self.assertNotIn("Associate guardian", content)
-        adder = self.client_with("adder", "view_applicant", "add_applicantguardian")
+        adder = self.client_with("adder", "view_applicant", "view_guardian", "add_applicantguardian")
         self.assertIn(create, self.get(a, adder))

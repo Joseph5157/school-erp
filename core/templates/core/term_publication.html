@@ -43,7 +43,7 @@
             <label class="small"><input type="checkbox" name="include" value="{{ row.student.pk }}"{% if row.selected %} checked{% endif %}> Publish the finalized results anyway (marked partial)</label>
             {% endif %}
             {% endif %}
-            {% if row.selected or row.action == "incomplete" %}
+            {% if show_marks %}{% if row.selected or row.action == "incomplete" %}
             <div class="small erp-publication-release">
                 <p class="mb-1 fw-semibold">Will be released</p>
                 <ul class="list-unstyled mb-0">
@@ -51,7 +51,7 @@
                 </ul>
                 {% if row.content.remark %}<p class="text-muted mb-0 mt-1">Remark: {{ row.content.remark.text }}</p>{% endif %}
             </div>
-            {% endif %}
+            {% endif %}{% endif %}
         </li>
         {% empty %}
         <li class="erp-publication-row">No Students are placed in this Section for this Term.</li>

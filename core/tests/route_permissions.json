@@ -1,0 +1,1778 @@
+{
+  "core:academic-year-assessments": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.view_assessment"
+    ],
+    "route": "academic-years/<int:pk>/assessments/",
+    "view": "views.academic_year_assessments"
+  },
+  "core:academic-year-assignments": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.view_sectionclassteacher"
+    ],
+    "route": "academic-years/<int:pk>/assignments/",
+    "view": "views.academic_year_assignments"
+  },
+  "core:academic-year-calendar": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.view_schoolcalendarday"
+    ],
+    "route": "academic-years/<int:pk>/calendar/",
+    "view": "views.academic_year_calendar"
+  },
+  "core:academic-year-class-teachers": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.view_sectionclassteacher"
+    ],
+    "route": "academic-years/<int:pk>/class-teachers/",
+    "view": "views.academic_year_class_teachers"
+  },
+  "core:academic-year-create": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.add_academicyear"
+    ],
+    "route": "academic-years/create/",
+    "view": "views.academic_year_create"
+  },
+  "core:academic-year-grading-scales": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.view_gradingscale"
+    ],
+    "route": "academic-years/<int:pk>/grading-scales/",
+    "view": "views.academic_year_grading_scales"
+  },
+  "core:academic-year-list": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.view_academicyear"
+    ],
+    "route": "academic-years/",
+    "view": "views.academic_year_list"
+  },
+  "core:academic-year-offerings": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.view_academicsubjectoffering"
+    ],
+    "route": "academic-years/<int:pk>/subjects/",
+    "view": "views.academic_year_offerings"
+  },
+  "core:academic-year-saturday-rule": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.change_schoolcalendarday"
+    ],
+    "route": "academic-years/<int:pk>/calendar/saturdays/",
+    "view": "views.academic_year_saturday_rule"
+  },
+  "core:academic-year-teacher-assignments": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.view_assessmentteacherassignment"
+    ],
+    "route": "academic-years/<int:pk>/teachers/",
+    "view": "views.academic_year_teacher_assignments"
+  },
+  "core:academic-year-terms": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.view_academicterm"
+    ],
+    "route": "academic-years/<int:pk>/terms/",
+    "view": "views.academic_year_terms"
+  },
+  "core:admin-overview": {
+    "flags": [],
+    "inner": [
+      "core.view_attendanceentry",
+      "core.view_attendanceregister",
+      "core.view_classgrade",
+      "core.view_student",
+      "core.view_studentresult",
+      "core.view_termpublication"
+    ],
+    "perms": [
+      "core.view_school"
+    ],
+    "route": "overview/",
+    "view": "views.admin_overview"
+  },
+  "core:announcement-create": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.add_announcement"
+    ],
+    "route": "announcements/new/",
+    "view": "announcement_views.announcement_create"
+  },
+  "core:announcement-detail": {
+    "flags": [],
+    "inner": [
+      "core.send_notification"
+    ],
+    "perms": [
+      "core.view_announcement"
+    ],
+    "route": "announcements/<int:pk>/",
+    "view": "announcement_views.announcement_detail"
+  },
+  "core:announcement-list": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.view_announcement"
+    ],
+    "route": "announcements/",
+    "view": "announcement_views.announcement_list"
+  },
+  "core:announcement-prepare": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.send_notification"
+    ],
+    "route": "announcements/<int:pk>/prepare/",
+    "view": "announcement_views.announcement_prepare"
+  },
+  "core:announcement-withdraw": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.withdraw_announcement"
+    ],
+    "route": "announcements/<int:pk>/withdraw/",
+    "view": "announcement_views.announcement_withdraw"
+  },
+  "core:applicant-admission-decision": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.change_applicant"
+    ],
+    "route": "applicants/<int:pk>/decision/",
+    "view": "views.applicant_admission_decision"
+  },
+  "core:applicant-create": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.add_applicant"
+    ],
+    "route": "applicants/create/",
+    "view": "views.applicant_create"
+  },
+  "core:applicant-decision-confirm": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.change_applicant"
+    ],
+    "route": "applicants/<int:pk>/decide/<str:decision>/",
+    "view": "views.applicant_decision_confirm"
+  },
+  "core:applicant-detail": {
+    "flags": [],
+    "inner": [
+      "core.view_guardian"
+    ],
+    "perms": [
+      "core.view_applicant"
+    ],
+    "route": "applicants/<int:pk>/",
+    "view": "views.applicant_detail"
+  },
+  "core:applicant-edit": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.change_applicant"
+    ],
+    "route": "applicants/<int:pk>/edit/",
+    "view": "views.applicant_edit"
+  },
+  "core:applicant-guardian-create": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.add_applicantguardian+core.view_guardian"
+    ],
+    "route": "applicants/<int:pk>/guardians/add/",
+    "view": "views.applicant_guardian_create"
+  },
+  "core:applicant-list": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.view_applicant"
+    ],
+    "route": "applicants/",
+    "view": "views.applicant_list"
+  },
+  "core:applicant-progress": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.add_student"
+    ],
+    "route": "applicants/<int:pk>/progress/",
+    "view": "views.applicant_progress"
+  },
+  "core:assessment-create": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.add_assessment"
+    ],
+    "route": "academic-years/<int:pk>/assessments/add/",
+    "view": "views.assessment_create"
+  },
+  "core:assessment-delete": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.delete_assessment"
+    ],
+    "route": "assessments/<int:pk>/delete/",
+    "view": "views.assessment_delete"
+  },
+  "core:assessment-detail": {
+    "flags": [],
+    "inner": [
+      "core.view_studentresult"
+    ],
+    "perms": [
+      "core.view_assessment"
+    ],
+    "route": "assessments/<int:pk>/",
+    "view": "views.assessment_detail"
+  },
+  "core:assessment-finalize": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.finalize_assessment"
+    ],
+    "route": "assessments/<int:pk>/finalize/",
+    "view": "views.assessment_finalize"
+  },
+  "core:assessment-marks-entry": {
+    "flags": [
+      "teacher_required"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "my/assessments/<int:pk>/marks/",
+    "view": "views.assessment_marks_entry"
+  },
+  "core:assessment-update": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.change_assessment"
+    ],
+    "route": "assessments/<int:pk>/edit/",
+    "view": "views.assessment_update"
+  },
+  "core:assignment-copy": {
+    "flags": [],
+    "inner": [
+      "core.add_assessmentteacherassignment"
+    ],
+    "perms": [
+      "core.add_sectionclassteacher"
+    ],
+    "route": "academic-years/<int:pk>/assignments/copy/",
+    "view": "views.assignment_copy"
+  },
+  "core:attendance-capture": {
+    "flags": [],
+    "inner": [
+      "core.change_attendanceregister"
+    ],
+    "perms": [
+      "core.add_attendanceentry"
+    ],
+    "route": "attendance/<int:pk>/capture/",
+    "view": "views.attendance_capture"
+  },
+  "core:attendance-entry-correct": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.change_attendanceentry"
+    ],
+    "route": "attendance/entries/<int:pk>/correct/",
+    "view": "views.attendance_entry_correct"
+  },
+  "core:attendance-register-create": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.add_attendanceregister"
+    ],
+    "route": "attendance/create/",
+    "view": "views.attendance_register_create"
+  },
+  "core:attendance-register-detail": {
+    "flags": [],
+    "inner": [
+      "core.view_attendanceentry"
+    ],
+    "perms": [
+      "core.view_attendanceregister"
+    ],
+    "route": "attendance/<int:pk>/",
+    "view": "views.attendance_register_detail"
+  },
+  "core:attendance-register-list": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.view_attendanceregister"
+    ],
+    "route": "attendance/",
+    "view": "views.attendance_register_list"
+  },
+  "core:attendance-register-submit": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.change_attendanceregister"
+    ],
+    "route": "attendance/<int:pk>/submit/",
+    "view": "views.attendance_register_submit"
+  },
+  "core:attendance-reports": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.view_attendanceentry"
+    ],
+    "route": "attendance/reports/",
+    "view": "views.attendance_reports"
+  },
+  "core:attendance-summary": {
+    "flags": [],
+    "inner": [
+      "core.view_attendanceentry"
+    ],
+    "perms": [
+      "core.issue_document"
+    ],
+    "route": "documents/attendance/",
+    "view": "document_views.attendance_summary_page"
+  },
+  "core:bonafide-create": {
+    "flags": [],
+    "inner": [
+      "core.view_student"
+    ],
+    "perms": [
+      "core.issue_document"
+    ],
+    "route": "documents/bonafide/",
+    "view": "document_views.bonafide_create"
+  },
+  "core:calendar-day-create": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.add_schoolcalendarday"
+    ],
+    "route": "academic-years/<int:pk>/calendar/add/",
+    "view": "views.calendar_day_create"
+  },
+  "core:calendar-day-delete": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.delete_schoolcalendarday"
+    ],
+    "route": "calendar-days/<int:pk>/delete/",
+    "view": "views.calendar_day_delete"
+  },
+  "core:calendar-day-update": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.change_schoolcalendarday"
+    ],
+    "route": "calendar-days/<int:pk>/edit/",
+    "view": "views.calendar_day_update"
+  },
+  "core:class-grade-archive": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.change_classgrade"
+    ],
+    "route": "classes/<int:pk>/archive/",
+    "view": "views.class_grade_archive"
+  },
+  "core:class-grade-create": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.add_classgrade"
+    ],
+    "route": "classes/create/",
+    "view": "views.class_grade_create"
+  },
+  "core:class-grade-detail": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.view_classgrade"
+    ],
+    "route": "classes/<int:pk>/",
+    "view": "views.class_grade_detail"
+  },
+  "core:class-grade-list": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.view_classgrade"
+    ],
+    "route": "classes/",
+    "view": "views.class_grade_list"
+  },
+  "core:class-grade-rename": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.change_classgrade"
+    ],
+    "route": "classes/<int:pk>/rename/",
+    "view": "views.class_grade_rename"
+  },
+  "core:class-grade-reorder": {
+    "flags": [
+      "require_POST"
+    ],
+    "inner": [],
+    "perms": [
+      "core.change_classgrade"
+    ],
+    "route": "classes/order/",
+    "view": "views.class_grade_reorder"
+  },
+  "core:class-grade-restore": {
+    "flags": [
+      "require_POST"
+    ],
+    "inner": [],
+    "perms": [
+      "core.change_classgrade"
+    ],
+    "route": "classes/<int:pk>/restore/",
+    "view": "views.class_grade_restore"
+  },
+  "core:class-teacher-assign": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.add_sectionclassteacher"
+    ],
+    "route": "academic-years/<int:pk>/class-teachers/assign/",
+    "view": "views.class_teacher_assign"
+  },
+  "core:class-teacher-delete": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.delete_sectionclassteacher"
+    ],
+    "route": "class-teachers/<int:pk>/delete/",
+    "view": "views.class_teacher_delete"
+  },
+  "core:class-teacher-end": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.change_sectionclassteacher"
+    ],
+    "route": "class-teachers/<int:pk>/end/",
+    "view": "views.class_teacher_end"
+  },
+  "core:document-index": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.issue_document"
+    ],
+    "route": "documents/",
+    "view": "document_views.document_index"
+  },
+  "core:document-pdf": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.issue_document"
+    ],
+    "route": "documents/<int:pk>/pdf/",
+    "view": "document_views.document_pdf"
+  },
+  "core:document-report-card-pdf": {
+    "flags": [],
+    "inner": [
+      "core.view_studentresult"
+    ],
+    "perms": [
+      "core.issue_document"
+    ],
+    "route": "documents/report-cards/<int:pk>/pdf/",
+    "view": "document_views.document_report_card_pdf"
+  },
+  "core:document-report-cards": {
+    "flags": [],
+    "inner": [
+      "core.view_student",
+      "core.view_studentresult"
+    ],
+    "perms": [
+      "core.issue_document"
+    ],
+    "route": "documents/report-cards/",
+    "view": "document_views.document_report_cards"
+  },
+  "core:enrollment-roll-number": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.change_academicenrollment"
+    ],
+    "route": "enrollments/<int:pk>/roll-number/",
+    "view": "views.enrollment_roll_number"
+  },
+  "core:grade-boundary-create": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.add_gradeboundary"
+    ],
+    "route": "grading-scales/<int:pk>/bands/add/",
+    "view": "views.grade_boundary_create"
+  },
+  "core:grade-boundary-delete": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.delete_gradeboundary"
+    ],
+    "route": "grade-bands/<int:pk>/remove/",
+    "view": "views.grade_boundary_delete"
+  },
+  "core:grading-scale-create": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.add_gradingscale"
+    ],
+    "route": "academic-years/<int:pk>/grading-scales/add/",
+    "view": "views.grading_scale_create"
+  },
+  "core:grading-scale-detail": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.view_gradingscale"
+    ],
+    "route": "grading-scales/<int:pk>/",
+    "view": "views.grading_scale_detail"
+  },
+  "core:grading-scale-update": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.change_gradingscale"
+    ],
+    "route": "grading-scales/<int:pk>/edit/",
+    "view": "views.grading_scale_update"
+  },
+  "core:guardian-access-grant": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.add_guardianstudentaccess"
+    ],
+    "route": "student-guardians/<int:pk>/grant-access/",
+    "view": "views.guardian_access_grant"
+  },
+  "core:guardian-access-review-decide": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.add_guardianaccessreview"
+    ],
+    "route": "guardian-access/<int:pk>/review/",
+    "view": "views.guardian_access_review_decide"
+  },
+  "core:guardian-access-reviews": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.view_guardianaccessreview"
+    ],
+    "route": "guardian-access/reviews/",
+    "view": "views.guardian_access_reviews"
+  },
+  "core:guardian-access-revoke": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.change_guardianstudentaccess"
+    ],
+    "route": "guardian-access/<int:pk>/revoke/",
+    "view": "views.guardian_access_revoke"
+  },
+  "core:guardian-account-create": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.add_guardianaccount"
+    ],
+    "route": "guardians/<int:pk>/account/create/",
+    "view": "views.guardian_account_create"
+  },
+  "core:guardian-account-link": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.add_guardianaccount"
+    ],
+    "route": "guardians/<int:pk>/account/link/",
+    "view": "views.guardian_account_link"
+  },
+  "core:guardian-account-reset-password": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.reset_guardian_password"
+    ],
+    "route": "guardian-accounts/<int:pk>/reset-password/",
+    "view": "views.guardian_account_reset_password"
+  },
+  "core:guardian-account-revoke": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.change_guardianaccount"
+    ],
+    "route": "guardian-accounts/<int:pk>/revoke/",
+    "view": "views.guardian_account_revoke"
+  },
+  "core:guardian-account-username": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.change_guardian_username"
+    ],
+    "route": "guardian-accounts/<int:pk>/username/",
+    "view": "views.guardian_account_username"
+  },
+  "core:guardian-consent-record": {
+    "flags": [
+      "require_POST"
+    ],
+    "inner": [],
+    "perms": [
+      "core.add_guardiancontactconsent"
+    ],
+    "route": "guardians/<int:pk>/consent/",
+    "view": "notification_views.guardian_consent_record"
+  },
+  "core:guardian-create": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.add_guardian"
+    ],
+    "route": "guardians/create/",
+    "view": "views.guardian_create"
+  },
+  "core:guardian-detail": {
+    "flags": [],
+    "inner": [
+      "accounts.view_securityevent",
+      "core.add_guardiancontactconsent",
+      "core.view_guardianaccount",
+      "core.view_guardiancontactconsent",
+      "core.view_guardianstudentaccess"
+    ],
+    "perms": [
+      "core.view_guardian"
+    ],
+    "route": "guardians/<int:pk>/",
+    "view": "views.guardian_detail"
+  },
+  "core:guardian-edit": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.change_guardian"
+    ],
+    "route": "guardians/<int:pk>/edit/",
+    "view": "views.guardian_edit"
+  },
+  "core:guardian-list": {
+    "flags": [],
+    "inner": [
+      "core.view_applicant",
+      "core.view_student"
+    ],
+    "perms": [
+      "core.view_guardian"
+    ],
+    "route": "guardians/",
+    "view": "views.guardian_list"
+  },
+  "core:import-commit": {
+    "flags": [
+      "require_POST"
+    ],
+    "inner": [],
+    "perms": [
+      "core.run_import"
+    ],
+    "route": "imports/<int:pk>/commit/",
+    "view": "import_views.import_commit"
+  },
+  "core:import-detail": {
+    "flags": [],
+    "inner": [
+      "core.run_import"
+    ],
+    "perms": [
+      "core.view_importbatch"
+    ],
+    "route": "imports/<int:pk>/",
+    "view": "import_views.import_detail"
+  },
+  "core:import-discard": {
+    "flags": [
+      "require_POST"
+    ],
+    "inner": [],
+    "perms": [
+      "core.run_import"
+    ],
+    "route": "imports/<int:pk>/discard/",
+    "view": "import_views.import_discard"
+  },
+  "core:import-issues-csv": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.view_importbatch"
+    ],
+    "route": "imports/<int:pk>/problems.csv",
+    "view": "import_views.import_issues_csv"
+  },
+  "core:import-list": {
+    "flags": [],
+    "inner": [
+      "core.run_import"
+    ],
+    "perms": [
+      "core.view_importbatch"
+    ],
+    "route": "imports/",
+    "view": "import_views.import_list"
+  },
+  "core:import-template": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.run_import"
+    ],
+    "route": "imports/template.xlsx",
+    "view": "import_views.import_template"
+  },
+  "core:import-upload": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.run_import"
+    ],
+    "route": "imports/new/",
+    "view": "import_views.import_upload"
+  },
+  "core:login-lockout-clear-confirm": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "accounts.clear_login_lockout"
+    ],
+    "route": "sign-in-lockouts/clear/",
+    "view": "views.login_lockout_clear_confirm"
+  },
+  "core:login-lockouts": {
+    "flags": [
+      "require_safe"
+    ],
+    "inner": [],
+    "perms": [
+      "accounts.clear_login_lockout"
+    ],
+    "route": "sign-in-lockouts/",
+    "view": "views.login_lockouts"
+  },
+  "core:my-assessments": {
+    "flags": [
+      "teacher_required"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "my/assessments/",
+    "view": "views.my_assessments"
+  },
+  "core:my-attendance": {
+    "flags": [
+      "teacher_required"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "my/attendance/<int:section_pk>/",
+    "view": "views.my_attendance"
+  },
+  "core:my-attendance-assignment": {
+    "flags": [
+      "teacher_required"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "my/attendance/history/<int:pk>/",
+    "view": "views.my_attendance_assignment"
+  },
+  "core:my-attendance-autosave": {
+    "flags": [
+      "require_POST",
+      "teacher_required"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "my/attendance/<int:section_pk>/autosave/",
+    "view": "views.my_attendance_autosave"
+  },
+  "core:my-attendance-history": {
+    "flags": [
+      "teacher_required"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "my/attendance/history/",
+    "view": "views.my_attendance_history"
+  },
+  "core:my-attendance-register": {
+    "flags": [
+      "teacher_required"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "my/attendance/registers/<int:pk>/",
+    "view": "views.my_attendance_register"
+  },
+  "core:my-attendance-submit": {
+    "flags": [
+      "teacher_required"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "my/attendance/<int:section_pk>/submit/",
+    "view": "views.my_attendance_submit"
+  },
+  "core:my-gradebook": {
+    "flags": [
+      "teacher_required"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "my/gradebook/<int:pk>/",
+    "view": "views.my_gradebook"
+  },
+  "core:my-home": {
+    "flags": [
+      "teacher_required"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "my/",
+    "view": "views.my_home"
+  },
+  "core:my-report-card": {
+    "flags": [
+      "teacher_required"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "my/report-cards/<int:term_pk>/<int:student_pk>/",
+    "view": "views.my_report_card"
+  },
+  "core:my-results": {
+    "flags": [
+      "teacher_required"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "my/results/",
+    "view": "views.my_results"
+  },
+  "core:my-student-detail": {
+    "flags": [
+      "teacher_required"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "my/students/<int:pk>/",
+    "view": "views.my_student_detail"
+  },
+  "core:my-students": {
+    "flags": [
+      "teacher_required"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "my/students/",
+    "view": "views.my_students"
+  },
+  "core:my-subject-results": {
+    "flags": [
+      "teacher_required"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "my/results/<int:pk>/",
+    "view": "views.my_subject_results"
+  },
+  "core:notification-dismiss": {
+    "flags": [
+      "require_POST"
+    ],
+    "inner": [],
+    "perms": [
+      "core.send_notification"
+    ],
+    "route": "notifications/<int:pk>/dismiss/",
+    "view": "notification_views.notification_dismiss"
+  },
+  "core:notification-mark-sent": {
+    "flags": [
+      "require_POST"
+    ],
+    "inner": [],
+    "perms": [
+      "core.send_notification"
+    ],
+    "route": "notifications/<int:pk>/sent/",
+    "view": "notification_views.notification_mark_sent"
+  },
+  "core:notification-open-whatsapp": {
+    "flags": [
+      "require_POST"
+    ],
+    "inner": [],
+    "perms": [
+      "core.send_notification"
+    ],
+    "route": "notifications/<int:pk>/whatsapp/",
+    "view": "notification_views.notification_open_whatsapp"
+  },
+  "core:notifications-to-send": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.send_notification"
+    ],
+    "route": "notifications/to-send/",
+    "view": "notification_views.to_send"
+  },
+  "core:offering-create": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.add_academicsubjectoffering"
+    ],
+    "route": "academic-years/<int:pk>/subjects/add/",
+    "view": "views.offering_create"
+  },
+  "core:offering-reorder": {
+    "flags": [
+      "require_POST"
+    ],
+    "inner": [],
+    "perms": [
+      "core.change_academicsubjectoffering"
+    ],
+    "route": "academic-years/<int:pk>/subjects/grades/<int:grade_pk>/order/",
+    "view": "views.offering_reorder"
+  },
+  "core:offering-update": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.change_academicsubjectoffering"
+    ],
+    "route": "subject-offerings/<int:pk>/edit/",
+    "view": "views.offering_update"
+  },
+  "core:publication-detail": {
+    "flags": [],
+    "inner": [
+      "core.view_studentresult"
+    ],
+    "perms": [
+      "core.view_termpublication"
+    ],
+    "route": "publications/<int:pk>/",
+    "view": "views.publication_detail"
+  },
+  "core:publication-withdraw": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.publish_termpublication"
+    ],
+    "route": "publications/<int:pk>/withdraw/",
+    "view": "views.publication_withdraw"
+  },
+  "core:publications-stale": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.view_termpublication"
+    ],
+    "route": "publications/stale/",
+    "view": "views.publications_stale"
+  },
+  "core:report-daily-absentees": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.view_attendanceentry"
+    ],
+    "route": "attendance/reports/absent/",
+    "view": "views.report_daily_absentees"
+  },
+  "core:report-missing-attendance": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.view_attendanceregister"
+    ],
+    "route": "attendance/reports/missing/",
+    "view": "views.report_missing_attendance"
+  },
+  "core:report-monthly-section": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.view_attendanceentry"
+    ],
+    "route": "attendance/reports/monthly/",
+    "view": "views.report_monthly_section"
+  },
+  "core:report-result-sheet": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.view_studentresult"
+    ],
+    "route": "assessments/<int:pk>/result-sheet/",
+    "view": "views.report_result_sheet"
+  },
+  "core:report-student-results": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.view_studentresult"
+    ],
+    "route": "students/<int:pk>/results/",
+    "view": "views.report_student_results"
+  },
+  "core:report-subject-section-results": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.view_studentresult"
+    ],
+    "route": "academic-years/<int:pk>/subject-results/",
+    "view": "views.report_subject_section_results"
+  },
+  "core:report-term-report-card": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.view_studentresult"
+    ],
+    "route": "students/<int:pk>/report-card/<int:term_pk>/",
+    "view": "views.report_term_report_card"
+  },
+  "core:result-correct": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.correct_studentresult"
+    ],
+    "route": "results/<int:pk>/correct/",
+    "view": "views.result_correct"
+  },
+  "core:school-create": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.add_school"
+    ],
+    "route": "school/create/",
+    "view": "views.school_create"
+  },
+  "core:school-detail": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.view_school"
+    ],
+    "route": "school/",
+    "view": "views.school_detail"
+  },
+  "core:school-logo": {
+    "flags": [
+      "condition"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "school/logo/",
+    "view": "views.school_logo_image"
+  },
+  "core:school-logo-remove": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.change_school"
+    ],
+    "route": "school/logo/remove/",
+    "view": "views.school_logo_remove"
+  },
+  "core:school-logo-upload": {
+    "flags": [
+      "require_POST"
+    ],
+    "inner": [],
+    "perms": [
+      "core.change_school"
+    ],
+    "route": "school/logo/upload/",
+    "view": "views.school_logo_upload"
+  },
+  "core:school-update": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.change_school"
+    ],
+    "route": "school/edit/",
+    "view": "views.school_update"
+  },
+  "core:section-archive": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.change_section"
+    ],
+    "route": "sections/<int:pk>/archive/",
+    "view": "views.section_archive"
+  },
+  "core:section-create": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.add_section"
+    ],
+    "route": "classes/<int:pk>/sections/create/",
+    "view": "views.section_create"
+  },
+  "core:section-rename": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.change_section"
+    ],
+    "route": "sections/<int:pk>/rename/",
+    "view": "views.section_rename"
+  },
+  "core:section-restore": {
+    "flags": [
+      "require_POST"
+    ],
+    "inner": [],
+    "perms": [
+      "core.change_section"
+    ],
+    "route": "sections/<int:pk>/restore/",
+    "view": "views.section_restore"
+  },
+  "core:student-admission-number": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.change_student"
+    ],
+    "route": "students/<int:pk>/admission-number/",
+    "view": "views.student_admission_number"
+  },
+  "core:student-attendance": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.view_attendanceentry"
+    ],
+    "route": "students/<int:pk>/attendance/",
+    "view": "views.student_attendance"
+  },
+  "core:student-deactivate-confirm": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.change_student"
+    ],
+    "route": "students/<int:pk>/deactivate/",
+    "view": "views.student_deactivate_confirm"
+  },
+  "core:student-detail": {
+    "flags": [],
+    "inner": [
+      "core.change_student",
+      "core.view_attendanceentry",
+      "core.view_guardian",
+      "core.view_studentresult"
+    ],
+    "perms": [
+      "core.view_student"
+    ],
+    "route": "students/<int:pk>/",
+    "view": "views.student_detail"
+  },
+  "core:student-edit": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.change_student"
+    ],
+    "route": "students/<int:pk>/edit/",
+    "view": "views.student_edit"
+  },
+  "core:student-enroll": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.add_academicenrollment"
+    ],
+    "route": "students/<int:pk>/enroll/",
+    "view": "views.student_enroll"
+  },
+  "core:student-guardian-add": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.add_studentguardian+core.view_guardian"
+    ],
+    "route": "students/<int:pk>/guardians/add/",
+    "view": "views.student_guardian_add"
+  },
+  "core:student-guardian-edit": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.change_studentguardian"
+    ],
+    "route": "student-guardians/<int:pk>/edit/",
+    "view": "views.student_guardian_edit"
+  },
+  "core:student-guardian-end": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.change_studentguardian+core.change_guardianstudentaccess"
+    ],
+    "route": "student-guardians/<int:pk>/end/",
+    "view": "views.student_guardian_end"
+  },
+  "core:student-list": {
+    "flags": [],
+    "inner": [
+      "core.view_attendanceentry",
+      "core.view_guardian"
+    ],
+    "perms": [
+      "core.view_student"
+    ],
+    "route": "students/",
+    "view": "views.student_list"
+  },
+  "core:student-reactivate-confirm": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.change_student"
+    ],
+    "route": "students/<int:pk>/reactivate/",
+    "view": "views.student_reactivate_confirm"
+  },
+  "core:student-status-change": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.change_student"
+    ],
+    "route": "students/<int:pk>/status/",
+    "view": "views.student_status_change"
+  },
+  "core:subject-create": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.add_subject"
+    ],
+    "route": "subjects/create/",
+    "view": "views.subject_create"
+  },
+  "core:subject-list": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.view_subject"
+    ],
+    "route": "subjects/",
+    "view": "views.subject_list"
+  },
+  "core:subject-update": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.change_subject"
+    ],
+    "route": "subjects/<int:pk>/edit/",
+    "view": "views.subject_update"
+  },
+  "core:teacher-assignment-create": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.add_assessmentteacherassignment"
+    ],
+    "route": "academic-years/<int:pk>/teachers/add/",
+    "view": "views.teacher_assignment_create"
+  },
+  "core:teacher-assignment-delete": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.delete_assessmentteacherassignment"
+    ],
+    "route": "teacher-assignments/<int:pk>/remove/",
+    "view": "views.teacher_assignment_delete"
+  },
+  "core:teacher-assignment-end": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.change_assessmentteacherassignment"
+    ],
+    "route": "teacher-assignments/<int:pk>/end/",
+    "view": "views.teacher_assignment_end"
+  },
+  "core:teacher-create": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "accounts.manage_teacher_accounts"
+    ],
+    "route": "teachers/new/",
+    "view": "teacher_views.teacher_create"
+  },
+  "core:teacher-deactivate": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "accounts.manage_teacher_accounts"
+    ],
+    "route": "teachers/<int:pk>/deactivate/",
+    "view": "teacher_views.teacher_deactivate"
+  },
+  "core:teacher-detail": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "accounts.manage_teacher_accounts"
+    ],
+    "route": "teachers/<int:pk>/",
+    "view": "teacher_views.teacher_detail"
+  },
+  "core:teacher-list": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "accounts.manage_teacher_accounts"
+    ],
+    "route": "teachers/",
+    "view": "teacher_views.teacher_list"
+  },
+  "core:teacher-load": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.view_sectionclassteacher"
+    ],
+    "route": "teachers/<int:pk>/load/",
+    "view": "views.teacher_load"
+  },
+  "core:teacher-reactivate": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "accounts.manage_teacher_accounts"
+    ],
+    "route": "teachers/<int:pk>/reactivate/",
+    "view": "teacher_views.teacher_reactivate"
+  },
+  "core:teacher-reset-password": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "accounts.manage_teacher_accounts"
+    ],
+    "route": "teachers/<int:pk>/reset-password/",
+    "view": "teacher_views.teacher_reset_password"
+  },
+  "core:teacher-username": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "accounts.manage_teacher_accounts"
+    ],
+    "route": "teachers/<int:pk>/username/",
+    "view": "teacher_views.teacher_username"
+  },
+  "core:term-create": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.add_academicterm"
+    ],
+    "route": "academic-years/<int:pk>/terms/add/",
+    "view": "views.term_create"
+  },
+  "core:term-publication": {
+    "flags": [],
+    "inner": [
+      "core.publish_termpublication",
+      "core.view_studentresult"
+    ],
+    "perms": [
+      "core.view_termpublication"
+    ],
+    "route": "terms/<int:pk>/publication/",
+    "view": "views.term_publication"
+  },
+  "core:term-remarks": {
+    "flags": [],
+    "inner": [
+      "core.change_termremark"
+    ],
+    "perms": [],
+    "route": "terms/<int:pk>/remarks/",
+    "view": "views.term_remarks"
+  },
+  "core:term-update": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.change_academicterm"
+    ],
+    "route": "terms/<int:pk>/edit/",
+    "view": "views.term_update"
+  },
+  "core:timetable-grid": {
+    "flags": [],
+    "inner": [
+      "core.add_timetableslot",
+      "core.change_timetableslot",
+      "core.delete_timetableslot"
+    ],
+    "perms": [
+      "core.view_timetableperiod",
+      "core.view_timetableslot"
+    ],
+    "route": "academic-years/<int:pk>/timetable/sections/<int:section_pk>/",
+    "view": "timetable_views.timetable_grid"
+  },
+  "core:timetable-index": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.view_timetableperiod"
+    ],
+    "route": "timetable/",
+    "view": "timetable_views.timetable_index"
+  },
+  "core:timetable-issues": {
+    "flags": [
+      "require_GET"
+    ],
+    "inner": [],
+    "perms": [
+      "core.view_timetableperiod",
+      "core.view_timetableslot"
+    ],
+    "route": "academic-years/<int:pk>/timetable/issues/",
+    "view": "timetable_views.timetable_issues"
+  },
+  "core:timetable-period-create": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.add_timetableperiod"
+    ],
+    "route": "academic-years/<int:pk>/timetable/periods/add/",
+    "view": "timetable_views.timetable_period_create"
+  },
+  "core:timetable-period-delete": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.delete_timetableperiod"
+    ],
+    "route": "timetable/periods/<int:pk>/delete/",
+    "view": "timetable_views.timetable_period_delete"
+  },
+  "core:timetable-period-update": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.change_timetableperiod"
+    ],
+    "route": "timetable/periods/<int:pk>/edit/",
+    "view": "timetable_views.timetable_period_update"
+  },
+  "core:timetable-periods": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.view_timetableperiod"
+    ],
+    "route": "academic-years/<int:pk>/timetable/periods/",
+    "view": "timetable_views.timetable_periods"
+  },
+  "core:timetable-sections": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.view_timetableperiod",
+      "core.view_timetableslot"
+    ],
+    "route": "academic-years/<int:pk>/timetable/sections/",
+    "view": "timetable_views.timetable_sections"
+  },
+  "core:timetable-slot-change": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.change_timetableslot"
+    ],
+    "route": "timetable/slots/<int:pk>/change/",
+    "view": "timetable_views.timetable_slot_change"
+  },
+  "core:timetable-slot-create": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.add_timetableslot"
+    ],
+    "route": "academic-years/<int:pk>/timetable/sections/<int:section_pk>/slots/add/<int:period_pk>/<int:weekday>/",
+    "view": "timetable_views.timetable_slot_create"
+  },
+  "core:timetable-slot-delete": {
+    "flags": [],
+    "inner": [
+      "core.change_timetableslot"
+    ],
+    "perms": [
+      "core.delete_timetableslot"
+    ],
+    "route": "timetable/slots/<int:pk>/delete/",
+    "view": "timetable_views.timetable_slot_delete"
+  },
+  "core:timetable-slot-end": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.change_timetableslot"
+    ],
+    "route": "timetable/slots/<int:pk>/end/",
+    "view": "timetable_views.timetable_slot_end"
+  },
+  "portal:attendance": {
+    "flags": [
+      "guardian_required",
+      "require_safe"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "children/<uuid:public_id>/attendance/",
+    "view": "portal_views.attendance"
+  },
+  "portal:child": {
+    "flags": [
+      "guardian_required",
+      "require_safe"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "children/<uuid:public_id>/",
+    "view": "portal_views.child"
+  },
+  "portal:home": {
+    "flags": [
+      "guardian_required",
+      "require_safe"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "",
+    "view": "portal_views.home"
+  },
+  "portal:notice": {
+    "flags": [
+      "guardian_required",
+      "require_safe"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "notices/<uuid:notice_id>/",
+    "view": "portal_views.notice"
+  },
+  "portal:notices": {
+    "flags": [
+      "guardian_required",
+      "require_safe"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "notices/",
+    "view": "portal_views.notices"
+  },
+  "portal:report-card": {
+    "flags": [
+      "guardian_required",
+      "require_safe"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "children/<uuid:public_id>/report-cards/<uuid:publication_id>/",
+    "view": "portal_views.report_card"
+  },
+  "portal:report-card-pdf": {
+    "flags": [
+      "guardian_required",
+      "require_safe"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "children/<uuid:public_id>/report-cards/<uuid:publication_id>/pdf/",
+    "view": "portal_views.report_card_pdf"
+  },
+  "portal:report-cards": {
+    "flags": [
+      "guardian_required",
+      "require_safe"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "children/<uuid:public_id>/report-cards/",
+    "view": "portal_views.report_cards"
+  },
+  "root:admin": {
+    "flags": [
+      "framework_owned"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "admin/",
+    "view": "admin.site.urls"
+  },
+  "root:choose-area": {
+    "flags": [],
+    "inner": [],
+    "perms": [],
+    "route": "choose-area/",
+    "view": "core_views.choose_area"
+  },
+  "root:home": {
+    "flags": [],
+    "inner": [],
+    "perms": [],
+    "route": "",
+    "view": "core_views.home"
+  },
+  "root:login": {
+    "flags": [
+      "framework_owned"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "accounts/login/",
+    "view": "auth_views.LoginView.as_view"
+  },
+  "root:logout": {
+    "flags": [
+      "framework_owned"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "accounts/logout/",
+    "view": "auth_views.LogoutView.as_view"
+  },
+  "root:password_change": {
+    "flags": [
+      "framework_owned"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "accounts/password/change/",
+    "view": "account_views.password_change"
+  },
+  "root:pwa-install": {
+    "flags": [],
+    "inner": [],
+    "perms": [],
+    "route": "install/",
+    "view": "pwa_views.install_help"
+  },
+  "root:pwa-manifest": {
+    "flags": [
+      "cache_control",
+      "require_safe"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "MANIFEST_PATH.lstrip('/')",
+    "view": "pwa_views.manifest"
+  }
+}
