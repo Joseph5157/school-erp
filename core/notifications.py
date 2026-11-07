@@ -3,6 +3,12 @@
 Every rule lives here: consent is checked when a message is enqueued, when
 the To send page loads and when a message is marked sent; parameters are
 limited to NOTIFICATION_PARAMETERS; nothing here makes a network call.
+
+Security Gate 3B: a prepared message is only a promise made at prepare time. The To send
+page and "mark sent" each check again that the guardian can still open the portal for the
+child (active grant, active login, unrevoked account link, no pending review) or, for a
+notice, for a child in its audience. Marking sent decides from current data under the row
+lock and never trusts what the page displayed.
 """
 
 from urllib.parse import quote
@@ -13,6 +19,7 @@ from django.utils import timezone
 from core.imports import normalize_phone
 from core.models import (
     NOTIFICATION_PARAMETERS,
+    Announcement,
     GuardianContactConsent,
     Notification,
     NotificationTemplate,
@@ -23,6 +30,8 @@ WHATSAPP = GuardianContactConsent.Channel.WHATSAPP
 OPTED_IN = GuardianContactConsent.Status.OPTED_IN
 PREPARED = Notification.Status.PREPARED
 SKIPPED = Notification.Status.SKIPPED_NO_CONSENT
+NO_ACCESS_REASON = "Guardian no longer has portal access"
+_NOTICE_KEY_MARKER = ":-:announcement-"
 
 
 class NotificationError(Exception):
@@ -120,15 +129,74 @@ def opted_in_count(guardian_ids):
     return len(_opted_in_ids(set(guardian_ids)))
 
 
+def _notice_pk(notification):
+    """The announcement a message belongs to, read from its idempotency key, or None."""
+    if notification.type != Notification.Type.ANNOUNCEMENT:
+        return None
+    tail = notification.idempotency_key.rpartition(_NOTICE_KEY_MARKER)[2]
+    return int(tail) if tail.isdigit() else None
+
+
+def _portal_ok_ids(rows):
+    """Primary keys of these messages whose guardian can still open the portal for them.
+
+    A message about a child needs a current, non-pending grant for that guardian and child.
+    A notice message needs a live notice and a grant for that guardian to a child in its
+    audience. Anything that cannot be tied to either is treated as not eligible.
+    """
+    from core import announcements, notification_producers  # both import this module
+
+    rows = list(rows)
+    reachable = {}
+    student_ids = {row.student_id for row in rows if row.student_id}
+    if student_ids:
+        for grant in notification_producers.portal_grants_for_students(student_ids):
+            link = grant.student_guardian
+            reachable.setdefault(link.student_id, set()).add(link.guardian_id)
+    notice_pks = {
+        pk for row in rows if not row.student_id and (pk := _notice_pk(row)) is not None
+    }
+    live_notices = (
+        [n for n in Announcement.objects.filter(pk__in=notice_pks) if not n.is_withdrawn]
+        if notice_pks else []
+    )
+    audience = announcements.audience_guardian_ids(live_notices)  # fixed query count
+    ok = set()
+    for row in rows:
+        if row.student_id:
+            if row.guardian_id in reachable.get(row.student_id, ()):
+                ok.add(row.pk)
+            continue
+        notice_pk = _notice_pk(row)
+        if notice_pk is not None and row.guardian_id in audience.get(notice_pk, ()):
+            ok.add(row.pk)
+    return ok
+
+
+def _dismiss_no_access(pks):
+    """System dismissal of waiting messages whose guardian lost portal access."""
+    now = timezone.now()
+    Notification.objects.filter(pk__in=pks, status=PREPARED).update(
+        status=Notification.Status.DISMISSED, dismissed_at=now,
+        dismiss_reason=NO_ACCESS_REASON, updated_at=now,
+    )
+
+
 def to_send():
-    """PREPARED messages, oldest first, after skipping any without current consent."""
-    snapshot = list(Notification.objects.filter(status=PREPARED).values_list("pk", "guardian_id"))
-    allowed = _opted_in_ids({guardian_id for _, guardian_id in snapshot})
-    blocked = [pk for pk, guardian_id in snapshot if guardian_id not in allowed]
+    """PREPARED messages, oldest first, after dropping any whose guardian no longer
+    has current consent (skipped) or portal access (dismissed by the system)."""
+    snapshot = list(Notification.objects.filter(status=PREPARED))
+    allowed = _opted_in_ids({row.guardian_id for row in snapshot})
+    blocked = [row.pk for row in snapshot if row.guardian_id not in allowed]
     if blocked:
         Notification.objects.filter(pk__in=blocked, status=PREPARED).update(
             status=SKIPPED, updated_at=timezone.now()
         )
+    consented = [row for row in snapshot if row.guardian_id in allowed]
+    reachable = _portal_ok_ids(consented)
+    no_access = [row.pk for row in consented if row.pk not in reachable]
+    if no_access:
+        _dismiss_no_access(no_access)
     return (
         Notification.objects.filter(status=PREPARED)
         .select_related("guardian", "student", "template")
@@ -143,13 +211,62 @@ def _locked_prepared(notification):
     return locked
 
 
-def mark_sent(notification, *, user):
+def _refuse_if_ineligible(locked):
+    """Apply the consent and portal-access rules to a locked PREPARED message.
+
+    Returns the message after recording the refusal (SKIPPED for no consent, DISMISSED for
+    lost portal access), or None when it is still eligible. Consent is checked first.
+    """
+    if not is_opted_in(locked.guardian):
+        locked.status = SKIPPED
+        locked.save(update_fields=["status", "updated_at"])
+        return locked
+    if locked.pk not in _portal_ok_ids([locked]):
+        _dismiss_no_access([locked.pk])
+        return Notification.objects.get(pk=locked.pk)
+    return None
+
+
+def can_open_whatsapp(notification):
+    """Whether the guardian has a phone number the WhatsApp link can use (no URL is built)."""
+    return bool(normalize_phone(notification.guardian.phone))
+
+
+def open_whatsapp(notification):
+    """Recheck, then give the WhatsApp URL for one waiting message. Returns (message, url).
+
+    This is the only place the URL is handed out: the To send page never renders it, so a
+    page opened while the message was eligible cannot be used to send it afterwards. When
+    consent or portal access has gone, the refusal is recorded (SKIPPED or DISMISSED) and
+    url is None; the caller must not redirect to WhatsApp.
+    """
     with transaction.atomic():
         locked = _locked_prepared(notification)
-        if not is_opted_in(locked.guardian):
-            locked.status = SKIPPED
-            locked.save(update_fields=["status", "updated_at"])
-            return locked
+        refused = _refuse_if_ineligible(locked)
+        if refused is not None:
+            return refused, None
+        link = whatsapp_link(locked)
+        if link is None:
+            raise NotificationError("This guardian's phone number is missing or not usable.")
+        return locked, link
+
+
+def mark_sent(notification, *, user):
+    """Record a message as sent, or record why it was not.
+
+    Authoritative for recording the SENT state, not for preventing the manual send: it
+    decides from current data under the row lock, whatever the To send page showed (no
+    consent gives SKIPPED, lost portal access gives DISMISSED, otherwise SENT). Staff send
+    from their own WhatsApp after open_whatsapp() has handed out the link, so a message
+    can still be sent in the gap between that redirect and this call. That gap cannot be
+    closed in ASSIST mode (nothing here sends or sees the message); it is documented in
+    docs/OPERATIONS.md.
+    """
+    with transaction.atomic():
+        locked = _locked_prepared(notification)
+        refused = _refuse_if_ineligible(locked)
+        if refused is not None:
+            return refused
         locked.status = Notification.Status.SENT
         locked.marked_sent_by = user
         locked.marked_sent_at = timezone.now()

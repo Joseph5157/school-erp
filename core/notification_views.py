@@ -2,6 +2,7 @@
 
 from django.conf import settings
 from django.contrib import messages
+from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -45,7 +46,9 @@ def to_send(request):
         {
             "notification": notification,
             "text": notifications.render(notification),
-            "link": notifications.whatsapp_link(notification),
+            # The WhatsApp URL is never rendered: the button POSTs to open_whatsapp, which
+            # rechecks consent and portal access before redirecting.
+            "can_open": notifications.can_open_whatsapp(notification),
         }
         for notification in table.page
     ]
@@ -68,6 +71,37 @@ def to_send(request):
 
 @administrator_required("core.send_notification")
 @require_POST
+def notification_open_whatsapp(request, pk):
+    """Recheck consent and portal access, then send the browser on to WhatsApp.
+
+    A message that is no longer eligible is skipped or dismissed and the staff member goes
+    back to the queue; nothing external is opened.
+    """
+    notification = get_object_or_404(Notification, pk=pk)
+    try:
+        result, link = notifications.open_whatsapp(notification)
+    except notifications.NotificationError as problem:
+        messages.error(request, str(problem))
+        return redirect("core:notifications-to-send")
+    if link is None:
+        if result.status == Notification.Status.DISMISSED:
+            messages.info(
+                request,
+                "The guardian no longer has portal access, so this message was dismissed "
+                "and WhatsApp was not opened.",
+            )
+        else:
+            messages.info(
+                request,
+                "The guardian has opted out, so this message is recorded as not sent "
+                "and WhatsApp was not opened.",
+            )
+        return redirect("core:notifications-to-send")
+    return HttpResponseRedirect(link)
+
+
+@administrator_required("core.send_notification")
+@require_POST
 def notification_mark_sent(request, pk):
     notification = get_object_or_404(Notification, pk=pk)
     try:
@@ -77,6 +111,12 @@ def notification_mark_sent(request, pk):
     else:
         if result.status == Notification.Status.SENT:
             messages.success(request, "Marked as sent.")
+        elif result.status == Notification.Status.DISMISSED:
+            messages.info(
+                request,
+                "The guardian no longer has portal access, so this message was dismissed "
+                "and not recorded as sent.",
+            )
         else:
             messages.info(
                 request, "The guardian has opted out, so this message is recorded as not sent."

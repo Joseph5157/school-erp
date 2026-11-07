@@ -477,6 +477,11 @@ urlpatterns = [
     # Phase 7 Gate 1: notifications (ADR 0015)
     path("notifications/to-send/", notification_views.to_send, name="notifications-to-send"),
     path(
+        "notifications/<int:pk>/whatsapp/",
+        notification_views.notification_open_whatsapp,
+        name="notification-open-whatsapp",
+    ),
+    path(
         "notifications/<int:pk>/sent/",
         notification_views.notification_mark_sent,
         name="notification-mark-sent",
