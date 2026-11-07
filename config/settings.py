@@ -12,6 +12,7 @@ from config.deployment_safety import (
     parse_flag,
     parse_trusted_proxies,
     resolve_https,
+    telegram_alert_settings,
 )
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -249,6 +250,16 @@ ADMINS = [
 EMAIL_SUBJECT_PREFIX = f"[school-erp {ERP_INSTANCE_NAME}] "
 DEFAULT_EXCEPTION_REPORTER_FILTER = "config.error_reporting.PrivacyExceptionReporterFilter"
 
+# Optional Telegram crash alert to the operator (config.telegram_alerts), built from the
+# same allow-list as the email. Set both variables to turn it on; one without the other
+# stops startup. Debug and test runs always get blanks, so they never contact Telegram.
+TELEGRAM_ERROR_BOT_TOKEN, TELEGRAM_ERROR_CHAT_ID = telegram_alert_settings(
+    os.environ.get("TELEGRAM_ERROR_BOT_TOKEN"),
+    os.environ.get("TELEGRAM_ERROR_CHAT_ID"),
+    debug=DEBUG,
+    testing=TESTING,
+)
+
 # Outgoing mail over SMTP, only when EMAIL_HOST is set. Without it, production discards
 # mail and local development (DJANGO_DEBUG=True) prints it to the console.
 EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
@@ -282,6 +293,11 @@ LOGGING = {
             "filters": ["require_debug_false"],
             "include_html": False,
         },
+        "telegram_alerts": {
+            "class": "config.telegram_alerts.TelegramAlertHandler",
+            "level": "ERROR",
+            "filters": ["require_debug_false"],
+        },
     },
     "root": {"handlers": ["console"], "level": "INFO"},
     "loggers": {
@@ -289,6 +305,10 @@ LOGGING = {
         # for everything) so records just propagate to the root console.
         "django": {"handlers": [], "level": "INFO", "propagate": True},
         # Unhandled exceptions (500s); propagates to the console as well.
-        "django.request": {"handlers": ["mail_admins"], "level": "INFO", "propagate": True},
+        "django.request": {
+            "handlers": ["mail_admins", "telegram_alerts"],
+            "level": "INFO",
+            "propagate": True,
+        },
     },
 }
