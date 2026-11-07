@@ -6,6 +6,8 @@ afterwards, so the To send page and "mark sent" each decide again from current d
 Showing a message never promises it can still be marked sent.
 """
 
+from urllib.parse import quote
+
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -16,6 +18,7 @@ from core.models import (
     Announcement,
     Applicant,
     AttendanceStatus,
+    Guardian,
     GuardianContactConsent,
     Notification,
     Student,
@@ -31,6 +34,10 @@ LOST_ACCESS = "Guardian no longer has portal access"
 
 
 class RecheckFixture(AnnouncementFixture):
+    def setUp(self):
+        super().setUp()
+        Guardian.objects.update(phone="98765 43210")  # synthetic, usable number
+
     def prepared_alert(self):
         """Meena's absence alert for Asha, prepared while everything is valid."""
         self.register()
@@ -291,3 +298,208 @@ class MarkSentViewTests(RecheckFixture, TestCase):
         page = self.client.get(reverse("core:notifications-to-send"))
         self.assertEqual([row["notification"] for row in page.context["rows"]], [])
         self.assertEqual(self.fresh(alert).status, DISMISSED)
+
+
+class AudienceBatchTests(RecheckFixture, TestCase):
+    """The queue's batched audience lookup must agree with the publish-time rule."""
+
+    def test_batch_matches_recipient_grants_for_every_audience(self):
+        ga.grant_student_access(student_guardian=self.ravi_link, actor=self.admin)  # Ravi, 6B
+        notices = [
+            self.notice(),
+            self.notice(Announcement.Audience.CLASS, class_grade=self.grade6),
+            self.notice(Announcement.Audience.SECTION, section=self.six_a),
+            self.notice(Announcement.Audience.SECTION, section=self.six_b),
+        ]
+        batch = announcements.audience_guardian_ids(notices)
+        for notice in notices:
+            with self.subTest(audience=notice.audience, section=notice.section_id):
+                expected = {g.student_guardian.guardian_id
+                            for g in announcements.recipient_grants(notice)}
+                self.assertEqual(batch[notice.pk], expected)
+        self.assertEqual(batch[notices[3].pk], {self.meena.pk})  # only Ravi's family in 6B
+        self.assertEqual(batch[notices[0].pk], {self.meena.pk, self.other.pk})
+
+    def test_no_notices_runs_no_queries(self):
+        with self.assertNumQueries(0):
+            self.assertEqual(announcements.audience_guardian_ids([]), {})
+
+
+class OpenWhatsAppTests(RecheckFixture, TestCase):
+    """The page never carries the wa.me URL; a POST rechecks, then redirects or refuses.
+
+    Each stale-page test loads the queue while the message is eligible, changes access or
+    consent, then uses the button from that already-rendered page.
+    """
+
+    queue = reverse("core:notifications-to-send")
+
+    def open_url(self, notification):
+        return reverse("core:notification-open-whatsapp", args=[notification.pk])
+
+    def load_queue(self, notification):
+        page = self.client.get(self.queue)
+        self.assertContains(page, self.open_url(notification))  # the stale page's button
+        return page
+
+    def press(self, notification):
+        return self.client.post(self.open_url(notification))
+
+    def assert_stays_in_erp(self, response):
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], self.queue)
+
+    def test_queue_page_never_contains_the_whatsapp_address(self):
+        self.prepared_alert()
+        self.prepared_notice_message()
+        page = self.client.get(self.queue)
+        self.assertNotContains(page, "wa.me")
+        self.assertNotContains(page, "api.whatsapp.com")
+
+    def test_valid_message_redirects_to_whatsapp_with_the_exact_text(self):
+        alert = self.prepared_alert()
+        self.load_queue(alert)
+        response = self.press(alert)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], notifications.whatsapp_link(alert))
+        self.assertTrue(response["Location"].startswith("https://wa.me/"))
+        self.assertIn(quote(notifications.render(alert), safe=""), response["Location"])
+        stored = self.fresh(alert)  # opening WhatsApp is not "sent"
+        self.assertEqual(stored.status, PREPARED)
+        self.assertIsNone(stored.marked_sent_at)
+
+    def test_valid_announcement_message_redirects_to_whatsapp(self):
+        message = self.prepared_notice_message()
+        self.load_queue(message)
+        response = self.press(message)
+        self.assertTrue(response["Location"].startswith("https://wa.me/"))
+        self.assertEqual(self.fresh(message).status, PREPARED)
+
+    def test_stale_page_after_grant_revoked_does_not_open_whatsapp(self):
+        alert = self.prepared_alert()
+        self.load_queue(alert)
+        self.revoke_grant()
+        response = self.press(alert)
+        self.assert_stays_in_erp(response)
+        stored = self.fresh(alert)
+        self.assertEqual(stored.status, DISMISSED)
+        self.assertEqual(stored.dismiss_reason, LOST_ACCESS)
+        self.assertIsNone(stored.marked_sent_at)
+        page = self.client.get(self.queue)
+        self.assertNotContains(page, self.open_url(alert))
+
+    def test_stale_page_message_explains_that_whatsapp_was_not_opened(self):
+        alert = self.prepared_alert()
+        self.load_queue(alert)
+        self.revoke_grant()
+        page = self.client.post(self.open_url(alert), follow=True)
+        self.assertContains(page, "no longer has portal access")
+        self.assertContains(page, "WhatsApp was not opened")
+
+    def test_stale_page_after_account_link_revoked(self):
+        alert = self.prepared_alert()
+        self.load_queue(alert)
+        self.revoke_account_link()
+        self.assert_stays_in_erp(self.press(alert))
+        self.assertEqual(self.fresh(alert).status, DISMISSED)
+
+    def test_stale_page_after_login_deactivated(self):
+        alert = self.prepared_alert()
+        self.load_queue(alert)
+        self.deactivate_login()
+        self.assert_stays_in_erp(self.press(alert))
+        self.assertEqual(self.fresh(alert).status, DISMISSED)
+
+    def test_stale_page_after_relationship_ended(self):
+        alert = self.prepared_alert()
+        self.load_queue(alert)
+        self.end_relationship()
+        self.assert_stays_in_erp(self.press(alert))
+        self.assertEqual(self.fresh(alert).status, DISMISSED)
+
+    def test_message_in_a_pending_review_does_not_open_whatsapp(self):
+        message = self.pending_review_message()
+        self.assert_stays_in_erp(self.press(message))
+        self.assertEqual(self.fresh(message).status, DISMISSED)
+
+    def test_stale_page_after_consent_withdrawn_does_not_open_whatsapp(self):
+        alert = self.prepared_alert()
+        self.load_queue(alert)
+        self.withdraw_consent()
+        self.assert_stays_in_erp(self.press(alert))
+        stored = self.fresh(alert)
+        self.assertEqual(stored.status, SKIPPED)
+        self.assertIsNone(stored.marked_sent_at)
+        again = self.client.post(self.open_url(alert), follow=True)  # a second press
+        self.assertContains(again, "no longer waiting to be sent")
+
+    def test_consent_withdrawn_message_explains_that_whatsapp_was_not_opened(self):
+        alert = self.prepared_alert()
+        self.load_queue(alert)
+        self.withdraw_consent()
+        page = self.client.post(self.open_url(alert), follow=True)
+        self.assertContains(page, "has opted out")
+        self.assertContains(page, "WhatsApp was not opened")
+
+    def test_stale_announcement_page_after_access_lost(self):
+        message = self.prepared_notice_message()
+        self.load_queue(message)
+        self.revoke_grant()
+        self.assert_stays_in_erp(self.press(message))
+        self.assertEqual(self.fresh(message).status, DISMISSED)
+        other = Notification.objects.get(type=Notification.Type.ANNOUNCEMENT, guardian=self.other)
+        self.assertEqual(self.fresh(other).status, PREPARED)
+
+    def test_stale_announcement_page_after_notice_withdrawn(self):
+        notice = self.notice()
+        message = self.prepared_notice_message(notice)
+        self.load_queue(message)
+        Announcement.objects.filter(pk=notice.pk).update(
+            withdrawn_at=timezone.now(), withdrawn_by=self.admin, withdrawal_reason="Wrong date"
+        )
+        self.assert_stays_in_erp(self.press(message))
+        self.assertEqual(self.fresh(message).status, DISMISSED)
+
+    def test_stale_announcement_page_after_consent_withdrawn(self):
+        message = self.prepared_notice_message()
+        self.load_queue(message)
+        self.withdraw_consent()
+        self.assert_stays_in_erp(self.press(message))
+        self.assertEqual(self.fresh(message).status, SKIPPED)
+
+    def test_message_already_sent_or_dismissed_is_refused_without_redirect(self):
+        alert = self.prepared_alert()
+        notifications.mark_sent(alert, user=self.admin)
+        page = self.client.post(self.open_url(alert), follow=True)
+        self.assertContains(page, "no longer waiting to be sent")
+        self.assertEqual(self.fresh(alert).status, SENT)
+
+    def test_unusable_phone_is_refused_without_redirect(self):
+        alert = self.prepared_alert()
+        Guardian.objects.filter(pk=self.meena.pk).update(phone="N/A")
+        self.assert_stays_in_erp(self.press(alert))
+        self.assertEqual(self.fresh(alert).status, PREPARED)
+
+    def test_the_gap_after_the_redirect_is_recorded_not_prevented(self):
+        """ASSIST mode cannot see the manual send. Access lost after the redirect is caught
+        only when recording: mark_sent refuses to call it SENT, whatever was sent by hand."""
+        alert = self.prepared_alert()
+        self.assertTrue(self.press(alert)["Location"].startswith("https://wa.me/"))
+        self.revoke_grant()
+        result = notifications.mark_sent(alert, user=self.admin)
+        self.assertEqual(result.status, DISMISSED)
+        self.assertIsNone(self.fresh(alert).marked_sent_at)
+
+    def test_action_needs_post_login_and_the_send_permission(self):
+        alert = self.prepared_alert()
+        url = self.open_url(alert)
+        self.assertEqual(self.client.get(url).status_code, 405)
+        teacher = self.client_class()
+        teacher.login(username="rao", password="pass-12345")
+        denied = teacher.post(url)
+        self.assertEqual(denied.status_code, 403)
+        self.assertNotIn("wa.me", denied.get("Location", ""))
+        anonymous = self.client_class().post(url)
+        self.assertEqual(anonymous.status_code, 302)
+        self.assertNotIn("wa.me", anonymous["Location"])
+        self.assertEqual(self.fresh(alert).status, PREPARED)

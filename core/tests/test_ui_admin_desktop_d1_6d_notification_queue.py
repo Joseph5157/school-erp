@@ -140,16 +140,20 @@ class PageTests(Base, TestCase):
         for forbidden in ("|safe", "mark_safe", "autoescape off", "truncate", "|striptags", "|escape"):
             self.assertNotIn(forbidden, source)
 
-    def test_send_link_keeps_href_target_and_rel(self):
+    def test_send_button_posts_to_the_recheck_action_and_never_shows_the_whatsapp_address(self):
         self.register()
         [message] = list(notifications.to_send())
-        link = notifications.whatsapp_link(message)
         page = html(self.client.get(URL))
-        self.assertIn(
-            f'<a class="btn btn-success" href="{escape(link)}" target="_blank" rel="noopener">Send on WhatsApp', page)
+        action = reverse("core:notification-open-whatsapp", args=[message.pk])
+        form = re.search(
+            rf'<form method="post" action="{action}" target="_blank" rel="noopener">(.*?)</form>', page, re.S
+        ).group(1)
+        self.assertIn('name="csrfmiddlewaretoken"', form)
+        self.assertIn('<button type="submit" class="btn btn-success">Send on WhatsApp', form)
         self.assertIn(
             f'Send on WhatsApp<span class="visually-hidden"> to {message.guardian.full_name} (opens in a new tab)</span>',
-            page)
+            form)
+        self.assertNotIn("wa.me", page)
 
     def test_controls_keep_urls_methods_csrf_and_field_names(self):
         self.register()
@@ -382,7 +386,7 @@ class PaginationTests(Base, TestCase):
     def test_only_the_current_page_is_rendered(self):
         from unittest import mock
         with mock.patch.object(
-                notifications, "whatsapp_link", wraps=notifications.whatsapp_link) as render:
+                notifications, "can_open_whatsapp", wraps=notifications.can_open_whatsapp) as render:
             self.client.get(URL)
         self.assertEqual(render.call_count, 25)
 

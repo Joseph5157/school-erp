@@ -98,6 +98,42 @@ def recipient_grants(announcement):
     return list(chosen.values())
 
 
+def audience_guardian_ids(notices):
+    """{notice pk: guardian ids who can read it today}, in a fixed number of queries.
+
+    The same answer as `recipient_grants` for each notice (a test pins that), computed for
+    many notices at once so the send queue does not run lookups per notice.
+    """
+    notices = list(notices)
+    if not notices:
+        return {}
+    placements = list(
+        _current_enrollments(core_models.business_today()).values_list(
+            "student_id", "class_grade_id", "section_id"
+        )
+    )
+    grants = notification_producers.portal_grants_for_students({row[0] for row in placements})
+
+    def in_audience(notice, class_grade_id, section_id):
+        if notice.audience == Announcement.Audience.CLASS:
+            return class_grade_id == notice.class_grade_id
+        if notice.audience == Announcement.Audience.SECTION:
+            return section_id == notice.section_id
+        return True
+
+    result = {}
+    for notice in notices:
+        students = {
+            student_id for student_id, grade, section in placements
+            if in_audience(notice, grade, section)
+        }
+        result[notice.pk] = {
+            grant.student_guardian.guardian_id
+            for grant in grants if grant.student_guardian.student_id in students
+        }
+    return result
+
+
 def audience_counts(announcement):
     guardian_ids = [g.student_guardian.guardian_id for g in recipient_grants(announcement)]
     return {"guardians": len(guardian_ids),

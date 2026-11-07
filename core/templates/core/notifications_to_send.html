@@ -23,13 +23,13 @@
 <li class="erp-queue-row">
     <div class="erp-queue-head">
         <p class="fw-semibold mb-0 text-break">{{ n.guardian.full_name }}</p>
-        {% if row.link %}{% include "partials/_status_badge.html" with label=n.get_status_display tone="info" only %}{% else %}{% include "partials/_status_badge.html" with label="Phone number missing" tone="stale" only %}{% endif %}
+        {% if row.can_open %}{% include "partials/_status_badge.html" with label=n.get_status_display tone="info" only %}{% else %}{% include "partials/_status_badge.html" with label="Phone number missing" tone="stale" only %}{% endif %}
     </div>
     <p class="erp-note-text mb-2">{{ n.get_type_display }}{% if n.parameters.first_name %} &middot; {{ n.parameters.first_name }}{% elif not n.student_id %} &middot; School notice{% endif %} &middot; prepared {{ n.created_at|date:"j M, H:i" }}</p>
     <blockquote class="erp-queue-text" aria-label="Message text">{{ row.text }}</blockquote>
     <div class="erp-queue-actions">
-        {% if row.link %}
-        <a class="btn btn-success" href="{{ row.link }}" target="_blank" rel="noopener">Send on WhatsApp<span class="visually-hidden"> to {{ n.guardian.full_name }} (opens in a new tab)</span></a>
+        {% if row.can_open %}
+        <form method="post" action="{% url 'core:notification-open-whatsapp' n.pk %}" target="_blank" rel="noopener">{% csrf_token %}<button type="submit" class="btn btn-success">Send on WhatsApp<span class="visually-hidden"> to {{ n.guardian.full_name }} (opens in a new tab)</span></button></form>
         <form method="post" action="{% url 'core:notification-mark-sent' n.pk %}">{% csrf_token %}<button type="submit" class="btn btn-outline-primary">Mark as sent<span class="visually-hidden"> for {{ n.guardian.full_name }}</span></button></form>
         {% else %}
         <p class="erp-note-text mb-0">Phone number missing or not usable &mdash; {% if perms.core.change_guardian %}<a href="{% url 'core:guardian-edit' n.guardian.pk %}">update the guardian</a>{% else %}ask someone who can update the guardian{% endif %}.</p>

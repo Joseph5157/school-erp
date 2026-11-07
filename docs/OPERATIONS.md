@@ -75,6 +75,34 @@ who holds the permission:
 Do not link the login again until it has only the Teachers group. Use a
 separate guardian login instead.
 
+## WhatsApp message queue (ASSIST mode)
+
+In ASSIST mode the ERP prepares messages and office staff send each one by hand
+from their own WhatsApp (ADR 0015). The ERP never sends anything.
+
+A prepared message is only a promise made when it was prepared. The guardian's
+consent, portal access grant, account link, login or date-based review can change
+afterwards, so the queue decides again at each step, from current data:
+
+- **Showing the queue** drops messages that are no longer eligible. No consent
+  gives "Skipped — no consent". Lost portal access is dismissed by the system with
+  the reason "Guardian no longer has portal access".
+- **Send on WhatsApp** is a button that POSTs to the ERP, never a plain link. The
+  `wa.me` address is not in the page. The ERP rechecks consent and portal access
+  and only then redirects to WhatsApp. If the message is no longer eligible it is
+  skipped or dismissed, staff return to the queue, and WhatsApp is not opened.
+- **Mark as sent** rechecks once more under a row lock. It is authoritative for
+  recording the SENT state: it never records SENT for a message that is no longer
+  eligible.
+
+**Limitation.** Nothing here can see or stop what staff do inside WhatsApp. If
+consent or access is withdrawn after staff were redirected to WhatsApp but before
+they choose Mark as sent, the message may already have been sent by hand while the
+queue records it as dismissed or skipped. Mark as sent is therefore not a guarantee
+that nothing was sent, only that the ERP will not claim it was sent to someone who
+is no longer eligible. Keep that window short: open WhatsApp, send, and choose Mark
+as sent straight away.
+
 ## Production settings
 
 Set these on the Railway web service. The cron service references the web

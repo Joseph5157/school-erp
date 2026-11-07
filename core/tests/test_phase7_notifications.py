@@ -374,12 +374,20 @@ class ToSendPageTests(NotificationFixture, TestCase):
     def mark_sent_url(self):
         return reverse("core:notification-mark-sent", args=[self.message.pk])
 
-    def test_lists_prepared_with_send_link(self):
+    def test_lists_prepared_with_send_button(self):
         page = self.client.get(self.url)
         self.assertContains(page, "1 waiting")
         self.assertContains(page, "Ravi Kumar")
-        self.assertContains(page, "https://wa.me/919876543210?text=")
+        self.assertContains(page, reverse("core:notification-open-whatsapp", args=[self.message.pk]))
+        self.assertNotContains(page, "wa.me")  # the address is only given by the POST action
         self.assertContains(page, "Asha was absent on 12 Oct 2026")
+
+    def test_send_button_redirects_to_whatsapp_for_an_eligible_message(self):
+        response = self.client.post(
+            reverse("core:notification-open-whatsapp", args=[self.message.pk])
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response["Location"].startswith("https://wa.me/919876543210?text="))
 
     def test_mark_sent_and_sent_today(self):
         response = self.client.post(self.mark_sent_url(), follow=True)
@@ -429,8 +437,11 @@ class ToSendPageTests(NotificationFixture, TestCase):
         teacher.login(username="rao", password="pass-12345")
         self.assertEqual(teacher.get(self.url).status_code, 403)
         self.assertEqual(teacher.post(self.mark_sent_url()).status_code, 403)
+        open_url = reverse("core:notification-open-whatsapp", args=[self.message.pk])
+        self.assertEqual(teacher.post(open_url).status_code, 403)
         self.assertEqual(self.client_class().get(self.url).status_code, 302)
         self.assertEqual(self.client.get(self.mark_sent_url()).status_code, 405)
+        self.assertEqual(self.client.get(open_url).status_code, 405)
 
     def test_nav_link_for_admin_only(self):
         self.assertContains(self.client.get(self.url), f'href="{self.url}"')

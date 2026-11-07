@@ -148,12 +148,19 @@ def _portal_ok_ids(rows):
 
     rows = list(rows)
     reachable = {}
-    for grant in notification_producers.portal_grants_for_students(
-        {row.student_id for row in rows if row.student_id}
-    ):
-        link = grant.student_guardian
-        reachable.setdefault(link.student_id, set()).add(link.guardian_id)
-    notice_guardians = {}
+    student_ids = {row.student_id for row in rows if row.student_id}
+    if student_ids:
+        for grant in notification_producers.portal_grants_for_students(student_ids):
+            link = grant.student_guardian
+            reachable.setdefault(link.student_id, set()).add(link.guardian_id)
+    notice_pks = {
+        pk for row in rows if not row.student_id and (pk := _notice_pk(row)) is not None
+    }
+    live_notices = (
+        [n for n in Announcement.objects.filter(pk__in=notice_pks) if not n.is_withdrawn]
+        if notice_pks else []
+    )
+    audience = announcements.audience_guardian_ids(live_notices)  # fixed query count
     ok = set()
     for row in rows:
         if row.student_id:
@@ -161,16 +168,7 @@ def _portal_ok_ids(rows):
                 ok.add(row.pk)
             continue
         notice_pk = _notice_pk(row)
-        if notice_pk is None:
-            continue
-        if notice_pk not in notice_guardians:
-            notice = Announcement.objects.filter(pk=notice_pk).first()
-            notice_guardians[notice_pk] = (
-                set()
-                if notice is None or notice.is_withdrawn
-                else {g.student_guardian.guardian_id for g in announcements.recipient_grants(notice)}
-            )
-        if row.guardian_id in notice_guardians[notice_pk]:
+        if notice_pk is not None and row.guardian_id in audience.get(notice_pk, ()):
             ok.add(row.pk)
     return ok
 
@@ -213,21 +211,62 @@ def _locked_prepared(notification):
     return locked
 
 
-def mark_sent(notification, *, user):
-    """Record a message as sent, or record why it was not.
+def _refuse_if_ineligible(locked):
+    """Apply the consent and portal-access rules to a locked PREPARED message.
 
-    Decides from current data under the row lock, whatever the To send page showed:
-    no consent gives SKIPPED, lost portal access gives DISMISSED, otherwise SENT.
+    Returns the message after recording the refusal (SKIPPED for no consent, DISMISSED for
+    lost portal access), or None when it is still eligible. Consent is checked first.
+    """
+    if not is_opted_in(locked.guardian):
+        locked.status = SKIPPED
+        locked.save(update_fields=["status", "updated_at"])
+        return locked
+    if locked.pk not in _portal_ok_ids([locked]):
+        _dismiss_no_access([locked.pk])
+        return Notification.objects.get(pk=locked.pk)
+    return None
+
+
+def can_open_whatsapp(notification):
+    """Whether the guardian has a phone number the WhatsApp link can use (no URL is built)."""
+    return bool(normalize_phone(notification.guardian.phone))
+
+
+def open_whatsapp(notification):
+    """Recheck, then give the WhatsApp URL for one waiting message. Returns (message, url).
+
+    This is the only place the URL is handed out: the To send page never renders it, so a
+    page opened while the message was eligible cannot be used to send it afterwards. When
+    consent or portal access has gone, the refusal is recorded (SKIPPED or DISMISSED) and
+    url is None; the caller must not redirect to WhatsApp.
     """
     with transaction.atomic():
         locked = _locked_prepared(notification)
-        if not is_opted_in(locked.guardian):
-            locked.status = SKIPPED
-            locked.save(update_fields=["status", "updated_at"])
-            return locked
-        if locked.pk not in _portal_ok_ids([locked]):
-            _dismiss_no_access([locked.pk])
-            return Notification.objects.get(pk=locked.pk)
+        refused = _refuse_if_ineligible(locked)
+        if refused is not None:
+            return refused, None
+        link = whatsapp_link(locked)
+        if link is None:
+            raise NotificationError("This guardian's phone number is missing or not usable.")
+        return locked, link
+
+
+def mark_sent(notification, *, user):
+    """Record a message as sent, or record why it was not.
+
+    Authoritative for recording the SENT state, not for preventing the manual send: it
+    decides from current data under the row lock, whatever the To send page showed (no
+    consent gives SKIPPED, lost portal access gives DISMISSED, otherwise SENT). Staff send
+    from their own WhatsApp after open_whatsapp() has handed out the link, so a message
+    can still be sent in the gap between that redirect and this call. That gap cannot be
+    closed in ASSIST mode (nothing here sends or sees the message); it is documented in
+    docs/OPERATIONS.md.
+    """
+    with transaction.atomic():
+        locked = _locked_prepared(notification)
+        refused = _refuse_if_ineligible(locked)
+        if refused is not None:
+            return refused
         locked.status = Notification.Status.SENT
         locked.marked_sent_by = user
         locked.marked_sent_at = timezone.now()
