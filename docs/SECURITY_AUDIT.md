@@ -79,5 +79,6 @@ All six gates are deployed on staging, web and cron, and staging runs `8e312e8`.
 - `core/tests/route_permissions.json` fails the build when a route is added, removed or
   changes permission, and the scan fails on route forms it cannot read.
 - A test fails if an import problem message could carry a cell value.
-- The full suite runs on GitHub CI for each pull request; merges are done with
-  `gh pr merge --match-head-commit <sha>` after CI is green on that exact commit.
+- The full suite runs on GitHub CI for pull requests that affect application code;
+  documentation-only changes are excluded by the workflow's path filters. Code merges are done
+  with `gh pr merge --match-head-commit <sha>` after CI is green on that exact commit.
