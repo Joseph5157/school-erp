@@ -8,11 +8,18 @@ variables and recovery steps are in `docs/OPERATIONS.md`.
 ## How the audit was done
 
 - Tool: the open-source `cloudflare/security-audit-skill`, standard profile, source only.
-- Run on 2026-11-06 against commit `c6284df`. It had no sandbox (Windows host), so it
-  produced **0 confirmed findings and 12 leads that needed validation**.
-- A second, read-only pass on 2026-11-07 audited an exact export of `main` at `76e091e` and a
-  mechanical map of all routes to the permission each view enforces. It confirmed leads 7 to 12
-  on the then-current code and found two more places that showed another class of data.
+- Run on 2026-11-06 against commit `c6284df`, the **audited snapshot**. The tool had no
+  sandbox (Windows host), so the automated audit reported **0 confirmed findings and 12 leads
+  that needed validation**. "0 confirmed" means the tool could not run anything to prove a
+  lead, not that none were real.
+- **Reproduction tests and manual review then confirmed several of those leads as real
+  vulnerabilities.** The gates were built tests-first: reproduction tests written to fail on
+  the unfixed code and pass on the fix. The six gates fixed the confirmed ones.
+- `c6284df` is only the snapshot that was audited. Remediation was built on the newer
+  `origin/main` of the day, so later gates sit on top of earlier ones. A second, read-only pass
+  on 2026-11-07 audited an exact export of `main` at `76e091e`, with a mechanical map of all
+  routes to the permission each view enforces. It confirmed leads 7 to 12 on that newer code
+  and found two more places that showed another class of data.
 - The raw report and the lead ledger live outside the repository, in the maintainer's
   `security-audit-skill/school-erp/run-1/` folder. This page does not claim every lead in the
   ledger is closed, only what the gates below changed.
@@ -22,7 +29,7 @@ variables and recovery steps are in `docs/OPERATIONS.md`.
 | Gate | PR | Merge commit | Change |
 |---|---|---|---|
 | 1 | #201 | `88b6db3` | One shared rule decides which logins a guardian link, password reset or rename may touch (`is_portal_manageable`). The Django admin sign-in shares the ERP's throttle and audit. |
-| 2 | #202 | `2b74722` | Production refuses to start with a blank or `django-insecure-` secret key, with HTTPS explicitly switched off, or with a malformed `DJANGO_TRUSTED_PROXIES`. HTTPS defaults on in production, and a blank on/off flag uses its default instead of being read as a value. |
+| 2 | #202 | `2b74722` | Production refuses to start with a blank or `django-insecure-` secret key or a malformed `DJANGO_TRUSTED_PROXIES`. On/off flags are read case-insensitively (`true`, `1`, `yes`, `on` and their opposites). A **blank value uses the flag's documented safe default**; a **non-blank value that is not clearly on or off fails startup**, naming the variable but never printing the value. In production `DJANGO_HTTPS` defaults to on, and `DJANGO_HTTPS=False` is refused. |
 | 3A | #203 | `14cba05` | Class-teacher authority is tied to the record's academic year, so a teacher who led a section last year has no authority over this year's records. Student scope, guardian contacts, report cards, remarks, attendance and the teacher home all key on (section, year). |
 | 3B | #204 | `e05bbd2` | The WhatsApp send queue rechecks portal access three times (listing, opening the message, marking sent). A guardian who lost access is dismissed with a system reason. |
 | 4A | #205 | `76e091e` | Crash emails are built from an allow-list (route pattern, exception types, `file:line in function`) with no URLs, IPs, usernames, messages or variables, and absolute server paths are never shown. Mail stays off until an email host and recipients are both configured. |
