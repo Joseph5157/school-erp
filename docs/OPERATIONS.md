@@ -209,3 +209,47 @@ If a deployment fails with "DJANGO_SECRET_KEY must be set", add the variable to
 the service and redeploy. The build step runs `collectstatic`, which loads the
 settings, so a missing key fails the build and the previous deployment keeps
 serving.
+
+## Future security checklist
+
+These are precautions for future changes. They are not current incidents and do not block the
+existing staging installation.
+
+### Before enabling a custom role
+
+Run this read-only command:
+
+```
+python manage.py role_permission_gaps
+```
+
+A custom role might be allowed to open a page without having every permission needed for the
+personal data on that page. Review every reported gap before giving the role to a real user.
+Either add the missing permission or confirm that the restriction is intentional, then run the
+command again. The shipped School Administrators, Teachers and Guardians roles do not need this
+extra check unless their permissions are changed.
+
+### Email can be configured later
+
+The ERP works normally without an email provider. When `EMAIL_HOST` and `DJANGO_ADMINS` are
+not configured, crash reports are not emailed. Login, attendance, assessments, guardian access
+and the WhatsApp-assisted queue are unaffected.
+
+When a provider is chosen, configure it using the crash-reporting instructions above and test
+the configuration before relying on it. Do not send a deliberate crash through real staging
+mail just to test the report.
+
+### Before deploying a separate school installation
+
+Treat every school deployment as a new security environment, even when it uses the same code.
+
+1. **Gate 1 account check:** inspect guardian-linked logins and confirm none is a superuser,
+   staff login, School Administrators member, holder of a direct permission or member of another
+   privileged group. Run `role_permission_gaps` too if that installation has custom roles.
+2. **Gate 2 deployment check:** give the installation its own strong `DJANGO_SECRET_KEY`,
+   allowed hosts and trusted proxies. Confirm HTTPS is enabled, run
+   `python manage.py check --deploy`, and perform the header and redirect checks described
+   above without printing secret values.
+
+Complete these checks before the new school is opened to staff or guardians.
+
