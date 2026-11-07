@@ -69,9 +69,6 @@ correct. The staging secret key was rotated on 2026-11-06 and an independent
 - **Teacher and register rules left alone.** Subject-teacher authorization was not changed in
   3A. Publication remarks stay under `view_studentresult` and security events under
   `manage_teacher_accounts`, as documented bundles in `docs/PERMISSIONS.md`.
-- **Housekeeping.** The merged remote branches `security/gate-1-account-protection`,
-  `gate-2-deployment-safety`, `gate-3a-academic-year-authorization`,
-  `gate-3b-send-queue-recheck` and `gate-4a-crash-email-privacy` can be deleted.
 
 ## Keeping it this way
 
