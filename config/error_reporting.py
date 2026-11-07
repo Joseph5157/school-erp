@@ -15,6 +15,7 @@ Django's own reporter is used (for example the technical 500 page).
 import os
 import sysconfig
 import traceback
+from dataclasses import dataclass
 from pathlib import PurePosixPath
 
 from django.conf import settings
@@ -110,36 +111,76 @@ def _safe_location(filename):
 
 
 def _frames(tb):
+    """Safe `file:line in function` locations for a traceback, innermost last."""
     return [
-        f"    {_safe_location(frame.filename)}:{frame.lineno} in {frame.name}"
+        f"{_safe_location(frame.filename)}:{frame.lineno} in {frame.name}"
         for frame in traceback.extract_tb(tb)[-_MAX_FRAMES:]
     ]
 
 
-def build_report(record):
-    """(subject, body) for one log record, from the allow-list described above."""
+@dataclass(frozen=True)
+class ChainLink:
+    kind: str  # exception type name, never its message
+    how: str  # "", "cause" or "raised while handling"
+    frames: tuple  # safe locations, innermost last
+
+
+@dataclass(frozen=True)
+class CrashFacts:
+    """Everything a crash report may say about one log record: the allow-list itself.
+
+    Shared by the crash email and the Telegram alert (config.telegram_alerts), so both
+    carry the same, and only the same, fields.
+    """
+
+    instance: str
+    time: str
+    level: str
+    status: str
+    method: str
+    route: str
+    kind: str
+    chain: tuple  # ChainLink, outermost first
+
+
+def crash_facts(record):
     request = getattr(record, "request", None)
     chain = _chain(record.exc_info[1] if record.exc_info else None)
-    kind = _type_name(chain[0][0]) if chain else "no exception"
-    route = _route(request)
-    method = getattr(request, "method", None) or "-"
+    return CrashFacts(
+        instance=settings.ERP_INSTANCE_NAME,
+        time=f"{timezone.now():%Y-%m-%d %H:%M:%S}",
+        level=record.levelname,
+        status=str(getattr(record, "status_code", "-")),
+        method=getattr(request, "method", None) or "-",
+        route=_route(request),
+        kind=_type_name(chain[0][0]) if chain else "no exception",
+        chain=tuple(
+            ChainLink(_type_name(error), how, tuple(_frames(error.__traceback__)))
+            for error, how in chain
+        ),
+    )
+
+
+def build_report(record):
+    """(subject, body) for one log record, from the allow-list described above."""
+    facts = crash_facts(record)
     lines = [
-        f"Instance: {settings.ERP_INSTANCE_NAME}",
-        f"Time (UTC): {timezone.now():%Y-%m-%d %H:%M:%S}",
-        f"Level: {record.levelname}",
-        f"Status: {getattr(record, 'status_code', '-')}",
-        f"Request: {method} {route}",
-        f"Exception: {kind}",
+        f"Instance: {facts.instance}",
+        f"Time (UTC): {facts.time}",
+        f"Level: {facts.level}",
+        f"Status: {facts.status}",
+        f"Request: {facts.method} {facts.route}",
+        f"Exception: {facts.kind}",
         "",
         "Exception chain (outermost first). Messages, query strings, client details and",
         "variables are left out on purpose; the service's Railway logs have the full detail.",
     ]
-    if not chain:
+    if not facts.chain:
         lines.append("  (no exception was attached to this log record)")
-    for number, (error, how) in enumerate(chain, 1):
-        lines.append(f"  {number}. {_type_name(error)}" + (f" ({how})" if how else ""))
-        lines.extend(_frames(error.__traceback__))
-    return f"{record.levelname}: {kind} at {route}", "\n".join(lines) + "\n"
+    for number, link in enumerate(facts.chain, 1):
+        lines.append(f"  {number}. {link.kind}" + (f" ({link.how})" if link.how else ""))
+        lines.extend(f"    {frame}" for frame in link.frames)
+    return f"{facts.level}: {facts.kind} at {facts.route}", "\n".join(lines) + "\n"
 
 
 class PrivacyAdminEmailHandler(AdminEmailHandler):

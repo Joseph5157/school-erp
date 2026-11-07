@@ -1,8 +1,9 @@
 """Fail-closed handling of deployment settings (Security Gate 2).
 
 Used by config/settings.py. A missing or insecure production secret, an unrecognised
-transport-security flag or a malformed proxy list stops startup with a message that names
-the variable. None of these messages ever includes the value that was rejected.
+transport-security flag, a malformed proxy list or a half-configured Telegram alert pair
+stops startup with a message that names the variable. None of these messages ever includes
+the value that was rejected.
 """
 
 import ipaddress
@@ -75,6 +76,26 @@ def resolve_https(raw, *, debug, testing):
         "DJANGO_HTTPS is turned off, but production must serve over HTTPS. Remove the "
         "variable or set it to True. For local development set DJANGO_DEBUG=True."
     )
+
+
+def telegram_alert_settings(token_raw, chat_raw, *, debug, testing):
+    """(token, chat_id) for the optional Telegram crash alerts; ("", "") means off.
+
+    Both variables set: alerts on. Both unset or blank: alerts off. Only one set: startup
+    stops, naming the missing variable and never echoing the one that was supplied. The
+    pair is checked in every kind of run, but debug and test runs always get ("", ""), so
+    they can never contact Telegram even when the variables are present.
+    """
+    token, chat_id = (token_raw or "").strip(), (chat_raw or "").strip()
+    if bool(token) != bool(chat_id):
+        missing = "TELEGRAM_ERROR_CHAT_ID" if token else "TELEGRAM_ERROR_BOT_TOKEN"
+        raise ImproperlyConfigured(
+            f"{missing} is missing. Telegram crash alerts need both of their variables: "
+            "set it, or remove the other one to turn the alerts off (see docs/OPERATIONS.md)."
+        )
+    if debug or testing:
+        return "", ""
+    return token, chat_id
 
 
 def parse_trusted_proxies(raw):
