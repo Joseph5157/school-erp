@@ -126,9 +126,10 @@ class DraftDetailTests(DetailFixture, TestCase):
         self.assertEqual(form.count('name="csrfmiddlewaretoken"'), 1)
         self.assertIn('name="action" value="save"', content)
         self.assertIn('name="action" value="submit"', content)
-        # Logout form + the one capture form. (The shared partial's two-line {# #} comment renders
-        # literally, adding a stray "<form id=...>" text outside this gate's scope.)
-        self.assertEqual(content.count('<form method="post"'), 2)
+        # Logout forms (account menu and phone drawer) + the one capture form. (The shared partial's
+        # two-line {# #} comment renders literally, adding a stray "<form id=...>" text outside this gate's scope.)
+        logout = f'<form method="post" action="{reverse("logout")}">'
+        self.assertEqual(content.count('<form method="post"') - content.count(logout), 1)
         self.assertEqual(content.count(f'action="{capture}"'), 1)
         self.assertNotContains(response, "Submitted attendance")
 
