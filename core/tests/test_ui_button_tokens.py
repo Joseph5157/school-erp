@@ -7,7 +7,8 @@ from django.conf import settings
 from django.test import SimpleTestCase
 
 TOKENS = {
-    "--erp-btn-radius": "var(--erp-radius-sm)",
+    "--erp-btn-radius": "var(--erp-radius)",
+    "--erp-btn-radius-sm": "8px",
     "--erp-btn-height": "2.5rem",
     "--erp-btn-height-sm": "2rem",
 }
