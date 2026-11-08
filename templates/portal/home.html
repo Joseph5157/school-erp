@@ -38,9 +38,9 @@
 {% if notices %}
 <section class="erp-notices" aria-labelledby="notices-h">
     <h2 id="notices-h" class="erp-notices-title">Latest notices</h2>
-    <div class="list-group mb-2">
+    <div class="erp-link-list mb-2">
         {% for notice in notices %}
-        <a class="list-group-item list-group-item-action" href="{% url 'portal:notice' notice.public_id %}">{{ notice.title }} <span class="text-muted small">&middot; {{ notice.published_at|date:"j M" }}</span></a>
+        <a class="erp-link-row" href="{% url 'portal:notice' notice.public_id %}"><span class="erp-link-row-text"><span class="erp-link-row-title">{{ notice.title }}</span><span class="erp-link-row-meta">{{ notice.published_at|date:"j M" }}</span></span></a>
         {% endfor %}
     </div>
     <p class="mb-4"><a href="{% url 'portal:notices' %}">All notices</a></p>
