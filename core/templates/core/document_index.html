@@ -2,13 +2,13 @@
 {% block title %}Documents{% endblock %}
 {% block content %}
 {% include "partials/_page_header.html" with eyebrow="Daily operations" title="Documents" purpose="Issue certificates and report cards as numbered PDFs." only %}
-<section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="document-types-heading">
+<section class="mb-4" aria-labelledby="document-types-heading">
 <h2 class="h5 mb-3" id="document-types-heading">Issue a document</h2>
-<ul class="erp-document-types">
-    <li><a href="{% url 'core:bonafide-create' %}">Bonafide certificate</a><span class="erp-note-text">Confirms that a Student is currently enrolled. A serial number is assigned and the PDF opens next.</span></li>
-    <li><a href="{% url 'core:document-report-cards' %}">Report card PDF</a><span class="erp-note-text">Open the PDF of a Student's current published report cards.</span></li>
-    <li><a href="{% url 'core:attendance-summary' %}">Attendance summary</a><span class="erp-note-text">Counts submitted attendance for one Section over a date range. Issuing assigns a serial number.</span></li>
-</ul>
+<div class="erp-link-list erp-link-list--menu">
+    {% url 'core:bonafide-create' as u %}{% include "partials/_link_row.html" with url=u icon="documents" title="Bonafide certificate" desc="Confirms that a Student is currently enrolled. A serial number is assigned and the PDF opens next." only %}
+    {% url 'core:document-report-cards' as u %}{% include "partials/_link_row.html" with url=u icon="results" title="Report card PDF" desc="Open the PDF of a Student's current published report cards." only %}
+    {% url 'core:attendance-summary' as u %}{% include "partials/_link_row.html" with url=u icon="attendance" title="Attendance summary" desc="Counts submitted attendance for one Section over a date range. Issuing assigns a serial number." only %}
+</div>
 </section>
 <section class="erp-panel" aria-labelledby="document-recent-heading">
 <div class="erp-panel-head p-3 p-md-4 pb-2">

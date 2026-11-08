@@ -1,0 +1,4 @@
+{% comment %}One tappable menu row inside an .erp-link-list. Use:
+{% include "partials/_link_row.html" with url=… icon="calendar" title="Calendar" desc="…" note="…" only %}
+icon is a name from _icon.html; desc and note are optional grey lines under the title.{% endcomment %}
+<a class="erp-link-row" href="{{ url }}">{% if icon %}<span class="erp-link-row-icon" aria-hidden="true">{% include "partials/_icon.html" with name=icon only %}</span>{% endif %}<span class="erp-link-row-text"><span class="erp-link-row-title">{{ title }}</span>{% if desc %}<span class="erp-link-row-desc">{{ desc }}</span>{% endif %}{% if note %}<span class="erp-link-row-meta">{{ note }}</span>{% endif %}</span></a>
