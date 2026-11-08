@@ -1,6 +1,1 @@
-{% if table.filtered %}
-No notices match your search or filters.
-<a class="btn btn-outline-secondary btn-sm mt-2" href="{% url 'core:announcement-list' %}">Clear filters</a>
-{% else %}
-No notices yet.{% if perms.core.add_announcement %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:announcement-create' %}">Publish a notice</a>{% endif %}
-{% endif %}
+{% if table.filtered %}{% url 'core:announcement-list' as empty_clear_url %}{% include "partials/_empty.html" with icon="announcements" title="No notices match your search or filters." clear_url=empty_clear_url inline=True only %}{% else %}{% if perms.core.add_announcement %}{% url 'core:announcement-create' as empty_action_url %}{% endif %}{% include "partials/_empty.html" with icon="announcements" title="No notices yet." action_url=empty_action_url action_label="Publish a notice" inline=True only %}{% endif %}

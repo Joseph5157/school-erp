@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Page expired{% endblock %}
+{% block content %}
+<div class="erp-auth">
+    <h1>This page has expired</h1>
+    <p class="text-secondary">
+        For your security, a form stops working when it has been left open for a long time, or after
+        you sign in or out in another tab. Nothing was saved.
+    </p>
+    <p>Open the page again and repeat what you were doing.</p>
+    <p class="mb-0">
+        <a class="btn btn-primary" href="{{ retry_url }}">Open the page again</a>
+        <a class="btn btn-outline-secondary" href="{% url 'home' %}">Go to my area</a>
+    </p>
+</div>
+{% endblock %}

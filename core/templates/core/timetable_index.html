@@ -20,7 +20,7 @@
             </td>
         </tr>
         {% empty %}
-        <tr><td colspan="2">No Academic Years yet. Create one under School setup first.</td></tr>
+        <tr><td colspan="2">{% include "partials/_empty.html" with icon="timetable" title="No Academic Years yet." text="Create one under School setup first." inline=True only %}</td></tr>
         {% endfor %}
     </tbody>
 </table>
@@ -42,6 +42,6 @@
     {% endfor %}
 </ul>
 {% else %}
-<div class="erp-setup-cards-empty d-md-none d-print-none">No Academic Years yet. Create one under School setup first.</div>
+<div class="erp-setup-cards-empty d-md-none d-print-none">{% include "partials/_empty.html" with icon="timetable" title="No Academic Years yet." text="Create one under School setup first." inline=True only %}</div>
 {% endif %}
 {% endblock %}

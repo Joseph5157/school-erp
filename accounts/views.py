@@ -1,10 +1,24 @@
 from django.contrib import messages
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, password_validation
 from django.contrib.auth import views as auth_views
-from django.urls import reverse_lazy
+from django.shortcuts import render
+from django.urls import reverse, reverse_lazy
 from django.views.decorators.cache import never_cache
 
 from accounts.models import SecurityEvent
+
+
+def csrf_failure(request, reason=""):
+    """CSRF_FAILURE_VIEW: a plain-words page instead of Django's technical one.
+
+    A form's security token goes stale when a page is left open for a long time or the user signs in
+    or out in another tab, which phone users hit often. Nothing was saved, so the page offers a fresh
+    copy of the same address. Logout is POST-only, so its retry goes home instead.
+    """
+    path = request.path
+    if not path.startswith("/") or path.startswith("//") or path == reverse("logout"):
+        path = reverse("home")
+    return render(request, "403_csrf.html", {"retry_url": path}, status=403)
 
 
 class PasswordChangeView(auth_views.PasswordChangeView):
@@ -16,6 +30,16 @@ class PasswordChangeView(auth_views.PasswordChangeView):
 
     template_name = "registration/password_change_form.html"
     success_url = reverse_lazy("home")
+
+    def get_context_data(self, **kwargs):
+        # The rules checklist quotes the real minimum, so the page never disagrees with the server.
+        context = super().get_context_data(**kwargs)
+        lengths = [
+            v.min_length for v in password_validation.get_default_password_validators()
+            if isinstance(v, password_validation.MinimumLengthValidator)
+        ]
+        context["password_min_length"] = max(lengths, default=0)
+        return context
 
     def form_valid(self, form):
         response = super().form_valid(form)

@@ -1,1 +1,1 @@
-No Academic Years yet.{% if perms.core.add_academicyear %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:academic-year-create' %}">Create academic year</a>{% endif %}
+{% if perms.core.add_academicyear %}{% url 'core:academic-year-create' as empty_action_url %}{% endif %}{% include "partials/_empty.html" with icon="calendar" title="No Academic Years yet." action_url=empty_action_url action_label="Create academic year" inline=True only %}

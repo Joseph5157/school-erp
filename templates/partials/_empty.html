@@ -1,6 +1,12 @@
-{# Empty state. Use: {% include "partials/_empty.html" with title="…" text="…" %} #}
-<div class="erp-empty">
-    <span class="erp-empty-icon" aria-hidden="true">○</span>
+{% comment %}Empty state. Use: {% include "partials/_empty.html" with title="…" text="…" %}
+   Optional: icon (a name from _icon.html; shown in a soft badge), inline=True (inside a table cell or
+   phone-card panel, so no second box), action_url + action_label (the next step) and clear_url
+   (+ clear_label, default "Clear filters") to undo a search or filter. Keep the elements inline-level:
+   tests read phone-card panels up to the first closing div.{% endcomment %}
+<div class="erp-empty{% if inline %} erp-empty--inline{% endif %}">
+    {% if icon %}<span class="erp-empty-icon erp-empty-icon--badge" aria-hidden="true">{% include "partials/_icon.html" with name=icon only %}</span>{% else %}<span class="erp-empty-icon" aria-hidden="true">○</span>{% endif %}
     {% if title %}<p class="erp-empty-title">{{ title }}</p>{% endif %}
-    <p>{{ text }}</p>
+    {% if text %}<p>{{ text }}</p>{% endif %}
+    {% if action_url and action_label %}<a class="btn btn-outline-primary btn-sm mt-2" href="{{ action_url }}">{{ action_label }}</a>{% endif %}
+    {% if clear_url %}<a class="btn btn-outline-secondary btn-sm mt-2" href="{{ clear_url }}">{{ clear_label|default:"Clear filters" }}</a>{% endif %}
 </div>
