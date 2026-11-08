@@ -71,7 +71,14 @@
   --erp-table-pad-x: 1rem;
   --erp-table-head-pad-y: .75rem;
   /* Button tokens (UI-15): one radius everywhere; 40px / 32px heights from 768px up (phones keep 44px). */
-  --erp-btn-radius: var(--erp-radius-sm);
+  --erp-btn-radius: var(--erp-radius);
+  --erp-btn-radius-sm: 8px;
+  /* Soft (secondary) and tonal (outline-primary) button fills, and the darker danger hover. */
+  --erp-btn-soft: #edf0ec;
+  --erp-btn-soft-hover: #e2e6e0;
+  --erp-btn-soft-border: #d3d8d1;
+  --erp-action-wash-strong: #d2e5db;
+  --erp-bad-strong: #8a2a23;
   --erp-btn-height: 2.5rem;
   --erp-btn-height-sm: 2rem;
   --erp-line-tight: 1.2;
@@ -104,33 +111,79 @@
   --bs-btn-disabled-bg: var(--erp-action);
   --bs-btn-disabled-border-color: var(--erp-action);
 }
-.btn-outline-primary {
-  --bs-btn-color: var(--erp-action);
+/* Modern buttons: semibold labels; success maps to the one brand green; danger uses the app red. */
+.btn { --bs-btn-font-weight: 600; }
+.btn-link { --bs-btn-font-weight: 400; }
+.btn-success {
+  --bs-btn-color: #fff;
+  --bs-btn-bg: var(--erp-action);
   --bs-btn-border-color: var(--erp-action);
-  --bs-btn-hover-bg: var(--erp-action);
-  --bs-btn-hover-border-color: var(--erp-action);
+  --bs-btn-hover-color: #fff;
+  --bs-btn-hover-bg: var(--erp-action-strong);
+  --bs-btn-hover-border-color: var(--erp-action-strong);
+  --bs-btn-active-color: #fff;
   --bs-btn-active-bg: var(--erp-action-strong);
+  --bs-btn-active-border-color: var(--erp-action-strong);
+  --bs-btn-disabled-bg: var(--erp-action);
+  --bs-btn-disabled-border-color: var(--erp-action);
 }
-/* Enabled secondary actions read as active; disabled buttons look distinct. */
+.btn-danger {
+  --bs-btn-color: #fff;
+  --bs-btn-bg: var(--erp-bad);
+  --bs-btn-border-color: var(--erp-bad);
+  --bs-btn-hover-color: #fff;
+  --bs-btn-hover-bg: var(--erp-bad-strong);
+  --bs-btn-hover-border-color: var(--erp-bad-strong);
+  --bs-btn-active-color: #fff;
+  --bs-btn-active-bg: var(--erp-bad-strong);
+  --bs-btn-active-border-color: var(--erp-bad-strong);
+  --bs-btn-disabled-bg: var(--erp-bad);
+  --bs-btn-disabled-border-color: var(--erp-bad);
+}
+.btn-outline-danger {
+  --bs-btn-color: var(--erp-bad);
+  --bs-btn-bg: var(--erp-bad-wash);
+  --bs-btn-border-color: var(--erp-bad-wash);
+  --bs-btn-hover-color: #fff;
+  --bs-btn-hover-bg: var(--erp-bad);
+  --bs-btn-hover-border-color: var(--erp-bad);
+  --bs-btn-active-color: #fff;
+  --bs-btn-active-bg: var(--erp-bad-strong);
+  --bs-btn-active-border-color: var(--erp-bad-strong);
+}
+/* Tonal: a green-tinted fill rather than a thin green outline. */
+.btn-outline-primary {
+  --bs-btn-color: var(--erp-action-strong);
+  --bs-btn-bg: var(--erp-action-wash);
+  --bs-btn-border-color: var(--erp-action-wash);
+  --bs-btn-hover-color: var(--erp-action-strong);
+  --bs-btn-hover-bg: var(--erp-action-wash-strong);
+  --bs-btn-hover-border-color: var(--erp-action-wash-strong);
+  --bs-btn-active-color: #fff;
+  --bs-btn-active-bg: var(--erp-action-strong);
+  --bs-btn-active-border-color: var(--erp-action-strong);
+}
+/* Enabled secondary actions read as active; disabled buttons look distinct (dashed, muted text).
+   A soft filled button with a light edge rather than the dark Bootstrap outline. */
 .btn-outline-secondary {
   --bs-btn-color: var(--erp-ink);
-  --bs-btn-bg: var(--erp-surface);
-  --bs-btn-border-color: var(--erp-ink-soft);
+  --bs-btn-bg: var(--erp-btn-soft);
+  --bs-btn-border-color: var(--erp-btn-soft-border);
   --bs-btn-hover-color: var(--erp-ink);
-  --bs-btn-hover-bg: var(--erp-paper);
-  --bs-btn-hover-border-color: var(--erp-ink);
+  --bs-btn-hover-bg: var(--erp-btn-soft-hover);
+  --bs-btn-hover-border-color: var(--erp-ink-soft);
   --bs-btn-active-color: var(--erp-ink);
-  --bs-btn-active-bg: var(--erp-paper);
-  --bs-btn-active-border-color: var(--erp-ink);
+  --bs-btn-active-bg: var(--erp-btn-soft-hover);
+  --bs-btn-active-border-color: var(--erp-ink-soft);
   --bs-btn-focus-shadow-rgb: 31, 107, 82;
   color: var(--erp-ink);
-  border: 1px solid var(--erp-ink-soft);
-  background-color: var(--erp-surface);
+  border: 1px solid var(--erp-btn-soft-border);
+  background-color: var(--erp-btn-soft);
 }
 .btn-outline-secondary:hover,
 .btn-outline-secondary:focus-visible {
-  background-color: var(--erp-paper);
-  border-color: var(--erp-ink);
+  background-color: var(--erp-btn-soft-hover);
+  border-color: var(--erp-ink-soft);
 }
 .btn:disabled,
 .btn.disabled,
@@ -867,6 +920,11 @@ body.has-tabbar .erp-messages {
 .btn,
 .btn-sm,
 .btn-lg { --bs-btn-border-radius: var(--erp-btn-radius); }
+.btn.btn-sm { --bs-btn-border-radius: var(--erp-btn-radius-sm); }
+/* Phones: buttons in a wrapping action row inside a card share the row instead of sitting at label width. */
+@media (max-width: 767.98px) {
+  .erp-panel .d-flex.flex-wrap.gap-2:not(:has(> :not(.btn))) > .btn { flex: 1 1 0; min-width: max-content; }
+}
 @media (min-width: 768px) {
   .btn { min-height: var(--erp-btn-height); }
   .btn-sm { min-height: var(--erp-btn-height-sm); }
