@@ -1,0 +1,10 @@
+{% comment %}Progress steps. Use: {% include "partials/_steps.html" with steps=steps label="Import progress" only %}
+   `steps` comes from core/progress_steps.py. Each state is also spoken, so colour is never the only cue.{% endcomment %}
+<ol class="erp-steps" aria-label="{{ label }}">
+    {% for step in steps %}
+    <li class="erp-step erp-step--{{ step.state }}"{% if step.state == "current" %} aria-current="step"{% endif %}>
+        <span class="erp-step-marker" aria-hidden="true">{% if step.state == "done" %}✓{% elif step.state == "stopped" %}!{% else %}{{ forloop.counter }}{% endif %}</span>
+        <span class="erp-step-text"><span class="erp-step-label">{{ step.label }}</span><span class="visually-hidden">, {{ step.state_text }}</span>{% if step.note %}<span class="erp-step-note">{{ step.note }}</span>{% endif %}</span>
+    </li>
+    {% endfor %}
+</ol>

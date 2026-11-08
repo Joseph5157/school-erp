@@ -15,6 +15,7 @@
 {% else %}
 {% include "partials/_page_header.html" with eyebrow="Bulk imports" title=page_title purpose=file_label status_label=batch.get_status_display status_tone="revoked" secondary_url=list_url secondary_label="All imports" only %}
 {% endif %}
+{% include "partials/_steps.html" with steps=steps label="Import progress" only %}
 
 <section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="import-facts-heading">
 <h2 class="h5 mb-3" id="import-facts-heading">This import</h2>
