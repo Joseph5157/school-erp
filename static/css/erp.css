@@ -1952,15 +1952,25 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
   .erp-drawer-title { flex: 1; }
   .erp-drawer-head .btn-close { flex: none; margin: 0; }
   .erp-sidebar .offcanvas-body { padding: .25rem .75rem 1rem; }
+  /* Groups read like a list of sections: a bold heading with the chevron on the right, and a rule between groups. */
+  .erp-sidebar .erp-nav-group { padding-bottom: .375rem; }
+  .erp-sidebar .erp-nav-group + .erp-nav-group { border-top: 1px solid var(--erp-rule); }
   .erp-nav-group > summary.erp-nav-heading {
-    margin: .75rem 0 .125rem; padding: .5rem; font-size: .8125rem; letter-spacing: 0; text-transform: none;
+    min-height: 3rem; margin: 0; padding: .5rem; font-size: .9375rem; font-weight: 700;
+    letter-spacing: 0; text-transform: none; color: var(--erp-ink);
   }
+  .erp-nav-group > summary.erp-nav-heading::after { color: var(--erp-ink-soft); }
   .erp-sidebar .nav-link { min-height: 2.75rem; gap: .75rem; padding: .25rem .5rem; border-radius: .625rem; font-size: .9375rem; }
   .erp-sidebar .nav-link .erp-nav-icon {
     box-sizing: content-box; padding: .5rem; border-radius: .5rem;
     background: var(--erp-paper); color: var(--erp-ink-soft);
   }
   .erp-sidebar .nav-link.active .erp-nav-icon { background: var(--erp-brand); color: #fff; }
+  /* The current page is a filled pill that runs to the drawer's left edge, so it reads at a glance. */
+  .erp-sidebar .nav-link.active {
+    margin-left: -.75rem; padding-left: 1.25rem; border-radius: 0 999px 999px 0;
+    background: var(--erp-brand-wash); color: var(--erp-brand-strong);
+  }
   .erp-drawer-foot {
     display: flex; align-items: center; gap: .75rem;
     padding: .75rem 1rem calc(.75rem + env(safe-area-inset-bottom)); border-top: 1px solid var(--erp-rule);
