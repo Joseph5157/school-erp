@@ -32,7 +32,7 @@
                 {% for item in slot.history %}
                 <li class="erp-assignment-entry">
                     <div class="erp-assignment-who">
-                        <span class="badge text-bg-{% if item.status == 'Current' %}success{% elif item.status == 'Past' %}secondary{% else %}info{% endif %}">{{ item.status }}</span>
+                        <span class="erp-status erp-status--{% if item.status == 'Current' %}active{% elif item.status == 'Past' %}inactive{% else %}info{% endif %}">{{ item.status }}</span>
                         <span class="erp-assignment-teacher">{{ item.row.teacher.get_full_name|default:item.row.teacher.username }}</span>
                     </div>
                     <div class="erp-assignment-dates"><span class="text-nowrap">{{ item.row.start_date }}</span> &ndash; <span class="text-nowrap">{% if item.row.end_date %}{{ item.row.end_date }}{% else %}open-ended{% endif %}</span></div>
@@ -91,7 +91,7 @@
             {% for item in slot.history %}
             <li class="erp-assignment-entry">
                 <div class="erp-assignment-who">
-                    <span class="badge text-bg-{% if item.status == 'Current' %}success{% elif item.status == 'Past' %}secondary{% else %}info{% endif %}">{{ item.status }}</span>
+                    <span class="erp-status erp-status--{% if item.status == 'Current' %}active{% elif item.status == 'Past' %}inactive{% else %}info{% endif %}">{{ item.status }}</span>
                     <span class="erp-assignment-teacher">{{ item.row.teacher.get_full_name|default:item.row.teacher.username }}</span>
                 </div>
                 <div class="erp-assignment-dates"><span class="text-nowrap">{{ item.row.start_date }}</span> &ndash; <span class="text-nowrap">{% if item.row.end_date %}{{ item.row.end_date }}{% else %}open-ended{% endif %}</span></div>

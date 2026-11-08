@@ -2120,6 +2120,43 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 .erp-step--stopped .erp-step-marker { border-color: var(--erp-bad); background: var(--erp-bad-wash); color: var(--erp-bad); }
 .erp-step--stopped .erp-step-note { color: var(--erp-bad); font-weight: 600; }
 
+/* ---------- Link lists (portal notices, choose area) ---------- */
+/* One card of tappable rows with a chevron, in place of Bootstrap's bordered list-group. */
+.erp-link-list {
+  max-width: 40rem; overflow: hidden;
+  background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
+}
+.erp-link-row {
+  display: flex; align-items: center; gap: var(--erp-space-3); min-height: 3.25rem;
+  padding: .75rem 1rem; color: var(--erp-ink); text-decoration: none;
+}
+.erp-link-row + .erp-link-row { border-top: 1px solid var(--erp-rule); }
+.erp-link-row:hover { background: var(--erp-paper); color: var(--erp-ink); }
+.erp-link-row::after {
+  content: ""; flex: none; width: .5rem; height: .5rem; margin-left: auto;
+  border-right: 2px solid var(--erp-ink-soft); border-bottom: 2px solid var(--erp-ink-soft); transform: rotate(-45deg);
+}
+.erp-link-row-text { display: grid; gap: .125rem; min-width: 0; }
+.erp-link-row-title { font-weight: 600; overflow-wrap: anywhere; }
+.erp-link-row-meta { font-size: var(--erp-text-sm); color: var(--erp-ink-soft); }
+
+/* ---------- Dialogs ---------- */
+/* Rounded, borderless dialogs with quiet header and footer; on phones they rise from the bottom as a sheet. */
+.modal-content { border: 0; border-radius: var(--erp-radius); box-shadow: 0 1.5rem 3rem rgba(24, 33, 43, .2); }
+.modal-header, .modal-footer { border: 0; padding: 1rem 1.25rem; }
+.modal-body { padding: 0 1.25rem 1rem; }
+.modal-footer { gap: var(--erp-space-2); }
+.modal-footer > * { margin: 0; }
+@media (max-width: 575.98px) {
+  .modal-dialog, .modal-dialog-centered { align-items: flex-end; min-height: 100%; margin: 0; }
+  .modal-dialog-scrollable { height: 100%; }
+  .modal-dialog-scrollable .modal-content { max-height: 85vh; }
+  .modal-content { border-radius: 1rem 1rem 0 0; padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .modal.fade .modal-dialog { transform: translateY(100%); }
+  .modal.show .modal-dialog { transform: none; }
+  .modal-footer > .btn { flex: 1 1 0; }
+}
+
 /* ---------- Character counters ---------- */
 .erp-char-counter { margin: calc(-1 * var(--erp-space-2)) 0 var(--erp-space-3); text-align: right; font-variant-numeric: tabular-nums; }
 .erp-char-counter.is-over { color: var(--bs-danger); font-weight: 600; }

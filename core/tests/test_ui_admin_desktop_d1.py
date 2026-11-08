@@ -30,7 +30,7 @@ class TeacherAssignmentHistoryLayoutTests(AdminFixture, TestCase):
     def test_every_history_entry_is_kept_with_status_teacher_and_dates(self):
         cell = self.history_cell(self.client.get(self.list_url).content.decode())
         self.assertEqual(cell.count('<li class="erp-assignment-entry">'), 3)
-        statuses = re.findall(r'class="badge [^"]+">([^<]+)</span>', cell)
+        statuses = re.findall(r'class="erp-status [^"]+">([^<]+)</span>', cell)
         self.assertEqual(statuses, ["Past", "Current", "Starting soon"])
         self.assertEqual(cell.count('class="erp-assignment-teacher"'), 3)
         # Date tokens never wrap internally; the open-ended label is kept.
