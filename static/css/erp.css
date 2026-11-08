@@ -827,6 +827,8 @@ body.has-tabbar .erp-messages {
   width: 100%;
   max-width: 100%;
   overflow-x: auto;
+  /* Sideways only: overflow-x makes overflow-y auto too, and a fractional table height then shows a 1px vertical scrollbar. */
+  overflow-y: hidden;
   border-radius: var(--erp-radius-sm);
   scrollbar-gutter: stable;
 }
