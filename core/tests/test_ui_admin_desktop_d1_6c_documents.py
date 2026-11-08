@@ -65,7 +65,9 @@ class IndexTests(Base, TestCase):
         self.assertEqual(page.count("<h1"), 1)
         for url, label in ((BONAFIDE, "Bonafide certificate"), (CARDS, "Report card PDF"),
                            (SUMMARY, "Attendance summary")):
-            self.assertIn(f'<a href="{url}">{label}</a>', page)
+            self.assertRegex(
+                page, rf'(?s)<a class="erp-link-row" href="{url}">.*?<span class="erp-link-row-title">{label}</span>'
+            )
         self.assertIn("Nothing issued yet.", page)
         self.assertIn('role="region" aria-label="Recently issued documents" tabindex="0"', page)
         self.assertIn("<caption", page)

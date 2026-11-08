@@ -1,17 +1,32 @@
-{# The pages of one Academic Year, grouped by purpose. Needs academic_year and perms. #}
-<ul class="erp-year-links">
-    <li><strong>Calendar:</strong><span class="erp-year-links-group">
-        {% if perms.core.view_schoolcalendarday %}<a href="{% url 'core:academic-year-calendar' academic_year.pk %}">Calendar</a>{% endif %}
-        {% if perms.core.view_academicterm %}<a href="{% url 'core:academic-year-terms' academic_year.pk %}">Terms</a>{% endif %}
-    </span></li>
-    <li><strong>Teaching:</strong><span class="erp-year-links-group">
-        {% if perms.core.view_academicsubjectoffering %}<a href="{% url 'core:academic-year-offerings' academic_year.pk %}">Subjects offered</a>{% endif %}
-        {% if perms.core.view_sectionclassteacher %}<a href="{% url 'core:academic-year-class-teachers' academic_year.pk %}">Class teachers</a>{% endif %}
-        {% if perms.core.view_assessmentteacherassignment %}<a href="{% url 'core:academic-year-teacher-assignments' academic_year.pk %}">Subject teachers</a>{% endif %}
-        {% if perms.core.view_sectionclassteacher %}<a href="{% url 'core:academic-year-assignments' academic_year.pk %}">Assignment overview</a>{% endif %}
-    </span></li>
-    <li><strong>Assessment:</strong><span class="erp-year-links-group">
-        {% if perms.core.view_assessment %}<a href="{% url 'core:academic-year-assessments' academic_year.pk %}">Assessments</a>{% endif %}
-        {% if perms.core.view_gradingscale %}<a href="{% url 'core:academic-year-grading-scales' academic_year.pk %}">Grading</a>{% endif %}
-    </span></li>
-</ul>
+{# The pages of one Academic Year as menu rows, grouped by purpose. Needs academic_year and perms. A group with no page the viewer may open is left out. #}
+<div class="erp-year-areas">
+    {% if perms.core.view_schoolcalendarday or perms.core.view_academicterm %}
+    <section class="erp-year-area">
+        <h3 class="erp-year-area-title">Calendar</h3>
+        <div class="erp-link-list erp-link-list--menu">
+            {% if perms.core.view_schoolcalendarday %}{% url 'core:academic-year-calendar' academic_year.pk as u %}{% include "partials/_link_row.html" with url=u icon="calendar" title="Calendar" desc="Weekly pattern and exceptions" only %}{% endif %}
+            {% if perms.core.view_academicterm %}{% url 'core:academic-year-terms' academic_year.pk as u %}{% include "partials/_link_row.html" with url=u icon="timetable" title="Terms" desc="Term dates within the year" only %}{% endif %}
+        </div>
+    </section>
+    {% endif %}
+    {% if perms.core.view_academicsubjectoffering or perms.core.view_sectionclassteacher or perms.core.view_assessmentteacherassignment %}
+    <section class="erp-year-area">
+        <h3 class="erp-year-area-title">Teaching</h3>
+        <div class="erp-link-list erp-link-list--menu">
+            {% if perms.core.view_academicsubjectoffering %}{% url 'core:academic-year-offerings' academic_year.pk as u %}{% include "partials/_link_row.html" with url=u icon="subjects" title="Subjects offered" desc="Subjects for each Class/Grade" only %}{% endif %}
+            {% if perms.core.view_sectionclassteacher %}{% url 'core:academic-year-class-teachers' academic_year.pk as u %}{% include "partials/_link_row.html" with url=u icon="teachers" title="Class teachers" desc="A class teacher for each Section" only %}{% endif %}
+            {% if perms.core.view_assessmentteacherassignment %}{% url 'core:academic-year-teacher-assignments' academic_year.pk as u %}{% include "partials/_link_row.html" with url=u icon="classes" title="Subject teachers" desc="Who teaches each Subject and Section" only %}{% endif %}
+            {% if perms.core.view_sectionclassteacher %}{% url 'core:academic-year-assignments' academic_year.pk as u %}{% include "partials/_link_row.html" with url=u icon="overview" title="Assignment overview" desc="All teaching assignments in one view" only %}{% endif %}
+        </div>
+    </section>
+    {% endif %}
+    {% if perms.core.view_assessment or perms.core.view_gradingscale %}
+    <section class="erp-year-area">
+        <h3 class="erp-year-area-title">Assessment</h3>
+        <div class="erp-link-list erp-link-list--menu">
+            {% if perms.core.view_assessment %}{% url 'core:academic-year-assessments' academic_year.pk as u %}{% include "partials/_link_row.html" with url=u icon="assessments" title="Assessments" desc="Tests and exams planned this year" only %}{% endif %}
+            {% if perms.core.view_gradingscale %}{% url 'core:academic-year-grading-scales' academic_year.pk as u %}{% include "partials/_link_row.html" with url=u icon="grading" title="Grading" desc="Grading scales and their bands" only %}{% endif %}
+        </div>
+    </section>
+    {% endif %}
+</div>
