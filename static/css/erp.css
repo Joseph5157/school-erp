@@ -79,6 +79,7 @@
   --erp-btn-soft-border: #d3d8d1;
   --erp-action-wash-strong: #d2e5db;
   --erp-bad-strong: #8a2a23;
+  --erp-warn-strong: #7d4a00;
   --erp-btn-height: 2.5rem;
   --erp-btn-height-sm: 2rem;
   --erp-line-tight: 1.2;
@@ -184,6 +185,42 @@
 .btn-outline-secondary:focus-visible {
   background-color: var(--erp-btn-soft-hover);
   border-color: var(--erp-ink-soft);
+}
+/* Alerts: the app's soft colours with a coloured left edge, instead of Bootstrap's stock yellow, pink and cyan. */
+.alert {
+  --bs-alert-color: var(--erp-ink);
+  --bs-alert-border-radius: var(--erp-radius);
+  --bs-alert-link-color: var(--erp-ink);
+  --erp-alert-edge: var(--erp-ink-soft);
+  border: 0;
+  border-left: 4px solid var(--erp-alert-edge);
+}
+.alert-success { --bs-alert-bg: var(--erp-ok-wash); --erp-alert-edge: var(--erp-ok); }
+.alert-info { --bs-alert-bg: var(--erp-info-wash); --erp-alert-edge: var(--erp-info); }
+.alert-warning { --bs-alert-bg: var(--erp-warn-wash); --erp-alert-edge: var(--erp-warn); }
+.alert-danger { --bs-alert-bg: var(--erp-bad-wash); --erp-alert-edge: var(--erp-bad); }
+.alert-secondary { --bs-alert-bg: var(--erp-paper); --erp-alert-edge: var(--erp-ink-soft); }
+.alert .alert-link { text-decoration: underline; }
+
+/* Ticked checkboxes and radios use the brand green (browser default and Bootstrap's own are blue). */
+:where(html) { accent-color: var(--erp-action); }
+.form-check-input:checked { background-color: var(--erp-action); border-color: var(--erp-action); }
+.form-check-input:focus { border-color: var(--erp-action); box-shadow: 0 0 0 .25rem rgba(31, 107, 82, .25); }
+
+/* Warning button (Deactivate): the app amber with white text, not Bootstrap's bright yellow. */
+.btn-warning {
+  --bs-btn-color: #fff;
+  --bs-btn-bg: var(--erp-warn);
+  --bs-btn-border-color: var(--erp-warn);
+  --bs-btn-hover-color: #fff;
+  --bs-btn-hover-bg: var(--erp-warn-strong);
+  --bs-btn-hover-border-color: var(--erp-warn-strong);
+  --bs-btn-active-color: #fff;
+  --bs-btn-active-bg: var(--erp-warn-strong);
+  --bs-btn-active-border-color: var(--erp-warn-strong);
+  --bs-btn-disabled-color: #fff;
+  --bs-btn-disabled-bg: var(--erp-warn);
+  --bs-btn-disabled-border-color: var(--erp-warn);
 }
 .btn:disabled,
 .btn.disabled,
@@ -703,6 +740,8 @@ body.has-tabbar .erp-messages {
   }
 }
 .erp-messages .alert { margin: 0; box-shadow: 0 6px 18px rgba(24, 33, 43, .12); }
+/* Pop-up messages are white cards with the coloured edge, so they lift off any page. */
+.erp-messages .alert { --bs-alert-bg: var(--erp-surface); }
 
 .erp-chips { display: flex; gap: .4rem; overflow-x: auto; padding-block: .25rem; }
 .erp-chips a {
