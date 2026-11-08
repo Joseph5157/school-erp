@@ -63,10 +63,13 @@ class GuardianStudentSearchTests(AuthorizationClientsMixin, Phase4Fixture, TestC
     # --- guardian list -----------------------------------------------------
 
     def test_guardian_list_shows_children_with_relationship(self):
+        # The relationship leads into the child's name: the guardian is "Father of" the child.
         response = self.administrator.get(self.guardians_url)
         self.assertContains(response, "Asha Rao")
-        self.assertContains(response, "(Father)")
-        self.assertContains(response, "(Mother)")
+        self.assertContains(response, '<span class="text-muted">Father of</span> <a href=')
+        self.assertContains(response, '<span class="text-muted">Mother of</span> <a href=')
+        self.assertContains(response, "<div>Father of Asha Rao</div>")
+        self.assertNotContains(response, "(Father)")
 
     def test_guardian_search_finds_parents_by_child_name(self):
         response = self.administrator.get(self.guardians_url, {"q": "Asha"})
@@ -107,7 +110,8 @@ class GuardianStudentSearchTests(AuthorizationClientsMixin, Phase4Fixture, TestC
         applicant, _ = self.applicant_guardian("Aarav Rao", "Vikram Rao")
         response = self.administrator.get(self.guardians_url, {"q": "Vikram"})
         self.assertContains(response, "Aarav Rao")
-        self.assertContains(response, "(Applicant, Father)")
+        self.assertContains(response, "<div>Father of Aarav Rao &middot; applicant</div>")
+        self.assertContains(response, '<span class="text-muted">&middot; applicant</span>')
         self.assertContains(
             response, reverse("core:applicant-detail", args=[applicant.pk])
         )
@@ -132,7 +136,7 @@ class GuardianStudentSearchTests(AuthorizationClientsMixin, Phase4Fixture, TestC
         # only the Children cell can.
         Guardian.objects.create(full_name="Lonely Guardian", email="lonely@example.com")
         response = self.administrator.get(self.guardians_url, {"q": "Lonely"})
-        self.assertNotContains(response, "(Applicant")
+        self.assertNotContains(response, "applicant</")
         self.assertContains(response, "lonely@example.com")
         self.assertContains(response, "<td>-</td>", count=1, html=False)
 
@@ -144,7 +148,7 @@ class GuardianStudentSearchTests(AuthorizationClientsMixin, Phase4Fixture, TestC
             applicant=self.asha.applicant, guardian=father, relationship_type="FATHER"
         )
         response = self.administrator.get(self.guardians_url, {"q": "Rajesh"})
-        self.assertNotContains(response, "(Applicant")
+        self.assertNotContains(response, "&middot; applicant")
 
     def test_guardian_list_query_count_does_not_grow_with_guardians(self):
         self.administrator.get(self.guardians_url)  # warm caches
@@ -155,3 +159,10 @@ class GuardianStudentSearchTests(AuthorizationClientsMixin, Phase4Fixture, TestC
         with CaptureQueriesContext(connection) as many:
             self.administrator.get(self.guardians_url)
         self.assertEqual(len(many), len(one))
+
+    def test_other_relationship_reads_linked_to(self):
+        father = Guardian.objects.get(full_name="Rajesh Rao")
+        father.student_links.update(relationship_type="OTHER")
+        response = self.administrator.get(self.guardians_url, {"q": "Rajesh"})
+        self.assertContains(response, "<div>Linked to Asha Rao</div>")
+        self.assertNotContains(response, "Other of")

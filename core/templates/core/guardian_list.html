@@ -26,7 +26,7 @@
         {% for guardian in guardians %}
         <tr>
             <td><a class="erp-row-link" href="{% url 'core:guardian-detail' guardian.pk %}">{{ guardian.full_name }}</a></td>
-            <td>{% for link in guardian.child_links %}<div><a href="{% url 'core:student-detail' link.student.pk %}">{{ link.student.full_name }}</a> <span class="text-muted">({{ link.get_relationship_type_display }})</span></div>{% endfor %}{% for link in guardian.applicant_child_links %}<div><a href="{% url 'core:applicant-detail' link.applicant.pk %}">{{ link.applicant.full_name }}</a> <span class="text-muted">(Applicant, {{ link.get_relationship_type_display }})</span></div>{% endfor %}{% if not guardian.child_links and not guardian.applicant_child_links %}-{% endif %}</td>
+            <td>{% for link in guardian.child_links %}<div><span class="text-muted">{% include "core/_relationship_of.html" with link=link only %}</span> <a href="{% url 'core:student-detail' link.student.pk %}">{{ link.student.full_name }}</a></div>{% endfor %}{% for link in guardian.applicant_child_links %}<div><span class="text-muted">{% include "core/_relationship_of.html" with link=link only %}</span> <a href="{% url 'core:applicant-detail' link.applicant.pk %}">{{ link.applicant.full_name }}</a> <span class="text-muted">&middot; applicant</span></div>{% endfor %}{% if not guardian.child_links and not guardian.applicant_child_links %}-{% endif %}</td>
             <td class="text-nowrap">{{ guardian.phone|default:"-" }}</td>
             <td>{{ guardian.email|default:"-" }}</td>
         </tr>
@@ -48,7 +48,7 @@
         <a class="erp-guardian-card-name" href="{% url 'core:guardian-detail' guardian.pk %}">{{ guardian.full_name }}</a>
         <span class="erp-guardian-card-status">{% if guardian.portal_state == "Access granted" %}{% include "partials/_status_badge.html" with label=guardian.portal_state tone="active" only %}{% elif guardian.portal_state == "Account only" %}{% include "partials/_status_badge.html" with label=guardian.portal_state tone="pending" only %}{% elif guardian.portal_state == "Login inactive" %}{% include "partials/_status_badge.html" with label=guardian.portal_state tone="inactive" only %}{% else %}{% include "partials/_status_badge.html" with label=guardian.portal_state only %}{% endif %}</span>
         <div class="erp-guardian-card-details">
-            {% for link in guardian.child_links %}<div>{{ link.student.full_name }} ({{ link.get_relationship_type_display }})</div>{% endfor %}{% for link in guardian.applicant_child_links %}<div>{{ link.applicant.full_name }} (Applicant, {{ link.get_relationship_type_display }})</div>{% endfor %}{% if not guardian.child_links and not guardian.applicant_child_links %}<div>No children linked</div>{% endif %}
+            {% for link in guardian.child_links %}<div>{% include "core/_relationship_of.html" with link=link only %} {{ link.student.full_name }}</div>{% endfor %}{% for link in guardian.applicant_child_links %}<div>{% include "core/_relationship_of.html" with link=link only %} {{ link.applicant.full_name }} &middot; applicant</div>{% endfor %}{% if not guardian.child_links and not guardian.applicant_child_links %}<div>No children linked</div>{% endif %}
         </div>
         {% if guardian.phone or guardian.email %}
         <div class="erp-guardian-card-contact">
