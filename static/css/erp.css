@@ -1925,6 +1925,40 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 .erp-drawer-context { display: flex; flex-direction: column; gap: .125rem; margin: 0 0 .75rem; padding: 0 .75rem .5rem; border-bottom: 1px solid var(--erp-rule); font-size: .875rem; color: var(--erp-ink-soft); }
 .erp-drawer-context span:first-child { font-weight: 600; }
 
+/* ---------- Admin drawer (below 992px) ---------- */
+/* A panel over a dimmed page rather than a full-width sheet: branded header, larger rows with tiled icons,
+   calmer group headings, and who is signed in plus Log out pinned at the foot. The desktop sidebar is unchanged. */
+@media (max-width: 991.98px) {
+  .erp-sidebar.offcanvas-lg {
+    --bs-offcanvas-width: min(20rem, 86vw);
+    border-right: 0; border-radius: 0 1rem 1rem 0; box-shadow: 0 0 2.5rem rgba(24, 33, 43, .18);
+  }
+  .erp-drawer-head { gap: .75rem; padding: 1rem; border-bottom: 1px solid var(--erp-rule); }
+  .erp-drawer-logo { flex: none; display: inline-grid; place-items: center; width: 2.5rem; height: 2.5rem; border-radius: .625rem; object-fit: contain; }
+  img.erp-drawer-logo { background: #fff; border: 1px solid var(--erp-rule); padding: .125rem; }
+  .erp-drawer-logo .erp-brand-mark { width: 2.5rem; height: 2.5rem; margin: 0; }
+  .erp-drawer-head .erp-drawer-context { flex: 1; min-width: 0; margin: 0; padding: 0; border: 0; font-size: .8125rem; overflow-wrap: anywhere; }
+  .erp-drawer-head .erp-drawer-context span:first-child { color: var(--erp-ink); font-size: 1rem; line-height: 1.25; }
+  .erp-drawer-title { flex: 1; }
+  .erp-drawer-head .btn-close { flex: none; margin: 0; }
+  .erp-sidebar .offcanvas-body { padding: .25rem .75rem 1rem; }
+  .erp-nav-group > summary.erp-nav-heading {
+    margin: .75rem 0 .125rem; padding: .5rem; font-size: .8125rem; letter-spacing: 0; text-transform: none;
+  }
+  .erp-sidebar .nav-link { min-height: 2.75rem; gap: .75rem; padding: .25rem .5rem; border-radius: .625rem; font-size: .9375rem; }
+  .erp-sidebar .nav-link .erp-nav-icon {
+    box-sizing: content-box; padding: .5rem; border-radius: .5rem;
+    background: var(--erp-paper); color: var(--erp-ink-soft);
+  }
+  .erp-sidebar .nav-link.active .erp-nav-icon { background: var(--erp-brand); color: #fff; }
+  .erp-drawer-foot {
+    display: flex; align-items: center; gap: .75rem;
+    padding: .75rem 1rem calc(.75rem + env(safe-area-inset-bottom)); border-top: 1px solid var(--erp-rule);
+  }
+  .erp-drawer-user { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .erp-drawer-foot form { margin: 0; }
+}
+
 /* ---------- Password rules and strength meter (change password) ---------- */
 .erp-pw-rules { list-style: none; margin: var(--erp-space-2) 0 0; padding: 0; font-size: var(--erp-text-sm); color: var(--erp-ink-soft); }
 .erp-pw-rules li { display: flex; align-items: baseline; gap: var(--erp-space-2); padding: .125rem 0; }

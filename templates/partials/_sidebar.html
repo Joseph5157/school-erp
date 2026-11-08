@@ -1,11 +1,13 @@
 {# Office navigation: fixed sidebar from 992px, off-canvas drawer below. Display only. Groups are <details> (work without JS); the group holding the active link is open. #}
 <nav class="erp-sidebar offcanvas-lg offcanvas-start" tabindex="-1" id="erp-sidebar" aria-label="School administration">
-    <div class="offcanvas-header">
-        <span class="h6 mb-0">Menu</span>
+    {# Drawer header (below 992px only): logo, then school and year on phones; tablets show them in the top bar, so the word "Menu" stands in there. #}
+    <div class="offcanvas-header erp-drawer-head">
+        {% if brand_logo %}<img class="erp-drawer-logo" src="{{ brand_logo.url }}" alt="" width="40" height="40">{% else %}<span class="erp-drawer-logo">{% include "partials/_brand_mark.html" %}</span>{% endif %}
+        {% firstof viewing_year_name current_year_name as drawer_year %}{% if school_name or drawer_year %}<p class="erp-drawer-context d-md-none">{% if school_name %}<span>{{ school_name }}</span>{% endif %}{% if drawer_year %}<span><span class="visually-hidden">Academic year </span>{{ drawer_year }}</span>{% endif %}</p>{% endif %}
+        <span class="erp-drawer-title h6 mb-0{% if school_name or drawer_year %} d-none d-md-inline{% endif %}">Menu</span>
         <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#erp-sidebar" aria-label="Close menu"></button>
     </div>
     <div class="offcanvas-body d-block">
-        {% firstof viewing_year_name current_year_name as drawer_year %}{% if school_name or drawer_year %}<p class="erp-drawer-context d-md-none">{% if school_name %}<span>{{ school_name }}</span>{% endif %}{% if drawer_year %}<span><span class="visually-hidden">Academic year </span>{{ drawer_year }}</span>{% endif %}</p>{% endif %}
         {% if year_choices|length > 1 %}
         <div class="erp-year-drawer d-lg-none">
             <span class="erp-nav-heading">Academic year</span>
@@ -24,5 +26,14 @@
             </ul>
         </details>
         {% endfor %}
+    </div>
+    {# Who is signed in, and sign-out, without leaving the drawer. Below 992px only: desktop has the top-bar account menu. #}
+    <div class="erp-drawer-foot d-lg-none">
+        <span class="erp-avatar" aria-hidden="true">{{ user.get_username|slice:":1"|upper }}</span>
+        <span class="erp-drawer-user"><span class="visually-hidden">Signed in as </span>{{ user.get_username }}</span>
+        <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-secondary btn-sm">Log out</button>
+        </form>
     </div>
 </nav>
