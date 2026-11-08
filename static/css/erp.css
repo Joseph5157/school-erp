@@ -1817,34 +1817,23 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 .erp-panel .erp-sort-link { min-height: 0; }
 .erp-panel .erp-timetable thead th:first-child,
 .erp-panel .erp-timetable tbody th[scope="row"] { background: var(--erp-paper); }
-/* Academic Years: name, dates and Saturdays never break mid-value; the year-pages column takes
-   the remaining width. Labels sit above their links until there is room beside them (>=1200px),
-   and the list keeps a floor width so a narrow container scrolls the table, not the words. */
+/* Academic Years (print table): name, dates and Saturdays never break mid-value. */
 .erp-years-table td.text-nowrap { width: 1%; padding-inline-end: var(--erp-space-5); }
-.erp-year-links { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--erp-space-2); min-width: 12rem; font-size: var(--erp-text-sm); }
-.erp-year-links strong { display: block; color: var(--erp-ink-soft); font-weight: 600; }
-/* Links wrap as whole units, separated by space rather than a dot that could start a line. */
-.erp-year-links-group { display: flex; flex-wrap: wrap; gap: .1rem var(--erp-space-3); }
-.erp-year-links a { white-space: nowrap; }
-/* Below 768px (d-md-none) each year is a card, so its links are on screen without sideways scrolling. */
-.erp-year-cards { display: grid; gap: var(--erp-space-3); margin: 0; padding: 0; list-style: none; }
+/* On screen each year is a card: name and dates, then its pages as menu rows in three groups
+   (stacked on phones, side by side from 992px). */
+.erp-year-cards { display: grid; gap: var(--erp-space-4); margin: 0; padding: 0; list-style: none; }
 .erp-year-card, .erp-year-cards-empty {
   padding: var(--erp-space-4);
   background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
 }
 .erp-year-card-name { margin: 0; font-size: var(--erp-text-lg); font-weight: 600; }
 .erp-year-card-meta { margin: var(--erp-space-1) 0 0; color: var(--erp-ink-soft); font-size: var(--erp-text-sm); }
-.erp-year-card .erp-year-links {
-  gap: var(--erp-space-3); min-width: 0;
-  margin-top: var(--erp-space-3); padding-top: var(--erp-space-3); border-top: 1px solid var(--erp-rule);
+.erp-year-areas { display: grid; gap: var(--erp-space-4); margin-top: var(--erp-space-4); padding-top: var(--erp-space-4); border-top: 1px solid var(--erp-rule); }
+.erp-year-area-title { margin: 0 0 var(--erp-space-2); color: var(--erp-ink-soft); font-size: var(--erp-text-sm); font-weight: 600; }
+@media (min-width: 992px) {
+  .erp-year-areas { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; }
 }
-.erp-year-card .erp-year-links strong { font-size: var(--erp-text-xs); letter-spacing: .04em; text-transform: uppercase; }
-.erp-year-card .erp-year-links-group { gap: 0 var(--erp-space-4); }
-.erp-year-card .erp-year-links a { display: inline-flex; align-items: center; min-height: 2.75rem; }
-@media (min-width: 1200px) {
-  .erp-year-links { gap: var(--erp-space-1); }
-  .erp-year-links li { display: grid; grid-template-columns: 6rem minmax(0, 1fr); column-gap: var(--erp-space-2); }
-}
+
 .erp-note-text { max-width: var(--erp-reading-width); color: var(--erp-ink-soft); }
 
 @media (min-width: 992px) {
@@ -2139,6 +2128,16 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 .erp-link-row-text { display: grid; gap: .125rem; min-width: 0; }
 .erp-link-row-title { font-weight: 600; overflow-wrap: anywhere; }
 .erp-link-row-meta { font-size: var(--erp-text-sm); color: var(--erp-ink-soft); }
+/* Menu variant: full width, rows with an icon tile and a grey description (year pages, reports, documents). */
+.erp-link-list--menu { max-width: none; }
+.erp-link-list--menu .erp-link-row { min-height: 3.5rem; align-items: center; }
+.erp-link-row-icon {
+  flex: none; display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border-radius: .5rem;
+  background: var(--erp-action-wash); color: var(--erp-action-strong);
+}
+.erp-link-row-icon .erp-nav-icon { width: 1.125rem; height: 1.125rem; }
+.erp-link-row-desc { font-size: var(--erp-text-sm); color: var(--erp-ink-soft); max-width: var(--erp-reading-width); }
+.erp-link-list--menu .erp-link-row-meta { font-size: var(--erp-text-xs); }
 
 /* ---------- Dialogs ---------- */
 /* Rounded, borderless dialogs with quiet header and footer; on phones they rise from the bottom as a sheet. */
@@ -2155,6 +2154,21 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
   .modal.fade .modal-dialog { transform: translateY(100%); }
   .modal.show .modal-dialog { transform: none; }
   .modal-footer > .btn { flex: 1 1 0; }
+}
+
+/* ---------- Clickable table rows ---------- */
+/* Record lists: the whole row opens the record. The record link's overlay covers the row; the name reads as
+   bold text (underlined only on hover/focus); other links and buttons in the row stay above the overlay. */
+.erp-rows-link tbody tr { position: relative; }
+.erp-rows-link a.erp-row-link { color: var(--erp-ink); font-weight: 600; text-decoration: none; }
+.erp-rows-link a.erp-row-link::after { content: ""; position: absolute; inset: 0; }
+.erp-rows-link a.erp-row-link:hover, .erp-rows-link a.erp-row-link:focus-visible { text-decoration: underline; }
+.erp-rows-link tbody tr :is(a:not(.erp-row-link), button, input, select, label) { position: relative; z-index: 1; }
+.erp-rows-link tbody tr:has(a.erp-row-link):hover > * { background-color: var(--erp-action-wash); cursor: pointer; }
+.erp-rows-link tbody tr:has(a.erp-row-link) > :last-child {
+  padding-right: 2.25rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%234a5562' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 3l5 5-5 5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right .75rem center; background-size: .875rem;
 }
 
 /* ---------- Character counters ---------- */
@@ -2344,10 +2358,6 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 /* UI-D1-6C: documents. The index lists the three document types with a description under each link; the
    Attendance summary and report-card pickers share one row on wide screens; the summary table aligns its
    counts to the right and tightens phone padding. */
-.erp-document-types { list-style: none; margin: 0; padding: 0; }
-.erp-document-types > li { display: flex; flex-direction: column; gap: var(--erp-space-1); padding: var(--erp-space-3) 0; border-top: 1px solid var(--erp-rule); }
-.erp-document-types > li:first-child { border-top: 0; padding-top: 0; }
-.erp-document-types > li > a { font-weight: 650; }
 .erp-panel .erp-summary-table th.erp-num, .erp-panel .erp-summary-table td.erp-num { text-align: end; font-variant-numeric: tabular-nums; }
 .erp-panel .erp-summary-table > tfoot > tr > * { padding: .75rem var(--erp-space-4); vertical-align: middle; border-top: 2px solid var(--erp-rule); border-bottom: 0; }
 @media (min-width: 576px) {

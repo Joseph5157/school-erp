@@ -53,11 +53,10 @@ class AdminDesktopD0Tests(AuthorizationClientsMixin, TestCase):
         self.assertContains(response, 'class="table erp-years-table"')
         self.assertContains(response, '<td class="text-nowrap fw-semibold">2026-27</td>')
         self.assertEqual(content.count('<td class="text-nowrap">'), 3)
-        # Three groups in the table and three more in the phone card.
-        self.assertEqual(content.count('class="erp-year-links-group"'), 6)
-        self.assertContains(response, '<span class="visually-hidden">Year pages</span>')
-        # Links are spaced by the flex group; a text dot could start a wrapped line.
-        self.assertNotIn("&middot;", content.split('class="erp-year-links"')[1].split("</ul>")[0])
+        # The year's pages are menu rows in three groups on the card; the print table has none.
+        self.assertEqual(content.count('class="erp-year-area"'), 3)
+        self.assertEqual(content.count('class="erp-link-row"'), 8)
+        self.assertNotIn('class="erp-link-row"', content.split('class="table erp-years-table"')[1].split("</table>")[0])
 
     def ui_d0_css(self):
         css = (settings.BASE_DIR / "static" / "css" / "erp.css").read_text(encoding="utf-8")

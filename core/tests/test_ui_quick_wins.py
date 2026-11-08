@@ -43,7 +43,13 @@ class PageHeaderConsistencyTests(Phase4Fixture, TestCase):
 
     def test_academic_year_links_are_grouped_by_purpose(self):
         page = self.client.get(reverse("core:academic-year-list"))
-        labels = ("Calendar:", "Teaching:", "Assessment:", "Class teachers", "Subject teachers")
+        labels = (
+            '<h3 class="erp-year-area-title">Calendar</h3>',
+            '<h3 class="erp-year-area-title">Teaching</h3>',
+            '<h3 class="erp-year-area-title">Assessment</h3>',
+            "Class teachers",
+            "Subject teachers",
+        )
         for label in labels:
             self.assertContains(page, label)
 

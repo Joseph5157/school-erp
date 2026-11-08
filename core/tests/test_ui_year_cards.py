@@ -9,11 +9,11 @@ from django.urls import reverse
 from core.models import AcademicYear
 from core.tests.test_authorization import AuthorizationClientsMixin
 
-CARDS_OPEN = '<ul class="erp-year-cards d-md-none d-print-none" role="list">'
+CARDS_OPEN = '<ul class="erp-year-cards d-print-none" role="list">'
 
 
 class AcademicYearPhoneCardTests(AuthorizationClientsMixin, TestCase):
-    """Below 768px each Academic Year is a card, so its pages never sit off-screen in a sideways table."""
+    """On screen each Academic Year is a card with its pages as menu rows; the table is for printing."""
 
     def setUp(self):
         super().setUp()
@@ -26,9 +26,9 @@ class AcademicYearPhoneCardTests(AuthorizationClientsMixin, TestCase):
         content = (client or self.administrator).get(self.url).content.decode()
         return content.split(CARDS_OPEN)[1]
 
-    def test_table_is_for_wide_screens_and_print_and_cards_are_for_phones(self):
+    def test_table_is_for_print_and_cards_are_for_every_screen(self):
         page = self.administrator.get(self.url)
-        self.assertContains(page, '<div class="d-none d-md-block d-print-block">')
+        self.assertContains(page, '<div class="d-none d-print-block">')
         self.assertContains(page, CARDS_OPEN)
 
     def test_card_shows_the_year_its_dates_and_saturdays(self):
@@ -79,13 +79,10 @@ class AcademicYearPhoneCardTests(AuthorizationClientsMixin, TestCase):
     def test_no_years_shows_the_empty_message_instead_of_cards(self):
         AcademicYear.objects.all().delete()
         page = self.administrator.get(self.url)
-        self.assertContains(page, '<div class="erp-year-cards-empty d-md-none d-print-none">')
+        self.assertContains(page, '<div class="erp-year-cards-empty d-print-none">')
         self.assertNotContains(page, '<ul class="erp-year-cards')
         self.assertContains(page, "No Academic Years yet.", count=2)
 
     def test_stylesheet_makes_card_links_easy_to_tap(self):
         css = (settings.BASE_DIR / "static" / "css" / "erp.css").read_text(encoding="utf-8")
-        self.assertIn(
-            ".erp-year-card .erp-year-links a { display: inline-flex; align-items: center; min-height: 2.75rem; }",
-            css,
-        )
+        self.assertIn(".erp-link-list--menu .erp-link-row { min-height: 3.5rem; align-items: center; }", css)
