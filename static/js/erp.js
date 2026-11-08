@@ -17,6 +17,77 @@
     });
   });
 
+  // Change password: tick off the rules, show a strength meter and whether the two entries match.
+  // Only a guide: the server's validators still decide. Without JS the rules stay a plain list.
+  (function () {
+    var rules = document.querySelector("[data-erp-pw-rules]");
+    var meter = document.querySelector("[data-erp-pw-meter]");
+    var input = document.getElementById("id_new_password1");
+    if (!rules || !meter || !input) return;
+    var confirmInput = document.getElementById("id_new_password2");
+    var match = document.querySelector("[data-erp-pw-match]");
+    var minLength = parseInt(rules.getAttribute("data-min-length"), 10) || 0;
+    var username = (rules.getAttribute("data-username") || "").toLowerCase();
+    var bar = meter.querySelector(".erp-pw-bar > span");
+    var label = meter.querySelector(".erp-pw-label");
+    var levels = ["Too weak", "Okay", "Good", "Strong"];
+    var shownLevel = null;
+    rules.querySelectorAll("[data-rule]").forEach(function (item) {
+      var status = document.createElement("span");
+      status.className = "visually-hidden";
+      status.textContent = " (not met yet)";
+      item.appendChild(status);
+    });
+    function similarToUsername(password) {
+      var p = password.toLowerCase();
+      if (username.length < 3 || p.length < 3) return false;
+      var parts = username.split(/[\W_]+/).filter(function (s) { return s.length >= 3; });
+      parts.push(username);
+      return parts.some(function (part) { return p.indexOf(part) !== -1 || part.indexOf(p) !== -1; });
+    }
+    function mark(rule, met) {
+      var item = rules.querySelector('[data-rule="' + rule + '"]');
+      if (!item) return;
+      item.classList.toggle("is-met", met);
+      item.lastChild.textContent = met ? " (met)" : " (not met yet)";
+    }
+    function updateMatch() {
+      if (!confirmInput || !match) return;
+      if (!confirmInput.value) { match.hidden = true; return; }
+      var same = confirmInput.value === input.value;
+      match.hidden = false;
+      match.textContent = same ? "Passwords match" : "Passwords don't match yet";
+      match.classList.toggle("is-ok", same);
+    }
+    function update() {
+      var password = input.value;
+      var met = {
+        length: password.length >= minLength && password !== "",
+        numeric: password !== "" && !/^\d+$/.test(password),
+        username: password !== "" && !similarToUsername(password),
+      };
+      Object.keys(met).forEach(function (rule) { mark(rule, met[rule]); });
+      var level = 0;
+      if (met.length && met.numeric && met.username) {
+        level = 1;
+        if (password.length >= Math.max(minLength + 4, 12)) level += 1;
+        var kinds = [/[a-z]/, /[A-Z]/, /\d/, /[^A-Za-z0-9]/].filter(function (re) { return re.test(password); });
+        if (kinds.length >= 3) level += 1;
+      }
+      meter.hidden = password === "";
+      meter.setAttribute("data-level", String(level));
+      bar.style.width = (level + 1) * 25 + "%";
+      if (level !== shownLevel) {  // announce only when the level changes, not on every key
+        label.textContent = "Strength: " + levels[level];
+        shownLevel = level;
+      }
+      updateMatch();
+    }
+    input.addEventListener("input", update);
+    if (confirmInput) confirmInput.addEventListener("input", updateMatch);
+    if (input.value) update();
+  })();
+
   // Sidebar groups: the group with the active page (and Home) stays open; the others remember being opened
   // or closed in this browser. Without JS or storage the server-rendered state is used as is.
   (function () {

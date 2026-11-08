@@ -1,5 +1,5 @@
 from django.contrib import messages
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, password_validation
 from django.contrib.auth import views as auth_views
 from django.shortcuts import render
 from django.urls import reverse, reverse_lazy
@@ -30,6 +30,16 @@ class PasswordChangeView(auth_views.PasswordChangeView):
 
     template_name = "registration/password_change_form.html"
     success_url = reverse_lazy("home")
+
+    def get_context_data(self, **kwargs):
+        # The rules checklist quotes the real minimum, so the page never disagrees with the server.
+        context = super().get_context_data(**kwargs)
+        lengths = [
+            v.min_length for v in password_validation.get_default_password_validators()
+            if isinstance(v, password_validation.MinimumLengthValidator)
+        ]
+        context["password_min_length"] = max(lengths, default=0)
+        return context
 
     def form_valid(self, form):
         response = super().form_valid(form)

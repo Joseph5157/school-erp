@@ -1959,6 +1959,24 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
   .erp-drawer-foot form { margin: 0; }
 }
 
+/* ---------- Password rules and strength meter (change password) ---------- */
+.erp-pw-rules { list-style: none; margin: var(--erp-space-2) 0 0; padding: 0; font-size: var(--erp-text-sm); color: var(--erp-ink-soft); }
+.erp-pw-rules li { display: flex; align-items: baseline; gap: var(--erp-space-2); padding: .125rem 0; }
+.erp-pw-rules li::before { content: "\25CB"; flex: none; width: 1rem; text-align: center; }
+.erp-pw-rules li.is-met { color: var(--erp-ink); }
+.erp-pw-rules li.is-met::before { content: "\2713"; color: var(--erp-ok-strong); font-weight: 700; }
+.erp-pw-rules li.erp-pw-note::before { content: "\2022"; }
+.erp-pw-meter:not([hidden]) { display: flex; align-items: center; gap: var(--erp-space-3); margin-top: var(--erp-space-2); font-size: var(--erp-text-sm); }
+.erp-pw-bar { flex: 1; height: .375rem; border-radius: 1rem; background: var(--erp-rule); overflow: hidden; }
+.erp-pw-bar > span { display: block; height: 100%; width: 25%; border-radius: inherit; background: var(--bs-danger); transition: width .2s ease-out, background-color .2s; }
+.erp-pw-meter[data-level="1"] .erp-pw-bar > span { background: var(--erp-warn); }
+.erp-pw-meter[data-level="2"] .erp-pw-bar > span { background: var(--erp-ok); }
+.erp-pw-meter[data-level="3"] .erp-pw-bar > span { background: var(--erp-ok-strong); }
+.erp-pw-label { flex: none; min-width: 7.5rem; font-weight: 600; color: var(--erp-ink); }
+.erp-pw-match { color: var(--erp-ink-soft); }
+.erp-pw-match.is-ok { color: var(--erp-ok-strong); font-weight: 600; }
+@media (prefers-reduced-motion: reduce) { .erp-pw-bar > span { transition: none; } }
+
 /* ---------- Character counters ---------- */
 .erp-char-counter { margin: calc(-1 * var(--erp-space-2)) 0 var(--erp-space-3); text-align: right; font-variant-numeric: tabular-nums; }
 .erp-char-counter.is-over { color: var(--bs-danger); font-weight: 600; }
