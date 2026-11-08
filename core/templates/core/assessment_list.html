@@ -20,12 +20,12 @@
 {% endif %}
 <div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Assessments for {{ academic_year.name }}" tabindex="0">
-<table class="table erp-assessment-table erp-assessment-list-table">
+<table class="table erp-assessment-table erp-assessment-list-table erp-rows-link">
     {% include "partials/_table_head.html" with table=table caption="Assessments for "|add:academic_year.name only %}
     <tbody>
         {% for assessment in assessments %}
         <tr>
-            <th scope="row" class="fw-semibold"><a href="{% url 'core:assessment-detail' assessment.pk %}">{{ assessment.name }}</a></th>
+            <th scope="row" class="fw-semibold"><a class="erp-row-link" href="{% url 'core:assessment-detail' assessment.pk %}">{{ assessment.name }}</a></th>
             <td>{% include "partials/_status_badge.html" with label=assessment.get_status_display tone=assessment.status|lower only %}</td>
             <td>{{ assessment.subject_display }}</td>
             <td class="text-nowrap">{{ assessment.section }}</td>

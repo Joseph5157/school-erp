@@ -284,7 +284,7 @@ class PaginationTests(AssessmentFixture, TestCase):
         self.assertIn(
             ".erp-panel .erp-assessment-list-table > thead > tr > th:nth-child(n+7) { text-align: end; }", css
         )
-        self.assertIn('class="table erp-assessment-table erp-assessment-list-table"', page)
+        self.assertIn('class="table erp-assessment-table erp-assessment-list-table erp-rows-link"', page)
         self.assertNotIn("th:nth-child(n+7)", css.replace("erp-assessment-list-table > thead > tr > th:nth-child(n+7)", ""))
 
     def test_detail_results_table_is_not_covered_by_the_list_alignment_rule(self):

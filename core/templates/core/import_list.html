@@ -9,7 +9,7 @@
 {% endif %}
 <div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Import batches" tabindex="0">
-<table class="table erp-import-list-table">
+<table class="table erp-import-list-table erp-rows-link">
     <caption class="visually-hidden">Bulk imports, newest first: number, when and by whom the file was uploaded, the file name, Academic Year, Student rows and status.</caption>
     <thead>
         <tr>
@@ -25,7 +25,7 @@
     <tbody>
     {% for batch in batches %}
         <tr>
-            <th scope="row" class="fw-semibold"><a href="{% url 'core:import-detail' batch.pk %}">{{ batch.pk }}{% if show_file_name %}<span class="visually-hidden"> ({{ batch.file_name }})</span>{% endif %}</a></th>
+            <th scope="row" class="fw-semibold"><a class="erp-row-link" href="{% url 'core:import-detail' batch.pk %}">{{ batch.pk }}{% if show_file_name %}<span class="visually-hidden"> ({{ batch.file_name }})</span>{% endif %}</a></th>
             <td class="text-nowrap">{{ batch.uploaded_at|date:"j M Y, H:i" }}</td>
             <td class="text-break">{{ batch.uploaded_by }}</td>
             <td class="text-break">{% if show_file_name %}{{ batch.file_name }}{% else %}<span class="text-muted">Not shown</span>{% endif %}</td>

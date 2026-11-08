@@ -279,7 +279,7 @@ class ListTests(Base):
             with self.subTest(label=label):
                 self.assertRegex(page, rf'<span class="visually-hidden">Status: </span>{label}</span>')
         self.assertIn(
-            f'<th scope="row" class="fw-semibold"><a href="{self.detail(committed)}">{committed.pk}'
+            f'<th scope="row" class="fw-semibold"><a class="erp-row-link" href="{self.detail(committed)}">{committed.pk}'
             '<span class="visually-hidden"> (students.xlsx)</span></a></th>', page)
         self.assertNotIn("No imports yet.", page)
 

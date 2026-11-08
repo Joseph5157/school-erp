@@ -29,12 +29,12 @@
 </form>
 <div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Applicants" tabindex="0">
-<table class="table">
+<table class="table erp-rows-link">
     {% include "partials/_table_head.html" with table=table caption="Applicants" only %}
     <tbody>
         {% for applicant in table.page %}
         <tr>
-            <td><a href="{% url 'core:applicant-detail' applicant.pk %}">{{ applicant.full_name }}</a>{% if query %}{# Search results can share a name, so show what tells them apart. #}<div class="small text-muted text-break">{% if applicant.date_of_birth %}<div>Born {{ applicant.date_of_birth }}</div>{% endif %}{% if applicant.phone %}<div>{{ applicant.phone }}</div>{% endif %}{% if applicant.email %}<div>{{ applicant.email }}</div>{% endif %}</div>{% endif %}</td>
+            <td><a class="erp-row-link" href="{% url 'core:applicant-detail' applicant.pk %}">{{ applicant.full_name }}</a>{% if query %}{# Search results can share a name, so show what tells them apart. #}<div class="small text-muted text-break">{% if applicant.date_of_birth %}<div>Born {{ applicant.date_of_birth }}</div>{% endif %}{% if applicant.phone %}<div>{{ applicant.phone }}</div>{% endif %}{% if applicant.email %}<div>{{ applicant.email }}</div>{% endif %}</div>{% endif %}</td>
             <td>{% include "partials/_status_badge.html" with label=applicant.get_admission_status_display tone=applicant.admission_status|lower only %}</td>
         </tr>
         {% empty %}
