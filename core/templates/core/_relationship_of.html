@@ -1,0 +1,1 @@
+{# Guardian-to-child relationship as words leading into the child's name ("Father of"); Other reads "Linked to". Needs link. #}{% if link.relationship_type == "OTHER" %}Linked to{% else %}{{ link.get_relationship_type_display }} of{% endif %}
