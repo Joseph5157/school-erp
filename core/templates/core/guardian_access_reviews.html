@@ -32,7 +32,7 @@
             </td>
         </tr>
     {% empty %}
-        <tr><td colspan="4">No pending access reviews.</td></tr>
+        <tr><td colspan="4">{% include "partials/_empty.html" with icon="access" title="No pending access reviews." inline=True only %}</td></tr>
     {% endfor %}
     </tbody>
 </table>

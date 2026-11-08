@@ -24,7 +24,7 @@
             <td class="text-end text-nowrap">{% if perms.core.change_subject %}<a href="{% url 'core:subject-update' subject.pk %}">Edit<span class="visually-hidden"> {{ subject.name }}</span></a>{% endif %}</td>
         </tr>
         {% empty %}
-        <tr><td colspan="4">No subjects yet.{% if perms.core.add_subject %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:subject-create' %}">Add subject</a>{% endif %}</td></tr>
+        <tr><td colspan="4">{% if perms.core.add_subject %}{% url 'core:subject-create' as empty_action_url %}{% endif %}{% include "partials/_empty.html" with icon="subjects" title="No subjects yet." action_url=empty_action_url action_label="Add subject" inline=True only %}</td></tr>
         {% endfor %}
     </tbody>
 </table>

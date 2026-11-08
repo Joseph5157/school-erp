@@ -138,7 +138,11 @@ class HeaderAndTableTests(AccessReviewsD13CBase, TestCase):
     def test_empty_queue_message(self):
         _, content = self.get()
         self.assertIn("No pending access reviews.", content)
-        self.assertRegex(content, r'<td colspan="4">No pending access reviews\.</td>')
+        self.assertRegex(
+            content,
+            r'(?s)<td colspan="4">\s*<div class="erp-empty erp-empty--inline">.*?'
+            r'<p class="erp-empty-title">No pending access reviews\.</p>\s*</div>\s*</td>',
+        )
 
 
 class DecisionFormTests(AccessReviewsD13CBase, TestCase):

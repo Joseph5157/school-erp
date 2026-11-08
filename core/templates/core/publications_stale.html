@@ -27,7 +27,7 @@
             <td><a href="{% url 'core:publication-detail' pub.pk %}">Review<span class="visually-hidden"> {{ pub.student.full_name }}, {{ pub.term_label }} version {{ pub.version }}</span></a></td>
         </tr>
         {% empty %}
-        <tr><td colspan="6">None. Every released report card still matches its source results.</td></tr>
+        <tr><td colspan="6">{% include "partials/_empty.html" with icon="stale" text="None. Every released report card still matches its source results." inline=True only %}</td></tr>
         {% endfor %}
     </tbody>
 </table>
