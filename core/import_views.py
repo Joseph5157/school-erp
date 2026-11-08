@@ -5,7 +5,7 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
-from core import data_access, imports
+from core import data_access, imports, progress_steps
 from core.authorization import administrator_required
 from core.forms import ImportUploadForm
 from core.models import ImportBatch
@@ -44,7 +44,7 @@ def import_upload(request):
                 return redirect("core:import-detail", pk=batch.pk)
     else:
         form = ImportUploadForm()
-    return render(request, "core/import_upload.html", {"form": form})
+    return render(request, "core/import_upload.html", {"form": form, "steps": progress_steps.import_steps()})
 
 
 @administrator_required("core.view_importbatch")
@@ -73,6 +73,7 @@ def import_detail(request, pk):
         ]
     return render(request, "core/import_detail.html", {
         "batch": batch,
+        "steps": progress_steps.import_steps(batch.status),
         "plan": plan,
         "live_errors": live_errors,
         "new_warnings": new_warnings,

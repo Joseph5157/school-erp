@@ -30,6 +30,7 @@ from core import (
     marks_analytics,
     notification_producers,
     one_time_forms,
+    progress_steps,
     publication,
     reports,
     school_logo,
@@ -2547,10 +2548,16 @@ def applicant_create(request):
                 form.save()
                 messages.success(request, "Applicant registered.")
                 return redirect("core:applicant-list")
-            return render(request, "core/applicant_form.html", {"form": form, **matches})
+            return render(
+                request,
+                "core/applicant_form.html",
+                {"form": form, "steps": progress_steps.admission_steps(), **matches},
+            )
     else:
         form = ApplicantForm()
-    return render(request, "core/applicant_form.html", {"form": form})
+    return render(
+        request, "core/applicant_form.html", {"form": form, "steps": progress_steps.admission_steps()}
+    )
 
 
 @administrator_required("core.view_applicant")
@@ -2572,6 +2579,7 @@ def applicant_detail(request, pk):
             "can_see_guardians": can_see_guardians,
             "guardian_links": guardian_links,
             "student": student,
+            "steps": progress_steps.admission_steps(applicant, student),
             "can_add_guardian": not _applicant_guardian_lock(applicant),
             "corrections": applicant.corrections.select_related("changed_by"),
         },

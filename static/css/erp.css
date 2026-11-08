@@ -1925,6 +1925,32 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 .erp-drawer-context { display: flex; flex-direction: column; gap: .125rem; margin: 0 0 .75rem; padding: 0 .75rem .5rem; border-bottom: 1px solid var(--erp-rule); font-size: .875rem; color: var(--erp-ink-soft); }
 .erp-drawer-context span:first-child { font-weight: 600; }
 
+/* ---------- Progress steps ---------- */
+
+.erp-steps { display: flex; max-width: 40rem; margin: 0 0 var(--erp-space-4); padding: 0; list-style: none; }
+.erp-step {
+  position: relative; flex: 1 1 0; display: grid; justify-items: center; gap: .35rem;
+  padding: 0 .25rem; text-align: center; font-size: .875rem; color: var(--erp-ink-soft);
+}
+/* The line joins this marker to the one before; it turns brand colour once that step is done. */
+.erp-step + .erp-step::before {
+  content: ""; position: absolute; top: .875rem; right: 50%; width: 100%; height: 2px;
+  background: var(--erp-rule);
+}
+.erp-step--done + .erp-step::before { background: var(--erp-brand); }
+.erp-step-marker {
+  position: relative; z-index: 1; display: grid; place-items: center; width: 1.75rem; height: 1.75rem;
+  border: 2px solid var(--erp-rule); border-radius: 50%; background: var(--erp-surface);
+  font-size: .8rem; font-weight: 600; line-height: 1;
+}
+.erp-step-text { display: grid; gap: .1rem; }
+.erp-step-note { font-size: .75rem; }
+.erp-step--done .erp-step-marker { border-color: var(--erp-brand); background: var(--erp-brand); color: #fff; }
+.erp-step--current { color: var(--erp-ink); font-weight: 600; }
+.erp-step--current .erp-step-marker { border-color: var(--erp-brand); background: var(--erp-brand-wash); color: var(--erp-brand-strong); }
+.erp-step--stopped .erp-step-marker { border-color: var(--erp-bad); background: var(--erp-bad-wash); color: var(--erp-bad); }
+.erp-step--stopped .erp-step-note { color: var(--erp-bad); font-weight: 600; }
+
 /* ---------- Character counters ---------- */
 .erp-char-counter { margin: calc(-1 * var(--erp-space-2)) 0 var(--erp-space-3); text-align: right; font-variant-numeric: tabular-nums; }
 .erp-char-counter.is-over { color: var(--bs-danger); font-weight: 600; }

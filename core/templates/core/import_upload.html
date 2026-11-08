@@ -2,6 +2,7 @@
 {% block title %}New import{% endblock %}
 {% block content %}
 {% include "partials/_page_header.html" with eyebrow="Bulk imports" title="New import" purpose="Check an Excel workbook first. The check keeps a batch for you to review; no Student, Guardian, Class or Section records are imported until you confirm." only %}
+{% include "partials/_steps.html" with steps=steps label="Import progress" only %}
 <form method="post" enctype="multipart/form-data" class="erp-form">
     {% csrf_token %}
     <p class="erp-note-text">Use the <a href="{% url 'core:import-template' %}">import template</a>. Checking the file creates an import batch for you to review. No Student, Guardian, Class or Section records are imported until you confirm the preview.</p>
