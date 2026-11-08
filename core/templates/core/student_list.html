@@ -63,7 +63,7 @@
 <div class="d-none d-md-block d-print-block">
 <div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Students" tabindex="0">
-<table class="table">
+<table class="table erp-rows-link">
     {% include "partials/_table_head.html" with table=table caption="Students" only %}
     <tbody>
         {% for student in table.page %}
@@ -72,7 +72,7 @@
                 <div class="erp-student-name">
                     <span class="erp-initials" aria-hidden="true">{{ student.full_name|slice:":1"|upper }}</span>
                     <span class="erp-student-name-copy">
-                        <a href="{% url 'core:student-detail' student.pk %}">{{ student.full_name }}</a>
+                        <a class="erp-row-link" href="{% url 'core:student-detail' student.pk %}">{{ student.full_name }}</a>
                         {% if student.admission_number %}<span class="erp-student-admission">{{ student.admission_number }}</span>{% endif %}
                     </span>
                 </div>

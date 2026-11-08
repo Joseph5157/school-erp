@@ -41,12 +41,12 @@
 <div class="d-none d-md-block d-print-block">
 <div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Teachers" tabindex="0">
-<table class="table">
+<table class="table erp-rows-link">
     {% include "partials/_table_head.html" with table=table caption="Teachers" only %}
     <tbody>
         {% for teacher in table.page %}
         <tr>
-            <td><a href="{% url 'core:teacher-detail' teacher.pk %}">{{ teacher.get_full_name|default:teacher.username }}</a></td>
+            <td><a class="erp-row-link" href="{% url 'core:teacher-detail' teacher.pk %}">{{ teacher.get_full_name|default:teacher.username }}</a></td>
             <td>{{ teacher.username }}</td>
             <td>{{ teacher.email|default:"-" }}</td>
             <td>{% if teacher.is_active %}{% include "partials/_status_badge.html" with label="Active" tone="active" only %}{% else %}{% include "partials/_status_badge.html" with label="Inactive" tone="inactive" only %}{% endif %}</td>

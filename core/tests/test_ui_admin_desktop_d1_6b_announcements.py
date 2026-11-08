@@ -57,7 +57,7 @@ class ListTests(Base, TestCase):
         gone = self.notice(title="Old news")
         announcements.withdraw(gone, actor=self.admin, reason="Wrong date")
         page = html(self.administrator.get(LIST))
-        self.assertRegex(page, rf'<th scope="row"[^>]*><a href="{self.detail_url(live)}">Sports Day</a></th>')
+        self.assertRegex(page, rf'<th scope="row"[^>]*><a class="erp-row-link" href="{self.detail_url(live)}">Sports Day</a></th>')
         self.assertRegex(page, r"erp-status--published\"><span class=\"visually-hidden\">Status: </span>Live")
         self.assertRegex(page, r"erp-status--revoked\"><span class=\"visually-hidden\">Status: </span>Withdrawn")
         self.assertEqual(page.count('scope="row"'), 2)

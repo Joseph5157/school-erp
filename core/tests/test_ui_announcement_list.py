@@ -152,7 +152,7 @@ class AudienceSortTests(PreviewFixture, TestCase):
 
     def titles(self, sort, audience):
         page = html(self.administrator.get(LIST, {"sort": sort, "audience": audience}))
-        return re.findall(r'<th scope="row"[^>]*><a href="[^"]+">([^<]+)</a></th>', table_part(page))
+        return re.findall(r'<th scope="row"[^>]*><a class="erp-row-link" href="[^"]+">([^<]+)</a></th>', table_part(page))
 
     def test_class_notices_sort_by_grade_position(self):
         self.notice(CLASS, class_grade=self.grade10, title="Ten")

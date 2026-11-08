@@ -2157,6 +2157,21 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
   .modal-footer > .btn { flex: 1 1 0; }
 }
 
+/* ---------- Clickable table rows ---------- */
+/* Record lists: the whole row opens the record. The record link's overlay covers the row; the name reads as
+   bold text (underlined only on hover/focus); other links and buttons in the row stay above the overlay. */
+.erp-rows-link tbody tr { position: relative; }
+.erp-rows-link a.erp-row-link { color: var(--erp-ink); font-weight: 600; text-decoration: none; }
+.erp-rows-link a.erp-row-link::after { content: ""; position: absolute; inset: 0; }
+.erp-rows-link a.erp-row-link:hover, .erp-rows-link a.erp-row-link:focus-visible { text-decoration: underline; }
+.erp-rows-link tbody tr :is(a:not(.erp-row-link), button, input, select, label) { position: relative; z-index: 1; }
+.erp-rows-link tbody tr:has(a.erp-row-link):hover > * { background-color: var(--erp-action-wash); cursor: pointer; }
+.erp-rows-link tbody tr:has(a.erp-row-link) > :last-child {
+  padding-right: 2.25rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%234a5562' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 3l5 5-5 5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right .75rem center; background-size: .875rem;
+}
+
 /* ---------- Character counters ---------- */
 .erp-char-counter { margin: calc(-1 * var(--erp-space-2)) 0 var(--erp-space-3); text-align: right; font-variant-numeric: tabular-nums; }
 .erp-char-counter.is-over { color: var(--bs-danger); font-weight: 600; }

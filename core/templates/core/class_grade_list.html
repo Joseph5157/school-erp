@@ -8,7 +8,7 @@
 {% if perms.core.change_classgrade and count > 1 %}<p class="text-end"><button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#class-order" hidden>Change order</button></p>{% endif %}
 <div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Classes/Grades" tabindex="0">
-<table class="table erp-keep">
+<table class="table erp-keep erp-rows-link">
     <thead>
         <tr>
             <th scope="col">Name</th>
@@ -18,7 +18,7 @@
     <tbody>
         {% for class_grade in class_grades %}
         <tr>
-            <td class="fw-semibold"><a href="{% url 'core:class-grade-detail' class_grade.pk %}">{{ class_grade.name }}</a></td>
+            <td class="fw-semibold"><a class="erp-row-link" href="{% url 'core:class-grade-detail' class_grade.pk %}">{{ class_grade.name }}</a></td>
             <td class="text-nowrap">{{ class_grade.sections.active.count }}</td>
         </tr>
         {% empty %}
