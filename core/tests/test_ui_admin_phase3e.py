@@ -216,7 +216,7 @@ EMPTY_ACTIONS = (
 
 def action_html(url_name, label):
     return (
-        '<br><a class="btn btn-outline-primary btn-sm mt-2" '
+        '<a class="btn btn-outline-primary btn-sm mt-2" '
         f'href="{reverse(url_name)}">{label}</a>'
     )
 

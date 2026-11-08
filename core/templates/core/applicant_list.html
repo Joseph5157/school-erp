@@ -39,7 +39,7 @@
         </tr>
         {% empty %}
         <tr>
-            <td colspan="2">{% if query %}No applicants match this search.{% elif status %}No applicants match the selected admission status.{% else %}No applicants yet.{% if perms.core.add_applicant %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:applicant-create' %}">Register applicant</a>{% endif %}{% endif %}</td>
+            <td colspan="2">{% if query %}{% include "partials/_empty.html" with icon="applicants" title="No applicants match this search." inline=True only %}{% elif status %}{% include "partials/_empty.html" with icon="applicants" title="No applicants match the selected admission status." inline=True only %}{% else %}{% if perms.core.add_applicant %}{% url 'core:applicant-create' as empty_action_url %}{% endif %}{% include "partials/_empty.html" with icon="applicants" title="No applicants yet." action_url=empty_action_url action_label="Register applicant" inline=True only %}{% endif %}</td>
         </tr>
         {% endfor %}
     </tbody>

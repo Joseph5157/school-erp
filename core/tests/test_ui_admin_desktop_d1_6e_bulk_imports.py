@@ -260,7 +260,7 @@ class ListTests(Base):
         self.assertIn(f'<a class="btn btn-outline-secondary" href="{reverse("core:import-template")}">Download template</a>', page)
         self.assertIn(f'<a class="btn btn-primary" href="{UPLOAD}">New import</a>', page)
         self.assertIn("No imports yet.", page)
-        self.assertIn(f'<br><a class="btn btn-outline-primary btn-sm mt-2" href="{UPLOAD}">Start an import</a>', page)
+        self.assertIn(f'<a class="btn btn-outline-primary btn-sm mt-2" href="{UPLOAD}">Start an import</a>', page)
         self.assertIn('role="region" aria-label="Import batches" tabindex="0"', page)
         self.assertEqual(page.count('scope="col"'), 7)
 

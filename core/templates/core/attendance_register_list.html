@@ -64,9 +64,9 @@
         {% empty %}
         <tr>
             {% if filters_applied %}
-            <td colspan="6">No attendance registers match these filters.</td>
+            <td colspan="6">{% include "partials/_empty.html" with icon="attendance" title="No attendance registers match these filters." inline=True only %}</td>
             {% else %}
-            <td colspan="6">No attendance registers yet.{% if perms.core.add_attendanceregister %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:attendance-register-create' %}">Open register</a>{% endif %}</td>
+            <td colspan="6">{% if perms.core.add_attendanceregister %}{% url 'core:attendance-register-create' as empty_action_url %}{% endif %}{% include "partials/_empty.html" with icon="attendance" title="No attendance registers yet." action_url=empty_action_url action_label="Open register" inline=True only %}</td>
             {% endif %}
         </tr>
         {% endfor %}
@@ -90,7 +90,7 @@
     {% endfor %}
 </ul>
 {% else %}
-<div class="erp-register-cards-empty d-md-none d-print-none">{% if filters_applied %}No attendance registers match these filters.{% else %}No attendance registers yet.{% if perms.core.add_attendanceregister %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:attendance-register-create' %}">Open register</a>{% endif %}{% endif %}</div>
+<div class="erp-register-cards-empty d-md-none d-print-none">{% if filters_applied %}{% include "partials/_empty.html" with icon="attendance" title="No attendance registers match these filters." inline=True only %}{% else %}{% if perms.core.add_attendanceregister %}{% url 'core:attendance-register-create' as empty_action_url %}{% endif %}{% include "partials/_empty.html" with icon="attendance" title="No attendance registers yet." action_url=empty_action_url action_label="Open register" inline=True only %}{% endif %}</div>
 {% endif %}
 {% include "partials/_table_footer.html" with table=table only %}
 {% endblock %}

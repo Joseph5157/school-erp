@@ -1,6 +1,1 @@
-{% if has_filters %}
-No students match these filters.
-<a class="btn btn-outline-secondary btn-sm mt-2" href="{% url 'core:student-list' %}">Clear filters</a>
-{% else %}
-No Students found.{% if perms.core.view_applicant %}<br><a class="btn btn-outline-primary btn-sm mt-2" href="{% url 'core:applicant-list' %}">Review applicants</a>{% endif %}
-{% endif %}
+{% if has_filters %}{% url 'core:student-list' as empty_clear_url %}{% include "partials/_empty.html" with icon="students" title="No students match these filters." clear_url=empty_clear_url inline=True only %}{% else %}{% if perms.core.view_applicant %}{% url 'core:applicant-list' as empty_action_url %}{% endif %}{% include "partials/_empty.html" with icon="students" title="No Students found." action_url=empty_action_url action_label="Review applicants" inline=True only %}{% endif %}

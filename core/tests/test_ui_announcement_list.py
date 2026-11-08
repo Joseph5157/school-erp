@@ -106,7 +106,7 @@ class ListTests(PreviewFixture, TestCase):
         self.assertIn("No notices yet.", page)
         self.assertNotIn(FILTERED_EMPTY, page)
         create = reverse("core:announcement-create")
-        self.assertIn(f'<br><a class="btn btn-outline-primary btn-sm mt-2" href="{create}">Publish a notice</a>', page)
+        self.assertIn(f'<a class="btn btn-outline-primary btn-sm mt-2" href="{create}">Publish a notice</a>', page)
 
     def test_card_shows_title_date_audience_status(self):
         live = self.notice(CLASS, class_grade=self.grade6, title="Sports Day")

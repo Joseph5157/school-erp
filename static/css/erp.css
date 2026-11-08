@@ -628,6 +628,14 @@ body.erp { min-height: 100vh; }
 .erp-empty-icon { font-size: 1.6rem; line-height: 1; }
 .erp-empty-title { font-weight: 600; color: var(--erp-ink); margin: 0; }
 .erp-empty p { margin: 0; max-width: 34rem; }
+/* Icon badge and the inline variant used inside table cells and phone-card panels. */
+.erp-empty-icon--badge {
+  display: grid; place-items: center; width: 2.75rem; height: 2.75rem; margin-bottom: .25rem;
+  border-radius: 50%; background: var(--erp-brand-wash); color: var(--erp-brand-strong);
+}
+.erp-empty-icon--badge .erp-nav-icon { width: 1.35rem; height: 1.35rem; }
+.erp-empty--inline { padding: var(--erp-space-4) var(--erp-space-2); border: 0; background: transparent; }
+.erp-empty .btn { justify-self: center; }
 
 .erp-messages {
   position: fixed; z-index: 1050; display: grid; gap: .5rem;

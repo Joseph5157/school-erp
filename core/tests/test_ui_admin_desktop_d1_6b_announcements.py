@@ -47,7 +47,7 @@ class ListTests(Base, TestCase):
         self.assertEqual(page.count("<h1"), 1)
         self.assertIn(f'<a class="btn btn-primary" href="{CREATE}">New notice</a>', page)
         self.assertIn("No notices yet.", page)
-        self.assertIn(f'<br><a class="btn btn-outline-primary btn-sm mt-2" href="{CREATE}">Publish a notice</a>', page)
+        self.assertIn(f'<a class="btn btn-outline-primary btn-sm mt-2" href="{CREATE}">Publish a notice</a>', page)
         self.assertIn('role="region" aria-label="Announcements" tabindex="0"', page)
         self.assertIn("<caption", page)
         self.assertEqual(page.count('scope="col"'), 4)
