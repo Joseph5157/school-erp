@@ -26,6 +26,6 @@ class BootstrapLeftoverTests(SimpleTestCase):
 
     def test_link_list_and_dialog_styles_exist(self):
         css = (Path(settings.BASE_DIR) / "static" / "css" / "erp.css").read_text(encoding="utf-8")
-        for selector in (".erp-link-list {", ".erp-link-row {", ".modal-content {", ".modal.fade .modal-dialog {"):
+        for selector in (".erp-link-list {", ".erp-link-row {", ".erp-dialog {", ".erp-dialog::backdrop {"):
             with self.subTest(selector=selector):
                 self.assertIn(selector, css)

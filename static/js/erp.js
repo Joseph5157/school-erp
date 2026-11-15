@@ -687,16 +687,36 @@
     }
   }
 
-  // Subject order modal: arrows always work; dragging is added when the library loaded. Nothing is
-  // saved until Save order, and closing the modal puts the list back. The opener starts hidden, so
-  // without JS or Bootstrap the person uses each Subject's Edit form instead.
+  // Order dialogs (Classes/Grades, Subjects offered): a native modal <dialog>, so Escape and the
+  // phone's Back close it, the page behind is inert and focus goes back to the opener. Arrows always
+  // work; dragging is added when the library loaded. Nothing is saved until Save order, and closing
+  // puts the list back. The opener starts hidden, so without JS (or <dialog>) the person uses each
+  // record's Edit form instead.
   document.querySelectorAll("[data-erp-reorder]").forEach(function (form) {
-    var modal = form.closest(".modal");
-    var opener = document.querySelector('[data-bs-target="#' + modal.id + '"]');
+    var dialog = form.closest("dialog");
+    if (!dialog || typeof dialog.showModal !== "function") return;
+    var opener = document.querySelector('[data-erp-dialog-open="' + dialog.id + '"]');
     var list = form.querySelector("[data-erp-reorder-list]");
     var announce = form.querySelector("[data-erp-reorder-announce]");
-    if (!window.bootstrap || !opener) return;
+    if (!opener) return;
     opener.hidden = false;
+    opener.addEventListener("click", function () {
+      dialog.showModal();
+      // Start on the first arrow that can move something, not the Close button.
+      var first = form.querySelector("[data-erp-reorder-move]:not(:disabled)");
+      if (first) first.focus();
+    });
+    form.querySelectorAll("[data-erp-dialog-close]").forEach(function (button) {
+      button.addEventListener("click", function () { dialog.close(); });
+    });
+    // A tap on the backdrop closes it, as before. The press must also start there, so a drag that
+    // ends outside the sheet doesn't close it and lose the new order.
+    var pressedBackdrop = false;
+    dialog.addEventListener("pointerdown", function (event) { pressedBackdrop = event.target === dialog; });
+    dialog.addEventListener("click", function (event) {
+      if (pressedBackdrop && event.target === dialog) dialog.close();
+      pressedBackdrop = false;
+    });
 
     function items() {
       return Array.prototype.slice.call(list.children);
@@ -735,7 +755,7 @@
       say(item);
     });
 
-    modal.addEventListener("hidden.bs.modal", function () {
+    dialog.addEventListener("close", function () {
       original.forEach(function (item) { list.appendChild(item); });
       announce.textContent = "";
       refresh();
