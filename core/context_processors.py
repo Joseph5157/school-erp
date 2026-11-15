@@ -7,7 +7,7 @@ from core.academic_years import (
     viewed_year_pk,
     year_switch_url,
 )
-from core.authorization import is_guardian, is_teacher, user_areas
+from core.authorization import user_areas
 from core.breadcrumbs import breadcrumb_context
 from core.models import AcademicYear, School, SchoolLogo
 from core.nav_badges import queue_counts
@@ -74,11 +74,14 @@ def roles(request):
     """Expose role flags and navigation to templates (display only; views enforce access)."""
     user = getattr(request, "user", None)
     areas = user_areas(user)
+    area_keys = {key for key, _, _ in areas}
     match = getattr(request, "resolver_match", None)
     url_name = match.url_name if match is not None else None
-    area = current_area(request)
+    area = current_area(request, areas)
     signed_in = bool(user and user.is_authenticated)
-    school = School.objects.first() if signed_in else None
+    # The Guardian Portal shell never shows the school name or logo, so its pages skip both lookups.
+    in_portal = match is not None and match.namespace == "portal"
+    school = School.objects.first() if signed_in and not in_portal else None
     year = None
     selector = {
         "year_choices": [],
@@ -99,8 +102,9 @@ def roles(request):
     # Header context (UI-11): office and teacher areas only; the Guardian portal has its own shell.
     in_header_area = area in ("admin", "teacher")
     return {
-        "user_is_teacher": is_teacher(user),
-        "user_is_guardian": is_guardian(user),
+        # user_areas already asked both questions.
+        "user_is_teacher": "teacher" in area_keys,
+        "user_is_guardian": "guardian" in area_keys,
         "user_areas": areas,
         "user_has_several_areas": len(areas) > 1,
         "current_area": area,

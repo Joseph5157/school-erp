@@ -14,6 +14,15 @@ from core.tests.test_phase6_access_boundary import BoundaryFixture
 MON, TUE, WED, THU = date(2026, 10, 5), date(2026, 10, 6), date(2026, 10, 7), date(2026, 10, 8)
 
 
+def marked_days(page):
+    """(date, STATUS) for every present/absent cell in the month calendar the guardian sees."""
+    return [
+        (cell["date"], cell["state"].upper())
+        for week in page.context["month"]["weeks"] for cell in week
+        if cell and cell["state"] in ("present", "absent")
+    ]
+
+
 class PortalAttendanceTests(BoundaryFixture, TestCase):
     def setUp(self):
         super().setUp()
@@ -24,6 +33,7 @@ class PortalAttendanceTests(BoundaryFixture, TestCase):
         self.register(THU, asha=AttendanceStatus.PRESENT, submit=False)  # DRAFT
         self.portal = self.guardian_client()
         self.url = reverse("portal:attendance", args=[self.asha_grant.public_id])
+        self.october = {"month": "2026-10"}
 
     def register(self, on_date, *, asha, note="", submit=True):
         register = AttendanceRegister.objects.create(
@@ -35,9 +45,9 @@ class PortalAttendanceTests(BoundaryFixture, TestCase):
         return register
 
     def test_only_submitted_days_with_current_status(self):
-        page = self.portal.get(self.url)
-        days = [(d["date"], d["status"]) for d in page.context["days"]]
-        self.assertEqual(days, [(WED, "ABSENT"), (TUE, "ABSENT"), (MON, "PRESENT")])
+        page = self.portal.get(self.url, self.october)
+        days = marked_days(page)
+        self.assertEqual(days, [(MON, "PRESENT"), (TUE, "ABSENT"), (WED, "ABSENT")])
         self.assertNotIn(THU, [d for d, _ in days])
 
     def test_summary_matches_phase_2_report(self):
@@ -51,8 +61,8 @@ class PortalAttendanceTests(BoundaryFixture, TestCase):
         entry = self.tue.entries.get(academic_enrollment=self.asha_e)
         entry.record_status_change(AttendanceStatus.PRESENT, actor=self.admin,
                                    reason="Arrived late, register was wrong")
-        page = self.portal.get(self.url)
-        self.assertIn((TUE, "PRESENT"), [(d["date"], d["status"]) for d in page.context["days"]])
+        page = self.portal.get(self.url, self.october)
+        self.assertIn((TUE, "PRESENT"), marked_days(page))
         text = page.content.decode()
         for hidden in ("Arrived late", "register was wrong", "admin", "orrect", "Fever"):
             with self.subTest(hidden=hidden):
@@ -90,6 +100,7 @@ class PortalAttendanceTests(BoundaryFixture, TestCase):
     def test_no_attendance_yet(self):
         AttendanceRegister.objects.all().update(status="DRAFT", submitted_by=None,
                                                 submitted_at=None)
-        page = self.portal.get(self.url)
-        self.assertEqual(page.context["days"], [])
+        page = self.portal.get(self.url, self.october)
+        self.assertEqual(marked_days(page), [])
+        self.assertEqual(page.context["summary"]["total"], 0)
         self.assertNotContains(page, "Absent")

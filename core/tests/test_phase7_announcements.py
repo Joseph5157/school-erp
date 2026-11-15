@@ -177,12 +177,12 @@ class VisibilityTests(AnnouncementFixture, TestCase):
         self.notice(SECTION, section=self.six_b, title="6B")  # Ravi is not granted
         withdrawn = self.notice(title="Withdrawn")
         announcements.withdraw(withdrawn, actor=self.admin, reason="Wrong")
-        self.assertEqual(announcements.visible_announcements(self.user), [mine, everyone])
+        self.assertEqual(list(announcements.visible_announcements(self.user)), [mine, everyone])
 
     def test_no_current_enrollment_sees_nothing(self):
         self.notice()
         self.today = date(2027, 4, 5)  # after the year: Asha's access is under review
-        self.assertEqual(announcements.visible_announcements(self.user), [])
+        self.assertEqual(list(announcements.visible_announcements(self.user)), [])
 
     def test_visible_child_without_current_enrollment_sees_nothing(self):
         notice = self.notice()
@@ -191,12 +191,12 @@ class VisibilityTests(AnnouncementFixture, TestCase):
             grant=self.asha_grant,
             decision=GuardianAccessReview.Decision.RETAINED, actor=self.admin)
         self.assertFalse(guardian_access.is_review_pending(self.asha_grant))
-        self.assertEqual(announcements.visible_announcements(self.user), [])
+        self.assertEqual(list(announcements.visible_announcements(self.user)), [])
         self.assertNotIn(self.asha_grant, announcements.recipient_grants(notice))
 
     def test_non_guardian_sees_nothing(self):
         self.notice()
-        self.assertEqual(announcements.visible_announcements(self.admin), [])
+        self.assertEqual(list(announcements.visible_announcements(self.admin)), [])
 
 
 class PrepareMessagesTests(AnnouncementFixture, TestCase):

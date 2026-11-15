@@ -12,6 +12,15 @@
     </a>
     {% endfor %}
 </div>
+{% if page.paginator.num_pages > 1 %}
+<nav class="erp-pagination mt-3" aria-label="Notice pages">
+    <ul>
+        {% if page.has_previous %}<li><a href="?page={{ page.previous_page_number }}" rel="prev">Newer</a></li>{% endif %}
+        <li><span aria-current="page">Page {{ page.number }} of {{ page.paginator.num_pages }}</span></li>
+        {% if page.has_next %}<li><a href="?page={{ page.next_page_number }}" rel="next">Older</a></li>{% endif %}
+    </ul>
+</nav>
+{% endif %}
 {% else %}
 {% include "partials/_empty.html" with title="No notices" text="Notices from the school will appear here." %}
 {% endif %}

@@ -153,8 +153,9 @@ class SummaryAndEmptyStateTests(CalendarFixture, TestCase):
     def test_existing_context_contract_is_preserved(self):
         self.register(MON, AttendanceStatus.PRESENT)
         page = self.page()
-        for key in ("days", "summary", "year", "years"):
+        for key in ("summary", "year", "years", "month"):
             self.assertIn(key, page.context)
+        self.assertNotIn("days", page.context)  # the year's day list is not loaded (audit 08, P8-05)
 
 
 class YearAndMonthNavigationTests(CalendarFixture, TestCase):

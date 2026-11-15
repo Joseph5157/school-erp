@@ -99,7 +99,11 @@ class GuardianJourneyTests(JourneyFixture, TestCase):
             date=date(2026, 10, 6))
         draft.save_draft_entry(enrollment=self.asha_e, status=AttendanceStatus.ABSENT)
         attendance = guardian.get(reverse("portal:attendance", args=[grant.public_id]))
-        self.assertEqual([d["date"] for d in attendance.context["days"]], [date(2026, 10, 5)])
+        october = guardian.get(reverse("portal:attendance", args=[grant.public_id]), {"month": "2026-10"})
+        marked = [cell["date"] for week in october.context["month"]["weeks"] for cell in week
+                  if cell and cell["state"] in ("present", "absent")]
+        self.assertEqual(marked, [date(2026, 10, 5)])
+        self.assertEqual(attendance.context["summary"]["total"], 1)
 
         # 5. Finalized results stay hidden until published.
         ut1 = self.make_assessment(name="UT1", on=date(2026, 7, 15))

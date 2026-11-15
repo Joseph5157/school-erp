@@ -14,6 +14,8 @@ from django.contrib.auth import logout
 from django.shortcuts import redirect
 from django.urls import Resolver404, resolve, reverse
 
+from accounts import request_cache
+
 # The logo is shown in the header of the password-change page itself.
 ALLOWED_WHILE_CHANGE_REQUIRED = {"password_change", "logout", "school-logo"}
 # A literal, not reverse(): this runs on every request, including under a test URLconf that has no
@@ -61,6 +63,7 @@ class AccountSecurityMiddleware:
                 request.path_info
             ):
                 return redirect(reverse("password_change"))
+            request_cache.enable(user)  # role lookups are asked once per request (audit 08)
         return self.get_response(request)
 
     @staticmethod
