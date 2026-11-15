@@ -358,8 +358,14 @@ class RefreshCommandTests(TestCase):
     def test_command_runs_and_is_idempotent(self):
         today = last_instructional_day(self.year, business_today())
         since = str(today - datetime.timedelta(days=14))
+        initial = (AttendanceRegister.objects.count(), Assessment.objects.count())
         with mock.patch.dict(os.environ, {"EVERCLASS_DEMO_SCHOOL": "1"}):
             call_command("refresh_demo_school", since=since, stdout=io.StringIO())
+            after_first = (AttendanceRegister.objects.count(), Assessment.objects.count())
+            self.assertTrue(
+                after_first[0] > initial[0] or after_first[1] > initial[1],
+                "first run created nothing",
+            )
             counts = (AttendanceRegister.objects.count(), Assessment.objects.count(),
                       Announcement.objects.count())
             call_command("refresh_demo_school", since=since, stdout=io.StringIO())
@@ -370,8 +376,12 @@ class RefreshCommandTests(TestCase):
         with mock.patch.dict(os.environ, {"EVERCLASS_DEMO_SCHOOL": "1"}), \
              mock.patch.object(demo_refresh, "backfill_attendance",
                                side_effect=RuntimeError("boom")):
+            out = io.StringIO()
             with self.assertRaisesMessage(CommandError, "backfill"):
-                call_command("refresh_demo_school", stdout=io.StringIO())
+                call_command("refresh_demo_school", stdout=out, stderr=io.StringIO())
+        for line in ("today: ", "assessments: ", "notice: "):
+            self.assertIn(line, out.getvalue())
+        self.assertNotIn("backfill: ", out.getvalue())
         self.assertTrue(Assessment.objects.filter(status="DRAFT").exists())
 
     def test_out_of_season_exits_cleanly(self):

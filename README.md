@@ -106,8 +106,8 @@ year.
 - Daily, on the cron service, use this start command:
   `sh -c "python manage.py expire_import_batches && python manage.py refresh_demo_school"`
 - One-off run: `sh -c "EVERCLASS_DEMO_SCHOOL=1 python manage.py refresh_demo_school"`
-- The demo year ends on 1 Apr 2027, so reseed the demo or roll the year over
-  before then.
+- The demo year runs to 31 Mar 2027. From 1 Apr 2027 the command does
+  nothing, so reseed the demo or roll the year over before then.
 
 ## Documentation
 
