@@ -122,6 +122,9 @@
     var drawer = document.getElementById("erp-sidebar");
     var button = document.querySelector(".erp-menu-btn");
     if (!drawer || !button) return;
+    // Report the new state as soon as opening/closing starts; the after-transition events resync.
+    drawer.addEventListener("show.bs.offcanvas", function () { button.setAttribute("aria-expanded", "true"); });
+    drawer.addEventListener("hide.bs.offcanvas", function () { button.setAttribute("aria-expanded", "false"); });
     drawer.addEventListener("shown.bs.offcanvas", function () { button.setAttribute("aria-expanded", "true"); });
     drawer.addEventListener("hidden.bs.offcanvas", function () { button.setAttribute("aria-expanded", "false"); });
   })();
@@ -541,6 +544,8 @@
     // Keypad Next/Enter moves to the next student instead of submitting the form.
     sheet.addEventListener("keydown", function (event) {
       if (event.key !== "Enter" || !event.target.classList.contains("erp-score")) return;
+      // An Enter that confirms an input-method (IME) composition belongs to the keyboard.
+      if (event.isComposing || event.keyCode === 229) return;
       event.preventDefault();
       var index = rows.indexOf(event.target.closest("[data-erp-row]"));
       for (var i = index + 1; i < rows.length; i++) {
