@@ -787,7 +787,7 @@ class AssessmentFilterForm(forms.Form):
             self.fields["term"].queryset = academic_year.terms.all()
 
 
-class ResultEntryForm(forms.Form):
+class ResultEntryForm(FieldAccessibilityMixin, forms.Form):
     """Bulk DRAFT marks entry for an assessment's date-effective roster.
 
     One optional status (Marked/Absent) and score per Student, pre-filled
@@ -817,13 +817,22 @@ class ResultEntryForm(forms.Form):
                 max_value=assessment.maximum_marks,
                 decimal_places=2,
                 max_digits=6,
-                label="Score",
+                label=f"Score for {enrollment.student.full_name}",  # read in the error summary
                 initial=result.score if result else None,
                 widget=forms.NumberInput(attrs={
                     "step": "0.01", "inputmode": "decimal", "enterkeyhint": "next",
                     "class": "form-control erp-score",
                 }),
             )
+        self._describe_fields()  # the fields above are added after the mixin's own pass
+
+    def _describe_fields(self):
+        # Keep the browser's own number check on this form: a typo such as "1e" reaches the
+        # server as an empty score, which would quietly count as "not entered". Server errors
+        # (the summary, ids and focus above) still apply after any rejected save.
+        super()._describe_fields()
+        for field in self.fields.values():
+            field.widget.attrs.pop("data-erp-validate", None)
 
     @staticmethod
     def status_name(enrollment):

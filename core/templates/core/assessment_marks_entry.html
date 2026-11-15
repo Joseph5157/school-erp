@@ -12,6 +12,7 @@
 {% if form.enrollments %}
 <form method="post">
     {% csrf_token %}
+    {% include "partials/_form_error_summary.html" with form=form %}
     {% with counts=form.counts %}
     <div class="erp-roster" data-erp-marks>
         <p class="erp-count-line" data-erp-static-counts>All {{ counts.all }} · Not entered {{ counts.unmarked }} · Marked {{ counts.marked }} · Absent {{ counts.absent }}</p>
@@ -33,8 +34,9 @@
             <div class="erp-toggles erp-toggles-3">
                 {% for radio in status_field %}{{ radio.tag }}<label for="{{ radio.id_for_label }}" class="erp-toggle is-{{ radio.data.value|lower|default:'blank' }}">{{ radio.choice_label }}</label>{% endfor %}
             </div>
-            {% for error in status_field.errors %}<div class="small text-danger erp-row-error">{{ error }}</div>{% endfor %}
-            {% for error in score_field.errors %}<div class="small text-danger erp-row-error">{{ error }}</div>{% endfor %}
+            {# The ids match the inputs' aria-describedby (FieldAccessibilityMixin). #}
+            {% if status_field.errors %}<div class="small text-danger erp-row-error" id="{{ status_field.auto_id }}_error">{{ status_field.errors|join:" " }}</div>{% endif %}
+            {% if score_field.errors %}<div class="small text-danger erp-row-error" id="{{ score_field.auto_id }}_error">{{ score_field.errors|join:" " }}</div>{% endif %}
         </fieldset>
         {% endfor %}
         <div class="erp-actionbar">

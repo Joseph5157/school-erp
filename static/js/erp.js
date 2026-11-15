@@ -550,8 +550,8 @@
       var save = sheet.querySelector('button[type="submit"]');
       if (save) save.focus();
     });
-    var firstInvalid = sheet.querySelector(".erp-roster-row.is-invalid");
-    if (firstInvalid && firstInvalid.scrollIntoView) firstInvalid.scrollIntoView({ block: "center" });
+    // After a rejected save the server puts autofocus on the first invalid score, which also
+    // scrolls it into view; the error summary above the roster links every bad row.
     refresh(true);
   });
 
