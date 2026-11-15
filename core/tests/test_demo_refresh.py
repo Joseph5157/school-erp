@@ -3,6 +3,7 @@
 import datetime
 import os
 import tempfile
+from decimal import Decimal
 from pathlib import Path
 from unittest import mock
 
@@ -11,12 +12,16 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import SimpleTestCase, TestCase
 
-from core import demo_refresh
+from core import announcements, demo_refresh
 from core.models import (
     AcademicYear,
+    Announcement,
+    Assessment,
+    AssessmentTeacherAssignment,
     AttendanceEntry,
     AttendanceRegister,
     AttendanceStatus,
+    ResultStatus,
     SchoolCalendarDay,
     Section,
     SectionClassTeacher,
@@ -218,3 +223,111 @@ class AttendanceRefreshTests(TestCase):
         while self.year.is_instructional_day(day):
             day -= datetime.timedelta(days=1)
         self.assertEqual(demo_refresh.prepare_today(self.year, day, self.admin), 0)
+
+
+class OpenAssessmentTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        seed_demo_school()
+        cls.year = AcademicYear.objects.get()
+        cls.admin = get_user_model().objects.get(username="demo_admin")
+        cls.today = last_instructional_day(cls.year, business_today())
+        cls.term = demo_refresh.current_term(cls.year, cls.today)
+
+    def test_current_term_found(self):
+        self.assertIsNotNone(self.term)
+        self.assertTrue(self.term.start_date <= self.today <= self.term.end_date)
+
+    def test_current_term_none_outside_terms(self):
+        self.assertIsNone(
+            demo_refresh.current_term(self.year, self.year.end_date + datetime.timedelta(days=5))
+        )
+
+    def _first_number(self):
+        # Term 1 holds a finalized "Unit Test 1"; later terms start at 1.
+        return 2 if self.term.display_order == 1 else 1
+
+    def test_creates_one_open_unit_test_per_assignment(self):
+        n = demo_refresh.ensure_open_assessments(self.year, self.today)
+        self.assertEqual(n, AssessmentTeacherAssignment.objects.count())
+        a = Assessment.objects.filter(term=self.term, status=Assessment.Status.DRAFT).first()
+        self.assertEqual(
+            (a.name, a.maximum_marks, a.pass_mark),
+            (f"Unit Test {self._first_number()}", Decimal(25), Decimal(9)),
+        )
+        self.assertLessEqual(a.assessment_date, self.today)
+        self.assertGreaterEqual(a.assessment_date, self.term.start_date)
+        self.assertLess(a.assessment_date.weekday(), 5)
+
+    def test_reuses_existing_open_assessment(self):
+        demo_refresh.ensure_open_assessments(self.year, self.today)
+        self.assertEqual(demo_refresh.ensure_open_assessments(self.year, self.today), 0)
+
+    def test_next_number_after_finalized(self):
+        demo_refresh.ensure_open_assessments(self.year, self.today)
+        assignment = AssessmentTeacherAssignment.objects.select_related("teacher").first()
+        first = Assessment.objects.get(
+            term=self.term, offering=assignment.offering, section=assignment.section,
+            status=Assessment.Status.DRAFT,
+        )
+        for enrollment in first.roster():
+            first.save_draft_result(
+                enrollment=enrollment, status=ResultStatus.MARKED, score=Decimal(15),
+                actor=assignment.teacher,
+            )
+        first.finalize(actor=self.admin)
+        self.assertEqual(demo_refresh.ensure_open_assessments(self.year, self.today), 1)
+        nxt = Assessment.objects.get(
+            term=self.term, offering=assignment.offering, section=assignment.section,
+            status=Assessment.Status.DRAFT,
+        )
+        self.assertEqual(nxt.name, f"Unit Test {self._first_number() + 1}")
+
+    def test_no_current_term_skips(self):
+        with mock.patch.object(demo_refresh, "current_term", return_value=None):
+            self.assertEqual(demo_refresh.ensure_open_assessments(self.year, self.today), 0)
+        self.assertFalse(Assessment.objects.filter(status=Assessment.Status.DRAFT).exists())
+
+
+class NoticeTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        seed_demo_school()
+        cls.admin = get_user_model().objects.get(username="demo_admin")
+
+    def _newest(self):
+        return Announcement.objects.filter(withdrawn_at__isnull=True).latest("published_at")
+
+    def test_pool_is_eight_ascii(self):
+        self.assertEqual(len(demo_refresh.NOTICE_POOL), 8)
+        for title, body in demo_refresh.NOTICE_POOL:
+            self.assertTrue(title.isascii() and body.isascii())
+
+    def test_notice_posted_when_stale(self):
+        now = self._newest().published_at + datetime.timedelta(days=8)
+        a = demo_refresh.post_notice_if_stale(self.admin, now)
+        self.assertEqual(a.audience, Announcement.Audience.ALL)
+        self.assertIn(a.title, [t for t, _ in demo_refresh.NOTICE_POOL])
+
+    def test_no_notice_when_recent(self):
+        now = self._newest().published_at + datetime.timedelta(days=3)
+        self.assertIsNone(demo_refresh.post_notice_if_stale(self.admin, now))
+
+    def test_posted_when_all_withdrawn(self):
+        for notice in Announcement.objects.all():
+            announcements.withdraw(notice, actor=self.admin, reason="Demo reset")
+        a = demo_refresh.post_notice_if_stale(self.admin, datetime.datetime.now(datetime.timezone.utc))
+        self.assertEqual(a.title, demo_refresh.NOTICE_POOL[0][0])
+
+    def test_pool_cycles(self):
+        titles = [t for t, _ in demo_refresh.NOTICE_POOL]
+        first = demo_refresh.post_notice_if_stale(
+            self.admin, self._newest().published_at + datetime.timedelta(days=8)
+        )
+        second = demo_refresh.post_notice_if_stale(
+            self.admin, first.published_at + datetime.timedelta(days=8)
+        )
+        self.assertNotEqual(first.title, second.title)
+        self.assertEqual(
+            titles.index(second.title), (titles.index(first.title) + 1) % len(titles)
+        )

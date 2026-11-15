@@ -3,15 +3,22 @@
 import datetime
 import hashlib
 import os
+import re
 from datetime import date
+from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.core.management.base import CommandError
 from django.db import transaction
 
 from core.management.commands.seed_demo import DEMO_ADMIN_USERNAME
+from core import announcements
 from core.models import (
+    AcademicTerm,
     AcademicYear,
+    Announcement,
+    Assessment,
+    AssessmentTeacherAssignment,
     AttendanceRegister,
     AttendanceStatus,
     Section,
@@ -179,3 +186,103 @@ def prepare_today(year, today, fallback_actor) -> int:
             if _create_and_submit(year, section, today, fallback_actor):
                 created += 1
     return created
+
+
+# -- assessments -----------------------------------------------------------
+
+_UNIT_TEST_NAME = re.compile(r"^Unit Test (\d+)$")
+
+
+def current_term(year, today: date):
+    return AcademicTerm.objects.filter(
+        academic_year=year, start_date__lte=today, end_date__gte=today
+    ).first()
+
+
+def _latest_weekday(day: date) -> date:
+    while day.weekday() >= 5:
+        day -= datetime.timedelta(days=1)
+    return day
+
+
+def ensure_open_assessments(year, today: date) -> int:
+    term = current_term(year, today)
+    if term is None:
+        return 0
+    created = 0
+    assignments = AssessmentTeacherAssignment.objects.select_related(
+        "teacher", "offering__subject", "offering__class_grade", "section"
+    ).order_by("offering__class_grade__name", "section__name", "offering__display_order")
+    for assignment in assignments:
+        existing = Assessment.objects.filter(
+            term=term, offering=assignment.offering, section=assignment.section
+        )
+        if existing.filter(status=Assessment.Status.DRAFT).exists():
+            continue
+        numbers = [
+            int(m.group(1))
+            for name in existing.values_list("name", flat=True)
+            if (m := _UNIT_TEST_NAME.match(name))
+        ]
+        when = max(_latest_weekday(today), term.start_date)
+        assessment = Assessment(
+            term=term,
+            offering=assignment.offering,
+            section=assignment.section,
+            name=f"Unit Test {max(numbers, default=0) + 1}",
+            assessment_date=when,
+            maximum_marks=Decimal(25),
+            pass_mark=Decimal(9),
+        )
+        assessment.full_clean()
+        assessment.save()
+        created += 1
+    return created
+
+
+# -- notices ---------------------------------------------------------------
+
+NOTICE_POOL = [
+    ("Parent-Teacher Meeting",
+     "A parent-teacher meeting will be held this Saturday from 9 am to 12 noon. "
+     "Please meet your child's class teacher to discuss progress."),
+    ("Annual Sports Day",
+     "Our Annual Sports Day is coming up. Students should report in sports uniform "
+     "and carry a water bottle."),
+    ("Fee Payment Reminder",
+     "This is a reminder that the current instalment of school fees is due. "
+     "Please pay at the school office before the due date."),
+    ("Holiday Notice",
+     "The school will remain closed for the upcoming holiday and will reopen on the "
+     "next working day."),
+    ("Exam Timetable Released",
+     "The timetable for the upcoming examinations has been shared with all classes. "
+     "Students should begin their revision."),
+    ("Science Fair Registration",
+     "Registrations are open for the school Science Fair. Interested students should "
+     "give their names to their class teacher."),
+    ("Library Week",
+     "Library Week begins soon. Students are encouraged to borrow and read books, "
+     "and to return old ones on time."),
+    ("Uniform Reminder",
+     "Students are reminded to come to school in the complete prescribed uniform, "
+     "with clean shoes and a school ID card."),
+]
+
+
+def post_notice_if_stale(actor, now: datetime.datetime):
+    newest = (
+        Announcement.objects.filter(withdrawn_at__isnull=True)
+        .order_by("-published_at", "-pk")
+        .first()
+    )
+    if newest is not None and now - newest.published_at <= datetime.timedelta(days=7):
+        return None
+    titles = [title for title, _ in NOTICE_POOL]
+    index = 0
+    if newest is not None and newest.title in titles:
+        index = (titles.index(newest.title) + 1) % len(NOTICE_POOL)
+    title, body = NOTICE_POOL[index]
+    return announcements.publish(
+        title=title, body=body, audience=Announcement.Audience.ALL, actor=actor
+    )
