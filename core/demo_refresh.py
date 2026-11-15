@@ -1,14 +1,22 @@
 """Daily refresh of the staging demo school: guard and realism helpers."""
 
+import datetime
 import hashlib
 import os
 from datetime import date
 
 from django.contrib.auth import get_user_model
 from django.core.management.base import CommandError
+from django.db import transaction
 
 from core.management.commands.seed_demo import DEMO_ADMIN_USERNAME
-from core.models import AcademicYear
+from core.models import (
+    AcademicYear,
+    AttendanceRegister,
+    AttendanceStatus,
+    Section,
+    SectionClassTeacher,
+)
 
 DEMO_TEACHER_USERNAME = "srinivas.reddy"
 ENV_FLAG = "EVERCLASS_DEMO_SCHOOL"
@@ -62,3 +70,112 @@ def is_absent(student_id: int, section_id: int, day: date) -> bool:
 
 def absence_note(student_id: int, day: date) -> str:
     return ABSENCE_NOTES[int(_unit("note", student_id, day.isoformat()) * len(ABSENCE_NOTES))]
+
+
+# -- attendance ------------------------------------------------------------
+
+
+def _submitter(section, day, fallback_actor):
+    """The Section's class teacher on `day`, else the fallback actor."""
+    assignment = (
+        SectionClassTeacher.objects.effective_on(day)
+        .filter(section=section)
+        .select_related("teacher")
+        .first()
+    )
+    return assignment.teacher if assignment is not None else fallback_actor
+
+
+def _fill_and_submit(register, actor):
+    """Capture every not-yet-captured eligible enrollment, then submit."""
+    captured = set(register.entries.values_list("academic_enrollment_id", flat=True))
+    for enrollment in register.eligible_enrollments():
+        if enrollment.pk in captured:
+            continue
+        student_id = enrollment.student_id
+        if is_absent(student_id, register.section_id, register.date):
+            register.capture(
+                enrollment=enrollment,
+                status=AttendanceStatus.ABSENT,
+                absence_note=absence_note(student_id, register.date),
+            )
+        else:
+            register.capture(enrollment=enrollment, status=AttendanceStatus.PRESENT)
+    register.submit(actor=actor)
+
+
+def _new_register(year, section, day):
+    return AttendanceRegister(
+        academic_year=year, class_grade=section.class_grade, section=section, date=day
+    )
+
+
+def _create_and_submit(year, section, day, fallback_actor):
+    """Create, fill and submit one register; False if the Section has no roster."""
+    register = _new_register(year, section, day)
+    if not register.eligible_enrollments().exists():
+        return False
+    register.full_clean()
+    register.save()
+    _fill_and_submit(register, _submitter(section, day, fallback_actor))
+    return True
+
+
+def _sections():
+    return Section.objects.select_related("class_grade").order_by("class_grade_id", "name")
+
+
+def finish_old_drafts(year, today, fallback_actor) -> int:
+    drafts = AttendanceRegister.objects.filter(
+        academic_year=year, status=AttendanceRegister.Status.DRAFT, date__lt=today
+    ).select_related("section", "class_grade", "academic_year")
+    done = 0
+    for register in drafts:
+        with transaction.atomic():
+            _fill_and_submit(
+                register, _submitter(register.section, register.date, fallback_actor)
+            )
+        done += 1
+    return done
+
+
+def backfill_attendance(year, today, fallback_actor, since: date | None = None) -> int:
+    start = max(since or year.start_date, year.start_date)
+    created = 0
+    day = start
+    while day < today:
+        if year.is_instructional_day(day):
+            with transaction.atomic():
+                existing = set(
+                    AttendanceRegister.objects.filter(academic_year=year, date=day)
+                    .values_list("section_id", flat=True)
+                )
+                for section in _sections():
+                    if section.pk in existing:
+                        continue
+                    if _create_and_submit(year, section, day, fallback_actor):
+                        created += 1
+        day += datetime.timedelta(days=1)
+    return created
+
+
+def prepare_today(year, today, fallback_actor) -> int:
+    if not year.is_instructional_day(today):
+        return 0
+    demo_teacher_sections = set(
+        SectionClassTeacher.objects.effective_on(today)
+        .filter(teacher__username=DEMO_TEACHER_USERNAME)
+        .values_list("section_id", flat=True)
+    )
+    existing = set(
+        AttendanceRegister.objects.filter(academic_year=year, date=today)
+        .values_list("section_id", flat=True)
+    )
+    created = 0
+    for section in _sections():
+        if section.pk in demo_teacher_sections or section.pk in existing:
+            continue
+        with transaction.atomic():
+            if _create_and_submit(year, section, today, fallback_actor):
+                created += 1
+    return created
