@@ -18,7 +18,9 @@ SCRIPT = (Path(settings.BASE_DIR) / "static" / "js" / "erp.js").read_text(encodi
 
 
 def tag(html, element_id):
-    return re.search(rf'<input[^>]*id="{element_id}"[^>]*>', html).group(0)
+    found = re.search(rf'<input[^>]*id="{element_id}"[^>]*>', html)
+    assert found, f"no <input id={element_id}> on the page"
+    return found.group(0)
 
 
 class PasswordChangePolishTests(TestCase):
@@ -45,6 +47,7 @@ class PasswordChangePolishTests(TestCase):
         self.assertIn('value="ravi.kumar"', account)
         self.assertIn('autocomplete="username"', account)
         self.assertIn("readonly", account)
+        self.assertIn('tabindex="-1"', account)  # not a Tab stop; password managers still read it
         self.assertNotIn("name=", account)  # shown, never submitted
         self.assertIn('<label class="form-label" for="pw-account">Username</label>', self.html)
 
@@ -84,6 +87,13 @@ class PasswordScriptTests(TestCase):
         self.assertIn("if (state === matchShown) return;", SCRIPT)
         self.assertIn('confirmInput.addEventListener("blur", checkMatchOnLeave);', SCRIPT)
         self.assertNotIn("Passwords don't match yet", SCRIPT)
+        self.assertIn('input.addEventListener("blur", checkMatchOnLeave);', SCRIPT)
+
+    def test_match_line_keeps_its_space_so_the_button_does_not_jump(self):
+        self.assertIn("if (match) match.hidden = false;", SCRIPT)
+        self.assertNotIn("match.hidden = state === null;", SCRIPT)
+        css = (Path(settings.BASE_DIR) / "static" / "css" / "erp.css").read_text(encoding="utf-8")
+        self.assertIn(".erp-pw-match { color: var(--erp-ink-soft); min-height: 1.5em; }", css)
 
     def test_next_key_moves_to_the_next_field(self):
         self.assertIn("document.querySelectorAll('input[enterkeyhint=\"next\"]')", SCRIPT)

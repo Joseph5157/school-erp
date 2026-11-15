@@ -80,10 +80,12 @@
     // person is still typing the confirmation a mismatch is expected, so it is said once they
     // leave the field; "Passwords match" is said as soon as the two first agree.
     var matchShown = null;  // null (nothing), "ok" or "bad"
+    // With JS the line always keeps its space (erp.css), so a message appearing as the person
+    // taps "Change password" can't push the button away from under their finger.
+    if (match) match.hidden = false;
     function showMatch(state) {
       if (state === matchShown) return;
       matchShown = state;
-      match.hidden = state === null;
       match.textContent = state === "ok" ? "Passwords match" : state === "bad" ? "Passwords don't match" : "";
       match.classList.toggle("is-ok", state === "ok");
     }
@@ -125,6 +127,7 @@
     if (confirmInput) {
       confirmInput.addEventListener("input", updateMatch);
       confirmInput.addEventListener("blur", checkMatchOnLeave);
+      input.addEventListener("blur", checkMatchOnLeave);  // editing the first one after confirming
     }
     if (input.value) update();
   })();

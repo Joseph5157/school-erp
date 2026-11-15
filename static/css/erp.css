@@ -2087,7 +2087,7 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
 .erp-pw-meter[data-level="2"] .erp-pw-bar > span { background: var(--erp-ok); }
 .erp-pw-meter[data-level="3"] .erp-pw-bar > span { background: var(--erp-ok-strong); }
 .erp-pw-label { flex: none; min-width: 7.5rem; font-weight: 600; color: var(--erp-ink); }
-.erp-pw-match { color: var(--erp-ink-soft); }
+.erp-pw-match { color: var(--erp-ink-soft); min-height: 1.5em; }
 .erp-pw-match.is-ok { color: var(--erp-ok-strong); font-weight: 600; }
 @media (prefers-reduced-motion: reduce) { .erp-pw-bar > span { transition: none; } }
 
