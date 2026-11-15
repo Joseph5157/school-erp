@@ -94,7 +94,7 @@ def _fit(body):
 
 def _alert_text(facts):
     lines = [
-        "School ERP error",
+        "Everclass ERP error",
         "",
         f"Instance: {facts.instance}",
         f"Time (UTC): {facts.time}",
@@ -117,7 +117,7 @@ def build_alert_text(record):
 
 def _fallback_text():
     return _fit(
-        "School ERP error\n\n"
+        "Everclass ERP error\n\n"
         f"Instance: {settings.ERP_INSTANCE_NAME}\n"
         "A crash was logged, but its alert could not be built."
     )
@@ -132,7 +132,7 @@ def _fingerprint(facts):
 def test_message_text():
     """The fixed message `manage.py sendtesttelegram` sends; no request or account data."""
     return (
-        "School ERP test alert\n\n"
+        "Everclass ERP test alert\n\n"
         f"Instance: {settings.ERP_INSTANCE_NAME}\n"
         "This is a test message from the sendtesttelegram command. "
         "Crash alerts for this installation will arrive in this chat.\n\n"

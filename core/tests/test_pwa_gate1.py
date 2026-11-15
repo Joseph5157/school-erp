@@ -39,8 +39,8 @@ class ManifestTests(TestCase):
         self.assertEqual(data["start_url"], "/")
         self.assertEqual(data["scope"], "/")
         self.assertEqual(data["display"], "standalone")
-        self.assertEqual(data["name"], "School ERP")
-        self.assertEqual(data["short_name"], "School ERP")
+        self.assertEqual(data["name"], "Everclass ERP")
+        self.assertEqual(data["short_name"], "Everclass")
 
     def test_paths_are_origin_relative_and_hold_no_account_data(self):
         User.objects.create_user("teacher1", password="pw-123456-xx")

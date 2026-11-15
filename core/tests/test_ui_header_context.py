@@ -62,7 +62,7 @@ class HeaderContextTests(TestCase):
     def test_brand_text_is_unchanged(self):
         for user, name in ((self.admin, "core:school-detail"), (self.teacher, "core:my-home")):
             with self.subTest(user=user.username):
-                self.assertContains(self.page(user, name), "School ERP</a>")
+                self.assertContains(self.page(user, name), "Everclass ERP</a>")
 
     def test_login_page_shows_neither_and_runs_no_school_or_year_queries(self):
         with CaptureQueriesContext(connection) as ctx:

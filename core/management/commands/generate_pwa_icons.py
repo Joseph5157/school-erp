@@ -1,4 +1,4 @@
-"""Draw the app icons: the School ERP mark, an open book and a rising sun on a green tile.
+"""Draw the app icons: the Everclass ERP mark, an open book and a rising sun on a green tile.
 
 Code-drawn from the same 64-unit drawing as templates/partials/_brand_mark.html. Re-run after
 changing either: `python manage.py generate_pwa_icons`.

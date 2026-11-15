@@ -125,5 +125,5 @@ def import_template(request):
         imports.template_workbook(),
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
-    response["Content-Disposition"] = 'attachment; filename="school-erp-import-template.xlsx"'
+    response["Content-Disposition"] = 'attachment; filename="everclass-erp-import-template.xlsx"'
     return response

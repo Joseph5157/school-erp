@@ -1,4 +1,4 @@
-// School ERP progressive enhancements. Every page works without this file.
+// Everclass ERP progressive enhancements. Every page works without this file.
 (function () {
   "use strict";
 

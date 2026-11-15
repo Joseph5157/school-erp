@@ -12,8 +12,10 @@ from django.templatetags.static import static
 from django.views.decorators.cache import cache_control
 from django.views.decorators.http import require_safe
 
-APP_NAME = "School ERP"
-# The tile of the School ERP mark: --erp-accent-strong in static/css/erp.css. The bar is the white topbar.
+APP_NAME = "Everclass ERP"
+# Under a home-screen icon there is room for about 12 characters, so the short name drops "ERP".
+SHORT_NAME = "Everclass"
+# The tile of the Everclass ERP mark: --erp-accent-strong in static/css/erp.css. The bar is the white topbar.
 ICON_COLOUR = "#185842"
 THEME_COLOR = "#ffffff"
 BACKGROUND_COLOR = "#f5f6f3"  # --erp-paper
@@ -31,8 +33,8 @@ def manifest(request):
         {
             "id": "/",
             "name": APP_NAME,
-            "short_name": APP_NAME,
-            "description": "School ERP for staff, teachers and guardians. Needs an internet connection.",
+            "short_name": SHORT_NAME,
+            "description": "Everclass ERP for staff, teachers and guardians. Needs an internet connection.",
             "start_url": "/",
             "scope": "/",
             "display": "standalone",
