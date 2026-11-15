@@ -1,5 +1,7 @@
 """Phase 7 Gate 3 office views: announcements (ADR 0015). Administrators only."""
 
+import hashlib
+
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db.models import Q
@@ -7,7 +9,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.html import format_html
 
-from core import announcements, notifications
+from core import announcements, notifications, one_time_forms
 from core.authorization import administrator_required
 from core.forms import AnnouncementForm, WithdrawalForm
 from core.models import Announcement, School
@@ -58,6 +60,48 @@ def _copy_source(request):
     return Announcement.objects.filter(pk=source).first()
 
 
+# Publishing goes out to families at once, so Back-then-Publish must not post the same notice twice.
+# Each draft gets its own one-time token: two different drafts in two tabs don't block each other.
+_PUBLISH_PURPOSE = "announcement-publish:"
+_KEEP_PUBLISH_TOKENS = 5
+
+
+def _publish_purpose(data):
+    class_grade, section = data.get("class_grade"), data.get("section")
+    draft = "".join([
+        data["title"].strip(), data["body"].strip(), data["audience"],
+        str(class_grade.pk if class_grade else ""), str(section.pk if section else ""),
+    ])
+    return _PUBLISH_PURPOSE + hashlib.sha256(draft.encode()).hexdigest()[:16]
+
+
+def _publish_token(request, purpose):
+    """The draft's token; only the newest few drafts' tokens are kept in the session."""
+    token = one_time_forms.token_for(request, purpose)
+    tokens = request.session[one_time_forms.SESSION_KEY]
+    drafts = [key for key in tokens if key.startswith(_PUBLISH_PURPOSE)]
+    for old in drafts[:-_KEEP_PUBLISH_TOKENS]:
+        if old != purpose:
+            del tokens[old]
+    request.session.modified = True
+    return token
+
+
+def _already_published(request, data):
+    """Where to send a repeated Publish: the notice it already made, if we can find it."""
+    notice = (
+        Announcement.objects.filter(
+            published_by=request.user, title=data["title"].strip(), body=data["body"].strip(),
+            audience=data["audience"],
+        ).order_by("-pk").first()
+    )
+    messages.info(request, "This notice was already published, so it was not sent again.")
+    if notice is not None and request.user.has_perm("core.view_announcement"):
+        return redirect("core:announcement-detail", pk=notice.pk)
+    return redirect("core:announcement-list" if request.user.has_perm("core.view_announcement")
+                    else "core:announcement-create")
+
+
 @administrator_required("core.add_announcement")
 def announcement_create(request):
     """Form -> preview -> publish. Nothing is stored until `confirm` is posted, and
@@ -81,7 +125,10 @@ def announcement_create(request):
     form = AnnouncementForm(request.POST)
     if not form.is_valid():
         return render(request, "core/announcement_form.html", {"form": form})
+    purpose = _publish_purpose(form.cleaned_data)
     if "confirm" in request.POST:
+        if one_time_forms.is_repeat(request, purpose):
+            return _already_published(request, form.cleaned_data)
         notice = announcements.publish(actor=request.user, **form.cleaned_data)
         messages.success(request, "Notice published. Guardians can read it in the portal now.")
         return redirect("core:announcement-detail", pk=notice.pk)
@@ -98,6 +145,7 @@ def announcement_create(request):
         audience=audience, class_grade=data["class_grade"], section=data["section"])
     return render(request, "core/announcement_preview.html", {
         "form": form, "notice": preview, "counts": counts,
+        "one_time_token": _publish_token(request, purpose),
     })
 
 

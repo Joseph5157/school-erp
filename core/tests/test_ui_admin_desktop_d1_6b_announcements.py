@@ -149,8 +149,11 @@ class PreviewTests(Base, TestCase):
         forms = [f for f in self.forms(page) if f[0] == CREATE]
         self.assertEqual(len(forms), 2)
         expected = ["csrfmiddlewaretoken", "title", "body", "audience", "class_grade", "section"]
-        for (_, body), extra in zip(forms, ("confirm", "edit"), strict=False):
-            self.assertEqual(re.findall(r'name="([^"]+)"', body), expected + [extra])
+        # Publish also carries its one-time token, so Back-then-Publish can't send it twice.
+        extras = (["confirm", "one_time_token"], ["edit"])
+        for (_, body), names in zip(forms, extras, strict=False):
+            extra = names[0]
+            self.assertEqual(re.findall(r'name="([^"]+)"', body), expected + names)
             self.assertIn(f'<input type="hidden" name="{extra}" value="1">', body)
             self.assertIn('<input type="hidden" name="title" value="Sports Day">', body)
         self.assertIn("data-erp-once", forms[0][1])
