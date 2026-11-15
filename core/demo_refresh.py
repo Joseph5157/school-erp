@@ -8,6 +8,7 @@ from datetime import date
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.core.management.base import CommandError
 from django.db import transaction
 
@@ -132,20 +133,25 @@ def _sections():
     return Section.objects.select_related("class_grade").order_by("class_grade_id", "name")
 
 
-def finish_old_drafts(year, today, fallback_actor) -> int:
+def finish_old_drafts(year, today, fallback_actor) -> tuple[int, int]:
+    """Finish old draft registers; return (finished, skipped)."""
     drafts = AttendanceRegister.objects.filter(
         academic_year=year, status=AttendanceRegister.Status.DRAFT, date__lt=today
     ).select_related("section", "class_grade", "academic_year")
-    done = 0
+    finished = skipped = 0
     for register in drafts:
         if not register.eligible_enrollments().exists():
             continue  # nobody to mark; submit would refuse, so leave it as it is
-        with transaction.atomic():
-            _fill_and_submit(
-                register, _submitter(register.section, register.date, fallback_actor)
-            )
-        done += 1
-    return done
+        try:
+            with transaction.atomic():
+                _fill_and_submit(
+                    register, _submitter(register.section, register.date, fallback_actor)
+                )
+        except ValidationError:
+            skipped += 1  # leave this draft as it is and keep going
+            continue
+        finished += 1
+    return finished, skipped
 
 
 def backfill_attendance(year, today, fallback_actor, since: date | None = None) -> int:
@@ -207,38 +213,45 @@ def _latest_weekday(day: date) -> date:
     return day
 
 
+def _open_unit_test(term, assignment, today) -> bool:
+    existing = Assessment.objects.filter(
+        term=term, offering=assignment.offering, section=assignment.section
+    )
+    if existing.filter(status=Assessment.Status.DRAFT).exists():
+        return False
+    numbers = [
+        int(m.group(1))
+        for name in existing.values_list("name", flat=True)
+        if (m := _UNIT_TEST_NAME.match(name))
+    ]
+    assessment = Assessment(
+        term=term,
+        offering=assignment.offering,
+        section=assignment.section,
+        name=f"Unit Test {max(numbers, default=0) + 1}",
+        assessment_date=max(_latest_weekday(today), term.start_date),
+        maximum_marks=Decimal(25),
+        pass_mark=Decimal(9),
+    )
+    assessment.full_clean()
+    assessment.save()
+    return True
+
+
 def ensure_open_assessments(year, today: date) -> int:
     term = current_term(year, today)
     if term is None:
         return 0
     created = 0
-    assignments = AssessmentTeacherAssignment.objects.select_related(
-        "teacher", "offering__subject", "offering__class_grade", "section"
-    ).order_by("offering__class_grade__name", "section__name", "offering__display_order")
+    assignments = (
+        AssessmentTeacherAssignment.objects.effective_on(today)
+        .select_related("teacher", "offering__subject", "offering__class_grade", "section")
+        .order_by("offering__class_grade__name", "section__name", "offering__display_order")
+    )
     for assignment in assignments:
-        existing = Assessment.objects.filter(
-            term=term, offering=assignment.offering, section=assignment.section
-        )
-        if existing.filter(status=Assessment.Status.DRAFT).exists():
-            continue
-        numbers = [
-            int(m.group(1))
-            for name in existing.values_list("name", flat=True)
-            if (m := _UNIT_TEST_NAME.match(name))
-        ]
-        when = max(_latest_weekday(today), term.start_date)
-        assessment = Assessment(
-            term=term,
-            offering=assignment.offering,
-            section=assignment.section,
-            name=f"Unit Test {max(numbers, default=0) + 1}",
-            assessment_date=when,
-            maximum_marks=Decimal(25),
-            pass_mark=Decimal(9),
-        )
-        assessment.full_clean()
-        assessment.save()
-        created += 1
+        with transaction.atomic():
+            if _open_unit_test(term, assignment, today):
+                created += 1
     return created
 
 

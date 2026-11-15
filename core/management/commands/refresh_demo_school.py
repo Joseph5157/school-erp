@@ -2,15 +2,15 @@
 
 Finishes old draft registers, backfills attendance, prepares today's
 registers, keeps one open unit test per class and subject, and posts a
-rotating notice. Each step runs in its own transaction; one failing step does
-not stop the others, but the command exits non-zero naming the failed steps.
+rotating notice. Work is committed per day, draft or class (no outer
+transaction); one failing step does not stop the others, but the
+command exits non-zero naming the failed steps.
 Refuses to run unless EVERCLASS_DEMO_SCHOOL=1 (demo environment only).
 """
 
 import datetime
 
 from django.core.management.base import BaseCommand, CommandError
-from django.db import transaction
 from django.utils import timezone
 
 from core import demo_refresh
@@ -41,7 +41,7 @@ class Command(BaseCommand):
             return
 
         steps = (
-            ("drafts", "old drafts finished",
+            ("drafts", "drafts",
              lambda: demo_refresh.finish_old_drafts(year, today, admin)),
             ("backfill", "registers",
              lambda: demo_refresh.backfill_attendance(year, today, admin, since=since)),
@@ -55,12 +55,15 @@ class Command(BaseCommand):
         failed = []
         for name, label, run in steps:
             try:
-                with transaction.atomic():
-                    count = run()
+                count = run()
             except Exception as exc:  # keep going; report at the end
                 failed.append(name)
                 self.stderr.write(f"{name}: failed: {exc!r}")
                 continue
-            self.stdout.write(f"{name}: {count} {label}")
+            if isinstance(count, tuple):
+                finished, skipped = count
+                self.stdout.write(f"{name}: {finished} finished, {skipped} skipped")
+            else:
+                self.stdout.write(f"{name}: {count} {label}")
         if failed:
             raise CommandError("Failed steps: " + ", ".join(failed))

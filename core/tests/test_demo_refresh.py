@@ -9,6 +9,7 @@ from pathlib import Path
 from unittest import mock
 
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import SimpleTestCase, TestCase
@@ -67,6 +68,25 @@ class GuardTests(TestCase):
             with self.assertRaises(demo_refresh.NotInSeason):
                 demo_refresh.check_guard(year.end_date + datetime.timedelta(days=1))
 
+    def test_refuses_with_two_academic_years(self):
+        year = AcademicYear.objects.get()
+        second = AcademicYear(
+            name="Another year",
+            start_date=year.end_date + datetime.timedelta(days=30),
+            end_date=year.end_date + datetime.timedelta(days=300),
+        )
+        second.full_clean()
+        second.save()
+        with mock.patch.dict(os.environ, {"EVERCLASS_DEMO_SCHOOL": "1"}):
+            with self.assertRaisesMessage(CommandError, "exactly one academic year"):
+                demo_refresh.check_guard(business_today())
+
+    def test_before_year_start_is_not_in_season(self):
+        year = AcademicYear.objects.get()
+        with mock.patch.dict(os.environ, {"EVERCLASS_DEMO_SCHOOL": "1"}):
+            with self.assertRaises(demo_refresh.NotInSeason):
+                demo_refresh.check_guard(year.start_date - datetime.timedelta(days=1))
+
     def test_passes_and_returns_admin_and_year(self):
         year = AcademicYear.objects.get()
         today = last_instructional_day(year, business_today())
@@ -74,6 +94,20 @@ class GuardTests(TestCase):
             admin, found = demo_refresh.check_guard(today)
         self.assertEqual(admin.username, "demo_admin")
         self.assertEqual(found, year)
+
+
+class GuardWithoutYearTests(TestCase):
+    """No seed here: the seeded database always has a year, and deleting it is off limits."""
+
+    @classmethod
+    def setUpTestData(cls):
+        get_user_model().objects.create_user(username="demo_admin", password="x")
+
+    def test_refuses_with_zero_academic_years(self):
+        self.assertFalse(AcademicYear.objects.exists())
+        with mock.patch.dict(os.environ, {"EVERCLASS_DEMO_SCHOOL": "1"}):
+            with self.assertRaisesMessage(CommandError, "exactly one academic year"):
+                demo_refresh.check_guard(business_today())
 
 
 class RealismTests(SimpleTestCase):
@@ -127,7 +161,7 @@ class AttendanceRefreshTests(TestCase):
         day = last_instructional_day(self.year, self.today - datetime.timedelta(days=1))
         register = self._draft(empty, day)
         self.assertFalse(register.eligible_enrollments().exists())
-        self.assertEqual(demo_refresh.finish_old_drafts(self.year, self.today, self.admin), 0)
+        self.assertEqual(demo_refresh.finish_old_drafts(self.year, self.today, self.admin), (0, 0))
         register.refresh_from_db()
         self.assertEqual(register.status, "DRAFT")
 
@@ -137,12 +171,55 @@ class AttendanceRefreshTests(TestCase):
         register = self._draft(section, day)
         first = register.eligible_enrollments().first()
         register.capture(enrollment=first, status=AttendanceStatus.ABSENT, absence_note="Fever")
-        self.assertEqual(demo_refresh.finish_old_drafts(self.year, self.today, self.admin), 1)
+        self.assertEqual(demo_refresh.finish_old_drafts(self.year, self.today, self.admin), (1, 0))
         register.refresh_from_db()
         self.assertEqual(register.status, "SUBMITTED")
         self.assertEqual(register.entries.count(), register.eligible_enrollments().count())
         entry = register.entries.get(academic_enrollment=first)
         self.assertEqual((entry.status, entry.absence_note), ("ABSENT", "Fever"))
+
+    def test_refused_draft_is_skipped_and_others_still_finish(self):
+        sections = list(Section.objects.select_related("class_grade").order_by("pk")[:2])
+        day = last_instructional_day(self.year, self.today - datetime.timedelta(days=1))
+        refused = self._draft(sections[0], day)
+        fine = self._draft(sections[1], day)
+        real_submit = AttendanceRegister.submit
+
+        def submit(register, *args, **kwargs):
+            if register.pk == refused.pk:
+                raise ValidationError("refused")
+            return real_submit(register, *args, **kwargs)
+
+        with mock.patch.object(AttendanceRegister, "submit", autospec=True, side_effect=submit):
+            result = demo_refresh.finish_old_drafts(self.year, self.today, self.admin)
+        self.assertEqual(result, (1, 1))
+        refused.refresh_from_db()
+        fine.refresh_from_db()
+        self.assertEqual(refused.status, "DRAFT")
+        self.assertEqual(fine.status, "SUBMITTED")
+
+    def test_backfill_failure_keeps_earlier_days(self):
+        days = [d for d in self._range_days() if self.year.is_instructional_day(d)]
+        bad = days[3]
+        real = demo_refresh._create_and_submit
+
+        def create(year, section, day, actor):
+            if day == bad:
+                raise ValidationError("boom")
+            return real(year, section, day, actor)
+
+        out, err = io.StringIO(), io.StringIO()
+        with mock.patch.dict(os.environ, {"EVERCLASS_DEMO_SCHOOL": "1"}),              mock.patch("core.management.commands.refresh_demo_school.business_today",
+                        return_value=self.today),              mock.patch.object(demo_refresh, "_create_and_submit", side_effect=create):
+            with self.assertRaisesMessage(CommandError, "backfill"):
+                call_command("refresh_demo_school", since=str(self.since), stdout=out,
+                             stderr=err)
+        self.assertIn("backfill: failed", err.getvalue())
+        for day in days[:3]:
+            self.assertTrue(
+                AttendanceRegister.objects.filter(academic_year=self.year, date=day).exists()
+            )
+        self.assertFalse(AttendanceRegister.objects.filter(date=bad).exists())
 
     def test_backfill_fills_every_section_every_instructional_day(self):
         demo_refresh.backfill_attendance(self.year, self.today, self.admin, since=self.since)
@@ -260,7 +337,7 @@ class OpenAssessmentTests(TestCase):
 
     def test_creates_one_open_unit_test_per_assignment(self):
         n = demo_refresh.ensure_open_assessments(self.year, self.today)
-        self.assertEqual(n, AssessmentTeacherAssignment.objects.count())
+        self.assertEqual(n, AssessmentTeacherAssignment.objects.effective_on(self.today).count())
         a = Assessment.objects.filter(term=self.term, status=Assessment.Status.DRAFT).first()
         self.assertEqual(
             (a.name, a.maximum_marks, a.pass_mark),
@@ -269,6 +346,20 @@ class OpenAssessmentTests(TestCase):
         self.assertLessEqual(a.assessment_date, self.today)
         self.assertGreaterEqual(a.assessment_date, self.term.start_date)
         self.assertLess(a.assessment_date.weekday(), 5)
+
+    def test_ended_assignment_gets_no_new_unit_test(self):
+        assignment = AssessmentTeacherAssignment.objects.select_related("teacher").first()
+        assignment.end_date = self.today - datetime.timedelta(days=1)
+        assignment.full_clean()
+        assignment.save()
+        n = demo_refresh.ensure_open_assessments(self.year, self.today)
+        self.assertEqual(n, AssessmentTeacherAssignment.objects.effective_on(self.today).count())
+        self.assertFalse(
+            Assessment.objects.filter(
+                term=self.term, offering=assignment.offering, section=assignment.section,
+                status=Assessment.Status.DRAFT,
+            ).exists()
+        )
 
     def test_reuses_existing_open_assessment(self):
         demo_refresh.ensure_open_assessments(self.year, self.today)
