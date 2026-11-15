@@ -80,7 +80,9 @@ def roles(request):
     area = current_area(request, areas)
     signed_in = bool(user and user.is_authenticated)
     # The Guardian Portal shell never shows the school name or logo, so its pages skip both lookups.
-    in_portal = match is not None and match.namespace == "portal"
+    # By area, not URL: an office login refused at a portal address gets the staff 403 page,
+    # whose header still shows them.
+    in_portal = area == "guardian" and match is not None and match.namespace == "portal"
     school = School.objects.first() if signed_in and not in_portal else None
     year = None
     selector = {

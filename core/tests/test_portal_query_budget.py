@@ -63,6 +63,13 @@ class PortalQueryBudgetTests(AnnouncementFixture, TestCase):
                 self.assertNotIn('"core_school"', sql)
                 self.assertNotIn('"core_schoollogo"', sql)
 
+    def test_an_office_login_refused_at_a_portal_address_keeps_the_school_header(self):
+        self.client.force_login(self.admin)
+        page = self.client.get(reverse("portal:home"))
+        self.assertEqual(page.status_code, 403)
+        self.assertEqual(page.context["current_area"], "admin")
+        self.assertEqual(page.context["school_name"], self.school.name)
+
     def test_the_guardian_account_is_looked_up_once(self):
         sql = self.captured(self.pages()["home"])
         self.assertEqual(sum('FROM "core_guardianaccount"' in query for query in sql), 1)
