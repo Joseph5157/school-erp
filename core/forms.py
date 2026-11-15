@@ -250,6 +250,9 @@ class FieldAccessibilityMixin:
 
     def _describe_fields(self):
         for name, field in self.fields.items():
+            # erp.js turns off the browser's pop-up checks on forms holding this marker,
+            # so errors come back through the summary and aria wiring above.
+            field.widget.attrs["data-erp-validate"] = "server"
             bound = self[name]
             ids = []
             if field.help_text:
@@ -1006,6 +1009,7 @@ class ApplicantForm(FieldAccessibilityMixin, forms.ModelForm):
         fields = ["full_name", "date_of_birth", "email", "phone"]
         widgets = {
             "date_of_birth": forms.DateInput(attrs={"type": "date"}),
+            "phone": forms.TextInput(attrs={"type": "tel"}),
         }
 
 
@@ -1048,6 +1052,7 @@ class GuardianForm(forms.ModelForm):
     class Meta:
         model = Guardian
         fields = ["full_name", "phone", "email"]
+        widgets = {"phone": forms.TextInput(attrs={"type": "tel"})}
 
 
 class ApplicantGuardianForm(FieldAccessibilityMixin, forms.ModelForm):
@@ -1413,7 +1418,9 @@ class RecordCorrectionForm(FieldAccessibilityMixin, forms.Form):
         required=False, widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")
     )
     email = forms.EmailField(required=False)
-    phone = forms.CharField(max_length=50, required=False)
+    phone = forms.CharField(
+        max_length=50, required=False, widget=forms.TextInput(attrs={"type": "tel"})
+    )
     reason = forms.CharField(
         max_length=500,
         widget=forms.Textarea(attrs={"rows": 3}),
