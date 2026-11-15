@@ -7,11 +7,12 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.cache import add_never_cache_headers
 
 from accounts.models import SecurityEvent
+from core import models as core_models
 from core import one_time_forms, teacher_accounts
 from core.academic_years import current_academic_year
 from core.authorization import administrator_required
 from core.forms import TeacherCreateForm, TeacherDeactivateForm, TeacherUsernameForm
-from core.models import School, business_today
+from core.models import School
 from core.tables import Column, build_table, parse_choice
 
 PERMISSION = "accounts.manage_teacher_accounts"
@@ -65,7 +66,7 @@ def teacher_list(request):
         )
     if status:
         teachers = teachers.filter(is_active=(status == "active"))
-    year = current_academic_year(business_today())
+    year = current_academic_year(core_models.business_today())
     table = build_table(request, teachers, teacher_columns(year), "name")
     return render(
         request,
