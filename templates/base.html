@@ -10,7 +10,7 @@
     {% if office_nav %}{# Desktop sidebar: apply the remembered hidden state before first paint, so it never flashes open. #}
     <script>try { if (localStorage.getItem("erp.nav.collapsed") === "1") document.documentElement.classList.add("erp-nav-collapsed"); } catch (e) {}</script>{% endif %}
 </head>
-<body class="erp{% if office_nav %} has-sidebar{% endif %}{% if current_area == 'teacher' %} erp-teacher{% endif %}{% block tabbar_class %}{% if current_area == 'teacher' %} has-tabbar{% endif %}{% endblock %}">
+<body class="erp{% if office_nav %} has-sidebar{% endif %}{% if current_area == 'teacher' %} erp-teacher{% endif %}{% block tabbar_class %}{% if current_area == 'teacher' or guardian_shell %} has-tabbar{% endif %}{% endblock %}">
     <a class="visually-hidden-focusable" href="#main">Skip to content</a>
     <header class="erp-topbar">
         {% if office_nav %}
@@ -18,7 +18,12 @@
         {# Desktop only: hides/shows the fixed sidebar. Starts hidden; erp.js reveals it, so no-JS users never see a dead button. #}
         <button class="btn btn-outline-secondary btn-sm erp-sidebar-toggle" type="button" data-erp-sidebar-toggle aria-controls="erp-sidebar" aria-expanded="true" aria-label="Menu" title="Hide menu" hidden><svg class="erp-sidebar-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg></button>
         {% endif %}
+        {% if guardian_shell %}
+        <a class="erp-brand" href="{% url 'portal:home' %}">{% include "partials/_brand_mark.html" %}Guardian Portal</a>
+        {% include "portal/_portal_nav.html" with nav_class="erp-portal-nav d-none d-lg-flex" %}
+        {% else %}
         <a class="erp-brand" href="{% url 'home' %}">{% if brand_logo %}<img class="erp-brand-logo" src="{{ brand_logo.url }}" alt="{{ brand_logo.school_name }} logo" height="28">{% else %}{% include "partials/_brand_mark.html" %}{% endif %}School ERP</a>
+        {% endif %}
         {% if school_name %}<span class="erp-topbar-school d-none d-md-inline">{{ school_name }}</span>{% endif %}
         {% if current_year_name %}
         {% if year_choices|length > 1 %}
@@ -53,7 +58,7 @@
         </div>
     </main>
     {% include "partials/_messages.html" %}
-    {% block tabbar %}{% if current_area == 'teacher' %}{% include "partials/_tabbar.html" with tabs=teacher_tabs tabbar_label="Teaching" %}{% endif %}{% endblock %}
+    {% block tabbar %}{% if current_area == 'teacher' %}{% include "partials/_tabbar.html" with tabs=teacher_tabs tabbar_label="Teaching" %}{% elif guardian_shell %}{% include "portal/_portal_nav.html" with nav_class="erp-tabbar erp-tabbar--icons d-lg-none" mobile=True %}{% endif %}{% endblock %}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
     {% block extra_js %}{% endblock %}
     <script src="{% static 'js/erp.js' %}" defer></script>

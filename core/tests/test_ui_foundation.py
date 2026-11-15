@@ -224,12 +224,15 @@ class GuardianShellTests(BoundaryFixture, TestCase):
         url = self.portal_url("portal:report-cards")
         tabbar = html.split('class="erp-tabbar', 1)[1].split("</nav>", 1)[0]
         header = html.split('class="erp-portal-nav', 1)[1].split("</nav>", 1)[0]
-        self.assertIn(f'href="{url}">Reports</a>', tabbar)
+        self.assertRegex(
+            tabbar,
+            re.compile(rf'href="{re.escape(url)}">.*?<span class="erp-tab-label">Reports</span></a>', re.S),
+        )
         self.assertNotIn("Report cards", tabbar)
         self.assertIn(f'href="{url}">Report cards</a>', header)
         self.assertNotIn(">Reports<", header)
         for label in ("Home", "Notices", "Overview", "Attendance"):
-            self.assertIn(f">{label}</a>", tabbar)
+            self.assertIn(f'<span class="erp-tab-label">{label}</span></a>', tabbar)
 
     def test_portal_pages_still_have_no_excluded_words(self):
         urls = [reverse("portal:home")] + [

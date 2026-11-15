@@ -397,15 +397,18 @@ body.erp { min-height: 100vh; }
   color: var(--erp-ink-soft); text-decoration: none;
 }
 .erp-tabbar a.active { color: var(--erp-brand); font-weight: 700; box-shadow: inset 0 3px 0 var(--erp-brand); }
-/* U3.1 Teacher bottom bar: icon above a one-line label. Scoped to the Teacher
-   area (body.erp-teacher) so the guardian bar, which shares .erp-tabbar, is unchanged. */
-.erp-teacher .erp-tabbar a {
+/* U3.1 Teacher bottom bar: icon above a one-line label. The Guardian portal bar
+   (.erp-tabbar--icons) uses the same layout, so both phone bars look alike. */
+.erp-teacher .erp-tabbar a,
+.erp-tabbar--icons a {
   flex-direction: column; gap: .125rem; padding: .375rem .125rem;
   min-width: 2.75rem; min-height: max(2.75rem, var(--erp-tabbar-h));
   font-size: .75rem;
 }
-.erp-teacher .erp-tabbar .erp-tab-label { white-space: nowrap; }
-.erp-teacher .erp-tabbar .erp-tab-icon { flex: none; }
+.erp-teacher .erp-tabbar .erp-tab-label,
+.erp-tabbar--icons .erp-tab-label { white-space: nowrap; }
+.erp-teacher .erp-tabbar .erp-tab-icon,
+.erp-tabbar--icons .erp-tab-icon { flex: none; }
 
 /* U3.1 My day (Gate T2). Scoped to the Teacher area; the shared .erp-card is not changed.
    Spacing: 24px between sections, 16px card padding, 8px between related lines. */
@@ -1553,6 +1556,7 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 .erp-portal-nav { min-width: 0; overflow-x: auto; }
 .erp-portal-nav ul { display: flex; gap: var(--erp-space-4); margin: 0; padding: 0; list-style: none; }
 .erp-portal-nav a {
+  display: block; /* inline padding spilled out and gave the desktop nav scroll arrows */
   color: var(--erp-ink-soft);
   text-decoration: none;
   padding: .5rem .25rem;
