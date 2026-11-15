@@ -120,6 +120,16 @@ class AttendanceRefreshTests(TestCase):
         register.save()
         return register
 
+    def test_skips_old_drafts_with_an_empty_roster(self):
+        class_grade = Section.objects.select_related("class_grade").first().class_grade
+        empty = Section.objects.create(class_grade=class_grade, name="Empty")
+        day = last_instructional_day(self.year, self.today - datetime.timedelta(days=1))
+        register = self._draft(empty, day)
+        self.assertFalse(register.eligible_enrollments().exists())
+        self.assertEqual(demo_refresh.finish_old_drafts(self.year, self.today, self.admin), 0)
+        register.refresh_from_db()
+        self.assertEqual(register.status, "DRAFT")
+
     def test_finishes_old_drafts_without_losing_entries(self):
         section = Section.objects.select_related("class_grade").first()
         day = last_instructional_day(self.year, self.today - datetime.timedelta(days=1))

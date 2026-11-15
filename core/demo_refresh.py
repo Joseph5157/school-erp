@@ -138,6 +138,8 @@ def finish_old_drafts(year, today, fallback_actor) -> int:
     ).select_related("section", "class_grade", "academic_year")
     done = 0
     for register in drafts:
+        if not register.eligible_enrollments().exists():
+            continue  # nobody to mark; submit would refuse, so leave it as it is
         with transaction.atomic():
             _fill_and_submit(
                 register, _submitter(register.section, register.date, fallback_actor)
