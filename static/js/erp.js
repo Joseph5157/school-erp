@@ -15,12 +15,30 @@
     if (!input) return;
     button.hidden = false;
     button.setAttribute("aria-pressed", "false");
+    // Only the visible word changes; the hidden field name stays, so each button reads
+    // "Show current password", "Hide new password", and so on.
+    var word = button.querySelector("[data-erp-toggle-label]") || button;
     button.addEventListener("click", function () {
       var showing = input.type === "text";
       input.type = showing ? "password" : "text";
-      button.textContent = showing ? "Show" : "Hide";
+      word.textContent = showing ? "Show" : "Hide";
       button.setAttribute("aria-pressed", showing ? "false" : "true");
       input.focus();
+    });
+  });
+
+  // Sign-in forms: a key labelled "Next" (enterkeyhint) moves to the next field instead of
+  // sending a half-filled form. Without JS, Enter submits as usual and the server explains.
+  document.querySelectorAll('input[enterkeyhint="next"]').forEach(function (field) {
+    field.addEventListener("keydown", function (event) {
+      if (event.key !== "Enter" || event.isComposing || event.keyCode === 229 || !field.form) return;
+      var fields = Array.prototype.filter.call(field.form.elements, function (el) {
+        return el.tagName === "INPUT" && !el.readOnly && !el.disabled && el.type !== "hidden";
+      });
+      var next = fields[fields.indexOf(field) + 1];
+      if (!next) return;
+      event.preventDefault();
+      next.focus();
     });
   });
 
@@ -58,13 +76,26 @@
       item.classList.toggle("is-met", met);
       item.lastChild.textContent = met ? " (met)" : " (not met yet)";
     }
+    // The match line is a live region, so it changes only when the answer changes. While the
+    // person is still typing the confirmation a mismatch is expected, so it is said once they
+    // leave the field; "Passwords match" is said as soon as the two first agree.
+    var matchShown = null;  // null (nothing), "ok" or "bad"
+    function showMatch(state) {
+      if (state === matchShown) return;
+      matchShown = state;
+      match.hidden = state === null;
+      match.textContent = state === "ok" ? "Passwords match" : state === "bad" ? "Passwords don't match" : "";
+      match.classList.toggle("is-ok", state === "ok");
+    }
     function updateMatch() {
       if (!confirmInput || !match) return;
-      if (!confirmInput.value) { match.hidden = true; return; }
-      var same = confirmInput.value === input.value;
-      match.hidden = false;
-      match.textContent = same ? "Passwords match" : "Passwords don't match yet";
-      match.classList.toggle("is-ok", same);
+      if (!confirmInput.value) showMatch(null);
+      else if (confirmInput.value === input.value) showMatch("ok");
+      else if (matchShown !== "bad") showMatch(null);  // keep an already-said mismatch, quietly
+    }
+    function checkMatchOnLeave() {
+      if (!confirmInput || !match || !confirmInput.value) return;
+      showMatch(confirmInput.value === input.value ? "ok" : "bad");
     }
     function update() {
       var password = input.value;
@@ -91,7 +122,10 @@
       updateMatch();
     }
     input.addEventListener("input", update);
-    if (confirmInput) confirmInput.addEventListener("input", updateMatch);
+    if (confirmInput) {
+      confirmInput.addEventListener("input", updateMatch);
+      confirmInput.addEventListener("blur", checkMatchOnLeave);
+    }
     if (input.value) update();
   })();
 

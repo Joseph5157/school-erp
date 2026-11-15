@@ -18,7 +18,7 @@
                 <input type="text" class="form-control form-control-lg{% if form.username.errors %} is-invalid{% endif %}"
                        name="{{ form.username.html_name }}" id="{{ form.username.id_for_label }}"
                        value="{{ form.username.value|default_if_none:'' }}"
-                       {% if form.username.errors %}aria-invalid="true" aria-describedby="id_username_error" {% endif %}autocomplete="username" autocapitalize="none" spellcheck="false" required{% if form.username.errors or not form.password.errors %} autofocus{% endif %}>
+                       {% if form.username.errors %}aria-invalid="true" aria-describedby="id_username_error" {% endif %}autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="next" required{% if form.username.errors or not form.password.errors %} autofocus{% endif %}>
                 {% for error in form.username.errors %}<div class="text-danger small mt-1" id="id_username_error" role="alert">{{ error }}</div>{% endfor %}
             </div>
             <div class="mb-4">
@@ -26,8 +26,8 @@
                 <div class="erp-password">
                     <input type="password" class="form-control form-control-lg{% if form.password.errors %} is-invalid{% endif %}"
                            name="{{ form.password.html_name }}" id="{{ form.password.id_for_label }}"
-                           {% if form.password.errors %}aria-invalid="true" aria-describedby="id_password_error" {% endif %}autocomplete="current-password" required{% if form.password.errors and not form.username.errors %} autofocus{% endif %}>
-                    <button type="button" class="btn btn-link" data-erp-toggle-password aria-controls="{{ form.password.id_for_label }}" hidden>Show</button>
+                           {% if form.password.errors %}aria-invalid="true" aria-describedby="id_password_error" {% endif %}autocomplete="current-password" enterkeyhint="done" required{% if form.password.errors and not form.username.errors %} autofocus{% endif %}>
+                    <button type="button" class="btn btn-link" data-erp-toggle-password aria-controls="{{ form.password.id_for_label }}" hidden><span data-erp-toggle-label>Show</span><span class="visually-hidden"> password</span></button>
                 </div>
                 {% for error in form.password.errors %}<div class="text-danger small mt-1" id="id_password_error" role="alert">{{ error }}</div>{% endfor %}
             </div>
