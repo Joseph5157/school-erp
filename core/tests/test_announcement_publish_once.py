@@ -61,7 +61,59 @@ class PublishOnceTests(AnnouncementFixture, TestCase):
         self.assertEqual(Announcement.objects.count(), 1)
 
     def test_only_the_newest_drafts_tokens_are_kept(self):
-        for number in range(8):
+        for number in range(25):
             self.preview_token(self.draft(title=f"Draft {number}"))
         tokens = self.client.session["one_time_forms"]
-        self.assertEqual(sum(key.startswith("announcement-publish:") for key in tokens), 5)
+        self.assertEqual(sum(key.startswith("announcement-publish:") for key in tokens), 20)
+
+    def test_a_draft_whose_token_was_trimmed_still_publishes(self):
+        oldest = self.draft(title="Oldest")
+        token = self.preview_token(oldest)
+        for number in range(25):  # pushes the oldest token out of the session
+            self.preview_token(self.draft(title=f"Draft {number}"))
+        self.publish(oldest, token)
+        self.assertTrue(Announcement.objects.filter(title="Oldest").exists())
+
+    def test_previewing_a_draft_again_makes_it_the_newest(self):
+        first = self.draft(title="First")
+        token = self.preview_token(first)
+        for number in range(19):
+            self.preview_token(self.draft(title=f"Draft {number}"))
+        self.assertEqual(self.preview_token(first), token)  # same draft, same token, now newest
+        for number in range(19, 25):
+            self.preview_token(self.draft(title=f"Draft {number}"))
+        self.assertIn(token, self.client.session["one_time_forms"].values())  # not trimmed
+        self.publish(first, token)
+        self.assertEqual(self.publish(first, token).status_code, 302)
+        self.assertEqual(Announcement.objects.filter(title="First").count(), 1)
+
+    def test_class_and_section_repeats_are_refused_too(self):
+        for extra in ({"audience": "CLASS", "class_grade": self.grade6.pk},
+                      {"audience": "SECTION", "section": self.six_a.pk}):
+            with self.subTest(audience=extra["audience"]):
+                data = self.draft(title=f"For {extra['audience']}", **extra)
+                token = self.preview_token(data)
+                self.publish(data, token)
+                self.publish(data, token)
+                self.assertEqual(Announcement.objects.filter(title=data["title"]).count(), 1)
+
+    def test_titles_and_bodies_do_not_run_together_in_the_draft_key(self):
+        one = self.preview_token(self.draft(title="Sports Day A", body="bc text"))
+        two = self.preview_token(self.draft(title="Sports Day Ab", body="c text"))
+        self.assertNotEqual(one, two)
+
+
+class PublishOnceWithoutViewPermissionTests(AnnouncementFixture, TestCase):
+    def test_someone_who_can_only_add_goes_back_to_the_form(self):
+        from django.contrib.auth import get_user_model
+        from django.contrib.auth.models import Permission
+
+        adder = get_user_model().objects.create_user(username="adder", password="pass-12345")
+        adder.user_permissions.add(Permission.objects.get(codename="add_announcement"))
+        self.client.force_login(adder)
+        data = {"title": "Sports Day", "body": "Sports Day is on 20 October.", "audience": "ALL"}
+        token = self.client.post(CREATE, data).context["one_time_token"]
+        self.client.post(CREATE, {**data, "confirm": "1", "one_time_token": token})
+        again = self.client.post(CREATE, {**data, "confirm": "1", "one_time_token": token})
+        self.assertRedirects(again, CREATE, fetch_redirect_response=False)
+        self.assertEqual(Announcement.objects.count(), 1)

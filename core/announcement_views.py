@@ -63,12 +63,12 @@ def _copy_source(request):
 # Publishing goes out to families at once, so Back-then-Publish must not post the same notice twice.
 # Each draft gets its own one-time token: two different drafts in two tabs don't block each other.
 _PUBLISH_PURPOSE = "announcement-publish:"
-_KEEP_PUBLISH_TOKENS = 5
+_KEEP_PUBLISH_TOKENS = 20
 
 
 def _publish_purpose(data):
     class_grade, section = data.get("class_grade"), data.get("section")
-    draft = "".join([
+    draft = "\x1f".join([  # unit separator: "a"+"bc" and "ab"+"c" stay different drafts
         data["title"].strip(), data["body"].strip(), data["audience"],
         str(class_grade.pk if class_grade else ""), str(section.pk if section else ""),
     ])
@@ -76,30 +76,35 @@ def _publish_purpose(data):
 
 
 def _publish_token(request, purpose):
-    """The draft's token; only the newest few drafts' tokens are kept in the session."""
+    """The draft's token. Previewing a draft makes it the newest; only the newest 20 are kept."""
     token = one_time_forms.token_for(request, purpose)
     tokens = request.session[one_time_forms.SESSION_KEY]
+    tokens[purpose] = tokens.pop(purpose)  # move to the end: dicts keep insertion order
     drafts = [key for key in tokens if key.startswith(_PUBLISH_PURPOSE)]
     for old in drafts[:-_KEEP_PUBLISH_TOKENS]:
-        if old != purpose:
-            del tokens[old]
+        del tokens[old]
     request.session.modified = True
     return token
 
 
-def _already_published(request, data):
-    """Where to send a repeated Publish: the notice it already made, if we can find it."""
-    notice = (
+def _published_copy(request, data):
+    """The notice this user already published from exactly this draft, or None."""
+    audience = data["audience"]
+    return (
         Announcement.objects.filter(
             published_by=request.user, title=data["title"].strip(), body=data["body"].strip(),
-            audience=data["audience"],
+            audience=audience,
+            class_grade=data.get("class_grade") if audience == Announcement.Audience.CLASS else None,
+            section=data.get("section") if audience == Announcement.Audience.SECTION else None,
         ).order_by("-pk").first()
     )
+
+
+def _already_published(request, notice):
     messages.info(request, "This notice was already published, so it was not sent again.")
-    if notice is not None and request.user.has_perm("core.view_announcement"):
+    if request.user.has_perm("core.view_announcement"):
         return redirect("core:announcement-detail", pk=notice.pk)
-    return redirect("core:announcement-list" if request.user.has_perm("core.view_announcement")
-                    else "core:announcement-create")
+    return redirect("core:announcement-create")
 
 
 @administrator_required("core.add_announcement")
@@ -127,8 +132,12 @@ def announcement_create(request):
         return render(request, "core/announcement_form.html", {"form": form})
     purpose = _publish_purpose(form.cleaned_data)
     if "confirm" in request.POST:
+        # A stale token alone never blocks a send: only a notice this draft already made does.
+        # (A very old preview whose token was trimmed from the session still publishes.)
         if one_time_forms.is_repeat(request, purpose):
-            return _already_published(request, form.cleaned_data)
+            copy = _published_copy(request, form.cleaned_data)
+            if copy is not None:
+                return _already_published(request, copy)
         notice = announcements.publish(actor=request.user, **form.cleaned_data)
         messages.success(request, "Notice published. Guardians can read it in the portal now.")
         return redirect("core:announcement-detail", pk=notice.pk)
