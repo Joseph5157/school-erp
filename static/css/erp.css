@@ -2148,20 +2148,31 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
 .erp-link-list--menu .erp-link-row-meta { font-size: var(--erp-text-xs); }
 
 /* ---------- Dialogs ---------- */
-/* Rounded, borderless dialogs with quiet header and footer; on phones they rise from the bottom as a sheet. */
-.modal-content { border: 0; border-radius: var(--erp-radius); box-shadow: 0 1.5rem 3rem rgba(24, 33, 43, .2); }
-.modal-header, .modal-footer { border: 0; padding: 1rem 1.25rem; }
-.modal-body { padding: 0 1.25rem 1rem; }
-.modal-footer { gap: var(--erp-space-2); }
-.modal-footer > * { margin: 0; }
+/* Native <dialog> opened with showModal(): Escape and the phone's Back close it, the page behind is inert and
+   focus returns to the opener. Rounded and borderless with a quiet header and footer; on phones a bottom sheet. */
+.erp-dialog {
+  width: 31.25rem; max-width: calc(100% - 2rem);
+  max-height: min(85vh, 45rem); max-height: min(85dvh, 45rem);  /* dvh: the visible height, URL bar included */
+  margin: auto; padding: 0; border: 0; border-radius: var(--erp-radius); overflow: hidden;
+  background: var(--erp-surface); color: var(--erp-ink);
+  box-shadow: 0 1.5rem 3rem rgba(24, 33, 43, .2); overscroll-behavior: contain;
+}
+.erp-dialog::backdrop { background: rgba(24, 33, 43, .5); }
+.erp-dialog-content { display: flex; flex-direction: column; max-height: min(85vh, 45rem); max-height: min(85dvh, 45rem); }
+.erp-dialog-header, .erp-dialog-footer { display: flex; align-items: center; gap: var(--erp-space-2); padding: 1rem 1.25rem; }
+.erp-dialog-header { justify-content: space-between; }
+.erp-dialog-header > h2 { margin: 0; }
+.erp-dialog-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 1.25rem 1rem; }
+.erp-dialog-footer { justify-content: flex-end; }
+body:has(.erp-dialog[open]) { overflow: hidden; }
+@media (prefers-reduced-motion: no-preference) {
+  .erp-dialog[open] { animation: erp-dialog-in .2s ease-out; }
+}
+@keyframes erp-dialog-in { from { opacity: 0; transform: translateY(1rem); } }
 @media (max-width: 575.98px) {
-  .modal-dialog, .modal-dialog-centered { align-items: flex-end; min-height: 100%; margin: 0; }
-  .modal-dialog-scrollable { height: 100%; }
-  .modal-dialog-scrollable .modal-content { max-height: 85vh; }
-  .modal-content { border-radius: 1rem 1rem 0 0; padding-bottom: env(safe-area-inset-bottom, 0px); }
-  .modal.fade .modal-dialog { transform: translateY(100%); }
-  .modal.show .modal-dialog { transform: none; }
-  .modal-footer > .btn { flex: 1 1 0; }
+  .erp-dialog { width: 100%; max-width: 100%; margin: auto 0 0; border-radius: 1rem 1rem 0 0; }
+  .erp-dialog-content { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .erp-dialog-footer > .btn { flex: 1 1 0; }
 }
 
 /* ---------- Clickable table rows ---------- */

@@ -118,7 +118,7 @@ class ClassListScreenTests(TestCase):
         self.login("view_classgrade", "change_classgrade")
         content = self.client.get(self.list_url).content.decode()
         self.assertIn("data-erp-reorder", content)
-        self.assertRegex(content, r'data-bs-target="#class-order"\s+hidden')
+        self.assertRegex(content, r'data-erp-dialog-open="class-order"\s+hidden')
         self.assertIn('aria-label="Move Grade 10 up"', content)
         self.assertEqual(
             re.findall(r'name="class_grade" value="(\d+)"', content),
