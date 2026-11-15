@@ -2,7 +2,7 @@
 
 These files are served from our own domain instead of a CDN, so no third-party server can change
 the code that runs in the app. They are exact, unmodified copies of the published releases.
-Each library keeps its LICENSE next to it (all MIT).
+Each library keeps its LICENSE next to it (Bootstrap and SortableJS: MIT; HTMX: Zero-Clause BSD).
 
 | Library | Version | Files | Source |
 |---|---|---|---|
