@@ -7,6 +7,7 @@ inert and returns focus to its opener; Bootstrap's modal div did none of the Bac
 import re
 from pathlib import Path
 
+from django.apps import apps
 from django.conf import settings
 from django.test import TestCase
 
@@ -31,10 +32,15 @@ class ReorderDialogMarkupTests(TestCase):
                     self.assertNotIn(gone, text)
 
     def test_no_bootstrap_modal_left_in_any_template(self):
+        # Only this project's templates: the project folder and its own apps (not .venv or site-packages).
+        folders = [ROOT / "templates"] + [
+            Path(app.path) / "templates" for app in apps.get_app_configs() if Path(app.path).parent == ROOT
+        ]
+        pages = [page for folder in folders if folder.is_dir() for page in folder.rglob("*.html")]
+        self.assertGreater(len(pages), 50)
         offenders = [
-            str(path) for path in ROOT.rglob("*.html")
-            if ".worktrees" not in path.parts and "node_modules" not in path.parts
-            and re.search(r'class="modal[ "]|data-bs-toggle="modal"', path.read_text(encoding="utf-8", errors="ignore"))
+            str(page) for page in pages
+            if re.search(r'class="modal[ "]|data-bs-toggle="modal"', page.read_text(encoding="utf-8"))
         ]
         self.assertEqual(offenders, [])
 
@@ -49,7 +55,11 @@ class ReorderDialogScriptTests(TestCase):
         self.assertIn('form.querySelector("[data-erp-reorder-move]:not(:disabled)")', SCRIPT)
 
     def test_closing_any_way_puts_the_list_back(self):
-        self.assertIn('dialog.addEventListener("close", function () {', SCRIPT)
+        self.assertIn('dialog.addEventListener("close", function () {\n      document.body.style.paddingRight = "";', SCRIPT)
+
+    def test_page_keeps_the_scrollbar_space_while_locked(self):
+        self.assertIn("var gap = window.innerWidth - document.documentElement.clientWidth;", SCRIPT)
+        self.assertIn('if (gap > 0) document.body.style.paddingRight = gap + "px";', SCRIPT)
 
     def test_backdrop_tap_closes_only_when_the_press_started_there(self):
         self.assertIn("pressedBackdrop = event.target === dialog;", SCRIPT)
@@ -59,6 +69,9 @@ class ReorderDialogScriptTests(TestCase):
 class ReorderDialogCssTests(TestCase):
     def test_bootstrap_modal_styles_are_gone(self):
         self.assertNotIn(".modal-content {", CSS)
+
+    def test_height_follows_the_visible_phone_screen(self):
+        self.assertIn("max-height: min(85vh, 45rem); max-height: min(85dvh, 45rem);", CSS)
 
     def test_page_behind_does_not_scroll(self):
         self.assertIn("body:has(.erp-dialog[open]) { overflow: hidden; }", CSS)

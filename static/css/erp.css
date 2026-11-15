@@ -2151,13 +2151,14 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
 /* Native <dialog> opened with showModal(): Escape and the phone's Back close it, the page behind is inert and
    focus returns to the opener. Rounded and borderless with a quiet header and footer; on phones a bottom sheet. */
 .erp-dialog {
-  width: 31.25rem; max-width: calc(100% - 2rem); max-height: min(85vh, 45rem);
+  width: 31.25rem; max-width: calc(100% - 2rem);
+  max-height: min(85vh, 45rem); max-height: min(85dvh, 45rem);  /* dvh: the visible height, URL bar included */
   margin: auto; padding: 0; border: 0; border-radius: var(--erp-radius); overflow: hidden;
   background: var(--erp-surface); color: var(--erp-ink);
   box-shadow: 0 1.5rem 3rem rgba(24, 33, 43, .2); overscroll-behavior: contain;
 }
 .erp-dialog::backdrop { background: rgba(24, 33, 43, .5); }
-.erp-dialog-content { display: flex; flex-direction: column; max-height: min(85vh, 45rem); }
+.erp-dialog-content { display: flex; flex-direction: column; max-height: min(85vh, 45rem); max-height: min(85dvh, 45rem); }
 .erp-dialog-header, .erp-dialog-footer { display: flex; align-items: center; gap: var(--erp-space-2); padding: 1rem 1.25rem; }
 .erp-dialog-header { justify-content: space-between; }
 .erp-dialog-header > h2 { margin: 0; }

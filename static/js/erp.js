@@ -701,6 +701,9 @@
     if (!opener) return;
     opener.hidden = false;
     opener.addEventListener("click", function () {
+      // erp.css locks the page behind; keep the scrollbar's width so the page doesn't jump sideways.
+      var gap = window.innerWidth - document.documentElement.clientWidth;
+      if (gap > 0) document.body.style.paddingRight = gap + "px";
       dialog.showModal();
       // Start on the first arrow that can move something, not the Close button.
       var first = form.querySelector("[data-erp-reorder-move]:not(:disabled)");
@@ -756,6 +759,7 @@
     });
 
     dialog.addEventListener("close", function () {
+      document.body.style.paddingRight = "";
       original.forEach(function (item) { list.appendChild(item); });
       announce.textContent = "";
       refresh();
