@@ -21,12 +21,15 @@ def read(relative):
 
 
 class ShellMetaTests(SimpleTestCase):
-    def test_both_shells_opt_into_os_text_scale_and_light_scheme(self):
+    def test_both_shells_use_the_light_scheme_and_do_not_follow_os_text_scale(self):
+        # No text-scale meta: on Android Chrome it scaled the whole rem-based layout with the phone's
+        # font setting, so phones showed a zoomed-in app (removed after #229). Pinch zoom still works.
         for shell in ("templates/base.html", "templates/portal/base.html"):
             with self.subTest(shell=shell):
                 html = read(shell)
-                self.assertIn('<meta name="text-scale" content="scale">', html)
+                self.assertNotIn('name="text-scale"', html)
                 self.assertIn('<meta name="color-scheme" content="light">', html)
+                self.assertIn('<meta name="viewport" content="width=device-width, initial-scale=1">', html)
 
     def test_css_declares_the_light_scheme_on_root(self):
         self.assertIn(":root {\n  color-scheme: light;", read("static/css/erp.css"))
