@@ -11,12 +11,12 @@ With autosave_url (teacher page) each row also saves its own draft over HTMX; th
             <button type="button" data-erp-filter="unmarked" class="erp-count-unmarked{% if counts.unmarked %} is-warn{% endif %}" aria-pressed="false">Unmarked <span id="erp-count-unmarked" data-erp-count="unmarked">{{ counts.unmarked }}</span></button>
             <button type="button" data-erp-filter="present" aria-pressed="false">Present <span id="erp-count-present" data-erp-count="present">{{ counts.present }}</span></button>
             <button type="button" data-erp-filter="absent" aria-pressed="false">Absent <span id="erp-count-absent" data-erp-count="absent">{{ counts.absent }}</span></button>
-            <button type="button" class="btn btn-outline-secondary btn-sm erp-mark-present" data-erp-mark-present>Mark unanswered as present</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm erp-mark-present" data-erp-mark-present{% if autosave_url and bulk_present_url %} data-erp-bulk-url="{{ bulk_present_url }}"{% endif %}>Mark unanswered as present</button>
         </div>
     </div>
 
     {% for enrollment, status_field, note_field in capture_form.rows %}
-    <fieldset class="erp-roster-row" data-erp-row{% if autosave_url %} hx-post="{{ autosave_url }}" hx-trigger="change" hx-include="this" hx-vals='{"enrollment": {{ enrollment.pk }}}' hx-target="find [data-erp-row-status]" hx-swap="innerHTML" hx-sync="this:queue last"{% endif %}>
+    <fieldset class="erp-roster-row" data-erp-row data-erp-enrollment="{{ enrollment.pk }}"{% if autosave_url %} hx-post="{{ autosave_url }}" hx-trigger="change" hx-include="this" hx-vals='{"enrollment": {{ enrollment.pk }}}' hx-target="find [data-erp-row-status]" hx-swap="innerHTML" hx-sync="this:queue last"{% endif %}>
         <legend class="visually-hidden">{{ enrollment.student.full_name }}</legend>
         <span class="erp-roster-name" aria-hidden="true">{{ enrollment.student.full_name }}</span>
         <span class="erp-initials" aria-hidden="true">{{ enrollment.student.full_name|slice:":1"|upper }}</span>

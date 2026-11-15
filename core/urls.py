@@ -221,6 +221,11 @@ urlpatterns = [
         views.my_attendance_autosave,
         name="my-attendance-autosave",
     ),
+    path(
+        "my/attendance/<int:section_pk>/autosave/present/",
+        views.my_attendance_autosave_present,
+        name="my-attendance-autosave-present",
+    ),
     path("my/attendance/history/", views.my_attendance_history, name="my-attendance-history"),
     path(
         "my/attendance/history/<int:pk>/",

@@ -872,6 +872,16 @@
     "route": "my/attendance/<int:section_pk>/autosave/",
     "view": "views.my_attendance_autosave"
   },
+  "core:my-attendance-autosave-present": {
+    "flags": [
+      "require_POST",
+      "teacher_required"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "my/attendance/<int:section_pk>/autosave/present/",
+    "view": "views.my_attendance_autosave_present"
+  },
   "core:my-attendance-history": {
     "flags": [
       "teacher_required"

@@ -230,18 +230,28 @@
     // Fills Present only for rows not yet answered and never overrides a choice.
     // Without autosave nothing is saved until the form is submitted.
     var markPresent = roster.querySelector("[data-erp-mark-present]");
+    var bulkUrl = markPresent ? markPresent.getAttribute("data-erp-bulk-url") : null;
     if (markPresent) {
       markPresent.addEventListener("click", function () {
+        var marked = [];
         rows.forEach(function (row) {
           if (statusOf(row) === "unmarked") {
             var present = row.querySelector('input[type="radio"][value="PRESENT"]');
             if (!present) return;
             present.checked = true;
-            // With autosave each bulk-marked row takes the same save path as a manual change.
-            if (autosaveOn) present.dispatchEvent(new Event("change", { bubbles: true }));
-            else unsaved = true;
+            marked.push(row);
           }
         });
+        if (marked.length) {
+          // With autosave, all bulk-marked rows save in one request (not one per row).
+          if (autosaveOn && bulkUrl && window.fetch) saveBulk(marked);
+          else if (autosaveOn) {
+            marked.forEach(function (row) {
+              var present = row.querySelector('input[type="radio"][value="PRESENT"]');
+              present.dispatchEvent(new Event("change", { bubbles: true }));
+            });
+          } else unsaved = true;
+        }
         refresh();
       });
     }
@@ -282,6 +292,70 @@
       return rows.some(function (row) {
         return row._dirty && (row !== swapping || row._sent !== row._seq);
       });
+    }
+    function showSaved(row) {
+      var target = statusOfRow(row);
+      target.textContent = "";
+      var saved = document.createElement("span");
+      saved.className = "erp-row-saved";
+      saved.textContent = "✓ Saved";
+      target.appendChild(saved);
+    }
+
+    // "Mark unanswered as present": one request for every bulk-marked row. Rows share the
+    // single-row bookkeeping (_seq/_sent/_dirty), so a row changed by hand meanwhile keeps its
+    // own newer save, and a failed row offers Retry, which saves that row on its own.
+    function saveBulk(marked) {
+      var form = roster.closest("form");
+      var token = form ? form.querySelector('input[name="csrfmiddlewaretoken"]') : null;
+      var body = new FormData();
+      marked.forEach(function (row) {
+        row._seq = (row._seq || 0) + 1;
+        row._sent = row._seq;
+        row._bulkSeq = row._seq;
+        row._dirty = true;
+        row.classList.remove("is-unsaved");
+        var note = row.querySelector('input[name^="note_"]');
+        if (note) note.value = ""; // Present never carries a note; the server clears it too
+        statusOfRow(row).textContent = "Saving…";
+        body.append("enrollment", row.getAttribute("data-erp-enrollment"));
+      });
+      fetch(bulkUrl, {
+        method: "POST",
+        body: body,
+        credentials: "same-origin",
+        headers: { "X-CSRFToken": token ? token.value : "", "X-Requested-With": "XMLHttpRequest" },
+      })
+        .then(function (response) {
+          return response.json().catch(function () { return {}; }).then(function (data) {
+            return { ok: response.ok, data: data };
+          });
+        }, function () {
+          return { ok: false, data: {} };
+        })
+        .then(function (result) {
+          marked.forEach(function (row) {
+            if (row._seq !== row._bulkSeq) {
+              // Changed by hand while the batch was in flight: the two requests may have
+              // reached the server in either order, so save the row's current choice again.
+              window.htmx.trigger(row, "change");
+              return;
+            }
+            row._dirty = false;
+            row.classList.toggle("is-unsaved", !result.ok);
+            if (result.ok) showSaved(row);
+            else showFailure(row, result.data.error || "Not saved.");
+          });
+          if (announce) {
+            announce.textContent = result.ok
+              ? "Saved " + marked.length + " student" + (marked.length === 1 ? "" : "s") + " as present."
+              : "Could not save. Use Retry or Save draft.";
+          }
+          if (!othersDirty()) refresh();
+          if (waitMessage && !rows.some(function (row) { return row._dirty; })) {
+            waitMessage.hidden = true;
+          }
+        });
     }
 
     if (window.htmx && roster.querySelector("[hx-post]")) {
