@@ -2,6 +2,13 @@
 (function () {
   "use strict";
 
+  // Forms built on FieldAccessibilityMixin: let the server check them, so errors arrive in the
+  // linked summary with aria-invalid and focus instead of a browser pop-up. Without JS the
+  // browser's own checks still run first, and the server still checks everything.
+  document.querySelectorAll("form").forEach(function (form) {
+    if (form.querySelector("[data-erp-validate=server]")) form.noValidate = true;
+  });
+
   // Show/hide password: buttons start hidden so no-JS users never see a dead control.
   document.querySelectorAll("[data-erp-toggle-password]").forEach(function (button) {
     var input = document.getElementById(button.getAttribute("aria-controls"));
