@@ -39,6 +39,11 @@ class PasswordChangeView(auth_views.PasswordChangeView):
             if isinstance(v, password_validation.MinimumLengthValidator)
         ]
         context["password_min_length"] = max(lengths, default=0)
+        # After a rejected POST, focus starts on the first invalid input (the template sets autofocus).
+        form = context["form"]
+        context["first_invalid"] = next(
+            (name for name in form.fields if form.is_bound and name in form.errors), None
+        )
         return context
 
     def form_valid(self, form):
