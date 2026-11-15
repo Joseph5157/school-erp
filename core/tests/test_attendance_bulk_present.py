@@ -65,6 +65,15 @@ class BulkPresentTests(Phase4Fixture, TestCase):
         self.bulk(self.asha)
         self.assertNotIn(self.mina.pk, self.statuses())
 
+    def test_an_already_saved_absent_row_not_in_the_batch_is_untouched(self):
+        register = self.register()
+        register.save_draft_entry(
+            enrollment=self.mina, status=AttendanceStatus.ABSENT, absence_note="Fever"
+        )
+        self.assertEqual(self.bulk(self.asha, self.ravi).status_code, 200)
+        entry = register.entries.get(academic_enrollment=self.mina)
+        self.assertEqual((entry.status, entry.absence_note), (AttendanceStatus.ABSENT, "Fever"))
+
     def test_an_absent_note_is_cleared_when_the_row_becomes_present(self):
         register = self.register()
         register.save_draft_entry(
