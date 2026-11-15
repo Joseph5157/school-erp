@@ -23,6 +23,7 @@
         {% csrf_token %}
         {% include "core/_announcement_hidden.html" %}
         <input type="hidden" name="confirm" value="1">
+        {% if one_time_token %}<input type="hidden" name="one_time_token" value="{{ one_time_token }}">{% endif %}
         <button type="submit" class="btn btn-primary" data-erp-once>Publish notice</button>
     </form>
     <form method="post" action="{% url 'core:announcement-create' %}">

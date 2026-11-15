@@ -1,7 +1,8 @@
-"""Stop a refresh from repeating a form that issues a password.
+"""Stop a refresh or Back from repeating a form that must happen once.
 
 The page holds a token, and the session remembers it until the form is used. Repeating the POST
-sends a token that is no longer current, so the view refuses it instead of issuing a new password.
+sends a token that is no longer current, so the view refuses it instead of doing it again
+(issuing a new password, publishing a notice to families a second time).
 
 This guards against accidents, not attackers: CSRF protection and permissions do that. A POST
 with no token is therefore allowed, so a page opened just before a deploy still works. Only the
@@ -13,12 +14,12 @@ import secrets
 from django.utils.crypto import constant_time_compare
 
 FIELD = "one_time_token"
-_SESSION_KEY = "one_time_forms"
+SESSION_KEY = "one_time_forms"
 
 
 def token_for(request, purpose):
     """The current token for `purpose`, for rendering into the form."""
-    tokens = request.session.setdefault(_SESSION_KEY, {})
+    tokens = request.session.setdefault(SESSION_KEY, {})
     if purpose not in tokens:
         tokens[purpose] = secrets.token_urlsafe(16)
         request.session.modified = True
@@ -30,7 +31,7 @@ def is_repeat(request, purpose):
     submitted = request.POST.get(FIELD)
     if not submitted:
         return False
-    tokens = request.session.get(_SESSION_KEY, {})
+    tokens = request.session.get(SESSION_KEY, {})
     current = tokens.get(purpose)
     if current is None or not constant_time_compare(current, submitted):
         return True
