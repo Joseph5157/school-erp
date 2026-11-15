@@ -1,0 +1,3 @@
+{# Guardian Portal brand + desktop nav. Shared by portal/base.html and base.html (guardian account pages). #}
+<a class="erp-brand" href="{% url 'portal:home' %}">{% include "partials/_brand_mark.html" %}Guardian Portal</a>
+{% include "portal/_portal_nav.html" with nav_class="erp-portal-nav d-none d-lg-flex" %}

@@ -14,6 +14,7 @@ from core.portal import (
     attendance_month,
     attendance_years,
     child_summaries,
+    default_nav_grant,
     parse_attendance_month,
     portal_children,
     report_card_groups,
@@ -40,7 +41,7 @@ def _context(request, switch_route="portal:child", **extra):
     children = portal_children(request.user)
     grant = extra.get("grant")
     if grant is None:
-        grant = next((item["grant"] for item in children if item["visible"]), None)
+        grant = default_nav_grant(children)
     visible = [item for item in children if item["visible"]]
     return {
         "children": children,

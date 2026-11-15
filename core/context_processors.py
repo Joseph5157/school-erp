@@ -11,7 +11,7 @@ from core.breadcrumbs import breadcrumb_context
 from core.models import AcademicYear, School, SchoolLogo, business_today
 from core.nav_badges import queue_counts
 from core.navigation import current_area, office_nav, teacher_tabs
-from core.portal import portal_children
+from core.portal import default_nav_grant, portal_children
 
 # Account pages a guardian reaches from the portal's account menu. For a guardian-only
 # user they keep the Guardian Portal header and tab bar, so they never feel like leaving.
@@ -28,8 +28,7 @@ def _guardian_shell(user, area, url_name):
         return {}
     if getattr(user, "must_change_password", False):
         return {}
-    grant = next((c["grant"] for c in portal_children(user) if c["visible"]), None)
-    return {"guardian_shell": True, "nav_grant": grant}
+    return {"guardian_shell": True, "nav_grant": default_nav_grant(portal_children(user))}
 
 
 def _brand_logo(user, school):

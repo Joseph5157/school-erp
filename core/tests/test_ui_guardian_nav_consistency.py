@@ -11,9 +11,10 @@
 import re
 from pathlib import Path
 
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
+from core.portal import default_nav_grant
 from core.tests.test_phase6_portal_shell import PortalFixture
 from core.tests.test_phase7_announcements import AnnouncementFixture
 from core.tests.test_ui_guardian_u4_3b import CardFixture
@@ -152,3 +153,17 @@ class AccountPagesKeepPortalShellTests(PortalFixture, TestCase):
                 self.assertNotContains(page, "Guardian Portal")
                 self.assertNotContains(page, 'class="erp-tabbar erp-tabbar--icons d-lg-none"')
                 self.assertNotContains(page, TITLE)
+
+
+class DefaultNavGrantTests(SimpleTestCase):
+    """Portal pages and guardian account pages pick the default tab child the same way."""
+
+    def test_first_visible_child_is_chosen(self):
+        children = [{"grant": "under-review", "visible": False},
+                    {"grant": "asha", "visible": True},
+                    {"grant": "ravi", "visible": True}]
+        self.assertEqual(default_nav_grant(children), "asha")
+
+    def test_no_visible_child_gives_none(self):
+        self.assertIsNone(default_nav_grant([{"grant": "x", "visible": False}]))
+        self.assertIsNone(default_nav_grant([]))

@@ -390,7 +390,7 @@ body.erp { min-height: 100vh; }
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 .erp-tabbar ul { display: flex; margin: 0; padding: 0; list-style: none; }
-.erp-tabbar li { flex: 1; }
+.erp-tabbar li { flex: 1; min-width: 0; } /* equal shares even when a label is long */
 .erp-tabbar a {
   display: flex; align-items: center; justify-content: center; text-align: center;
   min-height: var(--erp-tabbar-h); padding: .25rem; font-size: .8rem; line-height: 1.2;
