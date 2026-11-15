@@ -99,7 +99,9 @@ class ListTests(AssessmentFixture, TestCase):
         self.assertIn('role="region" aria-label="Assessments for 2026-27" tabindex="0"', page)
         self.assertIn("<caption", page)
         self.assertEqual(
-            [re.sub(r"<[^>]+>|\s+", "", h) for h in re.findall(r'<th scope="col"[^>]*>(.*?)</th>', page, re.S)],
+            # The sort arrow is a decorative aria-hidden span, not part of the column name.
+            [re.sub(r'<span[^>]*aria-hidden="true"[^>]*>.*?</span>|<[^>]+>|\s+', "", h)
+             for h in re.findall(r'<th scope="col"[^>]*>(.*?)</th>', page, re.S)],
             ["Assessment", "Status", "Subject", "Section", "Date", "Term", "Max", "Pass"],
         )
         self.assertRegex(page, r"erp-status--draft[^>]*><span[^>]*>Status: </span>Draft")

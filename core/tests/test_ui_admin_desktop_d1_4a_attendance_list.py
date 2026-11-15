@@ -77,7 +77,9 @@ class StructureTests(AttendanceListFixture, TestCase):
         content = response.content.decode()
         self.assertIn('<div class="erp-panel">\n<div class="erp-table-scroll" role="region" '
                       'aria-label="Attendance registers" tabindex="0">', content)
-        headers = re.findall(r'<th scope="col"[^>]*>\s*(?:<a [^>]*>)?([^<\s][^<]*?)(?:</a>)?\s*</th>',
+        # The optional span is the decorative (aria-hidden) sort arrow on the sorted column.
+        headers = re.findall(r'<th scope="col"[^>]*>\s*(?:<a [^>]*>)?([^<\s][^<]*?)'
+                             r'(?:<span class="erp-sort-arrow"[^>]*>[^<]*</span>)?(?:</a>)?\s*</th>',
                              content.split('aria-label="Attendance registers"')[1])
         self.assertEqual(headers, ["Date", "Academic year", "Class/Grade", "Section", "Status", "Entries"])
         self.assertContains(response, "Submitted")

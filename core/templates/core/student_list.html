@@ -50,14 +50,7 @@
     {% endfor %}
 </nav>
 {% if table.paginator.count %}
-<nav class="erp-card-sort d-md-none d-print-none" aria-label="Sort students">
-    <span class="erp-card-sort-label" aria-hidden="true">Sort by</span>
-    {% for header in table.headers %}{% if header.sortable %}
-    <a href="{{ header.url }}"{% if header.aria_sort %} aria-current="true"{% endif %}>
-        {{ header.label }}{% if header.aria_sort == "ascending" %} <span aria-hidden="true">&uarr;</span><span class="visually-hidden">, ascending</span>{% elif header.aria_sort == "descending" %} <span aria-hidden="true">&darr;</span><span class="visually-hidden">, descending</span>{% endif %}
-    </a>
-    {% endif %}{% endfor %}
-</nav>
+{% include "partials/_card_sort.html" with table=table label="Sort students" only %}
 {% endif %}
 {# A4 portrait is narrower than the md breakpoint, so printing must pick the table explicitly. #}
 <div class="d-none d-md-block d-print-block">
@@ -68,7 +61,7 @@
     <tbody>
         {% for student in table.page %}
         <tr>
-            <td>
+            <th scope="row">
                 <div class="erp-student-name">
                     <span class="erp-initials" aria-hidden="true">{{ student.full_name|slice:":1"|upper }}</span>
                     <span class="erp-student-name-copy">
@@ -76,7 +69,7 @@
                         {% if student.admission_number %}<span class="erp-student-admission">{{ student.admission_number }}</span>{% endif %}
                     </span>
                 </div>
-            </td>
+            </th>
             <td>{{ student.current_class|default:"-" }}</td>
             <td>{{ student.current_section|default:"-" }}</td>
             {% if can_see_guardians %}<td>{% for link in student.guardian_rows %}<div>{{ link.guardian.full_name }} <span class="text-muted">({{ link.get_relationship_type_display }})</span></div>{% empty %}-{% endfor %}</td>{% endif %}

@@ -28,14 +28,7 @@
     </div>
 </form>
 {% if table.paginator.count %}
-<nav class="erp-card-sort d-md-none d-print-none" aria-label="Sort teachers">
-    <span class="erp-card-sort-label" aria-hidden="true">Sort by</span>
-    {% for header in table.headers %}{% if header.sortable %}
-    <a href="{{ header.url }}"{% if header.aria_sort %} aria-current="true"{% endif %}>
-        {{ header.label }}{% if header.aria_sort == "ascending" %} <span aria-hidden="true">&uarr;</span><span class="visually-hidden">, ascending</span>{% elif header.aria_sort == "descending" %} <span aria-hidden="true">&darr;</span><span class="visually-hidden">, descending</span>{% endif %}
-    </a>
-    {% endif %}{% endfor %}
-</nav>
+{% include "partials/_card_sort.html" with table=table label="Sort teachers" only %}
 {% endif %}
 {# A4 portrait is narrower than the md breakpoint, so printing must pick the table explicitly. #}
 <div class="d-none d-md-block d-print-block">
@@ -46,7 +39,7 @@
     <tbody>
         {% for teacher in table.page %}
         <tr>
-            <td><a class="erp-row-link" href="{% url 'core:teacher-detail' teacher.pk %}">{{ teacher.get_full_name|default:teacher.username }}</a></td>
+            <th scope="row"><a class="erp-row-link" href="{% url 'core:teacher-detail' teacher.pk %}">{{ teacher.get_full_name|default:teacher.username }}</a></th>
             <td>{{ teacher.username }}</td>
             <td>{{ teacher.email|default:"-" }}</td>
             <td>{% if teacher.is_active %}{% include "partials/_status_badge.html" with label="Active" tone="active" only %}{% else %}{% include "partials/_status_badge.html" with label="Inactive" tone="inactive" only %}{% endif %}</td>
