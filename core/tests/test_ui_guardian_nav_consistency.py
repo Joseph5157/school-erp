@@ -43,8 +43,17 @@ class TabPageTests(PortalFixture, TestCase):
             "report-cards": reverse("portal:report-cards", args=[g]),
         }
 
+    def test_home_has_no_visible_title_but_keeps_a_page_heading(self):
+        html = self.portal.get(reverse("portal:home")).content.decode()
+        self.assertIn('<h1 class="visually-hidden">Home</h1>', html)
+        self.assertNotIn(TITLE, html)
+        self.assertNotIn("Your students", html)
+        self.assertNotIn("the latest for your children", html)
+
     def test_every_tab_page_uses_the_shared_title_style(self):
         for name, url in self.tab_urls().items():
+            if name == "home":
+                continue  # Home has no visible title (see the test above)
             with self.subTest(page=name):
                 html = self.portal.get(url).content.decode()
                 self.assertEqual(html.count(TITLE), 1)

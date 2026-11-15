@@ -1,10 +1,8 @@
 {% extends "portal/base.html" %}
 {% block title %}Home{% endblock %}
 {% block content %}
-<header class="erp-child-head">
-    <h1 class="erp-child-title">Your students</h1>
-    <p class="erp-child-meta">Here’s the latest for your children.</p>
-</header>
+{# No visible title: the children's cards start the page. Screen readers still get a page heading. #}
+<h1 class="visually-hidden">Home</h1>
 {% if children %}
 {% if summaries %}
 <div class="erp-child-grid">
