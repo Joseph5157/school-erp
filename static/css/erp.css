@@ -1506,8 +1506,8 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
 
 .erp-sort-link { color: inherit; text-decoration: none; display: inline-flex; align-items: center; min-height: 2.75rem; }
 .erp-sort-link:hover { text-decoration: underline; }
-th[aria-sort="ascending"] .erp-sort-link::after { content: " \25B2"; font-size: var(--erp-text-xs); }
-th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size: var(--erp-text-xs); }
+/* Decorative: the th's aria-sort already tells screen readers the direction. */
+.erp-sort-arrow { margin-inline-start: .25em; font-size: var(--erp-text-xs); }
 .erp-table-footer { display: flex; flex-wrap: wrap; gap: var(--erp-space-3); align-items: center; justify-content: space-between; margin-top: var(--erp-space-3); }
 .erp-table-count { margin: 0; color: var(--erp-ink-soft); font-size: var(--erp-text-sm); }
 .erp-pagination ul { display: flex; flex-wrap: wrap; gap: var(--erp-space-1); list-style: none; margin: 0; padding: 0; }
@@ -1817,10 +1817,12 @@ th[aria-sort="descending"] .erp-sort-link::after { content: " \25BC"; font-size:
 }
 .erp-panel .table > tbody td, .erp-panel .table > tbody th { padding: var(--erp-table-pad-y) var(--erp-table-pad-x); vertical-align: middle; border-color: var(--erp-rule); }
 .erp-panel .table > tbody > tr:last-child > * { border-bottom: 0; }
+/* The name cell is the row header for screen readers; it keeps the look of a normal cell. */
+.erp-rows-link > tbody th[scope="row"] { font-weight: inherit; text-align: start; }
 /* Hover only where a pointer can hover; on touch a tapped row would stay tinted. */
 @media (hover: hover) { .erp-panel .table > tbody > tr:hover > * { background: var(--erp-paper); } }
 .erp-panel .table > tbody > tr.table-warning > * { background: var(--erp-warn-wash); }
-.erp-panel .erp-sort-link { min-height: 0; }
+.erp-panel .erp-sort-link { min-height: 1.5rem; }
 .erp-panel .erp-timetable thead th:first-child,
 .erp-panel .erp-timetable tbody th[scope="row"] { background: var(--erp-paper); }
 /* Academic Years (print table): name, dates and Saturdays never break mid-value. */

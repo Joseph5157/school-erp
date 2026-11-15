@@ -15,6 +15,7 @@
     </div>
 </form>
 {% if perms.core.view_guardianaccessreview %}<p class="small"><a href="{% url 'core:guardian-access-reviews' %}">Guardian access reviews</a>{% if perms.accounts.clear_login_lockout %} &middot; <a href="{% url 'core:login-lockouts' %}">Sign-in lockouts</a>{% endif %}</p>{% endif %}
+{% if table.paginator.count %}{% include "partials/_card_sort.html" with table=table label="Sort guardians" only %}{% endif %}
 {# A4 portrait is narrower than the md breakpoint, so printing must pick the table explicitly. #}
 {# With no rows the one empty message lives in the table panel, shown at every width. #}
 <div{% if table.paginator.count %} class="d-none d-md-block d-print-block"{% endif %}>
@@ -25,7 +26,7 @@
     <tbody>
         {% for guardian in guardians %}
         <tr>
-            <td><a class="erp-row-link" href="{% url 'core:guardian-detail' guardian.pk %}">{{ guardian.full_name }}</a></td>
+            <th scope="row"><a class="erp-row-link" href="{% url 'core:guardian-detail' guardian.pk %}">{{ guardian.full_name }}</a></th>
             <td>{% for link in guardian.child_links %}<div><span class="text-muted">{% include "core/_relationship_of.html" with link=link only %}</span> <a href="{% url 'core:student-detail' link.student.pk %}">{{ link.student.full_name }}</a></div>{% endfor %}{% for link in guardian.applicant_child_links %}<div><span class="text-muted">{% include "core/_relationship_of.html" with link=link only %}</span> <a href="{% url 'core:applicant-detail' link.applicant.pk %}">{{ link.applicant.full_name }}</a> <span class="text-muted">&middot; applicant</span></div>{% endfor %}{% if not guardian.child_links and not guardian.applicant_child_links %}-{% endif %}</td>
             <td class="text-nowrap">{{ guardian.phone|default:"-" }}</td>
             <td>{{ guardian.email|default:"-" }}</td>

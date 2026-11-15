@@ -3,7 +3,7 @@
     <tr>
         {% for header in table.headers %}
         <th scope="col"{% if header.aria_sort %} aria-sort="{{ header.aria_sort }}"{% endif %}>
-            {% if header.sortable %}<a class="erp-sort-link" href="{{ header.url }}">{{ header.label }}</a>{% elif header.action %}<span class="visually-hidden">{{ header.label|default:"Actions" }}</span>{% else %}{{ header.label }}{% endif %}
+            {% if header.sortable %}<a class="erp-sort-link" href="{{ header.url }}">{{ header.label }}{% if header.aria_sort == "ascending" %}<span class="erp-sort-arrow" aria-hidden="true">&#9650;</span>{% elif header.aria_sort == "descending" %}<span class="erp-sort-arrow" aria-hidden="true">&#9660;</span>{% endif %}</a>{% elif header.action %}<span class="visually-hidden">{{ header.label|default:"Actions" }}</span>{% else %}{{ header.label }}{% endif %}
         </th>
         {% endfor %}
     </tr>
