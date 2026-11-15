@@ -61,10 +61,14 @@ class MarksEntryErrorTests(MarksFixture, TestCase):
         self.assertNotIn("form-error-summary", page)
         self.assertNotIn("autofocus", page)
 
-    def test_scores_are_checked_by_the_server(self):
-        # The shared marker makes erp.js send the form to the server instead of a browser pop-up.
+    def test_the_browser_keeps_checking_typed_scores(self):
+        # A broken number such as "1e" is sent as an empty value, so the browser's own check
+        # must stay on: without the shared marker erp.js leaves novalidate off this form.
         page = self.teacher.get(self.entry_url(self.test1)).content.decode()
-        self.assertIn('data-erp-validate="server"', input_tag(page, f"id_score_{self.asha.pk}"))
+        self.assertNotIn("data-erp-validate", page)
+        html = self.post_bad_rows().content.decode()
+        self.assertNotIn("data-erp-validate", html)
+        self.assertIn('aria-invalid="true"', input_tag(html, f"id_score_{self.asha.pk}"))
 
 
 class PasswordChangeErrorTests(TestCase):
