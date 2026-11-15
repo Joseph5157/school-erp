@@ -1,6 +1,7 @@
 """refresh_demo_school keeps the staging demo school's data current."""
 
 import datetime
+import io
 import os
 import tempfile
 from decimal import Decimal
@@ -341,3 +342,47 @@ class NoticeTests(TestCase):
         self.assertEqual(
             titles.index(second.title), (titles.index(first.title) + 1) % len(titles)
         )
+
+
+class RefreshCommandTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        seed_demo_school()
+        cls.year = AcademicYear.objects.get()
+
+    def test_command_refuses_without_flag(self):
+        with mock.patch.dict(os.environ, {"EVERCLASS_DEMO_SCHOOL": ""}):
+            with self.assertRaises(CommandError):
+                call_command("refresh_demo_school", stdout=io.StringIO())
+
+    def test_command_runs_and_is_idempotent(self):
+        today = last_instructional_day(self.year, business_today())
+        since = str(today - datetime.timedelta(days=14))
+        with mock.patch.dict(os.environ, {"EVERCLASS_DEMO_SCHOOL": "1"}):
+            call_command("refresh_demo_school", since=since, stdout=io.StringIO())
+            counts = (AttendanceRegister.objects.count(), Assessment.objects.count(),
+                      Announcement.objects.count())
+            call_command("refresh_demo_school", since=since, stdout=io.StringIO())
+        self.assertEqual(counts, (AttendanceRegister.objects.count(),
+                                  Assessment.objects.count(), Announcement.objects.count()))
+
+    def test_step_failure_does_not_stop_others(self):
+        with mock.patch.dict(os.environ, {"EVERCLASS_DEMO_SCHOOL": "1"}), \
+             mock.patch.object(demo_refresh, "backfill_attendance",
+                               side_effect=RuntimeError("boom")):
+            with self.assertRaisesMessage(CommandError, "backfill"):
+                call_command("refresh_demo_school", stdout=io.StringIO())
+        self.assertTrue(Assessment.objects.filter(status="DRAFT").exists())
+
+    def test_out_of_season_exits_cleanly(self):
+        end = self.year.end_date
+        before = (AttendanceRegister.objects.count(), Assessment.objects.count(),
+                  Announcement.objects.count())
+        with mock.patch.dict(os.environ, {"EVERCLASS_DEMO_SCHOOL": "1"}), \
+             mock.patch("core.management.commands.refresh_demo_school.business_today",
+                        return_value=end + datetime.timedelta(days=1)):
+            out = io.StringIO()
+            call_command("refresh_demo_school", stdout=out)
+        self.assertIn("outside", out.getvalue())
+        self.assertEqual(before, (AttendanceRegister.objects.count(),
+                                  Assessment.objects.count(), Announcement.objects.count()))
