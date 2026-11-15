@@ -315,7 +315,8 @@ body.erp { min-height: 100vh; }
 .erp-content {
   max-width: min(75rem, 100%);
   overflow-x: clip;
-  padding-block: 1rem 2.5rem;
+  /* Phones: 8px under the top bar (16px read as an empty strip above cards); desktop sets its own. */
+  padding-block: .5rem 2.5rem;
   padding-inline: 1rem;
 }
 

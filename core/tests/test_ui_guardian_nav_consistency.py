@@ -176,3 +176,13 @@ class DefaultNavGrantTests(SimpleTestCase):
     def test_no_visible_child_gives_none(self):
         self.assertIsNone(default_nav_grant([{"grant": "x", "visible": False}]))
         self.assertIsNone(default_nav_grant([]))
+
+
+class PhoneTopSpacingTests(SimpleTestCase):
+    """Phones: 8px between the top bar and the first content, on every area's pages."""
+
+    def test_content_top_padding_is_8px_on_phones(self):
+        css = (Path(__file__).resolve().parents[2] / "static" / "css" / "erp.css").read_text()
+        base = css[css.index(".erp-content {"):]
+        base = base[: base.index("}")]
+        self.assertIn("padding-block: .5rem 2.5rem;", base)
