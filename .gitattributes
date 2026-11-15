@@ -1,0 +1,2 @@
+# Vendored third-party files are kept byte-for-byte so their sha384 checksums stay valid.
+static/vendor/** -text

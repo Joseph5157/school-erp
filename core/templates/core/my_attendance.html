@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "base.html" %}{% load static %}
 {% block title %}Attendance {{ section }}{% endblock %}
 {% block tabbar_class %}{% if not capture_form.enrollments %}{{ block.super }}{% endif %}{% endblock %}
 {% block tabbar %}{% if not capture_form.enrollments %}{{ block.super }}{% endif %}{% endblock %}
@@ -47,4 +47,4 @@
     {% endif %}
 {% endif %}
 {% endblock %}
-{% block extra_js %}{% if autosave_url %}<script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.4/dist/htmx.min.js" integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+" crossorigin="anonymous" defer></script>{% endif %}{% endblock %}
+{% block extra_js %}{% if autosave_url %}<script src="{% static 'vendor/htmx/2.0.4/htmx.min.js' %}" defer></script>{% endif %}{% endblock %}

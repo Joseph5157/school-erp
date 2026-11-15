@@ -369,7 +369,7 @@ class TeacherAttendanceAutosaveTests(Phase4Fixture, TestCase):
         self.assertContains(page, "data-erp-autosave-announce")
         self.assertContains(page, "data-erp-wait-message")
         self.assertContains(page, "data-erp-mark-present")
-        self.assertContains(page, "htmx.org@2.0.4")
+        self.assertContains(page, "vendor/htmx/2.0.4/htmx.min.js")
         self.assertContains(page, "Save draft")
         self.assertContains(page, "Save and submit")
 
