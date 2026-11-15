@@ -8,6 +8,8 @@ instead of checking authentication/permissions independently.
 
 from django.contrib.auth.decorators import login_required, permission_required
 
+from accounts import request_cache
+
 
 def administrator_required(perm):
     """Require authentication and a specific Django permission.
@@ -31,11 +33,10 @@ def is_teacher(user):
     """An authenticated, active login in the Teachers group."""
     from core.models import TEACHERS_GROUP_NAME
 
-    return bool(
-        user
-        and user.is_authenticated
-        and user.is_active
-        and user.groups.filter(name=TEACHERS_GROUP_NAME).exists()
+    if not (user and user.is_authenticated and user.is_active):
+        return False
+    return request_cache.remember(
+        user, "teacher", lambda: user.groups.filter(name=TEACHERS_GROUP_NAME).exists()
     )
 
 
@@ -343,10 +344,12 @@ def guardian_account(user):
 
     if not (user and user.is_authenticated and user.is_active):
         return None
-    return (
-        GuardianAccount.objects.filter(user=user, revoked_at__isnull=True)
+    return request_cache.remember(
+        user,
+        "guardian_account",
+        lambda: GuardianAccount.objects.filter(user=user, revoked_at__isnull=True)
         .select_related("guardian")
-        .first()
+        .first(),
     )
 
 

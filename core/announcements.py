@@ -150,17 +150,24 @@ def preview_counts(*, audience, class_grade=None, section=None):
     return audience_counts(draft)
 
 
-def visible_announcements(user):
-    """Live notices whose audience includes one of the user's visible children."""
-    students = [item["student"] for item in portal_children(user) if item["visible"]]
+def visible_announcements(user, children=None):
+    """Live notices whose audience includes one of the user's visible children, newest first.
+
+    A QuerySet, so callers limit or filter it in the database: Home takes three, a notice page
+    one, the list a page at a time (audit 08, P8-06). `children` is portal_children(user)
+    when the caller already has it.
+    """
+    if children is None:
+        children = portal_children(user)
+    students = [item["student"] for item in children if item["visible"]]
     placements = list(
         _current_enrollments(core_models.business_today())
         .filter(student__in=students)
         .values_list("class_grade_id", "section_id")
     )
     if not placements:
-        return []
-    return list(
+        return Announcement.objects.none()
+    return (
         Announcement.objects.filter(withdrawn_at__isnull=True)
         .filter(
             Q(audience=Announcement.Audience.ALL)

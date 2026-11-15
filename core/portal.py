@@ -14,7 +14,9 @@ from core.authorization import guardian_grants
 
 
 def portal_children(user):
-    """[{grant, student, visible}] for the user's active grants, in two queries.
+    """[{grant, student, visible}] for the user's active grants, in three queries.
+
+    Portal views build this once per request and hand it on (audit 08, P8-03).
 
     `visible` is False while a date-based access review is pending (OD-8,
     fail closed): the Student is listed only as under review, with no data.
@@ -79,11 +81,14 @@ def attendance_years(student):
 
 
 def submitted_attendance(student, academic_year):
-    """Reportable (SUBMITTED, instructional, in-placement) entries and summary.
+    """Summary of the reportable (SUBMITTED, instructional, in-placement) entries.
 
-    Only the date and the current accepted status are exposed: never absence
-    notes, correction history, correctors or DRAFT registers (ADR 0014, P8).
-    Missing attendance is simply absent from the list, never shown as absent.
+    Counts of the current accepted status only: never absence notes, correction
+    history, correctors or DRAFT registers (ADR 0014, P8).
+    Missing attendance is never counted as absent.
+
+    Counted in the database: the page shows this summary and one month's calendar
+    (attendance_month), so the year's day-by-day list is never loaded (audit 08, P8-05).
     """
     from core import reports
     from core.models import AttendanceEntry
@@ -93,13 +98,7 @@ def submitted_attendance(student, academic_year):
             academic_enrollment__student=student, register__academic_year=academic_year
         )
     )
-    days = [
-        {"date": on_date, "status": status}
-        for on_date, status in entries.order_by("-register__date").values_list(
-            "register__date", "status"
-        )
-    ]
-    return {"days": days, "summary": reports.counts(entries)}
+    return {"summary": reports.counts(entries)}
 
 
 def default_attendance_month(academic_year, today):

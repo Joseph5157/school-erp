@@ -135,7 +135,7 @@ def teacher_tabs(url_name):
     return [_link(tab, url_name, parent) for tab in TEACHER_TABS]
 
 
-def current_area(request):
+def current_area(request, areas=None):
     """Which area the current page belongs to: "guardian", "teacher", "admin" or None.
 
     The requested URL only chooses between areas the signed-in user is entitled to
@@ -145,7 +145,7 @@ def current_area(request):
     user = getattr(request, "user", None)
     if not (user and user.is_authenticated):
         return None
-    keys = [key for key, _, _ in user_areas(user)]
+    keys = [key for key, _, _ in (user_areas(user) if areas is None else areas)]
     match = getattr(request, "resolver_match", None)
     if match is not None and match.namespace == "portal" and "guardian" in keys:
         return "guardian"

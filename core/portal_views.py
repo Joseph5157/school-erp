@@ -1,5 +1,6 @@
 """Guardian Portal views (ADR 0013, ADR 0014). Read-only."""
 
+from django.core.paginator import Paginator
 from django.http import Http404
 from django.shortcuts import render
 from django.urls import reverse
@@ -7,7 +8,7 @@ from django.views.decorators.http import require_safe
 
 from core import reports
 from core.announcements import visible_announcements
-from core.authorization import guardian_required, guardian_visible_grant
+from core.authorization import guardian_required
 from core.documents import report_card as report_card_documents
 from core.documents import service
 from core.portal import (
@@ -23,12 +24,27 @@ from core.portal import (
     visible_publications,
 )
 
+# Notices are listed a page at a time, so an older school's list stays quick on a phone.
+NOTICES_PER_PAGE = 20
+
+
+def _children(request):
+    """portal_children for this request, built once and reused by every helper (audit 08, P8-03)."""
+    if not hasattr(request, "_portal_children"):
+        request._portal_children = portal_children(request.user)
+    return request._portal_children
+
 
 def _visible_grant_or_404(request, public_id):
-    grant = guardian_visible_grant(request.user, public_id)
-    if grant is None:
-        raise Http404("No such student.")
-    return grant
+    """The grant behind a portal identifier, from this request's children list.
+
+    Same rule as authorization.guardian_visible_grant: an active grant of this guardian whose
+    access review is not pending (fails closed, OD-8); anything else is a 404.
+    """
+    for item in _children(request):
+        if item["grant"].public_id == public_id and item["visible"]:
+            return item["grant"]
+    raise Http404("No such student.")
 
 
 def _context(request, switch_route="portal:child", **extra):
@@ -38,7 +54,7 @@ def _context(request, switch_route="portal:child", **extra):
     ("same task, different child"); it only ever takes a grant id, so no
     publication or other per-child id is carried across children.
     """
-    children = portal_children(request.user)
+    children = _children(request)
     grant = extra.get("grant")
     if grant is None:
         grant = default_nav_grant(children)
@@ -58,14 +74,14 @@ def _context(request, switch_route="portal:child", **extra):
 @require_safe
 @guardian_required
 def home(request):
-    children = portal_children(request.user)
+    children = _children(request)
     return render(
         request,
         "portal/home.html",
         _context(
             request,
             children=children,
-            notices=visible_announcements(request.user)[:3],
+            notices=list(visible_announcements(request.user, children)[:3]),  # LIMIT 3 in SQL
             summaries=child_summaries(children),
         ),
     )
@@ -99,7 +115,7 @@ def attendance(request, public_id):
     for year in years:
         if year.start_date.isoformat() == requested:
             chosen = year
-    data = submitted_attendance(student, chosen) if chosen else {"days": [], "summary": None}
+    data = submitted_attendance(student, chosen) if chosen else {"summary": None}
     month = None
     if chosen:
         selected = parse_attendance_month(
@@ -164,15 +180,20 @@ def report_card_pdf(request, public_id, publication_id):
 @require_safe
 @guardian_required
 def notices(request):
+    page = Paginator(
+        visible_announcements(request.user, _children(request)), NOTICES_PER_PAGE
+    ).get_page(request.GET.get("page"))
     return render(request, "portal/notices.html",
-                  _context(request, notices=visible_announcements(request.user)))
+                  _context(request, notices=list(page.object_list), page=page))
 
 
 @require_safe
 @guardian_required
 def notice(request, notice_id):
-    item = next((a for a in visible_announcements(request.user) if a.public_id == notice_id),
-                None)
+    # The same audience rule as the list, narrowed to one notice in the database.
+    item = visible_announcements(request.user, _children(request)).filter(
+        public_id=notice_id
+    ).first()
     if item is None:
         raise Http404("No such notice.")
     return render(request, "portal/notice.html", _context(request, notice=item))
