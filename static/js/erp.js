@@ -724,11 +724,6 @@
       window.setTimeout(function () { button.disabled = true; }, 0);
     });
   });
-  // Coming Back to a page restored from the back/forward cache: the buttons are usable again.
-  window.addEventListener("pageshow", function (event) {
-    if (!event.persisted) return;
-    document.querySelectorAll("[data-erp-once]").forEach(function (button) { button.disabled = false; });
-  });
 })();
 
 // Child switcher: a native details element, so the links work without JS. This only adds

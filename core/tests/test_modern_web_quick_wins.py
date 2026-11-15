@@ -1,7 +1,7 @@
 """Small shared fixes from the modern-web audits (04, 05, 06, 07, 09).
 
 - Both page shells follow the OS text-size setting and declare the light-only colour scheme.
-- Marks "Save draft" is one-shot, and one-shot buttons come back on a back/forward-cache return.
+- Marks "Save draft" is one-shot (one-shot buttons stay disabled after Back, on purpose).
 - The marks Enter-to-next-student shortcut ignores Enter that confirms an IME composition.
 - The phone menu button reports open/closed as soon as the drawer starts moving.
 """
@@ -43,8 +43,10 @@ class ScriptTests(SimpleTestCase):
         self.assertIn('drawer.addEventListener("show.bs.offcanvas"', self.script)
         self.assertIn('drawer.addEventListener("hide.bs.offcanvas"', self.script)
 
-    def test_one_shot_buttons_reenable_after_back_forward_cache(self):
-        self.assertIn('window.addEventListener("pageshow"', self.script)
+    def test_one_shot_buttons_stay_disabled_after_back(self):
+        # Publishing a notice has no repeat guard, so a button restored by Back must not
+        # come alive again: that would let one click send a second notice to every guardian.
+        self.assertNotIn('addEventListener("pageshow"', self.script)
 
 
 class MarksSaveOnceTests(MarksFixture, TestCase):
