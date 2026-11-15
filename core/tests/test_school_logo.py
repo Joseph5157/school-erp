@@ -473,12 +473,12 @@ class LogoViewTests(LogoFixture, TestCase):
                 self.assertContains(page, 'class="erp-brand-logo"')
                 self.assertContains(page, f'{reverse("core:school-logo")}?v={version.pk}')
                 self.assertContains(page, 'alt="Sri Vidya School logo"')
-                self.assertContains(page, "School ERP</a>")
+                self.assertContains(page, "Everclass ERP</a>")
 
     def test_header_falls_back_to_text_without_a_logo(self):
         page = self.client_for(self.teacher).get(reverse("core:my-home"))
         self.assertNotContains(page, "erp-brand-logo")
-        self.assertContains(page, "School ERP</a>")
+        self.assertContains(page, "Everclass ERP</a>")
 
     def test_header_falls_back_to_text_after_removal(self):
         self.upload(self.admin_client)

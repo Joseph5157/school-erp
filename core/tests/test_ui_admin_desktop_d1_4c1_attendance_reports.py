@@ -285,7 +285,7 @@ class ReportsIndexTests(ReportsFixture, TestCase):
         content = re.sub(r"<svg class=\"erp-hamburger\".*?</svg>", "", content, flags=re.S)
         # And the desktop show/hide sidebar button's panel icon.
         content = re.sub(r"<svg class=\"erp-sidebar-icon\".*?</svg>", "", content, flags=re.S)
-        # And the School ERP mark in the top bar.
+        # And the Everclass ERP mark in the top bar.
         content = re.sub(r"<svg class=\"erp-brand-mark\".*?</svg>", "", content, flags=re.S)
         for banned in ("<canvas", "<svg", "erp-stat"):
             self.assertNotIn(banned, content)

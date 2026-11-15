@@ -419,7 +419,7 @@ class AlertPrivacyTests(NoNetworkMixin, TestCase):
 
     def test_the_alert_says_where_and_what(self):
         text = self.alert("/crash/plain/")
-        self.assertTrue(text.startswith("School ERP error\n"))
+        self.assertTrue(text.startswith("Everclass ERP error\n"))
         for expected in ("Instance: st-marys", "Time (UTC): ", "Status: 500",
                          "Request: GET /crash/plain/", "Exception: RuntimeError",
                          "crash_plain", "Railway logs"):
@@ -679,7 +679,7 @@ class CooldownUnitTests(SimpleTestCase):
 
 
 TEST_TEXT = (
-    "School ERP test alert\n\n"
+    "Everclass ERP test alert\n\n"
     "Instance: st-marys\n"
     "This is a test message from the sendtesttelegram command. "
     "Crash alerts for this installation will arrive in this chat.\n\n"

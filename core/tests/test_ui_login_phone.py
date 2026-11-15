@@ -23,7 +23,7 @@ class PhoneLoginTests(TestCase):
 
     def test_brand_mark_sits_beside_the_product_name(self):
         page = self.client.get(reverse("login")).content.decode()
-        self.assertLess(page.index('class="erp-brand-mark"'), page.index("School ERP</a>"))
+        self.assertLess(page.index('class="erp-brand-mark"'), page.index("Everclass ERP</a>"))
 
     def test_wording_is_kept(self):
         page = self.client.get(reverse("login"))

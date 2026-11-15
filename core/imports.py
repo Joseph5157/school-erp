@@ -834,7 +834,7 @@ def template_workbook():
     instructions = workbook.active
     instructions.title = "Instructions"
     lines = [
-        "School ERP bulk import",
+        "Everclass ERP bulk import",
         "",
         "Students sheet: one row per student. Required: Full name, Class, Section.",
         "Guardians are optional (up to two per student). If you fill in any cell for a "
