@@ -377,9 +377,9 @@ class TeacherAttendanceAutosaveTests(Phase4Fixture, TestCase):
         self.both()
         self.assertNotContains(self.teacher.get(self.url), "htmx")
 
-    def test_bulk_marked_rows_save_through_the_same_endpoint(self):
-        # "Mark unanswered as present" fires each row's change event, which posts the
-        # same fields as a manual choice; there is no separate bulk endpoint.
+    def test_present_rows_also_save_one_at_a_time(self):
+        # "Mark unanswered as present" now saves in one request (test_attendance_bulk_present);
+        # this single-row path stays as its fallback and for Retry.
         for enrollment in (self.asha, self.ravi):
             self.assertEqual(self.autosave(enrollment, "PRESENT").status_code, 200)
         statuses = dict(self.register().entries.values_list("academic_enrollment_id", "status"))

@@ -8,7 +8,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Exists, F, OuterRef, Prefetch, Q, Subquery
 from django.db.models.functions import Coalesce
-from django.http import Http404, HttpResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -1295,6 +1295,9 @@ def my_attendance(request, section_pk):
         context["capture_form"] = AttendanceCaptureForm(register=register)
         context["marked_count"] = register.entries.count()
         context["autosave_url"] = reverse("core:my-attendance-autosave", args=[section.pk])
+        context["bulk_present_url"] = reverse(
+            "core:my-attendance-autosave-present", args=[section.pk]
+        )
     return render(request, "core/my_attendance.html", context)
 
 
@@ -1433,6 +1436,50 @@ def my_attendance_autosave(request, section_pk):
     except ValidationError as error:
         return reply("error", enrollment, error.messages[0], 409)
     return reply("saved", enrollment, "Saved", 200)
+
+
+@teacher_required
+@require_POST
+def my_attendance_autosave_present(request, section_pk):
+    """erp.js: save every row "Mark unanswered as present" filled, in one request.
+
+    Same authorization, validation and `save_draft_entry` as the single-row
+    autosave; never submits. All rows save together or none do. Replies JSON:
+    `{"saved": [enrollment ids]}` or `{"error": message}`.
+    """
+    if request.headers.get("X-Requested-With") != "XMLHttpRequest":
+        return HttpResponse("Use the Save draft button.", status=400)
+    section = get_object_or_404(Section, pk=section_pk)
+    today = business_today()
+    register = AttendanceRegister.objects.filter(section=section, date=today).first()
+    _attendance_year(request.user, section, today, register)
+    if register is None:
+        raise Http404("No register for today.")
+    if register.is_submitted:
+        return JsonResponse({"error": _SUBMITTED_MESSAGE}, status=409)
+    wanted = list(dict.fromkeys(request.POST.getlist("enrollment")))
+    if not wanted:
+        return HttpResponse("No students to save.", status=400)
+    roster = AttendanceCaptureForm(register=register)
+    by_pk = {str(e.pk): e for e in roster.enrollments}
+    if any(pk not in by_pk for pk in wanted):
+        raise Http404("Not on today's roster for this Section.")
+    data = {}
+    for pk in wanted:
+        enrollment = by_pk[pk]
+        data[roster.field_name(enrollment)] = AttendanceStatus.PRESENT
+        data[roster.note_name(enrollment)] = ""
+    form = AttendanceCaptureForm(data, register=register)
+    if not form.is_valid():
+        errors = [message for field_errors in form.errors.values() for message in field_errors]
+        return JsonResponse({"error": errors[0]}, status=422)
+    try:
+        with transaction.atomic():
+            for row, status, note in form.statuses():
+                register.save_draft_entry(enrollment=row, status=status, absence_note=note)
+    except ValidationError as error:
+        return JsonResponse({"error": error.messages[0]}, status=409)
+    return JsonResponse({"saved": [by_pk[pk].pk for pk in wanted]})
 
 
 # --- Phase 5 Gate 4: teacher attendance views (ADR 0012 D9) ----------------

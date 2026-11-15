@@ -1,5 +1,6 @@
 from django.urls import reverse
 
+from core import models as core_models
 from core.academic_years import (
     current_academic_year,
     is_year_scoped_page,
@@ -8,7 +9,7 @@ from core.academic_years import (
 )
 from core.authorization import is_guardian, is_teacher, user_areas
 from core.breadcrumbs import breadcrumb_context
-from core.models import AcademicYear, School, SchoolLogo, business_today
+from core.models import AcademicYear, School, SchoolLogo
 from core.nav_badges import queue_counts
 from core.navigation import current_area, office_nav, teacher_tabs
 from core.portal import default_nav_grant, portal_children
@@ -87,14 +88,14 @@ def roles(request):
     }
     if area == "admin":
         trail = breadcrumb_context(match, user)
-        year = current_academic_year(business_today())
+        year = current_academic_year(core_models.business_today())
         selector = _year_selector(match, year)
         nav = office_nav(user, url_name, trail["nav_section"], queue_counts(user), year)
     else:
         trail = {"breadcrumbs": [], "nav_section": None}
         nav = []
         if area == "teacher":
-            year = current_academic_year(business_today())
+            year = current_academic_year(core_models.business_today())
     # Header context (UI-11): office and teacher areas only; the Guardian portal has its own shell.
     in_header_area = area in ("admin", "teacher")
     return {
