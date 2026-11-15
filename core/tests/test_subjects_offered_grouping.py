@@ -208,4 +208,4 @@ class GroupedPageTests(SchoolConfigurationListsFixture, TestCase):
             self.assertNotContains(response, absent)
 
     def test_editor_gets_the_drag_library(self):
-        self.assertContains(self.page(), "sortablejs@1.15.6")
+        self.assertContains(self.page(), "vendor/sortablejs/1.15.6/Sortable.min.js")

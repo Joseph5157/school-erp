@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "base.html" %}{% load static %}
 {% block title %}Classes/Grades{% endblock %}
 {% block content %}
 {% if perms.core.add_classgrade %}{% url 'core:class-grade-create' as create_url %}{% endif %}
@@ -78,4 +78,4 @@
 {% endif %}
 {% endwith %}
 {% endblock %}
-{% block extra_js %}{% if perms.core.change_classgrade %}<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js" integrity="sha384-HZZ/fukV+9G8gwTNjN7zQDG0Sp7MsZy5DDN6VfY3Be7V9dvQpEpR2jF2HlyFUUjU" crossorigin="anonymous" defer></script>{% endif %}{% endblock %}
+{% block extra_js %}{% if perms.core.change_classgrade %}<script src="{% static 'vendor/sortablejs/1.15.6/Sortable.min.js' %}" defer></script>{% endif %}{% endblock %}

@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "base.html" %}{% load static %}
 {% block title %}Subjects offered - {{ academic_year.name }}{% endblock %}
 {% block content %}
 {% if perms.core.add_academicsubjectoffering %}{% url 'core:offering-create' academic_year.pk as create_url %}{% endif %}
@@ -80,4 +80,4 @@
 </ul>
 {% endif %}
 {% endblock %}
-{% block extra_js %}{% if perms.core.change_academicsubjectoffering %}<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js" integrity="sha384-HZZ/fukV+9G8gwTNjN7zQDG0Sp7MsZy5DDN6VfY3Be7V9dvQpEpR2jF2HlyFUUjU" crossorigin="anonymous" defer></script>{% endif %}{% endblock %}
+{% block extra_js %}{% if perms.core.change_academicsubjectoffering %}<script src="{% static 'vendor/sortablejs/1.15.6/Sortable.min.js' %}" defer></script>{% endif %}{% endblock %}
