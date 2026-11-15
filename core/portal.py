@@ -31,6 +31,12 @@ def portal_children(user):
     ]
 
 
+def default_nav_grant(children):
+    """The child the portal's Overview/Attendance/Reports tabs point at when the page
+    names no child: the first visible one (alphabetical, as `portal_children` orders)."""
+    return next((item["grant"] for item in children if item["visible"]), None)
+
+
 def student_profile(student, on_date=None):
     """Exactly the P7 fields, nothing else (ADR 0014).
 

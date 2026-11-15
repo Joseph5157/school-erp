@@ -19,7 +19,7 @@ from core.tests.test_phase6_access_boundary import METHOD
 from core.tests.test_ui_guardian_u4_3b import CardFixture
 
 NAV = re.compile(r'<nav class="(?:erp-portal-nav|erp-tabbar)[^"]*".*?</nav>', re.S)
-CURRENT = re.compile(r'<a href="[^"]*" class="active" aria-current="page">(.*?)</a>')
+CURRENT = re.compile(r'<a href="[^"]*" class="active" aria-current="page">(.*?)</a>', re.S)
 
 
 class PortalFixture(CardFixture):
@@ -105,7 +105,9 @@ class NavigationConsistencyTests(PortalFixture, TestCase):
              ("portal:report-cards", "Report cards", "Reports"))
 
     def current(self, page):
-        return CURRENT.findall("".join(self.navs(page)))
+        # The phone tab bar wraps its label in a span after an icon; compare the visible text.
+        return [re.sub(r"<[^>]+>", "", item).strip()
+                for item in CURRENT.findall("".join(self.navs(page)))]
 
     def test_nav_follows_the_selected_child_on_every_child_page(self):
         card = self.asha_card()

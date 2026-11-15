@@ -3,7 +3,7 @@
 {% block content %}
 <header class="erp-child-head">
     <h1 class="erp-child-title">Report cards</h1>
-    <p class="erp-child-meta"><a href="{% url 'portal:child' grant.public_id %}">{{ student.full_name }}</a></p>
+    <p class="erp-child-meta">{{ student.full_name }}</p>
 </header>
 {% if publications %}
 <ul class="erp-rc-list">

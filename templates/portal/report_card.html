@@ -4,7 +4,7 @@
 <header class="erp-child-head erp-rc-head">
     <a class="erp-back" href="{% url 'portal:report-cards' grant.public_id %}">&larr; Report cards</a>
     <h1 class="erp-child-title">{{ pub.term_label }} report card</h1>
-    <p class="erp-child-meta"><a href="{% url 'portal:child' grant.public_id %}">{{ student.full_name }}</a> &middot; {{ pub.class_grade_label }}, Section {{ pub.section_label }} &middot; {{ pub.academic_year_label }}</p>
+    <p class="erp-child-meta">{{ student.full_name }} &middot; {{ pub.class_grade_label }}, Section {{ pub.section_label }} &middot; {{ pub.academic_year_label }}</p>
     <p class="erp-rc-actions"><a class="btn btn-outline-primary erp-rc-pdf" href="{% url 'portal:report-card-pdf' grant.public_id pub.public_id %}" aria-label="Download PDF: {{ pub.term_label }} report card for {{ student.full_name }}">Download PDF</a></p>
 </header>
 {% if pub.is_partial %}<div class="alert alert-secondary" role="note">Some results for this Term are not yet published.</div>{% endif %}

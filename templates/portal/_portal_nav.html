@@ -1,12 +1,12 @@
-{% comment %}One nav list reused by the desktop header nav and the mobile tab bar (`mobile` shortens "Report cards" to fit five tabs on a phone).{% endcomment %}
+{% comment %}One nav list reused by the desktop header nav and the mobile tab bar (`mobile` adds an icon above each label and shortens "Report cards" to fit five tabs on a phone).{% endcomment %}
 <nav class="{{ nav_class }}" aria-label="Guardian Portal">
     <ul>
-        <li><a href="{% url 'portal:home' %}"{% if here == 'home' %} class="active" aria-current="page"{% endif %}>Home</a></li>
-        <li><a href="{% url 'portal:notices' %}"{% if here == 'notices' or here == 'notice' %} class="active" aria-current="page"{% endif %}>Notices</a></li>
+        <li><a href="{% url 'portal:home' %}"{% if here == 'home' %} class="active" aria-current="page"{% endif %}>{% if mobile %}{% include "partials/_tab_icon.html" with name="home" %}<span class="erp-tab-label">Home</span>{% else %}Home{% endif %}</a></li>
+        <li><a href="{% url 'portal:notices' %}"{% if here == 'notices' or here == 'notice' %} class="active" aria-current="page"{% endif %}>{% if mobile %}{% include "partials/_tab_icon.html" with name="notices" %}<span class="erp-tab-label">Notices</span>{% else %}Notices{% endif %}</a></li>
         {% if nav_grant %}
-        <li><a href="{% url 'portal:child' nav_grant.public_id %}"{% if here == 'child' %} class="active" aria-current="page"{% endif %}>Overview</a></li>
-        <li><a href="{% url 'portal:attendance' nav_grant.public_id %}"{% if here == 'attendance' %} class="active" aria-current="page"{% endif %}>Attendance</a></li>
-        <li><a href="{% url 'portal:report-cards' nav_grant.public_id %}"{% if here == 'report-cards' or here == 'report-card' %} class="active" aria-current="page"{% endif %}>{% if mobile %}Reports{% else %}Report cards{% endif %}</a></li>
+        <li><a href="{% url 'portal:child' nav_grant.public_id %}"{% if here == 'child' %} class="active" aria-current="page"{% endif %}>{% if mobile %}{% include "partials/_tab_icon.html" with name="overview" %}<span class="erp-tab-label">Overview</span>{% else %}Overview{% endif %}</a></li>
+        <li><a href="{% url 'portal:attendance' nav_grant.public_id %}"{% if here == 'attendance' %} class="active" aria-current="page"{% endif %}>{% if mobile %}{% include "partials/_tab_icon.html" with name="attendance" %}<span class="erp-tab-label">Attendance</span>{% else %}Attendance{% endif %}</a></li>
+        <li><a href="{% url 'portal:report-cards' nav_grant.public_id %}"{% if here == 'report-cards' or here == 'report-card' %} class="active" aria-current="page"{% endif %}>{% if mobile %}{% include "partials/_tab_icon.html" with name="results" %}<span class="erp-tab-label">Reports</span>{% else %}Report cards{% endif %}</a></li>
         {% endif %}
     </ul>
 </nav>

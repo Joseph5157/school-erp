@@ -11,6 +11,24 @@ from core.breadcrumbs import breadcrumb_context
 from core.models import AcademicYear, School, SchoolLogo, business_today
 from core.nav_badges import queue_counts
 from core.navigation import current_area, office_nav, teacher_tabs
+from core.portal import default_nav_grant, portal_children
+
+# Account pages a guardian reaches from the portal's account menu. For a guardian-only
+# user they keep the Guardian Portal header and tab bar, so they never feel like leaving.
+GUARDIAN_SHELL_PAGES = frozenset({"password_change", "pwa-install"})
+
+
+def _guardian_shell(user, area, url_name):
+    """Tab-bar context for a guardian's account pages, or {} everywhere else.
+
+    Portal views set their own `nav_grant`; this only covers the shared account pages.
+    A forced password change gets no tabs: there is nowhere else to go until it is done.
+    """
+    if area != "guardian" or url_name not in GUARDIAN_SHELL_PAGES:
+        return {}
+    if getattr(user, "must_change_password", False):
+        return {}
+    return {"guardian_shell": True, "nav_grant": default_nav_grant(portal_children(user))}
 
 
 def _brand_logo(user, school):
@@ -93,4 +111,5 @@ def roles(request):
         "school_name": (school.name if school is not None else "") if in_header_area else "",
         "current_year_name": (year.name if year is not None else "") if in_header_area else "",
         **selector,
+        **_guardian_shell(user, area, url_name),
     }

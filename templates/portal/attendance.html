@@ -3,7 +3,7 @@
 {% block content %}
 <header class="erp-child-head">
     <h1 class="erp-child-title">Attendance</h1>
-    <p class="erp-child-meta"><a href="{% url 'portal:child' grant.public_id %}">{{ student.full_name }}</a>{% if year %} &middot; {{ year.name }}{% endif %}</p>
+    <p class="erp-child-meta">{{ student.full_name }}{% if year %} &middot; {{ year.name }}{% endif %}</p>
 </header>
 {% if years|length > 1 %}
 <form method="get" class="erp-att-years">
