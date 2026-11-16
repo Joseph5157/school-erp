@@ -475,6 +475,18 @@ class LogoViewTests(LogoFixture, TestCase):
                 self.assertContains(page, 'alt="Sri Vidya School logo"')
                 self.assertContains(page, "Everclass ERP</a>")
 
+    def test_header_keeps_the_everclass_mark_beside_the_school_logo(self):
+        # The school's logo leads; the product mark stays visible next to the product name.
+        self.upload(self.admin_client)
+        for user in (self.admin, self.teacher):
+            with self.subTest(user=user.username):
+                landing = "core:my-home" if user == self.teacher else "core:school-detail"
+                html = self.client_for(user).get(reverse(landing)).content.decode()
+                brand = html[html.index('<a class="erp-brand"') :]
+                brand = brand[: brand.index("</a>")]
+                self.assertLess(brand.index('class="erp-brand-logo"'), brand.index('class="erp-brand-mark"'))
+                self.assertTrue(brand.endswith("Everclass ERP"))
+
     def test_header_falls_back_to_text_without_a_logo(self):
         page = self.client_for(self.teacher).get(reverse("core:my-home"))
         self.assertNotContains(page, "erp-brand-logo")
