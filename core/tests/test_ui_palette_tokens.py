@@ -6,7 +6,10 @@ from pathlib import Path
 from django.conf import settings
 from django.test import SimpleTestCase
 
-ACCENT = {"": "#1f6b52", "-strong": "#185842", "-wash": "#e3efe9"}
+# Everclass teal (docs/superpowers/specs/2026-11-16-everclass-logo-palette-design.md).
+ACCENT = {"": "#0e6b66", "-strong": "#115e59", "-wash": "#e0f2f1"}
+# Success stays green so "Present" and "Saved" still read as good next to teal buttons.
+OK = {"": "#1f6b52", "-strong": "#185842", "-wash": "#e3efe9"}
 SUFFIXES = ("", "-strong", "-wash")
 
 
@@ -47,11 +50,18 @@ class PaletteTokenTests(SimpleTestCase):
                 self.assertRegex(value, r"^#[0-9a-fA-F]{6}$")
                 self.assertNotIn("var(", value)
 
-    def test_brand_action_and_success_default_to_the_accent_values(self):
-        for family in ("brand", "action", "ok"):
+    def test_brand_and_action_follow_the_teal_accent_and_success_stays_green(self):
+        for family, expected in (("brand", ACCENT), ("action", ACCENT), ("ok", OK)):
             for suffix in SUFFIXES:
                 with self.subTest(token=f"--erp-{family}{suffix}"):
-                    self.assertEqual(self.resolve(f"--erp-{family}{suffix}"), ACCENT[suffix])
+                    self.assertEqual(self.resolve(f"--erp-{family}{suffix}"), expected[suffix])
+
+    def test_focus_and_bootstrap_rgb_follow_the_teal(self):
+        self.assertEqual(self.decls["--erp-focus-color"].strip().lower(), ACCENT[""])
+        self.assertEqual(self.decls["--erp-focus-ring"].replace(" ", ""), "000.2remrgba(14,107,102,.3)")
+        self.assertEqual(self.decls["--bs-link-color-rgb"].replace(" ", ""), "14,107,102")
+        css = (Path(settings.BASE_DIR) / "static" / "css" / "erp.css").read_text(encoding="utf-8")
+        self.assertNotIn("31, 107, 82, .25", css)  # the old green focus glow on checkboxes
 
     def test_accent_stays_a_plain_hex_for_existing_tests(self):
         for suffix in SUFFIXES:

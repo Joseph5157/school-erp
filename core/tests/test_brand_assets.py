@@ -46,6 +46,17 @@ class AppMarkTests(SimpleTestCase):
         self.assertIn(loop, (BRAND / "everclass-mark.svg").read_text(encoding="utf-8"))
 
 
+class TemplateColourTests(SimpleTestCase):
+    def test_no_template_uses_the_old_brand_green(self):
+        templates = Path(settings.BASE_DIR) / "templates"
+        offenders = [
+            str(path.relative_to(templates))
+            for path in templates.rglob("*.html")
+            if OLD_GREEN in path.read_text(encoding="utf-8").lower()
+        ]
+        self.assertEqual(offenders, [])
+
+
 class PwaIconTests(SimpleTestCase):
     @classmethod
     def setUpClass(cls):
