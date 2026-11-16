@@ -9,12 +9,14 @@ Not re-runnable: it refuses to run when any Announcement or timetable Period
 already exists.
 """
 
+import datetime
 import math
 from io import BytesIO
 
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
+from django.utils import timezone
 from PIL import Image, ImageDraw
 
 from core import announcements, school_logo
@@ -44,31 +46,36 @@ SCHOOL_PROFILE = {
     "principal_name": "Dr. Ramakrishna Murthy",
 }
 
+# (days ago, title, body). The demo runs all year, so no notice names a festival or a
+# term start date, and the dates are spread over the past month rather than all "today".
 NOTICES = [
     (
-        "Term 2 begins on Monday",
-        "Dear parents, classes for Term 2 resume on Monday at the usual time. "
-        "Students should come in the full school uniform and carry the Term 2 "
-        "timetable pasted in their diary. Please make sure all textbooks and "
-        "notebooks for the new term are ready.",
-    ),
-    (
-        "Parent-Teacher Meeting on Saturday",
-        "We invite you to meet your child's class teacher to discuss the Term 1 "
-        "report card. The meeting is on Saturday from 9:30 am to 12:30 pm in the "
-        "child's own classroom. Please carry the report card and the diary.",
-    ),
-    (
+        23,
         "Annual Day celebrations",
         "Our Annual Day will be held in the school auditorium next month at 5:00 pm. "
         "Students who take part in dance, drama and music will practise after school "
         "from next week. Parents are warmly invited to attend the programme.",
     ),
     (
-        "School closed for Dussehra",
-        "The school will remain closed for the Dussehra holidays. Classes resume on "
-        "the first working day after the holidays. Please make sure your child "
-        "completes the holiday homework given by the class teacher.",
+        16,
+        "Health check-up camp",
+        "A doctor from the local health centre will hold a free health check-up for all "
+        "students during school hours. Please tell the class teacher in the diary about "
+        "any allergy or regular medicine your child takes.",
+    ),
+    (
+        9,
+        "Unit tests this month",
+        "Unit tests for all subjects are held this month in the regular class periods. "
+        "There is no change to the timetable. Marks are shared on the parent portal "
+        "once the school publishes them.",
+    ),
+    (
+        2,
+        "Parent-Teacher Meeting on Saturday",
+        "We invite you to meet your child's class teacher to discuss your child's "
+        "progress. The meeting is on Saturday from 9:30 am to 12:30 pm in the "
+        "child's own classroom. Please carry the report card and the diary.",
     ),
 ]
 
@@ -232,8 +239,10 @@ class Command(BaseCommand):
         return created, possible
 
     def _announcements(self):
-        for title, body in NOTICES:
+        now = timezone.now()
+        for days_ago, title, body in NOTICES:
             announcements.publish(
-                title=title, body=body, audience=Announcement.Audience.ALL, actor=self.admin
+                title=title, body=body, audience=Announcement.Audience.ALL, actor=self.admin,
+                published_at=now - datetime.timedelta(days=days_ago),
             )
         return len(NOTICES)

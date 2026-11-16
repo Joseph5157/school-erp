@@ -26,7 +26,10 @@ WITHDRAWN_REASON = "Announcement withdrawn"
 logger = logging.getLogger(__name__)
 
 
-def publish(*, title, body, audience, class_grade=None, section=None, actor):
+def publish(*, title, body, audience, class_grade=None, section=None, actor,
+            published_at=None):
+    # published_at is only for seeding demo data with past dates; announcements are
+    # append-only, so the date has to be set here rather than changed after saving.
     announcement = Announcement(
         title=(title or "").strip(),
         body=(body or "").strip(),
@@ -34,6 +37,7 @@ def publish(*, title, body, audience, class_grade=None, section=None, actor):
         class_grade=class_grade if audience == Announcement.Audience.CLASS else None,
         section=section if audience == Announcement.Audience.SECTION else None,
         published_by=actor,
+        published_at=published_at or timezone.now(),
     )
     announcement.full_clean()
     announcement.save()
