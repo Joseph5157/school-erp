@@ -12,8 +12,8 @@ from django.core.exceptions import ValidationError
 from django.core.management.base import CommandError
 from django.db import transaction
 
-from core.management.commands.seed_demo import DEMO_ADMIN_USERNAME
 from core import announcements
+from core.management.commands.seed_demo import DEMO_ADMIN_USERNAME
 from core.models import (
     AcademicTerm,
     AcademicYear,
@@ -51,11 +51,11 @@ class PartialFailure(Exception):
         super().__init__(f"{len(errors)} failed, first: {errors[0]}")
 
 
-def _try(errors, label, work) -> bool:
-    """Run `work` in its own transaction; on error record it and return False."""
+def _try(errors, label, work, *args) -> bool:
+    """Run `work(*args)` in its own transaction; on error record it and return False."""
     try:
         with transaction.atomic():
-            return bool(work())
+            return bool(work(*args))
     except Exception as exc:  # one bad item must not block the rest
         errors.append(f"{label}: {exc!r}")
         return False
@@ -194,7 +194,7 @@ def backfill_attendance(year, today, fallback_actor, since: date | None = None) 
                 if section.pk in existing:
                     continue
                 if _try(errors, f"{day} {section}",
-                        lambda: _create_and_submit(year, section, day, fallback_actor)):
+                        _create_and_submit, year, section, day, fallback_actor):
                     created += 1
         day += datetime.timedelta(days=1)
     return _finish(created, errors)
@@ -218,7 +218,7 @@ def prepare_today(year, today, fallback_actor) -> int:
         if section.pk in demo_teacher_sections or section.pk in existing:
             continue
         if _try(errors, f"{today} {section}",
-                lambda: _create_and_submit(year, section, today, fallback_actor)):
+                _create_and_submit, year, section, today, fallback_actor):
             created += 1
     return _finish(created, errors)
 
@@ -278,7 +278,7 @@ def ensure_open_assessments(year, today: date) -> int:
     errors = []
     for assignment in assignments:
         if _try(errors, f"{assignment.offering} {assignment.section}",
-                lambda: _open_unit_test(term, assignment, today)):
+                _open_unit_test, term, assignment, today):
             created += 1
     return _finish(created, errors)
 

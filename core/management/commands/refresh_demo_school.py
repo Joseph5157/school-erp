@@ -32,7 +32,7 @@ class Command(BaseCommand):
             try:
                 since = datetime.date.fromisoformat(options["since"])
             except ValueError:
-                raise CommandError("--since must be a date like 2026-09-01.")
+                raise CommandError("--since must be a date like 2026-09-01.") from None
         today = business_today()
         try:
             admin, year = demo_refresh.check_guard(today)

@@ -462,7 +462,7 @@ class NoticeTests(TestCase):
     def test_posted_when_all_withdrawn(self):
         for notice in Announcement.objects.all():
             announcements.withdraw(notice, actor=self.admin, reason="Demo reset")
-        a = demo_refresh.post_notice_if_stale(self.admin, datetime.datetime.now(datetime.timezone.utc))
+        a = demo_refresh.post_notice_if_stale(self.admin, datetime.datetime.now(datetime.UTC))
         self.assertEqual(a.title, demo_refresh.NOTICE_POOL[0][0])
 
     def test_pool_cycles(self):
