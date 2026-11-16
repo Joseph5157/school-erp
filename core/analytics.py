@@ -284,9 +284,15 @@ def student_attendance_by_month(student, year, today):
     ]
 
 
-def term_attendance(today):
-    """Attendance for the term running today, for the gauge. None when no term runs or no data."""
-    term = current_term(today)
+_LOOK_UP = object()
+
+
+def term_attendance(today, term=_LOOK_UP):
+    """Attendance for the term running today, for the gauge. None when no term runs or no data.
+
+    `term` is today's term (or None) when the caller already has it, saving a lookup.
+    """
+    term = current_term(today) if term is _LOOK_UP else term
     if term is None:
         return None
     totals = reports.counts(_entries(Period(start=term.start_date, end=min(term.end_date, today))))
@@ -641,7 +647,7 @@ def overview_context(
     points = daily_trend(period)
     strip = today_strip(today)
     classes = class_comparison(period)
-    term_gauge = term_attendance(today)
+    term_gauge = term_attendance(today, term=choice["term"])  # resolve_period looked it up
     return {
         "choice": choice["key"],
         "label": choice["label"],

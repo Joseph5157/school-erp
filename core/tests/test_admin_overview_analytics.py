@@ -1740,3 +1740,36 @@ class OverviewNoHoleLayoutTests(AnalyticsFixture, TestCase):
         self.assertTrue(css[gate_c:].split("\n", 2)[1].startswith(".erp-period {"))
         self.assertLess(css.index("/* Students needing attention"), gate_c)
         self.assertNotIn("erp-analytics-subtitle", css)
+
+
+class OverviewQueryBudgetTests(MarksFixture, TestCase):
+    """Audit 10 (AO-04): one Overview request should not ask the same question twice."""
+
+    def setUp(self):
+        super().setUp()
+        self.url = reverse("core:admin-overview")
+        for d in (1, 2, 3, 6, 7, 8):
+            self.day(datetime.date(2026, 7, d), {self.s1: P, self.s2: A})
+        self.assessment({self.s1: 15, self.s2: 4}, pass_mark=8)
+
+    def test_sidebar_badges_and_overview_cards_share_one_count(self):
+        with (
+            mock.patch("core.nav_badges.prepared_notification_count", return_value=2) as to_send,
+            mock.patch("core.nav_badges.stale_publication_count", return_value=1) as stale,
+            mock.patch("core.nav_badges.locked_username_count", return_value=0) as locked,
+        ):
+            response = self.administrator.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual((to_send.call_count, stale.call_count, locked.call_count), (1, 1, 1))
+
+    def test_the_current_term_is_looked_up_once(self):
+        with mock.patch("core.analytics.current_term", wraps=analytics.current_term) as lookup:
+            self.administrator.get(self.url)
+        self.assertEqual(lookup.call_count, 1)
+
+    def test_a_fully_populated_overview_stays_within_its_query_budget(self):
+        self.administrator.get(self.url)  # warm per-process caches (content types, permissions)
+        with CaptureQueriesContext(connection) as queries:
+            self.administrator.get(self.url)
+        # 65 when written (AO-04). If a change needs more, find the repeat before raising the cap.
+        self.assertLessEqual(len(queries), 65)

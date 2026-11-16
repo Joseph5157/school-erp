@@ -36,7 +36,7 @@ def _card(key, title, count, summary, url, detail=""):
     }
 
 
-def _attendance(today):
+def _attendance(today, user):
     """Same authority as the Missing attendance report, for today only.
 
     Skips non-instructional dates and treats a DRAFT register as still missing.
@@ -57,7 +57,7 @@ def _attendance(today):
     )
 
 
-def _applicants(today):
+def _applicants(today, user):
     pending = Applicant.objects.filter(admission_status=Applicant.AdmissionStatus.PENDING)
     oldest = pending.aggregate(oldest=Min("created_at"))["oldest"]
     detail = f"Oldest waiting since {oldest:%d %b %Y}." if oldest else ""
@@ -68,15 +68,15 @@ def _applicants(today):
     )
 
 
-def _publications(today):
+def _publications(today, user):
     return _card(
-        "publications", "Results to publish", nav_badges.stale_publication_count(),
+        "publications", "Results to publish", nav_badges.cached_count(user, "core:publications-stale"),
         "Published results that are out of date.",
         reverse("core:publications-stale"),
     )
 
 
-def _access_reviews(today):
+def _access_reviews(today, user):
     return _card(
         "access_reviews", "Pending access reviews",
         len(guardian_access.pending_reviews(today)),
@@ -85,18 +85,18 @@ def _access_reviews(today):
     )
 
 
-def _notifications(today):
+def _notifications(today, user):
     return _card(
-        "notifications", "Messages to send", nav_badges.prepared_notification_count(),
+        "notifications", "Messages to send", nav_badges.cached_count(user, "core:notifications-to-send"),
         "Prepared messages waiting to be sent.",
         reverse("core:notifications-to-send"),
         "May include messages that will be skipped for missing consent.",
     )
 
 
-def _lockouts(today):
+def _lockouts(today, user):
     return _card(
-        "lockouts", "Sign-in lockouts", nav_badges.locked_username_count(),
+        "lockouts", "Sign-in lockouts", nav_badges.cached_count(user, "core:login-lockouts"),
         "Usernames locked after failed sign-ins.",
         reverse("core:login-lockouts"),
     )
@@ -138,7 +138,7 @@ def system_checklist(clear_cards, steps):
 
 def overview_cards(user):
     today = core_models.business_today()  # looked up late so tests can pin it
-    return [build(today) for build, perm in _CARDS if user.has_perm(perm)]
+    return [build(today, user) for build, perm in _CARDS if user.has_perm(perm)]
 
 
 def _glance_card(key, title, count, summary, url, user, perm):

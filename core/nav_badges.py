@@ -17,7 +17,7 @@ The sidebar and the Overview cards both use the helpers here, so the two
 cannot disagree.
 """
 
-from accounts import security
+from accounts import request_cache, security
 from core import publication
 from core.models import Notification
 
@@ -43,10 +43,16 @@ _QUEUES = (
 )
 
 
+def cached_count(user, url_name):
+    """One queue's count, counted once per request: the sidebar badge and the Overview card share it."""
+    count = next(count for name, _perm, count in _QUEUES if name == url_name)
+    return request_cache.remember(user, ("queue_count", url_name), count)
+
+
 def queue_counts(user):
     """{namespaced url name: count} for the queues this user may open."""
     return {
-        url_name: count()
-        for url_name, perm, count in _QUEUES
+        url_name: cached_count(user, url_name)
+        for url_name, perm, _count in _QUEUES
         if user.has_perm(perm)
     }
