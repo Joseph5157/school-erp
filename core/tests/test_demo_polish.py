@@ -70,3 +70,5 @@ class ReportCardMarksTests(TestCase):
         body = response.content.decode()
         self.assertRegex(body, r"\d+ / \d+<")
         self.assertIsNone(re.search(r"\.00 / |/ \d+\.00", body))
+        self.assertRegex(body, r"\d%<")
+        self.assertIsNone(re.search(r"\.00%", body))

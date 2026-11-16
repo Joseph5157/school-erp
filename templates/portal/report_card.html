@@ -23,7 +23,7 @@
             <h3 class="erp-rc-subject-name">{{ e.subject_label }}</h3>
             <dl class="erp-rc-values">
                 <div><dt>Marks</dt><dd>{% if e.status == "MARKED" %}{{ e.score|floatformat:"-2" }} / {{ e.maximum_marks|floatformat:"-2" }}{% else %}Absent{% endif %}</dd></div>
-                {% if e.percentage is not None %}<div><dt>Percentage</dt><dd>{{ e.percentage }}%</dd></div>{% endif %}
+                {% if e.percentage is not None %}<div><dt>Percentage</dt><dd>{{ e.percentage|floatformat:"-2" }}%</dd></div>{% endif %}
                 <div><dt>Grade</dt><dd>{{ e.grade_label|default:"Not graded" }}</dd></div>
                 {% if e.pass_fail_label %}<div><dt>Result</dt><dd>{{ e.pass_fail_label }}</dd></div>{% endif %}
             </dl>
@@ -42,7 +42,7 @@
             <tr>
                 <th scope="row">{{ e.subject_label }}</th>
                 <td>{% if e.status == "MARKED" %}{{ e.score|floatformat:"-2" }} / {{ e.maximum_marks|floatformat:"-2" }}{% else %}Absent{% endif %}</td>
-                <td>{% if e.percentage is not None %}{{ e.percentage }}%{% endif %}</td>
+                <td>{% if e.percentage is not None %}{{ e.percentage|floatformat:"-2" }}%{% endif %}</td>
                 <td>{{ e.grade_label|default:"Not graded" }}</td>
                 <td>{{ e.pass_fail_label|default:"" }}</td>
             </tr>
