@@ -484,12 +484,15 @@ class LogoViewTests(LogoFixture, TestCase):
                 html = self.client_for(user).get(reverse(landing)).content.decode()
                 brand = html[html.index('<a class="erp-brand"') :]
                 brand = brand[: brand.index("</a>")]
+                self.assertIn('class="erp-brand-logo"', brand)
+                self.assertIn('class="erp-brand-mark"', brand)
                 self.assertLess(brand.index('class="erp-brand-logo"'), brand.index('class="erp-brand-mark"'))
                 self.assertTrue(brand.endswith("Everclass ERP"))
 
     def test_header_falls_back_to_text_without_a_logo(self):
         page = self.client_for(self.teacher).get(reverse("core:my-home"))
         self.assertNotContains(page, "erp-brand-logo")
+        self.assertContains(page, 'class="erp-brand-mark"')
         self.assertContains(page, "Everclass ERP</a>")
 
     def test_header_falls_back_to_text_after_removal(self):
