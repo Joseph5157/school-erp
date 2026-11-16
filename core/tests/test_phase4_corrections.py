@@ -173,6 +173,12 @@ class CorrectionViewTests(Phase4Fixture, TestCase):
         self.assertContains(page, "Missed a page.")
         self.assertContains(self.client.get(self.detail), "corrected")
 
+    def test_saved_score_prefills_without_trailing_zeros(self):
+        self.assessment.finalize(actor=self.admin)
+        page = self.client.get(self.url)
+        self.assertContains(page, 'value="12"')
+        self.assertNotContains(page, 'value="12.00"')
+
     def test_form_errors(self):
         self.assessment.finalize(actor=self.admin)
         for data, message in (

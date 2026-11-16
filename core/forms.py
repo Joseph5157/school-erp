@@ -925,7 +925,7 @@ class ResultCorrectionForm(forms.Form):
         )
         if not self.is_bound:
             self.fields["status"].initial = result.status
-            self.fields["score"].initial = result.score
+            self.fields["score"].initial = _plain_score(result.score)
 
     def clean(self):
         cleaned_data = super().clean()
