@@ -273,7 +273,7 @@ def ensure_open_assessments(year, today: date) -> int:
     assignments = (
         AssessmentTeacherAssignment.objects.effective_on(today)
         .select_related("teacher", "offering__subject", "offering__class_grade", "section")
-        .order_by("offering__class_grade__name", "section__name", "offering__display_order")
+        .order_by("offering__class_grade__display_order", "section__name", "offering__display_order")
     )
     errors = []
     for assignment in assignments:
