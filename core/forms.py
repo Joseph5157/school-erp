@@ -798,6 +798,15 @@ class AssessmentFilterForm(FilterLabelsMixin, forms.Form):
             self.fields["term"].queryset = academic_year.terms.all()
 
 
+def _plain_score(score):
+    """A saved score without trailing zeros for the input box: 20.00 -> 20, 16.50 -> 16.5."""
+    if score is None:
+        return None
+    if score == score.to_integral_value():
+        return int(score)  # normalize() alone would turn 20 into 2E+1
+    return score.normalize()
+
+
 class ResultEntryForm(FieldAccessibilityMixin, forms.Form):
     """Bulk DRAFT marks entry for an assessment's date-effective roster.
 
@@ -829,7 +838,7 @@ class ResultEntryForm(FieldAccessibilityMixin, forms.Form):
                 decimal_places=2,
                 max_digits=6,
                 label=f"Score for {enrollment.student.full_name}",  # read in the error summary
-                initial=result.score if result else None,
+                initial=_plain_score(result.score) if result else None,
                 widget=forms.NumberInput(attrs={
                     "step": "0.01", "inputmode": "decimal", "enterkeyhint": "next",
                     "class": "form-control erp-score",

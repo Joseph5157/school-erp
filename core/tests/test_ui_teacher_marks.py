@@ -75,6 +75,15 @@ class ResultFormTests(MarksFixture, TestCase):
         self.assertContains(page, f'type="radio" name="status_{self.asha.pk}" value="ABSENT"')
         self.assertContains(page, f'type="radio" name="status_{self.bina.pk}" value=""')
 
+    def test_saved_scores_prefill_without_trailing_zeros(self):
+        self.result(self.test1, self.asha, "MARKED", "20.00")
+        self.result(self.test1, self.bina, "MARKED", "16.50")
+        self.result(self.test1, self.ravi, "MARKED", "0.00")
+        page = self.teacher.get(self.entry_url(self.test1))
+        self.assertContains(page, f'name="score_{self.asha.pk}" value="20"')
+        self.assertContains(page, f'name="score_{self.bina.pk}" value="16.5"')
+        self.assertContains(page, f'name="score_{self.ravi.pk}" value="0"')
+
 
 class MarksEntryPageTests(MarksFixture, TestCase):
     def test_rows_are_fieldsets_with_static_counts(self):
