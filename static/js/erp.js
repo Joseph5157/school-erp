@@ -832,52 +832,70 @@
 
 // Install bar (PWA, first-time phone users): templates/partials/_install_bar.html is rendered hidden on
 // signed-in pages. Show it only on a phone, outside the installed app, and not within 30 days of
-// "Not now". Android/desktop Chrome: show it when the browser offers an install, and "Install" opens
-// the browser's own prompt. iPhone has no prompt, so it shows "How to install" (the help page).
-// Storage can be blocked (private mode); then the bar simply comes back next time.
+// "Not now" (or of cancelling the browser's install prompt). Android/desktop Chrome: show it when the
+// browser offers an install, and "Install" opens the browser's own prompt. iPhone has no prompt, so it
+// shows "How to install" (the help page). The phone check follows rotation. Storage can be blocked
+// (private mode); then the bar simply comes back next time.
 (function () {
   var bar = document.querySelector("[data-erp-install-bar]");
   if (!bar) return;
   var KEY = "erp-install-dismissed-at";
   var WAIT = 30 * 24 * 60 * 60 * 1000;
-  var phone = window.matchMedia("(max-width: 767.98px)").matches;
   var installed = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
-  if (!phone || installed) return;
+  if (installed) return;
   try {
     var at = Number(window.localStorage.getItem(KEY));
     if (at && Date.now() - at < WAIT) return;
   } catch (error) { /* storage blocked: treat as never dismissed */ }
 
+  var phone = window.matchMedia("(max-width: 767.98px)");
   var install = bar.querySelector("[data-erp-install-bar-install]");
   var howto = bar.querySelector("[data-erp-install-bar-howto]");
   var dismiss = bar.querySelector("[data-erp-install-bar-dismiss]");
-  var offered = null;
-  function hide() { bar.hidden = true; }
-
   var ios = /iPhone|iPad|iPod/.test(window.navigator.userAgent);
-  if (ios) {
-    howto.hidden = false;
-    bar.hidden = false;
+  var offered = null;
+  var done = false;
+
+  function remember() {
+    try { window.localStorage.setItem(KEY, String(Date.now())); } catch (error) { /* blocked */ }
   }
+  function update() {
+    install.hidden = !offered;
+    howto.hidden = !!offered || !ios;
+    bar.hidden = done || !phone.matches || !(offered || ios);
+  }
+
   window.addEventListener("beforeinstallprompt", function (event) {
-    event.preventDefault(); // our bar replaces Chrome's own mini-bar on phones
+    // On a phone our bar replaces Chrome's own mini-bar; on a wider screen the browser keeps its own.
+    if (phone.matches) event.preventDefault();
     offered = event;
-    install.hidden = false;
-    howto.hidden = true;
-    bar.hidden = false;
+    update();
   });
+  if (phone.addEventListener) phone.addEventListener("change", update);
+  else if (phone.addListener) phone.addListener(update); // older Safari
   install.addEventListener("click", function () {
     if (!offered) return;
     var prompt = offered;
     offered = null;
-    hide();
+    done = true;
+    update();
     prompt.prompt();
+    if (prompt.userChoice) {
+      prompt.userChoice.then(function (choice) {
+        if (choice && choice.outcome === "dismissed") remember(); // cancelled counts as "Not now"
+      });
+    }
   });
   dismiss.addEventListener("click", function () {
-    try { window.localStorage.setItem(KEY, String(Date.now())); } catch (error) { /* blocked */ }
-    hide();
+    remember();
+    done = true;
+    update();
   });
-  window.addEventListener("appinstalled", hide);
+  window.addEventListener("appinstalled", function () {
+    done = true;
+    update();
+  });
+  update();
 })();
 
 // Dependent selectors: a field marked data-erp-depends-on="<parent field id>" shows only the options (or

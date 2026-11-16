@@ -279,5 +279,6 @@ class InstallBarTests(TestCase):
     def test_script_reveals_the_bar_only_under_its_conditions(self):
         js = ERP_JS.read_text(encoding="utf-8")
         for needle in ("data-erp-install-bar", "(display-mode: standalone)", "(max-width: 767.98px)",
-                       "erp-install-dismissed-at", "30 * 24 * 60 * 60 * 1000"):
+                       "erp-install-dismissed-at", "30 * 24 * 60 * 60 * 1000",
+                       "userChoice", "choice.outcome === \"dismissed\"", "phone.addEventListener(\"change\", update)"):
             self.assertIn(needle, js)
