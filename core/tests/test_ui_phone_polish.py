@@ -69,3 +69,17 @@ class PhoneStylesheetTests(TestCase):
     def test_absentee_rows_put_the_class_under_the_name(self):
         self.assertIn(".erp-absentee-class { grid-column: 1; grid-row: 2;", CSS)
         self.assertIn(".erp-absentee-days { grid-column: 2; grid-row: 1 / 3;", CSS)
+
+    def test_attention_cards_are_compact_rows_that_open_from_anywhere_on_phones(self):
+        phone = phone_block(CSS)
+        # Count at the right end of the row, beside the title and sentence.
+        self.assertIn(".erp-stat-grid--attention .erp-stat-value { grid-column: 2; grid-row: 1 / span 2; font-size: 1.5rem; }", phone)
+        # The card's own Open link covers the whole card (explicit size beats Bootstrap's align-self-start)...
+        self.assertIn("{ position: absolute; inset: 0; width: 100%; height: 100%; margin: 0;", phone)
+        # ...is drawn as the same chevron on every card, so no card's link looks more important...
+        self.assertIn('.erp-stat-grid--attention .erp-stat-card > .btn::after { content: "\\203A";', phone)
+        # ...and keeps a visible keyboard focus ring.
+        self.assertIn(".erp-stat-grid--attention .erp-stat-card > .btn:focus-visible { outline: 3px solid var(--erp-focus-color);", phone)
+        # Desktop keeps the cards and their Open buttons: none of this is outside the phone block.
+        rule = ".erp-stat-grid--attention .erp-stat-card > .btn"
+        self.assertEqual(CSS.count(rule), phone.count(rule))
