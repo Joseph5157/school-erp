@@ -1339,10 +1339,21 @@ class OverviewChartLayoutTests(AnalyticsFixture, TestCase):
             html.index('class="erp-analytics-card erp-analytics-card--trend"'),
         )
 
-    def test_desktop_grid_order_keeps_trend_above_by_class(self):
-        block = self.css()
-        self.assertIn(".erp-analytics > .erp-analytics-card--trend { grid-column: span 8; order: 1; }", block)
-        self.assertIn(".erp-analytics > .erp-analytics-card--classes { grid-column: span 8; order: 3; }", block)
+    def test_desktop_grid_never_reorders_cards(self):
+        # AO-01: visual order must equal DOM order so keyboard and screen-reader order match the layout.
+        block = self.css().split("\n}\n", 1)[0]
+        self.assertNotRegex(block, r"[\s;{]order\s*:")
+        self.assertIn(".erp-analytics > .erp-analytics-card--trend { grid-column: span 8; }", block)
+        self.assertIn(".erp-analytics > .erp-analytics-card--classes { grid-column: span 12; }", block)
+
+    def test_cards_come_in_one_order_attention_absentees_classes_trend_heat(self):
+        self.day(datetime.date(2026, 7, 1), {self.s1: P, self.s2: A})
+        html = self.administrator.get(self.url).content.decode()
+        positions = [
+            html.index(f'class="erp-analytics-card erp-analytics-card--{name}"')
+            for name in ("attention", "absent", "classes", "trend", "heat")
+        ]
+        self.assertEqual(positions, sorted(positions))
 
     def modifiers(self, client):
         html = client.get(self.url).content.decode()
@@ -1367,10 +1378,8 @@ class OverviewChartLayoutTests(AnalyticsFixture, TestCase):
             end_date=datetime.date(2026, 9, 30), display_order=1,
         )
         self.day(datetime.date(2026, 7, 1), {self.s1: P, self.s2: A})
-        # Nobody is flagged, so the empty attention card is the short kind; nothing else is missing.
-        self.assertEqual(
-            self.modifiers(self.administrator), "erp-analytics erp-analytics--attention-short"
-        )
+        # Every card is present, so the section carries no modifier at all.
+        self.assertEqual(self.modifiers(self.administrator), "erp-analytics")
         classes = self.modifiers(self.login_with("ov-only", "view_school"))
         self.assertIn("erp-analytics--no-absent", classes)
         self.assertNotIn("erp-analytics--no-gauge", classes)
@@ -1390,7 +1399,7 @@ class OverviewChartLayoutTests(AnalyticsFixture, TestCase):
             ".erp-analytics--no-gauge .erp-analytics-card--donut { grid-column: span 6; }",
             ".erp-analytics--no-rings .erp-analytics-card--gauge,",
             ".erp-analytics--no-gauge.erp-analytics--no-rings .erp-analytics-card--donut { grid-column: span 12; }",
-            ".erp-analytics--no-absent > .erp-analytics-card--classes { grid-column: span 12; }",
+            ".erp-analytics--no-absent > .erp-analytics-card--attention,",
         ):
             self.assertIn(rule, block)
 
@@ -1547,22 +1556,6 @@ class StudentsNeedingAttentionViewTests(MarksFixture, TestCase):
         for i in range(count):
             self.fail_two(self.enroll_student(f"Extra {i:02d}", self.class_grade, self.section))
 
-    def test_section_modifier_says_when_the_list_is_short(self):
-        short = "erp-analytics--attention-short"
-        modifiers = lambda: re.search(  # noqa: E731
-            r'<section class="(erp-analytics[^"]*)"', self.administrator.get(self.url).content.decode()
-        ).group(1)
-        self.assertIn(short, modifiers())  # no flagged student at all
-        self.flag(6)
-        self.assertIn(short, modifiers())  # six rows still sit full width
-        self.flag_more(1)
-        self.assertNotIn(short, modifiers())  # seven rows keep the tall two-row card
-
-    def test_a_viewer_without_the_list_gets_no_short_modifier(self):
-        client = self.login_with("results-only", "view_school", "view_studentresult")
-        html = client.get(self.url).content.decode()
-        self.assertNotIn("erp-analytics--attention-short", html)
-
     def test_a_fallback_term_from_an_earlier_year_names_its_year_everywhere(self):
         old_year = AcademicYear.objects.create(
             name="2025-26", start_date=datetime.date(2025, 6, 1), end_date=datetime.date(2026, 4, 30)
@@ -1690,11 +1683,6 @@ class OverviewNoHoleLayoutTests(AnalyticsFixture, TestCase):
         client.login(username=username, password="pass-12345")
         return client
 
-    def test_section_names_a_missing_attendance_chart(self):
-        self.assertIn("erp-analytics--no-chart", self.modifiers(self.administrator))
-        self.day(datetime.date(2026, 7, 1), {self.s1: P, self.s2: A})
-        self.assertNotIn("erp-analytics--no-chart", self.modifiers(self.administrator))
-
     def test_section_names_a_missing_attention_card(self):
         self.assertNotIn("erp-analytics--no-attention", self.modifiers(self.administrator))
         for name, codenames in (
@@ -1708,14 +1696,12 @@ class OverviewNoHoleLayoutTests(AnalyticsFixture, TestCase):
         block = self.css()
         self.assertNotIn(".erp-analytics-card--bands .erp-chart-scroll", block)  # no cap on the bands row
         for rule in (
-            ".erp-analytics > .erp-analytics-card--attention { grid-column: span 7; grid-row: span 2; order: 5; }",
-            ".erp-analytics > .erp-analytics-card--subjects { grid-column: span 5; order: 6; }",
-            ".erp-analytics > .erp-analytics-card--bands { grid-column: span 5; order: 7; }",
-            ".erp-analytics--no-attention > .erp-analytics-card--subjects,\n  .erp-analytics--attention-short > .erp-analytics-card--subjects { grid-column: span 7; }",
-            ".erp-analytics--no-attention > .erp-analytics-card--bands,\n  .erp-analytics--attention-short > .erp-analytics-card--bands { grid-column: span 5; }",
-            ".erp-analytics--attention-short > .erp-analytics-card--attention { grid-column: span 12; grid-row: auto; }",
+            ".erp-analytics > .erp-analytics-card--attention { grid-column: span 7; align-self: start; }",
+            ".erp-analytics > .erp-analytics-card--absent { grid-column: span 5; align-self: start; }",
+            ".erp-analytics--no-absent > .erp-analytics-card--attention,\n  .erp-analytics--no-attention > .erp-analytics-card--absent { grid-column: span 12; }",
+            ".erp-analytics > .erp-analytics-card--subjects { grid-column: span 7; }",
+            ".erp-analytics > .erp-analytics-card--bands { grid-column: span 5; }",
             ".erp-analytics-card--bands .erp-cols { width: max-content; min-width: 100%; justify-content: space-around; }",
-            ".erp-analytics--no-chart > .erp-analytics-card--absent { grid-column: span 12; }",
         ):
             self.assertIn(rule, block)
 

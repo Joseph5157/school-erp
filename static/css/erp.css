@@ -1381,12 +1381,12 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
 /* ---------- Desktop Overview grid ---------- */
 @media (min-width: 992px) {
   /* "Option B" (docs/ui-reviews/desktop-overview-options.html): a title row with period links, a hero
-     trend card with the heatmap beside it, then by class (columns) beside absentees, and marks full width on a 12-column grid.
-     Cards keep their DOM (phone) order; `order` only rearranges them on desktop. */
+     trend card with the heatmap beside it, and marks on a 12-column grid. Audit 10 (AO-01) put attention and absentees first.
+     Cards keep their DOM (phone) order on desktop too; nothing uses `order` (keyboard order = visual order). */
   .erp-analytics { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--erp-space-4); margin-top: var(--erp-space-5); }
   .erp-analytics > * { grid-column: 1 / -1; margin: 0; }
-  /* Row 1 (gauge 3, donut 3, rings 6) has no `order`, so it follows the title row; the pair wrapper
-     disappears so its two cards sit in the grid. Row 2 onward is ordered below. */
+  /* Row 1 (gauge 3, donut 3, rings 6) follows the title row; the pair wrapper disappears so its two
+     cards sit in the grid. */
   .erp-chart-pair { display: contents; }
   .erp-analytics .erp-chart-card { margin: 0; }
   .erp-analytics-card--gauge, .erp-analytics-card--donut { grid-column: span 3; }
@@ -1397,26 +1397,21 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
   .erp-analytics--no-rings .erp-analytics-card--donut { grid-column: span 6; }
   .erp-analytics--no-gauge.erp-analytics--no-rings .erp-analytics-card--donut { grid-column: span 12; }
   .erp-analytics > .erp-analytics-card { grid-column: span 4; }
-  .erp-analytics > .erp-analytics-card--trend { grid-column: span 8; order: 1; }
-  .erp-analytics > .erp-analytics-card--heat { order: 2; }
-  .erp-analytics > .erp-analytics-card--classes { grid-column: span 8; order: 3; }
-  .erp-analytics--no-absent > .erp-analytics-card--classes { grid-column: span 12; }
-  .erp-analytics > .erp-analytics-card--absent { order: 4; }
-  /* Without the attendance chart the absentee card would sit alone at span 4. */
-  .erp-analytics--no-chart > .erp-analytics-card--absent { grid-column: span 12; }
-  /* Attention takes 7 columns across two rows; marks by subject and score bands stack beside it at 5.
-     Without the attention card (viewer lacks view_student) the marks cards pair up 7 + 5 on one row instead. */
-  .erp-analytics > .erp-analytics-card--attention { grid-column: span 7; grid-row: span 2; order: 5; }
-  .erp-analytics > .erp-analytics-card--subjects { grid-column: span 5; order: 6; }
-  .erp-analytics > .erp-analytics-card--bands { grid-column: span 5; order: 7; }
+  /* Cards are never reordered here: desktop shows them in the page (phone) order, so keyboard and
+     screen-reader order match the layout. Row: Students needing attention (7) beside Frequent absentees (5),
+     each as tall as its own list (no hollow card); either one alone takes the row. */
+  .erp-analytics > .erp-analytics-card--attention { grid-column: span 7; align-self: start; }
+  .erp-analytics > .erp-analytics-card--absent { grid-column: span 5; align-self: start; }
+  .erp-analytics--no-absent > .erp-analytics-card--attention,
+  .erp-analytics--no-attention > .erp-analytics-card--absent { grid-column: span 12; }
+  /* By class gets a full row so every class column fits. Then Daily attendance (8) beside the heatmap (4),
+     and marks by subject (7) beside score bands (5). */
+  .erp-analytics > .erp-analytics-card--classes { grid-column: span 12; }
+  .erp-analytics > .erp-analytics-card--trend { grid-column: span 8; }
+  .erp-analytics > .erp-analytics-card--subjects { grid-column: span 7; }
+  .erp-analytics > .erp-analytics-card--bands { grid-column: span 5; }
   /* Spread the four band columns across the card (the same rule the By class card uses). */
   .erp-analytics-card--bands .erp-cols { width: max-content; min-width: 100%; justify-content: space-around; }
-  .erp-analytics--no-attention > .erp-analytics-card--subjects,
-  .erp-analytics--attention-short > .erp-analytics-card--subjects { grid-column: span 7; }
-  .erp-analytics--no-attention > .erp-analytics-card--bands,
-  .erp-analytics--attention-short > .erp-analytics-card--bands { grid-column: span 5; }
-  /* A short list (3 or fewer, or none) would leave a tall hollow card: it takes its own full row instead. */
-  .erp-analytics--attention-short > .erp-analytics-card--attention { grid-column: span 12; grid-row: auto; }
   /* By class card: spread the columns across the card and centre the chart in its height. The row is at
      least as wide as the card (min-width) but grows with its content, so 25+ classes scroll from the first
      column instead of being clipped on the left. */
