@@ -1,11 +1,13 @@
 """seed_school_demo_extras fills the profile, logo, timetable and notices."""
 
+import datetime
 import tempfile
 from pathlib import Path
 
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import TestCase
+from django.utils import timezone
 
 from core import timetable
 from core.models import (
@@ -57,6 +59,20 @@ class SeedSchoolDemoExtrasTests(TestCase):
         self.assertEqual(notices.count(), 4)
         self.assertTrue(all(n.audience == Announcement.Audience.ALL for n in notices))
         self.assertTrue(all(n.title.isascii() and n.body.isascii() for n in notices))
+
+    def test_notices_are_spread_over_the_past_month(self):
+        now = timezone.now()
+        dates = [n.published_at for n in Announcement.objects.all()]
+        self.assertEqual(len({d.date() for d in dates}), 4)
+        self.assertTrue(all(d <= now for d in dates))
+        self.assertLessEqual(now - max(dates), datetime.timedelta(days=7))
+        self.assertLessEqual(now - min(dates), datetime.timedelta(days=31))
+
+    def test_notices_do_not_name_a_date_bound_event(self):
+        # The demo runs all year; a festival closure or "Term 2 begins" reads wrong most days.
+        text = " ".join(f"{n.title} {n.body}" for n in Announcement.objects.all()).lower()
+        for phrase in ("dussehra", "diwali", "sankranti", "term 2 begins", "term 1 begins"):
+            self.assertNotIn(phrase, text)
 
     def test_refuses_to_run_twice(self):
         with self.assertRaises(CommandError):
