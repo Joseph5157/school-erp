@@ -1,7 +1,7 @@
-"""Draw the app icons: the Everclass ERP mark, an open book and a rising sun on a green tile.
+"""Draw the app icons: the Everclass ERP mark, a loop with a sprout, on a white tile.
 
-Code-drawn from the same 64-unit drawing as templates/partials/_brand_mark.html. Re-run after
-changing either: `python manage.py generate_pwa_icons`.
+Code-drawn from the same 64-unit drawing as templates/partials/_brand_mark.html and
+static/brand/everclass-mark.svg. Re-run after changing any of them: `python manage.py generate_pwa_icons`.
 """
 
 from pathlib import Path
@@ -14,17 +14,27 @@ from core.pwa_views import ICON_COLOUR
 
 SUPERSAMPLE = 4  # draw large, then shrink, for smooth edges
 UNITS = 64  # the mark's drawing grid
-WHITE = (255, 255, 255, 255)
-GOLD = "#e9b949"
-WASH = "#e3efe9"
+TEAL = "#1bb5a8"
+NAVY = "#0b2a4a"
+YELLOW = "#f5b82e"
 
-RAYS = (((32, 7), (32, 12)), ((17.5, 13), (20.5, 17)), ((46.5, 13), (43.5, 17)))
-SUN = ((32, 27), 9.5)
-# The left page: top curve, then bottom curve. The right page mirrors it.
-PAGE_TOP = ((8, 31), (16, 27), (25, 28), (31, 33))
-PAGE_BOTTOM = ((31, 54), (25, 49), (16, 48), (8, 52))
-# The text lines on the left page. The right page mirrors them.
-TEXT_LINES = (((13, 37), (18, 36), (22, 37), (26, 39)), ((13, 43), (18, 42), (22, 43), (26, 45)))
+# Each shape is a run of cubic Beziers, copied from the SVG paths.
+LOOP = (
+    ((32, 37), (38, 25), (54, 25), (54, 37)),
+    ((54, 37), (54, 49), (38, 49), (32, 37)),
+    ((32, 37), (26, 25), (10, 25), (10, 37)),
+    ((10, 37), (10, 49), (26, 49), (32, 37)),
+)
+SWEEP = LOOP[1]  # the navy lower-right part of the loop
+OVER = ((30, 41), (34, 33))  # the teal strand redrawn over the crossing
+CRESCENT = (((40, 41), (45, 43.5), (50, 41), (50, 35)), ((50, 35), (48, 38.5), (44.5, 40.5), (40, 41)))
+STEM = ((45, 26), (45, 22), (45.5, 19), (47.5, 16))
+LEAVES = (
+    (((47.5, 16), (49.5, 11.5), (53, 10), (56, 10.5)), ((56, 10.5), (54.5, 14.5), (51, 16.5), (47.5, 16))),
+    (((46, 20), (43, 18), (42, 15), (42.5, 12.5)), ((42.5, 12.5), (45.5, 13.5), (47, 16.5), (46, 20))),
+)
+LOOP_WIDTH = 5.5
+STEM_WIDTH = 2.6
 
 
 def curve(points, steps=32):
@@ -41,15 +51,19 @@ def curve(points, steps=32):
     return result
 
 
-def mirror(points):
-    return [(UNITS - x, y) for x, y in points]
+def run(segments):
+    """Points along consecutive Beziers."""
+    points = []
+    for segment in segments:
+        points.extend(curve(segment))
+    return points
 
 
 def draw_icon(size, *, rounded, glyph_scale):
     """`rounded` icons keep transparent corners; the others fill the whole square (maskable/Apple).
 
-    `glyph_scale` shrinks the book and sun about the centre; maskable icons keep them inside the
-    central safe zone so a circular crop never clips them.
+    `glyph_scale` shrinks the mark about the centre; maskable icons keep it inside the central
+    safe zone so a circular crop never clips it.
     """
     big = size * SUPERSAMPLE
     image = Image.new("RGBA", (big, big), (0, 0, 0, 0))
@@ -66,27 +80,24 @@ def draw_icon(size, *, rounded, glyph_scale):
             (big / 2 + (x - UNITS / 2) * unit, big / 2 + (y - UNITS / 2) * unit) for x, y in points
         ]
 
-    def stroke(points, colour, width):
+    def stroke(points, colour, width, *, round_caps=True):
         placed = place(points)
         pixels = round(width * unit)
         draw.line(placed, fill=colour, width=pixels, joint="curve")
-        for x, y in (placed[0], placed[-1]):  # round caps
-            draw.ellipse(
-                (x - pixels / 2, y - pixels / 2, x + pixels / 2, y + pixels / 2), fill=colour
-            )
+        if round_caps:  # a dot at every point smooths the joints and rounds both ends
+            for x, y in placed:
+                draw.ellipse(
+                    (x - pixels / 2, y - pixels / 2, x + pixels / 2, y + pixels / 2), fill=colour
+                )
 
-    for ray in RAYS:
-        stroke(ray, GOLD, 2.6)
-    (sun_x, sun_y), radius = SUN
-    (x, y), = place([(sun_x, sun_y)])
-    draw.ellipse((x - radius * unit, y - radius * unit, x + radius * unit, y + radius * unit), fill=GOLD)
-
-    page = curve(PAGE_TOP) + curve(PAGE_BOTTOM)
-    for outline in (page, mirror(page)):
-        draw.polygon(place(outline), fill=WHITE)
-    for line in TEXT_LINES:
-        stroke(curve(line), WASH, 2)
-        stroke(mirror(curve(line)), WASH, 2)
+    # Same order as the SVG: loop, crescent, navy sweep, the strand over the crossing, sprout.
+    stroke(run(LOOP), TEAL, LOOP_WIDTH)
+    draw.polygon(place(run(CRESCENT)), fill=YELLOW)
+    stroke(curve(SWEEP), NAVY, LOOP_WIDTH, round_caps=False)
+    stroke(list(OVER), TEAL, LOOP_WIDTH, round_caps=False)
+    stroke(curve(STEM), TEAL, STEM_WIDTH)
+    for leaf in LEAVES:
+        draw.polygon(place(run(leaf)), fill=TEAL)
     return image.resize((size, size), Image.LANCZOS)
 
 

@@ -15,8 +15,8 @@ from django.views.decorators.http import require_safe
 APP_NAME = "Everclass ERP"
 # Under a home-screen icon there is room for about 12 characters, so the short name drops "ERP".
 SHORT_NAME = "Everclass"
-# The tile of the Everclass ERP mark: --erp-accent-strong in static/css/erp.css. The bar is the white topbar.
-ICON_COLOUR = "#185842"
+# The tile behind the Everclass ERP mark on home-screen icons: white, like the topbar the mark sits on.
+ICON_COLOUR = "#ffffff"
 THEME_COLOR = "#ffffff"
 BACKGROUND_COLOR = "#f5f6f3"  # --erp-paper
 

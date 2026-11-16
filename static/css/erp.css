@@ -10,9 +10,9 @@
   --erp-rule: #dde1dc;
 
   /* Legacy accent trio: kept as plain hex for tests; rules use brand, action and ok below. */
-  --erp-accent: #1f6b52;
-  --erp-accent-strong: #185842;
-  --erp-accent-wash: #e3efe9;
+  --erp-accent: #0e6b66;
+  --erp-accent-strong: #115e59;
+  --erp-accent-wash: #e0f2f1;
 
   /* Brand (nav, avatar, header) and action (buttons, links, fills) split from the accent (UI-10).
      Both default to the accent trio; success (--erp-ok*) is its own literal trio below. */
@@ -78,15 +78,15 @@
   --erp-btn-soft: #edf0ec;
   --erp-btn-soft-hover: #e2e6e0;
   --erp-btn-soft-border: #d3d8d1;
-  --erp-action-wash-strong: #d2e5db;
+  --erp-action-wash-strong: #c7e7e4;
   --erp-bad-strong: #8a2a23;
   --erp-warn-strong: #7d4a00;
   --erp-btn-height: 2.5rem;
   --erp-btn-height-sm: 2rem;
   --erp-line-tight: 1.2;
   --erp-line-body: 1.55;
-  --erp-focus-color: #0b6e4f;
-  --erp-focus-ring: 0 0 0 .2rem rgba(11, 110, 79, .3);
+  --erp-focus-color: #0e6b66;
+  --erp-focus-ring: 0 0 0 .2rem rgba(14, 107, 102, .3);
   --erp-reading-width: 46rem;
   --erp-topbar-h: 3.5rem;
   --erp-sidebar-w: 15.5rem;
@@ -97,10 +97,10 @@
   --bs-secondary-color: var(--erp-ink-soft);
   --bs-border-color: var(--erp-rule);
   --bs-link-color: var(--erp-action);
-  --bs-link-color-rgb: 31, 107, 82;
+  --bs-link-color-rgb: 14, 107, 102;
   --bs-link-hover-color: var(--erp-action-strong);
   --bs-primary: var(--erp-action);
-  --bs-primary-rgb: 31, 107, 82;
+  --bs-primary-rgb: 14, 107, 102;
 }
 
 .btn-primary {
@@ -113,7 +113,7 @@
   --bs-btn-disabled-bg: var(--erp-action);
   --bs-btn-disabled-border-color: var(--erp-action);
 }
-/* Modern buttons: semibold labels; success maps to the one brand green; danger uses the app red. */
+/* Modern buttons: semibold labels; .btn-success uses the action teal (a positive action, not a status); danger uses the app red. */
 .btn { --bs-btn-font-weight: 600; }
 .btn-link { --bs-btn-font-weight: 400; }
 .btn-success {
@@ -153,7 +153,7 @@
   --bs-btn-active-bg: var(--erp-bad-strong);
   --bs-btn-active-border-color: var(--erp-bad-strong);
 }
-/* Tonal: a green-tinted fill rather than a thin green outline. */
+/* Tonal: a teal-tinted fill rather than a thin teal outline. */
 .btn-outline-primary {
   --bs-btn-color: var(--erp-action-strong);
   --bs-btn-bg: var(--erp-action-wash);
@@ -177,7 +177,7 @@
   --bs-btn-active-color: var(--erp-ink);
   --bs-btn-active-bg: var(--erp-btn-soft-hover);
   --bs-btn-active-border-color: var(--erp-ink-soft);
-  --bs-btn-focus-shadow-rgb: 31, 107, 82;
+  --bs-btn-focus-shadow-rgb: 14, 107, 102;
   color: var(--erp-ink);
   border: 1px solid var(--erp-btn-soft-border);
   background-color: var(--erp-btn-soft);
@@ -203,10 +203,10 @@
 .alert-secondary { --bs-alert-bg: var(--erp-paper); --erp-alert-edge: var(--erp-ink-soft); }
 .alert .alert-link { text-decoration: underline; }
 
-/* Ticked checkboxes and radios use the brand green (browser default and Bootstrap's own are blue). */
+/* Ticked checkboxes and radios use the action teal (browser default and Bootstrap's own are blue). */
 :where(html) { accent-color: var(--erp-action); }
 .form-check-input:checked { background-color: var(--erp-action); border-color: var(--erp-action); }
-.form-check-input:focus { border-color: var(--erp-action); box-shadow: 0 0 0 .25rem rgba(31, 107, 82, .25); }
+.form-check-input:focus { border-color: var(--erp-action); box-shadow: 0 0 0 .25rem rgba(14, 107, 102, .25); }
 
 /* Warning button (Deactivate): the app amber with white text, not Bootstrap's bright yellow. */
 .btn-warning {
@@ -1030,8 +1030,8 @@ body.has-tabbar .erp-messages {
   border: 1px solid var(--erp-rule); background: var(--erp-paper); font-weight: 600; margin: 0;
 }
 .erp-toggles input:focus-visible + .erp-toggle { outline: 3px solid var(--erp-action); outline-offset: 2px; }
-.erp-toggles input:checked + .erp-toggle.is-present {
-  background: var(--erp-action); border-color: var(--erp-action); color: #fff;
+.erp-toggles input:checked + .erp-toggle.is-present { /* success green, like the Present pill */
+  background: var(--erp-ok); border-color: var(--erp-ok); color: #fff;
 }
 .erp-toggles input:checked + .erp-toggle.is-absent {
   background: var(--erp-crit); border-color: var(--erp-crit); color: #fff;
