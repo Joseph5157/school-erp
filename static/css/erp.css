@@ -258,8 +258,15 @@ body.erp { min-height: 100vh; }
   background: var(--erp-surface);
   border-bottom: 1px solid var(--erp-rule);
 }
-.erp-brand { font-weight: 700; color: var(--erp-ink); text-decoration: none; white-space: nowrap; }
-.erp-brand-logo { height: 28px; width: auto; max-width: 96px; object-fit: contain; margin-right: .5rem; vertical-align: middle; }
+/* min-width 0 + ellipsis: on a tight phone the name trims instead of pushing the account menu off screen. */
+.erp-brand { font-weight: 700; color: var(--erp-ink); text-decoration: none; white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* The school logo leads; a hairline separates it from the Everclass mark and name that follow.
+   max-width adds the padding and hairline back so the image area stays 96px (border-box sizing). */
+.erp-brand-logo { height: 28px; width: auto; max-width: calc(96px + .5rem + 1px); object-fit: contain; margin-right: .5rem; padding-right: .5rem; border-right: 1px solid var(--erp-rule); vertical-align: middle; }
+/* Phones: a narrower cap keeps school logo, mark, name and account menu on one line. */
+@media (max-width: 575.98px) {
+  .erp-brand-logo { max-width: calc(56px + .5rem + 1px); }
+}
 .erp-brand-mark { width: 28px; height: 28px; margin-right: .5rem; vertical-align: middle; }
 /* Hamburger button: icon only, label via aria-label; square 40px (44px on phones) */
 .erp-menu-btn { display: inline-flex; align-items: center; justify-content: center; width: 2.5rem; padding: 0; flex: 0 0 auto; }

@@ -22,7 +22,7 @@
         {% if guardian_shell %}
         {% include "portal/_shell_brand.html" %}
         {% else %}
-        <a class="erp-brand" href="{% url 'home' %}">{% if brand_logo %}<img class="erp-brand-logo" src="{{ brand_logo.url }}" alt="{{ brand_logo.school_name }} logo" height="28">{% else %}{% include "partials/_brand_mark.html" %}{% endif %}Everclass ERP</a>
+        <a class="erp-brand" href="{% url 'home' %}">{% if brand_logo %}<img class="erp-brand-logo" src="{{ brand_logo.url }}" alt="{{ brand_logo.school_name }} logo" height="28">{% endif %}{% include "partials/_brand_mark.html" %}Everclass ERP</a>
         {% endif %}
         {% if school_name %}<span class="erp-topbar-school d-none d-md-inline">{{ school_name }}</span>{% endif %}
         {% if current_year_name %}
