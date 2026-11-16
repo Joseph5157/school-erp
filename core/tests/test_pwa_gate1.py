@@ -229,3 +229,56 @@ class InstallPageTests(TestCase):
         js = ERP_JS.read_text(encoding="utf-8")
         self.assertIn("beforeinstallprompt", js)
         self.assertIn("data-erp-install", js)
+
+
+class InstallBarTests(TestCase):
+    """First-time phone users see an 'Install Everclass' bar on signed-in pages.
+
+    The bar is server-rendered hidden; erp.js reveals it only on phones, outside the installed
+    app, when the browser offers an install (or on iPhone, which has no prompt), and not within
+    30 days of 'Not now'. CSS keeps it off wider screens whatever the script does.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user("bar", password="pw-123456-xx")
+        self.user.must_change_password = False
+        self.user.save(update_fields=["must_change_password"])
+
+    def render(self, template, user):
+        request = RequestFactory().get("/")
+        request.user = user
+        source = '{% extends "' + template + '" %}'
+        return engines["django"].from_string(source).render({}, request)
+
+    def bar_tag(self, html):
+        start = html.rindex("<", 0, html.index("data-erp-install-bar"))
+        return html[start:html.index(">", start)]
+
+    def test_both_shells_carry_the_bar_hidden_for_signed_in_users(self):
+        for template in ("base.html", "portal/base.html"):
+            with self.subTest(template=template):
+                html = self.render(template, self.user)
+                self.assertIn("hidden", self.bar_tag(html))
+                self.assertIn("Install Everclass", html)
+                self.assertIn("Not now", html)
+                self.assertIn(f'href="{reverse("pwa-install")}"', html)
+
+    def test_no_bar_before_sign_in(self):
+        response = self.client.get(reverse("login"))
+        self.assertNotContains(response, "data-erp-install-bar")
+
+    def test_no_bar_on_the_install_page_itself(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("pwa-install"))
+        self.assertNotContains(response, "data-erp-install-bar")
+
+    def test_css_keeps_the_bar_off_wider_screens(self):
+        css = (Path(settings.BASE_DIR) / "static" / "css" / "erp.css").read_text(encoding="utf-8")
+        self.assertIn("@media (min-width: 768px) { .erp-install-bar { display: none !important; } }", css)
+
+    def test_script_reveals_the_bar_only_under_its_conditions(self):
+        js = ERP_JS.read_text(encoding="utf-8")
+        for needle in ("data-erp-install-bar", "(display-mode: standalone)", "(max-width: 767.98px)",
+                       "erp-install-dismissed-at", "30 * 24 * 60 * 60 * 1000",
+                       "userChoice", "choice.outcome === \"dismissed\"", "phone.addEventListener(\"change\", update)"):
+            self.assertIn(needle, js)
