@@ -1416,7 +1416,7 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
   .erp-heat-cell--t1 { border-width: 3px; }
   .erp-heat-cell--no_data { border-style: dashed; color: GrayText; }
   .erp-heat-cell--not_school { border-color: GrayText; color: GrayText; }
-  .erp-donut-key, .erp-key { forced-color-adjust: none; background: CanvasText; }
+  .erp-donut-key { forced-color-adjust: none; background: CanvasText; }
   .erp-donut-key--0 { background: Highlight; }
 }
 
