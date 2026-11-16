@@ -1481,7 +1481,10 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
 .erp-setup-step:last-child { border-bottom: 0; padding-bottom: 0; }
 .erp-setup-step--done .erp-setup-label { color: var(--erp-ink-soft); }
 .erp-setup-done { margin-top: var(--erp-space-3); border-top: 1px solid var(--erp-rule); padding-top: var(--erp-space-3); }
-.erp-setup-done > summary { cursor: pointer; color: var(--erp-ink-soft); font-size: var(--erp-text-sm); font-weight: 600; }
+.erp-setup-done > summary { display: flex; align-items: center; justify-content: space-between; gap: var(--erp-space-2); min-height: 2.75rem; cursor: pointer; color: var(--erp-ink-soft); font-size: var(--erp-text-sm); font-weight: 600; }
+.erp-setup-done > summary::-webkit-details-marker { display: none; }
+.erp-setup-done > summary::after { content: "\25BE"; flex: none; font-size: 1.1em; line-height: 1; transition: transform .15s; }
+.erp-setup-done[open] > summary::after { transform: rotate(180deg); }
 .erp-setup-done .erp-setup-list { margin-top: var(--erp-space-2); }
 .erp-setup-check { width: 1.25rem; height: 1.25rem; flex: 0 0 auto; display: inline-grid; place-items: center; border-radius: 50%; background: var(--erp-ok-wash); color: var(--erp-ok-strong); font-size: .8rem; font-weight: 700; line-height: 1; }
 .erp-setup-check--todo { background: var(--erp-surface); color: transparent; border: 1px solid var(--erp-rule); }
