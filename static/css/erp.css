@@ -113,7 +113,7 @@
   --bs-btn-disabled-bg: var(--erp-action);
   --bs-btn-disabled-border-color: var(--erp-action);
 }
-/* Modern buttons: semibold labels; success maps to the one brand green; danger uses the app red. */
+/* Modern buttons: semibold labels; .btn-success uses the action teal (a positive action, not a status); danger uses the app red. */
 .btn { --bs-btn-font-weight: 600; }
 .btn-link { --bs-btn-font-weight: 400; }
 .btn-success {
@@ -153,7 +153,7 @@
   --bs-btn-active-bg: var(--erp-bad-strong);
   --bs-btn-active-border-color: var(--erp-bad-strong);
 }
-/* Tonal: a green-tinted fill rather than a thin green outline. */
+/* Tonal: a teal-tinted fill rather than a thin teal outline. */
 .btn-outline-primary {
   --bs-btn-color: var(--erp-action-strong);
   --bs-btn-bg: var(--erp-action-wash);
@@ -203,7 +203,7 @@
 .alert-secondary { --bs-alert-bg: var(--erp-paper); --erp-alert-edge: var(--erp-ink-soft); }
 .alert .alert-link { text-decoration: underline; }
 
-/* Ticked checkboxes and radios use the brand green (browser default and Bootstrap's own are blue). */
+/* Ticked checkboxes and radios use the action teal (browser default and Bootstrap's own are blue). */
 :where(html) { accent-color: var(--erp-action); }
 .form-check-input:checked { background-color: var(--erp-action); border-color: var(--erp-action); }
 .form-check-input:focus { border-color: var(--erp-action); box-shadow: 0 0 0 .25rem rgba(14, 107, 102, .25); }
@@ -1030,8 +1030,8 @@ body.has-tabbar .erp-messages {
   border: 1px solid var(--erp-rule); background: var(--erp-paper); font-weight: 600; margin: 0;
 }
 .erp-toggles input:focus-visible + .erp-toggle { outline: 3px solid var(--erp-action); outline-offset: 2px; }
-.erp-toggles input:checked + .erp-toggle.is-present {
-  background: var(--erp-action); border-color: var(--erp-action); color: #fff;
+.erp-toggles input:checked + .erp-toggle.is-present { /* success green, like the Present pill */
+  background: var(--erp-ok); border-color: var(--erp-ok); color: #fff;
 }
 .erp-toggles input:checked + .erp-toggle.is-absent {
   background: var(--erp-crit); border-color: var(--erp-crit); color: #fff;

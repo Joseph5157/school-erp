@@ -8,14 +8,16 @@ from django.test import SimpleTestCase
 BRAND = Path(settings.BASE_DIR) / "static" / "brand"
 LOGO_COLOURS = ("#1bb5a8", "#f5b82e", "#0b2a4a")
 OLD_GREEN = "#185842"
+MARK_VIEWBOX = "7 6 50 50"
 
 
 class BrandFileTests(SimpleTestCase):
     def read(self, name):
         return (BRAND / name).read_text(encoding="utf-8").lower()
 
-    def test_mark_uses_the_64_unit_grid(self):
-        self.assertIn('viewbox="0 0 64 64"', self.read("everclass-mark.svg"))
+    def test_mark_is_cropped_to_the_glyph(self):
+        # Drawn on a 64-unit grid; the square viewBox crops the empty margin so small sizes stay legible.
+        self.assertIn(f'viewbox="{MARK_VIEWBOX}"', self.read("everclass-mark.svg"))
 
     def test_both_files_use_the_logo_colours_and_not_the_old_green(self):
         for name in ("everclass-mark.svg", "everclass-logo.svg"):
@@ -34,7 +36,7 @@ class AppMarkTests(SimpleTestCase):
         mark = (Path(settings.BASE_DIR) / "templates" / "partials" / "_brand_mark.html").read_text(
             encoding="utf-8"
         ).lower()
-        self.assertIn('<svg class="erp-brand-mark" aria-hidden="true" focusable="false" viewbox="0 0 64 64">', mark)
+        self.assertIn(f'<svg class="erp-brand-mark" aria-hidden="true" focusable="false" viewbox="{MARK_VIEWBOX}">', mark)
         self.assertIn("#1bb5a8", mark)
         self.assertNotIn(OLD_GREEN, mark)
         self.assertNotIn("#e9b949", mark)  # the old sun
@@ -48,13 +50,35 @@ class AppMarkTests(SimpleTestCase):
 
 class TemplateColourTests(SimpleTestCase):
     def test_no_template_uses_the_old_brand_green(self):
-        templates = Path(settings.BASE_DIR) / "templates"
+        base = Path(settings.BASE_DIR)
+        roots = [base / "templates", *base.glob("*/templates")]  # project and app templates
+        self.assertIn(base / "core" / "templates", roots)
         offenders = [
-            str(path.relative_to(templates))
-            for path in templates.rglob("*.html")
+            str(path.relative_to(base))
+            for root in roots
+            for path in root.rglob("*.html")
             if OLD_GREEN in path.read_text(encoding="utf-8").lower()
         ]
         self.assertEqual(offenders, [])
+
+    def test_browser_tab_icon_is_the_mark(self):
+        head = (Path(settings.BASE_DIR) / "templates" / "partials" / "_pwa_head.html").read_text(encoding="utf-8")
+        self.assertIn(
+            """<link rel="icon" href="{% static 'brand/everclass-mark.svg' %}" type="image/svg+xml">""", head
+        )
+
+
+class AttendanceToggleColourTests(SimpleTestCase):
+    def rule(self, selector):
+        css = (Path(settings.BASE_DIR) / "static" / "css" / "erp.css").read_text(encoding="utf-8")
+        block = css[css.index(selector + " {") :]
+        return block[: block.index("}")]
+
+    def test_ticked_present_is_success_green_like_the_present_pill(self):
+        rule = self.rule(".erp-toggles input:checked + .erp-toggle.is-present")
+        self.assertIn("background: var(--erp-ok);", rule)
+        self.assertIn("border-color: var(--erp-ok);", rule)
+        self.assertNotIn("--erp-action", rule)
 
 
 class PwaIconTests(SimpleTestCase):
