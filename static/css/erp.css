@@ -1505,6 +1505,21 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
   .erp-glance-tile .erp-stat-summary { display: none; }
   .erp-stat-grid.erp-stat-grid--glance { gap: var(--erp-space-3); }
   .erp-glance-tile { padding: var(--erp-space-3) var(--erp-space-4); }
+  /* Needs attention cards as compact rows (Jira Cloud status rows, Reddit insights, Whatnot Seller Hub):
+     title and sentence on the left, the count at the right end, and the whole card opens the queue. The card's
+     own "Open" link is stretched over the card and drawn as a chevron, so every card looks and taps the same;
+     its accessible name ("Open Attendance today") is unchanged. Desktop keeps the cards and Open buttons. */
+  .erp-stat-grid.erp-stat-grid--attention { grid-template-columns: minmax(0, 1fr); gap: var(--erp-space-3); }
+  .erp-stat-grid--attention .erp-stat-card { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .15rem var(--erp-space-3); padding: var(--erp-space-3) 2.25rem var(--erp-space-3) var(--erp-space-4); }
+  .erp-stat-grid--attention .erp-stat-label { grid-column: 1; grid-row: 1; font-size: var(--erp-text-sm); letter-spacing: 0; text-transform: none; color: var(--erp-ink); }
+  .erp-stat-grid--attention .erp-stat-summary { grid-column: 1; grid-row: 2; }
+  .erp-stat-grid--attention .erp-stat-value { grid-column: 2; grid-row: 1 / span 2; font-size: 1.5rem; }
+  .erp-stat-grid--attention .erp-stat-card > .btn,
+  .erp-stat-grid--attention .erp-stat-card > .btn:hover,
+  .erp-stat-grid--attention .erp-stat-card > .btn:active { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; border-radius: inherit; background: transparent; box-shadow: none; color: transparent; font-size: 0; }
+  .erp-stat-grid--attention .erp-stat-card > .btn:focus-visible { outline: 3px solid var(--erp-focus-color); outline-offset: 2px; }
+  .erp-stat-grid--attention .erp-stat-card > .btn::after { content: "\203A"; position: absolute; top: 50%; right: var(--erp-space-3); transform: translateY(-50%); font-size: 1.5rem; line-height: 1; color: var(--erp-ink-soft); }
+  .erp-stat-grid--attention .erp-stat-card:has(> .btn:hover) { border-color: var(--erp-action); }
 }
 .erp-setup { background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius); padding: var(--erp-space-4); margin-bottom: var(--erp-space-4); }
 .erp-setup-head { display: flex; flex-wrap: wrap; gap: var(--erp-space-2) var(--erp-space-4); align-items: baseline; justify-content: space-between; margin-bottom: var(--erp-space-3); }
