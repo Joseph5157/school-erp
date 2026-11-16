@@ -92,7 +92,7 @@ class PwaIconTests(SimpleTestCase):
     def test_loop_crossing_is_logo_teal(self):
         # The crossing sits at (32, 37) on the 64-unit grid: 5 units below centre.
         pixel = self.maskable.getpixel((256, 285))
-        for got, want in zip(pixel, (0x1B, 0xB5, 0xA8)):
+        for got, want in zip(pixel, (0x1B, 0xB5, 0xA8), strict=True):
             self.assertLessEqual(abs(got - want), 40, pixel)
 
     def test_maskable_glyph_stays_inside_the_safe_circle(self):
