@@ -56,6 +56,12 @@ class Command(BaseCommand):
         for name, label, run in steps:
             try:
                 count = run()
+            except demo_refresh.PartialFailure as exc:  # the rest of the step was done
+                failed.append(name)
+                self.stdout.write(f"{name}: {exc.done} {label}")
+                for error in exc.errors:
+                    self.stderr.write(f"{name}: failed: {error}")
+                continue
             except Exception as exc:  # keep going; report at the end
                 failed.append(name)
                 self.stderr.write(f"{name}: failed: {exc!r}")

@@ -198,13 +198,14 @@ class AttendanceRefreshTests(TestCase):
         self.assertEqual(refused.status, "DRAFT")
         self.assertEqual(fine.status, "SUBMITTED")
 
-    def test_backfill_failure_keeps_earlier_days(self):
+    def test_backfill_failure_skips_only_the_bad_register(self):
         days = [d for d in self._range_days() if self.year.is_instructional_day(d)]
-        bad = days[3]
+        bad_day = days[3]
+        bad_section = Section.objects.order_by("class_grade_id", "name").first()
         real = demo_refresh._create_and_submit
 
         def create(year, section, day, actor):
-            if day == bad:
+            if day == bad_day and section.pk == bad_section.pk:
                 raise ValidationError("boom")
             return real(year, section, day, actor)
 
@@ -215,11 +216,38 @@ class AttendanceRefreshTests(TestCase):
                 call_command("refresh_demo_school", since=str(self.since), stdout=out,
                              stderr=err)
         self.assertIn("backfill: failed", err.getvalue())
-        for day in days[:3]:
-            self.assertTrue(
-                AttendanceRegister.objects.filter(academic_year=self.year, date=day).exists()
+        self.assertIn("today:", out.getvalue())
+        sections = Section.objects.count()
+        for day in days:
+            expected = sections - 1 if day == bad_day else sections
+            self.assertEqual(
+                AttendanceRegister.objects.filter(date=day, status="SUBMITTED").count(),
+                expected, day,
             )
-        self.assertFalse(AttendanceRegister.objects.filter(date=bad).exists())
+        self.assertFalse(
+            AttendanceRegister.objects.filter(date=bad_day, section=bad_section).exists()
+        )
+
+    def test_today_failure_skips_only_the_bad_section(self):
+        mine = set(self._demo_sections())
+        others = list(Section.objects.exclude(pk__in=mine).order_by("pk"))
+        bad = others[0]
+        real = demo_refresh._create_and_submit
+
+        def create(year, section, day, actor):
+            if section.pk == bad.pk:
+                raise ValidationError("boom")
+            return real(year, section, day, actor)
+
+        with mock.patch.object(demo_refresh, "_create_and_submit", side_effect=create):
+            with self.assertRaises(demo_refresh.PartialFailure) as caught:
+                demo_refresh.prepare_today(self.year, self.today, self.admin)
+        self.assertEqual(caught.exception.done, len(others) - 1)
+        self.assertEqual(len(caught.exception.errors), 1)
+        self.assertEqual(
+            AttendanceRegister.objects.filter(date=self.today, status="SUBMITTED").count(),
+            len(others) - 1,
+        )
 
     def test_backfill_fills_every_section_every_instructional_day(self):
         demo_refresh.backfill_attendance(self.year, self.today, self.admin, since=self.since)
@@ -346,6 +374,22 @@ class OpenAssessmentTests(TestCase):
         self.assertLessEqual(a.assessment_date, self.today)
         self.assertGreaterEqual(a.assessment_date, self.term.start_date)
         self.assertLess(a.assessment_date.weekday(), 5)
+
+    def test_failing_assignment_does_not_block_the_rest(self):
+        assignments = list(AssessmentTeacherAssignment.objects.effective_on(self.today))
+        bad = assignments[0]
+        real = demo_refresh._open_unit_test
+
+        def open_test(term, assignment, today):
+            if assignment.pk == bad.pk:
+                raise ValidationError("boom")
+            return real(term, assignment, today)
+
+        with mock.patch.object(demo_refresh, "_open_unit_test", side_effect=open_test):
+            with self.assertRaises(demo_refresh.PartialFailure) as caught:
+                demo_refresh.ensure_open_assessments(self.year, self.today)
+        self.assertEqual(caught.exception.done, len(assignments) - 1)
+        self.assertEqual(len(caught.exception.errors), 1)
 
     def test_ended_assignment_gets_no_new_unit_test(self):
         assignment = AssessmentTeacherAssignment.objects.select_related("teacher").first()

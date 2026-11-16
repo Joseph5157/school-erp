@@ -42,6 +42,31 @@ class NotInSeason(Exception):
     """Today falls outside the demo school's academic year."""
 
 
+class PartialFailure(Exception):
+    """Some items in a step failed; the rest were still done and kept."""
+
+    def __init__(self, done: int, errors: list):
+        self.done = done
+        self.errors = errors
+        super().__init__(f"{len(errors)} failed, first: {errors[0]}")
+
+
+def _try(errors, label, work) -> bool:
+    """Run `work` in its own transaction; on error record it and return False."""
+    try:
+        with transaction.atomic():
+            return bool(work())
+    except Exception as exc:  # one bad item must not block the rest
+        errors.append(f"{label}: {exc!r}")
+        return False
+
+
+def _finish(done, errors):
+    if errors:
+        raise PartialFailure(done, errors)
+    return done
+
+
 def check_guard(today: date):
     """Return (demo_admin, academic_year) or refuse to touch this database."""
     if os.environ.get(ENV_FLAG) != "1":
@@ -157,21 +182,22 @@ def finish_old_drafts(year, today, fallback_actor) -> tuple[int, int]:
 def backfill_attendance(year, today, fallback_actor, since: date | None = None) -> int:
     start = max(since or year.start_date, year.start_date)
     created = 0
+    errors = []
     day = start
     while day < today:
         if year.is_instructional_day(day):
-            with transaction.atomic():
-                existing = set(
-                    AttendanceRegister.objects.filter(academic_year=year, date=day)
-                    .values_list("section_id", flat=True)
-                )
-                for section in _sections():
-                    if section.pk in existing:
-                        continue
-                    if _create_and_submit(year, section, day, fallback_actor):
-                        created += 1
+            existing = set(
+                AttendanceRegister.objects.filter(academic_year=year, date=day)
+                .values_list("section_id", flat=True)
+            )
+            for section in _sections():
+                if section.pk in existing:
+                    continue
+                if _try(errors, f"{day} {section}",
+                        lambda: _create_and_submit(year, section, day, fallback_actor)):
+                    created += 1
         day += datetime.timedelta(days=1)
-    return created
+    return _finish(created, errors)
 
 
 def prepare_today(year, today, fallback_actor) -> int:
@@ -187,13 +213,14 @@ def prepare_today(year, today, fallback_actor) -> int:
         .values_list("section_id", flat=True)
     )
     created = 0
+    errors = []
     for section in _sections():
         if section.pk in demo_teacher_sections or section.pk in existing:
             continue
-        with transaction.atomic():
-            if _create_and_submit(year, section, today, fallback_actor):
-                created += 1
-    return created
+        if _try(errors, f"{today} {section}",
+                lambda: _create_and_submit(year, section, today, fallback_actor)):
+            created += 1
+    return _finish(created, errors)
 
 
 # -- assessments -----------------------------------------------------------
@@ -248,11 +275,12 @@ def ensure_open_assessments(year, today: date) -> int:
         .select_related("teacher", "offering__subject", "offering__class_grade", "section")
         .order_by("offering__class_grade__name", "section__name", "offering__display_order")
     )
+    errors = []
     for assignment in assignments:
-        with transaction.atomic():
-            if _open_unit_test(term, assignment, today):
-                created += 1
-    return created
+        if _try(errors, f"{assignment.offering} {assignment.section}",
+                lambda: _open_unit_test(term, assignment, today)):
+            created += 1
+    return _finish(created, errors)
 
 
 # -- notices ---------------------------------------------------------------
