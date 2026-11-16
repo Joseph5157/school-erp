@@ -772,13 +772,24 @@ class AssessmentForm(forms.ModelForm):
                 self.fields[name].disabled = True
 
 
-class AssessmentFilterForm(forms.Form):
-    term = forms.ModelChoiceField(queryset=AcademicTerm.objects.none(), required=False)
+class FilterLabelsMixin:
+    """Filter toolbars: labels without a trailing colon."""
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("label_suffix", "")
+        super().__init__(*args, **kwargs)
+
+
+class AssessmentFilterForm(FilterLabelsMixin, forms.Form):
+    term = forms.ModelChoiceField(
+        queryset=AcademicTerm.objects.none(), required=False, empty_label="All terms"
+    )
     status = forms.ChoiceField(
         choices=[("", "Any status"), *Assessment.Status.choices], required=False
     )
     section = forms.ModelChoiceField(
-        queryset=Section.objects.select_related("class_grade"), required=False
+        queryset=Section.objects.select_related("class_grade"), required=False,
+        empty_label="All sections",
     )
 
     def __init__(self, *args, academic_year=None, **kwargs):
@@ -1280,7 +1291,7 @@ class AttendanceCorrectionForm(forms.Form):
             self.fields["status"].initial = entry.status
 
 
-class AttendanceRangeForm(forms.Form):
+class AttendanceRangeForm(FilterLabelsMixin, forms.Form):
     """An optional start/end date range for attendance reporting."""
 
     start = forms.DateField(required=False, widget=forms.DateInput(attrs={"type": "date"}))
@@ -1305,7 +1316,8 @@ class MissingAttendanceForm(AttendanceRangeForm):
     start = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
     end = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
     section = forms.ModelChoiceField(
-        queryset=Section.objects.select_related("class_grade"), required=False
+        queryset=Section.objects.select_related("class_grade"), required=False,
+        empty_label="All sections",
     )
 
     MAX_DAYS = 400
@@ -1339,7 +1351,8 @@ class AttendanceRegisterFilterForm(AttendanceRangeForm):
     """Optional Section and date-range filter for the register list."""
 
     section = forms.ModelChoiceField(
-        queryset=Section.objects.select_related("class_grade"), required=False
+        queryset=Section.objects.select_related("class_grade"), required=False,
+        empty_label="All sections",
     )
     status = forms.ChoiceField(
         choices=[("", "All")] + list(AttendanceRegister.Status.choices), required=False

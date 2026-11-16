@@ -18,8 +18,10 @@ VIEW_PUBLICATION = "core.view_termpublication"
 VIEW_RESULT = "core.view_studentresult"
 SCORE_ASHA = "15.00 / 20.00"
 SCORE_BINA = "11.00 / 20.00"
-PREVIEW_ASHA = "15.00/20.00"  # the publication preview prints scores without spaces
-PREVIEW_BINA = "11.00/20.00"
+PREVIEW_ASHA = "15/20"  # the publication preview prints scores without spaces
+PREVIEW_BINA = "11/20"
+CARD_ASHA = "15 / 20"  # released report cards drop trailing zeros
+CARD_BINA = "11 / 20"
 REMARK = "Steady progress."
 
 
@@ -65,7 +67,7 @@ class TermPublicationPreviewTests(PublicationFixture, TestCase):
                 page = client.get(self.url(), {"section": self.six_a.pk})
                 self.assertEqual(page.status_code, 200)
                 self.assertContains(page, "Asha Rao")  # the workflow lists who is covered
-                for score in (SCORE_ASHA, SCORE_BINA, PREVIEW_ASHA, PREVIEW_BINA):
+                for score in (SCORE_ASHA, SCORE_BINA, PREVIEW_ASHA, PREVIEW_BINA, CARD_ASHA, CARD_BINA):
                     self.assertNotContains(page, score)
                 self.assertNotContains(page, REMARK)
                 for row in page.context["plan"]["rows"]:
@@ -103,7 +105,7 @@ class PublicationDetailTests(PublicationFixture, TestCase):
                 page = client.get(self.url())
                 self.assertEqual(page.status_code, 200)
                 self.assertContains(page, "Asha Rao")
-                self.assertNotContains(page, SCORE_ASHA)
+                self.assertNotContains(page, CARD_ASHA)
                 self.assertNotContains(page, REMARK)
                 self.assertEqual(list(page.context["entries"]), [])
 
@@ -111,7 +113,7 @@ class PublicationDetailTests(PublicationFixture, TestCase):
         for how, client in holders(self.client_class, VIEW_PUBLICATION, VIEW_RESULT):
             with self.subTest(how=how):
                 page = client.get(self.url())
-                self.assertContains(page, SCORE_ASHA)
+                self.assertContains(page, CARD_ASHA)
                 self.assertContains(page, REMARK)
                 self.assertTrue(list(page.context["entries"]))
 
@@ -120,5 +122,5 @@ class PublicationDetailTests(PublicationFixture, TestCase):
             with self.subTest(how=how):
                 page = client.get(reverse("core:publications-stale"))
                 self.assertEqual(page.status_code, 200)
-                self.assertNotContains(page, SCORE_ASHA)
+                self.assertNotContains(page, CARD_ASHA)
         self.assertTrue(TermPublication.objects.filter(pk=self.pub.pk).exists())

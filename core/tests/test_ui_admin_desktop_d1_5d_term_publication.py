@@ -14,6 +14,7 @@ from datetime import date
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
+from django.template.defaultfilters import floatformat
 from django.test import TestCase
 from django.urls import resolve, reverse
 
@@ -95,7 +96,9 @@ class PreviewTests(UiFixture, TestCase):
             f"<strong>{len(plan['selected'])}</strong> of {len(plan['rows'])} Student(s) selected for release.", page)
         for row in plan["rows"]:
             for entry in row["content"]["entries"]:
-                self.assertIn(f"{entry['assessment_label']}: {entry['score']}/{entry['maximum_marks']}", page)
+                score = floatformat(entry["score"], "-2")
+                maximum = floatformat(entry["maximum_marks"], "-2")
+                self.assertIn(f"{entry['assessment_label']}: {score}/{maximum}", page)
         self.assertIn("Remark: Steady progress.", page)
         self.assertEqual(page.count("Will be released"), 2)
 
@@ -127,7 +130,7 @@ class PreviewTests(UiFixture, TestCase):
         form = self.confirm_form(page)
         self.assertRegex(form, r"<button[^>]*disabled[^>]*>Confirm and publish 0 report card\(s\)</button>")
         self.assertIn("No report card is selected, so there is nothing to confirm.", form)
-        self.assertIn("UT1: 15.00/20.00", page)  # an Incomplete Student's finalized entries stay visible
+        self.assertIn("UT1: 15/20", page)  # an Incomplete Student's finalized entries stay visible
 
     def test_including_an_incomplete_student_selects_it_and_keeps_the_hidden_include(self):
         self.make_assessment(name="UT2", on=date(2026, 8, 1))
@@ -156,7 +159,7 @@ class PreviewTests(UiFixture, TestCase):
         page = html(self.preview())
         self.assertIn("Will republish</span>", page)
         self.assertIn("(replaces version 1, Stale — needs review)", page)
-        self.assertIn("UT1: 16.00/20.00", page)  # the corrected value is what would be released
+        self.assertIn("UT1: 16/20", page)  # the corrected value is what would be released
         self.assertEqual(self.token_in(page), self.plan()["token"])
 
     def test_nothing_to_publish_is_skipped(self):
@@ -313,7 +316,7 @@ class DetailTests(UiFixture, TestCase):
         self.assertRegex(page, r"erp-status--published[^>]*><span[^>]*>Status: </span>Published")
         self.assertIn('aria-label="Results as released in version 1"', page)
         self.assertIn("UT1", page)
-        self.assertIn("15.00 / 20.00", page)
+        self.assertIn("15 / 20", page)
         self.assertIn("Steady progress.", page)
         self.assertNotIn("have changed since release", page)
         self.assertIn(reverse("core:publication-withdraw", args=[pub.pk]), page)
@@ -344,10 +347,10 @@ class DetailTests(UiFixture, TestCase):
         self.assertIn("replaced by a later one and is kept permanently as history", old)
         self.assertNotIn(reverse("core:publication-withdraw", args=[v1.pk]), old)
         self.assertNotIn("Review and republish", old)
-        self.assertIn("15.00 / 20.00", old)  # the original snapshot is immutable
+        self.assertIn("15 / 20", old)  # the original snapshot is immutable
         new = self.detail(v2)
         self.assertRegex(new, r"erp-status--published[^>]*><span[^>]*>Status: </span>Published")
-        self.assertIn("16.00 / 20.00", new)
+        self.assertIn("16 / 20", new)
         self.assertIn("(this version)", new)
         for page in (old, new):
             self.assertIn("Version 2", page)

@@ -39,7 +39,7 @@
     <tbody>
     {% for e in entries %}
         <tr><th scope="row" class="fw-semibold">{{ e.subject_label }}</th><td>{{ e.assessment_label }}</td><td class="text-nowrap">{{ e.assessment_date }}</td>
-            <td>{% if e.status == "MARKED" %}{{ e.score }} / {{ e.maximum_marks }}{% else %}Absent{% endif %}</td>
+            <td>{% if e.status == "MARKED" %}{{ e.score|floatformat:"-2" }} / {{ e.maximum_marks|floatformat:"-2" }}{% else %}Absent{% endif %}</td>
             <td>{% if e.percentage is not None %}{{ e.percentage }}%{% endif %}</td><td>{{ e.grade_label|default:"Not graded" }}</td><td>{{ e.pass_fail_label|default:"" }}</td></tr>
     {% empty %}<tr><td colspan="7">No results in this version.</td></tr>{% endfor %}
     </tbody>

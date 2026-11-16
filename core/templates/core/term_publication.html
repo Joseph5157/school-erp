@@ -47,7 +47,7 @@
             <div class="small erp-publication-release">
                 <p class="mb-1 fw-semibold">Will be released</p>
                 <ul class="list-unstyled mb-0">
-                    {% for e in row.content.entries %}<li>{{ e.subject_label }} &middot; {{ e.assessment_label }}: {% if e.status == "MARKED" %}{{ e.score }}/{{ e.maximum_marks }}{% if e.grade_label %} ({{ e.grade_label }}){% endif %}{% else %}Absent{% endif %}</li>{% endfor %}
+                    {% for e in row.content.entries %}<li>{{ e.subject_label }} &middot; {{ e.assessment_label }}: {% if e.status == "MARKED" %}{{ e.score|floatformat:"-2" }}/{{ e.maximum_marks|floatformat:"-2" }}{% if e.grade_label %} ({{ e.grade_label }}){% endif %}{% else %}Absent{% endif %}</li>{% endfor %}
                 </ul>
                 {% if row.content.remark %}<p class="text-muted mb-0 mt-1">Remark: {{ row.content.remark.text }}</p>{% endif %}
             </div>

@@ -72,7 +72,7 @@ class PreviewAndConfirmTests(PublicationFixture, TestCase):
         page = self.portal.get(reverse("portal:report-card",
                                        args=[self.asha_grant.public_id, cards[0].public_id]))
         self.assertContains(page, "UT1")
-        self.assertContains(page, "15.00 / 20.00")
+        self.assertContains(page, "15 / 20")
         self.assertContains(page, "Steady progress.")
         self.assertTrue(SecurityEvent.objects.filter(
             event_type=SecurityEvent.EventType.TERM_PUBLISHED, event_class="HISTORY").exists())
@@ -169,7 +169,7 @@ class StalenessTests(PublicationFixture, TestCase):
         self.assertEqual(self.v1.entries.get().score, Decimal("15"))
         self.assertEqual(v2.entries.get().score, Decimal("17"))
         admin_page = self.client.get(reverse("core:publication-detail", args=[self.v1.pk]))
-        self.assertContains(admin_page, "15.00 / 20.00")
+        self.assertContains(admin_page, "15 / 20")
         self.assertEqual([p.version for p in self.cards()], [2])
         old = reverse("portal:report-card", args=[self.asha_grant.public_id, self.v1.public_id])
         self.assertEqual(self.portal.get(old).status_code, 404)

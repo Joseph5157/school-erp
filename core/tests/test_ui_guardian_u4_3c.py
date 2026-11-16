@@ -85,7 +85,7 @@ class VisibilityAndAuthorizationTests(AcceptanceFixture, TestCase):
                 self.assertEqual(self.portal.get(url).status_code, 404)
         home = self.portal.get("/guardian/").content.decode()
         self.assertIn("access under review by the school", home)
-        for leaked in (str(card.public_id), "Term 1", "UT1", "10.00 / 20.00"):
+        for leaked in (str(card.public_id), "Term 1", "UT1", "10 / 20"):
             self.assertNotIn(leaked, home)
 
     def test_another_guardian_cannot_open_this_childs_report_card_or_pdf(self):

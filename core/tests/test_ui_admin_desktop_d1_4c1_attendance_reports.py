@@ -421,7 +421,7 @@ class MissingAttendanceTests(AriaAssertions, FormValueAssertions, ReportsFixture
         self.assertEqual(
             re.findall(r'<(?:select|input)[^>]* name="(\w+)"', tag), ["start", "end", "section"]
         )
-        self.assertEqual(re.findall(r"<label[^>]*>([^<]+):</label>", tag), ["Start", "End", "Section"])
+        self.assertEqual(re.findall(r"<label[^>]*>([^<]+)</label>", tag), ["Start", "End", "Section"])
         self.assertNoPresetValue(tag, "start")
         self.assertNoPresetValue(tag, "end")
         self.assertOnlyEmptyOptionSelected(tag, "section")
