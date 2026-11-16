@@ -175,9 +175,15 @@
             Best day {{ a.summary.peak.date|date:"j M" }} ({{ a.summary.peak.percentage|floatformat:0 }}%).
             Lowest {{ a.summary.lowest.date|date:"j M" }} ({{ a.summary.lowest.percentage|floatformat:0 }}%).
         </p>
-        <ul class="visually-hidden erp-visually-hidden-data">
-            {% for p in a.points %}<li>{{ p.date|date:"j M" }}: {{ p.percentage|floatformat:1 }}% ({{ p.present }} present, {{ p.absent }} absent)</li>{% endfor %}
-        </ul>
+        {# Audit 10 (AO-02): every day's exact figures, open to keyboard, zoom and High Contrast users, not only screen readers. #}
+        <details class="erp-chart-data">
+            <summary>View daily figures</summary>
+            <table class="erp-chart-table erp-keep">
+                <caption class="visually-hidden">Daily attendance, {{ a.label }}</caption>
+                <thead><tr><th scope="col">Date</th><th scope="col">Attendance</th><th scope="col">Present</th><th scope="col">Absent</th></tr></thead>
+                <tbody>{% for p in a.points %}<tr><th scope="row">{{ p.date|date:"D j M" }}</th><td>{{ p.percentage|floatformat:1 }}%</td><td>{{ p.present }}</td><td>{{ p.absent }}</td></tr>{% endfor %}</tbody>
+            </table>
+        </details>
     </article>
 
     <article class="erp-analytics-card erp-analytics-card--heat">
@@ -192,9 +198,14 @@
             {% endfor %}
         </div>
         <p class="erp-heat-legend" aria-hidden="true"><span class="erp-heat-cell erp-heat-cell--t1"></span> under 80% <span class="erp-heat-cell erp-heat-cell--t4"></span> 95%+ <span class="erp-heat-cell erp-heat-cell--no_data"></span> not submitted</p>
-        <ul class="visually-hidden erp-visually-hidden-data">
-            {% for week in a.heatmap %}{% for cell in week %}{% if cell.state == "data" %}<li>{{ cell.date|date:"j M" }}: {{ cell.percentage|floatformat:1 }}%</li>{% endif %}{% endfor %}{% endfor %}
-        </ul>
+        <details class="erp-chart-data">
+            <summary>View heatmap figures</summary>
+            <table class="erp-chart-table erp-keep">
+                <caption class="visually-hidden">Attendance heatmap, last 4 weeks</caption>
+                <thead><tr><th scope="col">Date</th><th scope="col">Attendance</th></tr></thead>
+                <tbody>{% for week in a.heatmap %}{% for cell in week %}{% if cell.state == "data" %}<tr><th scope="row">{{ cell.date|date:"D j M" }}</th><td>{{ cell.percentage|floatformat:1 }}%</td></tr>{% elif cell.state == "no_data" %}<tr><th scope="row">{{ cell.date|date:"D j M" }}</th><td>Not submitted</td></tr>{% endif %}{% endfor %}{% endfor %}</tbody>
+            </table>
+        </details>
         {% if a.classes|length > 1 %}{% with low=a.classes.0 high=a.classes|last %}
         {# Desktop only: the two ends of the class comparison, next to the heatmap. #}
         <dl class="erp-class-callouts">

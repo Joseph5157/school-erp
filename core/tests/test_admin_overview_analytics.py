@@ -421,7 +421,39 @@ class OverviewAnalyticsViewTests(AnalyticsFixture, TestCase):
         self.assertContains(response, "erp-heat")
         self.assertContains(response, "erp-heat-cell--t4")
         self.assertContains(response, "erp-heat-cell--not_school")
-        self.assertContains(response, "erp-visually-hidden-data")
+        # AO-02: the exact values are a visible table, not only hover titles.
+        html = response.content.decode()
+        heat = html[html.index("erp-analytics-card--heat"):]
+        heat = heat[:heat.index("</article>")]
+        self.assertIn("<summary>View heatmap figures</summary>", heat)
+        self.assertIn('<th scope="row">Wed 1 Jul</th><td>100.0%</td>', heat)
+        self.assertIn("<td>Not submitted</td>", heat)  # 2 Jul is a school day with no register
+        self.assertNotIn("visually-hidden-data", heat)
+
+    def test_daily_figures_are_a_visible_table_under_the_trend(self):
+        self.day(datetime.date(2026, 7, 1), {self.s1: P, self.s2: A})
+        html = self.administrator.get(self.url).content.decode()
+        trend = html[html.index("erp-analytics-card--trend"):]
+        trend = trend[:trend.index("</article>")]
+        self.assertIn('<details class="erp-chart-data">', trend)
+        self.assertIn("<summary>View daily figures</summary>", trend)
+        self.assertIn('<table class="erp-chart-table erp-keep">', trend)
+        self.assertIn('<th scope="col">Present</th>', trend)
+        self.assertIn('<th scope="row">Wed 1 Jul</th><td>50.0%</td><td>1</td><td>1</td>', trend)
+
+    def test_charts_have_a_high_contrast_mode(self):
+        css = Path(settings.BASE_DIR, "static", "css", "erp.css").read_text(encoding="utf-8")
+        block = css[css.index("@media (forced-colors: active) {"):]
+        block = block[:block.index("\n}\n")]
+        for rule in (
+            ".erp-chart-text { fill: CanvasText; }",
+            ".erp-class-bar { forced-color-adjust: none; background: Canvas; border: 1px solid CanvasText; }",
+            ".erp-heat-cell { forced-color-adjust: none; background: Canvas; color: CanvasText; border-color: CanvasText; }",
+            ".erp-heat-cell--t1 { border-width: 3px; }",
+            ".erp-heat-cell--no_data { border-style: dashed; color: GrayText; }",
+        ):
+            self.assertIn(rule, block)
+        self.assertNotIn("stroke-dasharray", block)  # the donut draws its segments with dasharray
 
     def test_non_administrators_are_still_denied(self):
         response = self.non_admin.get(self.url)

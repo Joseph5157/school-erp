@@ -1378,6 +1378,48 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
 /* Desktop-only Overview pieces stay out of the phone layout entirely. */
 .erp-period-seg, .erp-period-chip-custom, .erp-trend-stats, .erp-trend--wide, .erp-trend-desk-note, .erp-class-callouts { display: none; }
 
+/* Audit 10 (AO-02): "View ... figures" under the trend and heatmap; the same toggle as By class "more". */
+.erp-chart-data { margin-top: var(--erp-space-3); }
+.erp-chart-data > summary { display: flex; align-items: center; justify-content: space-between; gap: var(--erp-space-2); min-height: 2.75rem; cursor: pointer; color: var(--erp-action); font-size: var(--erp-text-sm); font-weight: 600; }
+.erp-chart-data > summary::-webkit-details-marker { display: none; }
+.erp-chart-data > summary::after { content: "\25BE"; flex: none; font-size: 1.1em; line-height: 1; transition: transform .15s; }
+.erp-chart-data[open] > summary::after { transform: rotate(180deg); }
+.erp-chart-table { width: 100%; border-collapse: collapse; font-size: var(--erp-text-sm); font-variant-numeric: tabular-nums; }
+.erp-chart-table th, .erp-chart-table td { padding: var(--erp-space-1) var(--erp-space-2); border-bottom: 1px solid var(--erp-rule); text-align: right; }
+.erp-chart-table th:first-child { text-align: left; font-weight: 600; }
+.erp-chart-table thead th { color: var(--erp-ink-soft); font-size: var(--erp-text-xs); }
+
+/* Audit 10 (AO-03): Windows High Contrast. Chart marks take system colours so they follow the person's theme.
+   Without this the centre percentages turned dark-on-dark, every heatmap day looked the same and progress
+   bars vanished. forced-color-adjust: none is used only where system colours are then set by hand. */
+@media (forced-colors: active) {
+  .erp-chart-text { fill: CanvasText; }
+  .erp-trend-line, .erp-trend-dot, .erp-trend-dotline, .erp-gauge-value, .erp-ring-value, .erp-donut-seg--0 { stroke: Highlight; }
+  .erp-trend-area { fill: Highlight; }
+  .erp-trend-dot { fill: Canvas; }
+  .erp-trend-grid, .erp-gauge-track, .erp-ring-track, .erp-donut-track { stroke: GrayText; }
+  .erp-gauge-tick, .erp-gauge--low .erp-gauge-value, .erp-donut-seg--1 { stroke: CanvasText; }
+  .erp-col-bar, .erp-cols--marks .erp-col-bar { fill: Highlight; }
+  .erp-col--low .erp-col-bar { fill: CanvasText; }
+  .erp-col-track { fill: GrayText; }
+  .erp-class-bar { forced-color-adjust: none; background: Canvas; border: 1px solid CanvasText; }
+  .erp-class-bar::-webkit-progress-bar { background: Canvas; }
+  .erp-class-bar::-webkit-progress-value { background: Highlight; }
+  .erp-class-bar::-moz-progress-bar { background: Highlight; }
+  .erp-class-bar--low::-webkit-progress-value { background: CanvasText; }
+  .erp-class-bar--low::-moz-progress-bar { background: CanvasText; }
+  /* Heatmap tiers by fill and border, not colour: 95%+ solid, next tier highlighted, under 80% a thick border,
+     not submitted a dashed border. The "View heatmap figures" table has the exact values. */
+  .erp-heat-cell { forced-color-adjust: none; background: Canvas; color: CanvasText; border-color: CanvasText; }
+  .erp-heat-cell--t4 { background: CanvasText; color: Canvas; }
+  .erp-heat-cell--t3 { background: Highlight; color: HighlightText; }
+  .erp-heat-cell--t1 { border-width: 3px; }
+  .erp-heat-cell--no_data { border-style: dashed; color: GrayText; }
+  .erp-heat-cell--not_school { border-color: GrayText; color: GrayText; }
+  .erp-donut-key { forced-color-adjust: none; background: CanvasText; }
+  .erp-donut-key--0 { background: Highlight; }
+}
+
 /* ---------- Desktop Overview grid ---------- */
 @media (min-width: 992px) {
   /* "Option B" (docs/ui-reviews/desktop-overview-options.html): a title row with period links, a hero
