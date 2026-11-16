@@ -93,6 +93,25 @@ Current status:
   - full acceptance journey verified end to end; full suite passes on SQLite
     and PostgreSQL
 
+## Demo school refresh
+
+`python manage.py refresh_demo_school` keeps the staging demo school looking
+current: it finishes old draft attendance registers, fills in attendance up to
+today, prepares today's registers, keeps one open unit test per class and
+subject, and posts a fresh notice when the newest is over a week old. It is
+safe to run again and again. It only runs when `EVERCLASS_DEMO_SCHOOL=1` is set
+on the demo environment, and does nothing once today is outside the academic
+year.
+
+- Daily, on the cron service, use this start command:
+  `sh -c "python manage.py expire_import_batches && python manage.py refresh_demo_school"`
+- One-off run: `sh -c "EVERCLASS_DEMO_SCHOOL=1 python manage.py refresh_demo_school"`
+- Today's registers are submitted at about 05:30 IST. If the school's notification
+  mode is switched to Assist, those submissions will prepare absence alerts in the
+  Message queue each school morning (nothing is sent automatically).
+- The demo year runs to 31 Mar 2027. From 1 Apr 2027 the command does
+  nothing, so reseed the demo or roll the year over before then.
+
 ## Documentation
 
 - [docs/PRODUCT.md](docs/PRODUCT.md) — product vision, users, principles, and module strategy
