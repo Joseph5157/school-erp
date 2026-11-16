@@ -615,6 +615,20 @@ body.erp { min-height: 100vh; }
   }
 }
 
+/* Install bar: first-time phone users, signed-in pages (templates/partials/_install_bar.html),
+   between the top bar and <main> so page content stays the page's own.
+   Starts hidden; erp.js reveals it. Never on wider screens, whatever the script decides. */
+.erp-install-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--erp-space-2) var(--erp-space-3); margin: var(--erp-space-2) var(--erp-space-4) 0; padding: var(--erp-space-3); background: var(--erp-brand-wash); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius-sm); color: var(--erp-ink); }
+.erp-install-bar[hidden] { display: none; }
+.erp-install-bar-icon { flex: none; border-radius: 8px; }
+.erp-install-bar-text { flex: 1 1 10rem; margin: 0; line-height: 1.3; }
+.erp-install-bar-text strong { display: block; }
+.erp-install-bar-text span { color: var(--erp-ink-soft); font-size: .875rem; }
+.erp-install-bar-actions { display: flex; gap: var(--erp-space-2); margin-left: auto; }
+.erp-install-bar-actions .btn { min-height: 2.75rem; display: inline-flex; align-items: center; }
+.erp-install-bar-actions .btn[hidden] { display: none; }
+@media (min-width: 768px) { .erp-install-bar { display: none !important; } }
+
 /* ---------- Account menu (details/summary, works without JS) ---------- */
 
 .erp-account { position: relative; }

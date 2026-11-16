@@ -1,0 +1,12 @@
+{% load static %}{# First-time phone users: invite them to install the app. Rendered hidden; erp.js shows it only on a phone, outside the installed app, when the browser can install (or on iPhone, which needs the how-to page), and not within 30 days of "Not now". CSS keeps it off wider screens. Never on the install page itself. #}
+{% if user.is_authenticated and request.resolver_match.url_name != 'pwa-install' %}
+<section class="erp-install-bar" data-erp-install-bar aria-label="Install the app" hidden>
+    <img class="erp-install-bar-icon" src="{% static 'pwa/icon-192.png' %}" alt="" width="36" height="36">
+    <p class="erp-install-bar-text"><strong>Install Everclass on your phone</strong><span>Open it from your home screen, like an app.</span></p>
+    <div class="erp-install-bar-actions">
+        <button type="button" class="btn btn-primary btn-sm" data-erp-install-bar-install hidden>Install</button>
+        <a class="btn btn-primary btn-sm" href="{% url 'pwa-install' %}" data-erp-install-bar-howto hidden>How to install</a>
+        <button type="button" class="btn btn-link btn-sm" data-erp-install-bar-dismiss>Not now</button>
+    </div>
+</section>
+{% endif %}

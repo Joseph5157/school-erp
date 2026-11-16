@@ -830,6 +830,56 @@
   });
 })();
 
+// Install bar (PWA, first-time phone users): templates/partials/_install_bar.html is rendered hidden on
+// signed-in pages. Show it only on a phone, outside the installed app, and not within 30 days of
+// "Not now". Android/desktop Chrome: show it when the browser offers an install, and "Install" opens
+// the browser's own prompt. iPhone has no prompt, so it shows "How to install" (the help page).
+// Storage can be blocked (private mode); then the bar simply comes back next time.
+(function () {
+  var bar = document.querySelector("[data-erp-install-bar]");
+  if (!bar) return;
+  var KEY = "erp-install-dismissed-at";
+  var WAIT = 30 * 24 * 60 * 60 * 1000;
+  var phone = window.matchMedia("(max-width: 767.98px)").matches;
+  var installed = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+  if (!phone || installed) return;
+  try {
+    var at = Number(window.localStorage.getItem(KEY));
+    if (at && Date.now() - at < WAIT) return;
+  } catch (error) { /* storage blocked: treat as never dismissed */ }
+
+  var install = bar.querySelector("[data-erp-install-bar-install]");
+  var howto = bar.querySelector("[data-erp-install-bar-howto]");
+  var dismiss = bar.querySelector("[data-erp-install-bar-dismiss]");
+  var offered = null;
+  function hide() { bar.hidden = true; }
+
+  var ios = /iPhone|iPad|iPod/.test(window.navigator.userAgent);
+  if (ios) {
+    howto.hidden = false;
+    bar.hidden = false;
+  }
+  window.addEventListener("beforeinstallprompt", function (event) {
+    event.preventDefault(); // our bar replaces Chrome's own mini-bar on phones
+    offered = event;
+    install.hidden = false;
+    howto.hidden = true;
+    bar.hidden = false;
+  });
+  install.addEventListener("click", function () {
+    if (!offered) return;
+    var prompt = offered;
+    offered = null;
+    hide();
+    prompt.prompt();
+  });
+  dismiss.addEventListener("click", function () {
+    try { window.localStorage.setItem(KEY, String(Date.now())); } catch (error) { /* blocked */ }
+    hide();
+  });
+  window.addEventListener("appinstalled", hide);
+})();
+
 // Dependent selectors: a field marked data-erp-depends-on="<parent field id>" shows only the options (or
 // checkboxes) whose data-parent matches the parent's choice. A select carries the attribute itself; a checkbox
 // list carries it on each box. If the parent's chosen option itself has a data-parent (a Subject offering
