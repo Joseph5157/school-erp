@@ -359,6 +359,11 @@ class OverviewAnalyticsViewTests(AnalyticsFixture, TestCase):
         self.assertContains(response, 'role="img"')
         self.assertContains(response, "erp-visually-hidden-data")
 
+    def test_heatmap_intro_paragraph_is_closed_before_the_grid(self):
+        self.day(datetime.date(2026, 7, 1), {self.s1: P, self.s2: P})
+        html = self.administrator.get(self.url).content.decode()
+        self.assertRegex(html, r'red is under 80%\.</p>\s*<div class="erp-heat"')
+
     def test_there_is_no_late_status_anywhere(self):
         response = self.administrator.get(self.url)
         self.assertNotContains(response, "Late")
@@ -1403,6 +1408,12 @@ class OverviewChartLayoutTests(AnalyticsFixture, TestCase):
     def test_phone_details_summary_is_a_44px_tap_target(self):
         css = Path(settings.BASE_DIR, "static", "css", "erp.css").read_text(encoding="utf-8")
         self.assertRegex(css, r"\.erp-class-more > summary \{[^}]*min-height: 2\.75rem")
+
+    def test_setup_completed_steps_summary_is_a_44px_tap_target(self):
+        css = Path(settings.BASE_DIR, "static", "css", "erp.css").read_text(encoding="utf-8")
+        self.assertRegex(css, r"\.erp-setup-done > summary \{[^}]*min-height: 2\.75rem")
+        self.assertIn(".erp-setup-done > summary::-webkit-details-marker { display: none; }", css)
+        self.assertIn('.erp-setup-done > summary::after { content: "\\25BE";', css)
 
     def test_by_class_columns_spread_without_clipping_on_overflow(self):
         block = self.css()
