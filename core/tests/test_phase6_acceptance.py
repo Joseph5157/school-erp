@@ -131,7 +131,7 @@ class GuardianJourneyTests(JourneyFixture, TestCase):
         cards = guardian.get(cards_url).context["publications"]
         self.assertEqual(len(cards), 1)
         card_url = reverse("portal:report-card", args=[grant.public_id, cards[0].public_id])
-        self.assertContains(guardian.get(card_url), "15.00 / 20.00")
+        self.assertContains(guardian.get(card_url), "15 / 20")
 
         # 7. Correction hides the Term until republished; v1 stays reconstructable.
         self.client.post(reverse("core:result-correct", args=[result.pk]),
@@ -146,7 +146,7 @@ class GuardianJourneyTests(JourneyFixture, TestCase):
         v1 = TermPublication.objects.get(student=self.asha, version=1)
         self.assertEqual(v1.entries.get().score, Decimal("15"))
         self.assertContains(self.client.get(reverse("core:publication-detail", args=[v1.pk])),
-                            "15.00 / 20.00")
+                            "15 / 20")
 
         # 8. Section move requires an explicit decision; retain.
         enroll_url = reverse("core:student-enroll", args=[self.asha.pk])

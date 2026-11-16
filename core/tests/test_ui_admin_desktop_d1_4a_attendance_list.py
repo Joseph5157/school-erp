@@ -66,7 +66,7 @@ class StructureTests(AttendanceListFixture, TestCase):
         self.assertIn('method="get"', form)
         self.assertIn("erp-toolbar", form)
         tag = content.split('aria-label="Filter attendance registers"')[1].split("</form>")[0]
-        self.assertEqual(re.findall(r"<label[^>]*>([^<]+):</label>", tag), ["Section", "Start", "End", "Status"])
+        self.assertEqual(re.findall(r"<label[^>]*>([^<]+)</label>", tag), ["Section", "Start", "End", "Status"])
         self.assertEqual(re.findall(r'<(?:select|input)[^>]* name="(section|start|end|status)"', tag),
                          ["section", "start", "end", "status"])
         self.assertEqual(tag.count('type="date"'), 2)

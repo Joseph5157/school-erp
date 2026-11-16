@@ -187,7 +187,7 @@ class ReportCardDetailTests(CardFixture, TestCase):
 
     def test_values_come_from_the_snapshot_exactly(self):
         page = self.page()
-        for text in ("10.00 / 20.00", "50.00%", "15.00 / 20.00", "75.00%", "Absent"):
+        for text in ("10 / 20", "50%", "15 / 20", "75%", "Absent"):
             self.assertContains(page, text)
         self.assertContains(page, "<dt>Result</dt><dd>Pass</dd>")
 
