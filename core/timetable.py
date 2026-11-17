@@ -435,7 +435,7 @@ def timetable_picker(user, dates):
     from core.models import Section
 
     def ordered(sections):
-        return sorted(sections, key=lambda s: (s.class_grade.display_order, s.name))
+        return sorted(sections, key=lambda s: (s.class_grade.display_order, s.class_grade_id, s.name))
 
     class_teacher, subject, listed_ids = {}, {}, set()
     for day in dates:
