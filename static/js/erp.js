@@ -202,16 +202,34 @@
     });
   });
 
+  // Large-form counters are not live regions: they would speak on every tap or keystroke. A screen
+  // reader hears only the change to "complete" (audit 12 A11Y-04); the state on page load is not spoken.
+  function doneAnnouncer(container, message) {
+    var node = container.querySelector("[data-erp-done-announce]");
+    var wasDone = null;
+    return function (done) {
+      if (!node || done === wasDone) return;
+      if (wasDone !== null) node.textContent = done ? message : "";
+      wasDone = done;
+    };
+  }
+
   // Success and info messages close after 6 seconds; warnings and errors stay until dismissed.
+  // A message being read (pointer over it, or focus inside it) waits until it is left (audit 12 A11Y-01).
   var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   document.querySelectorAll("[data-erp-autohide]").forEach(function (alert) {
-    window.setTimeout(function () {
+    function close() {
+      if (alert.matches(":hover") || alert.contains(document.activeElement)) {
+        window.setTimeout(close, 2000);
+        return;
+      }
       if (window.bootstrap && window.bootstrap.Alert && !reduceMotion) {
         window.bootstrap.Alert.getOrCreateInstance(alert).close();
       } else {
         alert.remove();
       }
-    }, 6000);
+    }
+    window.setTimeout(close, 6000);
   });
 
   // Attendance roster: live counts, filter tabs, mark-unanswered-present, submit hint.
@@ -251,7 +269,9 @@
           ? "Mark all students to submit (" + counts.unmarked + " unmarked)"
           : "All students marked");
       }
+      announceDone(counts.unmarked === 0);
     }
+    var announceDone = doneAnnouncer(roster, "All students marked.");
 
     if (tabs) {
       tabs.hidden = false;
@@ -548,7 +568,9 @@
         if (target) target.textContent = counts[key];
       });
       if (hint) hint.textContent = counts.unmarked + " not entered";
+      announceDone(counts.unmarked === 0);
     }
+    var announceDone = doneAnnouncer(sheet, "All students have a mark or Absent.");
 
     if (tabs) {
       tabs.hidden = false;

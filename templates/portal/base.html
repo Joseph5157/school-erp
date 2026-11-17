@@ -19,12 +19,12 @@
     </header>
     {% include "partials/_install_bar.html" %}
     <main id="main" class="erp-main">
+        {% include "partials/_messages.html" %}
         <div class="erp-content">
             {% if switcher_children and student %}{% include "portal/_child_switcher.html" %}{% endif %}
             {% block content %}{% endblock %}
         </div>
     </main>
-    {% include "partials/_messages.html" %}
     {% include "portal/_tabbar.html" %}
     <script src="{% static 'vendor/bootstrap/5.3.3/js/bootstrap.bundle.min.js' %}" defer></script>
     <script src="{% static 'js/erp.js' %}" defer></script>
