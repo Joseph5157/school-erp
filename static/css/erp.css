@@ -343,11 +343,6 @@ body.erp { min-height: 100vh; min-height: 100dvh; }
 .erp-sidebar .nav-link { color: var(--erp-ink); border-radius: 6px; padding: .4rem .75rem; }
 .erp-sidebar .nav-link:hover { background: var(--erp-paper); }
 .erp-sidebar .nav-link.active { background: var(--erp-brand-wash); color: var(--erp-brand); font-weight: 600; }
-/* High Contrast drops the tinted pill and edge bar, so the current page is underlined (audit 11 AS-05). */
-@media (forced-colors: active) {
-  .erp-sidebar .nav-link.active, .erp-topbar-links a.active, .erp-tabbar a.active, .erp-portal-nav a.active,
-  .erp-breadcrumb a[aria-current] { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: .2em; }
-}
 .erp-sidebar .nav-link { display: flex; align-items: center; gap: var(--erp-space-2); }
 .erp-nav-icon { flex: none; width: 1rem; height: 1rem; }
 .erp-nav-badge {
@@ -1429,6 +1424,12 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
   .erp-heat-cell--not_school { border-color: GrayText; color: GrayText; }
   .erp-donut-key { forced-color-adjust: none; background: CanvasText; }
   .erp-donut-key--0 { background: Highlight; }
+}
+
+/* High Contrast drops the tinted pill and edge bar, so the current page is underlined (audit 11 AS-05). */
+@media (forced-colors: active) {
+  .erp-sidebar .nav-link.active, .erp-topbar-links a.active, .erp-tabbar a.active, .erp-portal-nav a.active,
+  .erp-breadcrumb a[aria-current] { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: .2em; }
 }
 
 /* ---------- Desktop Overview grid ---------- */
