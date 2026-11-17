@@ -2,7 +2,7 @@
 {% block title %}Deactivate teacher login{% endblock %}
 {% block content %}
 {% include "partials/_page_header.html" with eyebrow="Teacher login" title="Deactivate teacher login" purpose=teacher.username only %}
-<div class="alert alert-warning" role="alert">
+<div class="alert alert-warning" role="note">
     <p class="fw-semibold mb-2">This change has the following consequences:</p>
     <ul class="mb-0">
         <li>{{ teacher.get_full_name|default:teacher.username }} can no longer sign in.</li>

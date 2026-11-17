@@ -42,7 +42,7 @@
   --erp-viz-attendance: #2a78d6;
   --erp-viz-marks: #eb6834;
   --erp-viz-heat-1: #86b6ef;
-  --erp-viz-heat-2: #3987e5;
+  --erp-viz-heat-2: #2a6fc6; /* audit 16 CLR-03: white day numbers reach 5.0:1 (was #3987e5, 3.64:1) */
   --erp-viz-heat-3: #1c5cab;
   --erp-viz-low: #d03b3b;
   --erp-viz-grid: #e1e0d9;
@@ -97,6 +97,9 @@
   --bs-body-bg: var(--erp-paper);
   --bs-body-color: var(--erp-ink);
   --bs-secondary-color: var(--erp-ink-soft);
+  /* Audit 16 CLR-02: .text-secondary / .text-danger use these RGB forms; stock Bootstrap colours fail on paper. */
+  --bs-secondary-rgb: 74, 85, 98;
+  --bs-danger-rgb: 163, 50, 42;
   --bs-border-color: var(--erp-rule);
   --bs-link-color: var(--erp-action);
   --bs-link-color-rgb: 14, 107, 102;
@@ -1582,6 +1585,23 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
 @media (forced-colors: active) {
   .erp-sidebar .nav-link.active, .erp-topbar-links a.active, .erp-tabbar a.active, .erp-portal-nav a.active,
   .erp-breadcrumb a[aria-current] { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: .2em; }
+}
+
+/* Audit 16 CLR-04: the student progress charts (bullet and radar) take system colours in High Contrast.
+   The score is Highlight, the pass band and grid GrayText, the class average CanvasText and still dashed. */
+@media (forced-colors: active) {
+  .erp-bullet-track, .erp-bullet-pass { fill: GrayText; fill-opacity: .35; }
+  .erp-bullet-bar { fill: Highlight; }
+  .erp-bullet-marker { stroke: CanvasText; }
+  .erp-bullet-flag { forced-color-adjust: none; background: Canvas; color: CanvasText; border: 1px solid CanvasText; }
+  .erp-radar-grid, .erp-radar-spoke { stroke: GrayText; }
+  .erp-radar-outline--student { fill: Highlight; fill-opacity: .25; stroke: Highlight; }
+  .erp-radar-outline--section { stroke: CanvasText; stroke-dasharray: 4 3; }
+  .erp-radar-label { fill: CanvasText; }
+  .erp-key { forced-color-adjust: none; }
+  .erp-key--student { background: Highlight; }
+  .erp-key--section, .erp-key--marker { background: CanvasText; }
+  .erp-key--pass { background: GrayText; }
 }
 
 /* ---------- Desktop Overview grid ---------- */

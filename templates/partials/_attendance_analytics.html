@@ -133,13 +133,13 @@
             {% include "partials/charts/_columns.html" with rows=a.class_columns colour="attendance" label="Attendance by class" %}
         </div>
         <div class="erp-class-phone">
-            <p class="erp-analytics-sub">{% if a.class_bars_rest %}The {{ a.class_bars_phone|length }} classes with the lowest attendance, {{ a.label }}.{% elif a.classes|length == 1 %}Attendance for the one class with data, {{ a.label }}.{% else %}All {{ a.classes|length }} classes, lowest first, {{ a.label }}.{% endif %}</p>
-            {% include "partials/charts/_bars.html" with rows=a.class_bars_phone colour="attendance" %}
+            <p class="erp-analytics-sub">{% if a.class_bars_rest %}The {{ a.class_bars_phone|length }} classes with the lowest attendance, {{ a.label }}.{% elif a.classes|length == 1 %}Attendance for the one class with data, {{ a.label }}.{% else %}All {{ a.classes|length }} classes, lowest first, {{ a.label }}.{% endif %} Red is under {{ a.attendance_target }}%.</p>
+            {% include "partials/charts/_bars.html" with rows=a.class_bars_phone colour="attendance" target=a.attendance_target %}
             {% if a.class_bars_rest %}
             <details class="erp-class-more">
                 <summary>Show all classes</summary>
                 <p class="erp-analytics-sub">The other {{ a.class_bars_rest|length }} class{{ a.class_bars_rest|length|pluralize:",es" }}, in class order.</p>
-                {% include "partials/charts/_bars.html" with rows=a.class_bars_rest colour="attendance" %}
+                {% include "partials/charts/_bars.html" with rows=a.class_bars_rest colour="attendance" target=a.attendance_target %}
             </details>
             {% endif %}
         </div>

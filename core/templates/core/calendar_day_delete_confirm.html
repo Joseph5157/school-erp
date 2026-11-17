@@ -10,7 +10,7 @@
     <dt class="visually-hidden">Current status</dt>
     <dd>{{ calendar_day.is_instructional|yesno:"Extra instructional day,Holiday / closure" }}</dd>
 </dl>
-<div class="alert alert-warning" role="alert">
+<div class="alert alert-warning" role="note">
     <p class="fw-semibold mb-2">This change has the following consequences:</p>
     <ul class="mb-0">
         <li>The date goes back to the weekly pattern and becomes {{ normal_instructional|yesno:"an instructional day,not an instructional day" }}.</li>
