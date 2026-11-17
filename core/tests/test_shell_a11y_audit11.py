@@ -32,7 +32,7 @@ class ShellMarkupTests(AuthorizationClientsMixin, Phase4Fixture, TestCase):
         student, _ = self.make_student("Asha")
         url = reverse("core:student-detail", args=[student.pk])
         page = self.administrator.get(url).content.decode()
-        trail = page.split('aria-label="Breadcrumb"', 1)[1].split("</nav>", 1)[0]
+        trail = page.split('aria-label="Breadcrumbs"', 1)[1].split("</nav>", 1)[0]
         self.assertIn(f'<li><a href="{url}" aria-current="page">', trail)
         self.assertNotIn("<li aria-current", trail)
         self.assertEqual(trail.count('aria-current="page"'), 1)
@@ -49,7 +49,7 @@ class ShellCssTests(SimpleTestCase):
         self.assertIn(".erp-offering-group { scroll-margin-top: 0; }", css())  # #grade- jumps on Subjects offered
 
     def test_breadcrumb_divider_has_an_empty_alternative(self):
-        self.assertIn('content: "/"; content: "/" / "";', css())
+        self.assertIn('content: "›"; content: "›" / "";', css())
 
     def test_active_navigation_is_underlined_in_high_contrast(self):
         block = re.search(r"@media \(forced-colors: active\) \{\s*\.erp-sidebar \.nav-link\.active[^}]*\}", css())

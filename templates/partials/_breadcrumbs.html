@@ -1,6 +1,9 @@
 {% if breadcrumbs %}
-<nav class="erp-breadcrumb" aria-label="Breadcrumb">
-    <ol>
+<nav class="erp-breadcrumb" aria-label="Breadcrumbs">
+    {% for crumb in breadcrumbs %}
+    {% if forloop.revcounter == 2 %}<a class="erp-breadcrumb-back" href="{{ crumb.url }}"><span aria-hidden="true">&lsaquo;</span>{{ crumb.label }}</a>{% endif %}
+    {% endfor %}
+    <ol role="list">
         {% for crumb in breadcrumbs %}
         <li>{% if forloop.last %}<a href="{{ request.path }}" aria-current="page">{{ crumb.label }}</a>{% else %}<a href="{{ crumb.url }}">{{ crumb.label }}</a>{% endif %}</li>
         {% endfor %}
