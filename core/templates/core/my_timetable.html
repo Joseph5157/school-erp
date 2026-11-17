@@ -3,8 +3,43 @@
 {% block content %}
 <p class="mb-2"><a href="{% url 'core:my-home' %}">‹ My day</a></p>
 <h1 class="h3 mb-1">Timetable</h1>
-<p class="text-muted mb-3">{{ selected|date:"l, j F Y" }}</p>
+{% if view == "day" %}<p class="text-muted mb-3">{{ selected|date:"l, j F Y" }}</p>{% endif %}
 
+<nav class="erp-tt-toggle" aria-label="Timetable view">
+    <a href="{% url 'core:my-timetable' %}?date={{ selected|date:'Y-m-d' }}"{% if view == "day" %} class="is-active" aria-current="page"{% endif %}>Day</a>
+    <a href="{% url 'core:my-timetable' %}?view=week&amp;date={{ selected|date:'Y-m-d' }}"{% if view == "week" %} class="is-active" aria-current="page"{% endif %}>Week</a>
+</nav>
+
+{% if view == "week" %}
+<div class="erp-tt-weekhead">
+    {% if prev_week_date %}<a class="erp-tt-arrow" href="{% url 'core:my-timetable' %}?view=week&amp;date={{ prev_week_date|date:'Y-m-d' }}" aria-label="Previous week">‹</a>{% else %}<span class="erp-tt-arrow is-off" aria-hidden="true"></span>{% endif %}
+    <div class="erp-tt-weektitle">
+        <p class="erp-tt-weekrange">{{ week.heading }}</p>
+        {% if week.contains_today %}<p class="erp-tt-weeknow">This week</p>{% endif %}
+    </div>
+    {% if next_week_date %}<a class="erp-tt-arrow" href="{% url 'core:my-timetable' %}?view=week&amp;date={{ next_week_date|date:'Y-m-d' }}" aria-label="Next week">›</a>{% else %}<span class="erp-tt-arrow is-off" aria-hidden="true"></span>{% endif %}
+</div>
+
+{% if week.is_empty %}
+<p class="text-muted">No periods for you this week.</p>
+{% else %}
+<table class="erp-keep erp-tt-week">
+    <caption class="visually-hidden">Your periods, {{ week.heading }}</caption>
+    <thead>
+        <tr><td></td>{% for day in week.days %}<th scope="col" class="erp-tt-week-day{% if day.is_today %} is-today{% endif %}{% if not day.is_school_day %} is-closed{% endif %}"{% if day.is_today %} aria-current="date"{% endif %}><span>{{ day.weekday }}</span> <span>{{ day.date.day }}</span>{% if day.label %}<span class="erp-tt-week-label">{{ day.label }}</span>{% endif %}</th>{% endfor %}</tr>
+    </thead>
+    <tbody>
+        {% for period in week.grid %}<tr><th scope="row">{{ period.sequence }}</th>{% for cell in period.cells %}<td class="{% if cell.day.is_today %}is-today{% endif %}{% if not cell.day.is_school_day %} is-closed{% endif %}">{% for row in cell.rows %}<a href="{% url 'core:my-timetable' %}?date={{ cell.day.date|date:'Y-m-d' }}" aria-label="{{ row.section }}, period {{ period.sequence }}, {{ cell.day.date|date:'l j F' }}">{{ row.short }}</a>{% endfor %}</td>{% endfor %}</tr>
+        {% endfor %}
+    </tbody>
+</table>
+<p class="erp-tt-hint">Tap a class to open that day.</p>
+<ul class="erp-tt-key">
+    {% for entry in week.key %}<li><span class="erp-tt-key-short">{{ entry.short }}</span> {{ entry.full }}</li>
+    {% endfor %}
+</ul>
+{% endif %}
+{% else %}
 <p class="erp-tt-month mb-1">{{ selected|date:"F Y" }}{% if not is_today %} · <a class="erp-tt-today" href="{% url 'core:my-timetable' %}">Today</a>{% endif %}</p>
 <nav class="erp-tt-strip" aria-label="Pick a day">
 {% for chip in strip %}<a class="erp-tt-chip{% if chip.is_today %} is-today{% endif %}{% if chip.is_selected %} is-selected{% endif %}" href="{% url 'core:my-timetable' %}?date={{ chip.date|date:'Y-m-d' }}" aria-label="{{ chip.date|date:'l j F Y' }}"{% if chip.is_selected %} aria-current="date"{% endif %}><span>{{ chip.weekday }}</span> <span>{{ chip.day }}</span></a>
@@ -24,5 +59,6 @@
     </div>
 </div>
 {% endfor %}
+{% endif %}
 {% endif %}
 {% endblock %}
