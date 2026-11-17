@@ -114,7 +114,7 @@ class ClassTimetableTests(TimetableDashboardFixture, TestCase):
         self.assertFalse(week["is_empty"])
         self.assertTrue(week["contains_today"])
         self.assertEqual(week["heading"], "12 – 16 Oct 2026")
-        self.assertEqual([len(row["cells"]) for row in week["grid"]], [6, 6])
+        self.assertEqual([len(row["cells"]) for row in week["grid"]], [5, 5])
         self.assertEqual(len(week["days"]), 5)  # Saturday hidden: not a school day
 
     def test_class_week_shows_saturday_when_a_school_day(self):
