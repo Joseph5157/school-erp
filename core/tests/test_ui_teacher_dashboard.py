@@ -4,11 +4,12 @@
 import re
 from datetime import date, datetime
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 from django.conf import settings
 from django.db import connection
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
@@ -23,6 +24,7 @@ from core.models import (
     TermRemark,
 )
 from core.tests.test_phase5_teacher_home import MONDAY, SUNDAY, TeacherHomeFixture, on
+from core.timetable import short_section_label
 
 TILE = re.compile(
     r'<div class="erp-tile(?: is-(?:attendance|marks))?( is-link)?">(.*?)</div>', re.DOTALL)
@@ -291,9 +293,14 @@ class DashboardQueryCountTests(DashboardFixture, TestCase):
 
 class TeachingAssignmentTests(DashboardFixture, TestCase):
     def groups(self):
+        """(Class teacher group html, Subjects I teach card html).
+
+        Since 2026-11-17 the subjects are a collapsible card under the Timetable card, not a
+        group inside Teaching assignments.
+        """
         html = self.page().content.decode()
-        body = html.split('id="day-assignments"')[1].split("</section>")[0]
-        class_part, subject_part = body.split('id="assign-subjects"')
+        class_part = html.split('id="day-assignments"')[1].split("</section>")[0]
+        subject_part = html.split('class="erp-subj-card"')[1].split("</details>")[0]
         return class_part, subject_part
 
     def attendance_href(self, section):
@@ -340,8 +347,10 @@ class TeachingAssignmentTests(DashboardFixture, TestCase):
              (str(self.six_b), "Sanskrit")],
         )
         _, subject_part = self.groups()
-        self.assertIn(f"{self.six_b} &middot; Sanskrit", subject_part)
-        self.assertIn(self.year.name, subject_part)
+        self.assertIn("2 subjects · 3 classes", subject_part)
+        sanskrit = subject_part.split(">Sanskrit<")[1]
+        self.assertIn(f'<span class="visually-hidden">{self.six_b}</span>', sanskrit)
+        self.assertIn(">6-B<", sanskrit)
 
     def test_ended_and_future_subject_assignments_do_not_appear(self):
         AssessmentTeacherAssignment.objects.create(
@@ -357,7 +366,7 @@ class TeachingAssignmentTests(DashboardFixture, TestCase):
         self.assertIn("No subjects are assigned to you today.", subject_part)
         self.assertNotIn("Mathematics", subject_part)
 
-    def test_subject_rows_have_no_links_and_do_not_look_tappable(self):
+    def test_subject_chips_have_no_links(self):
         self.assign(self.rao, self.maths, self.six_a)
         _, subject_part = self.groups()
         self.assertNotIn("<a ", subject_part)
@@ -369,14 +378,18 @@ class TeachingAssignmentTests(DashboardFixture, TestCase):
         self.assign(self.rao, self.maths, self.six_a)
         class_part, subject_part = self.groups()
         self.assertIn(str(self.six_a), class_part)
-        self.assertIn(f"{self.six_a} &middot; Mathematics", subject_part)
+        self.assertIn(f'<span class="visually-hidden">{self.six_a}</span>', subject_part)
+        self.assertIn(">Mathematics<", subject_part)
 
-    def test_groups_are_separated_by_text_headings_after_the_overview(self):
+    def test_headings_after_the_overview_and_the_subjects_card_above_them(self):
         html = self.page().content.decode()
         self.assertEqual(html.count("<h1"), 1)
-        for label in ("Teaching assignments", "Class teacher", "Subjects I teach"):
+        for label in ("Teaching assignments", "Class teacher"):
             self.assertIn(f">{label}</h", html)
+        self.assertNotIn('id="assign-subjects"', html)
         self.assertLess(html.index("Today overview"), html.index("Teaching assignments"))
+        self.assertLess(html.index('class="erp-tt-entry"'), html.index('class="erp-subj-card"'))
+        self.assertLess(html.index('class="erp-subj-card"'), html.index('id="day-assignments"'))
 
     def test_empty_wording_for_each_group(self):
         class_part, subject_part = self.groups()
@@ -426,3 +439,56 @@ class TermRemarksTreatmentTests(DashboardFixture, TestCase):
         href = reverse("core:term-remarks", args=[self.term1.pk]) + f"?section={self.six_a.pk}"
         self.assertIn(f'href="{href}"', section)
         self.assertEqual(section.count("<li "), 2)
+
+
+class SubjectsCardTests(DashboardFixture, TestCase):
+    """My day "Subjects I teach" card (2026-11-17): closed by default, chips grouped by subject."""
+
+    def card(self):
+        html = self.page().content.decode()
+        return html.split('class="erp-subj-card"')[1].split("</details>")[0]
+
+    def test_the_card_is_closed_by_default_and_says_what_is_inside(self):
+        self.assign(self.rao, self.maths, self.six_a)
+        self.assign(self.rao, self.maths, self.six_b)
+        html = self.page().content.decode()
+        opening_tag = re.search(r"<details\b[^>]*erp-subj-card[^>]*>", html).group(0)
+        self.assertNotRegex(opening_tag, r"\sopen\b")
+        card = self.card()
+        self.assertIn("<summary", card)
+        self.assertIn("Subjects I teach", card)
+        self.assertIn("Mathematics · 2 classes", card)
+
+    def test_one_class_is_singular(self):
+        self.assign(self.rao, self.maths, self.six_a)
+        self.assertIn("Mathematics · 1 class<", self.card())
+
+    def test_chips_are_grouped_by_subject_in_name_order(self):
+        self.assign(self.rao, self.sanskrit, self.six_a)
+        self.assign(self.rao, self.maths, self.six_b)
+        self.assign(self.rao, self.maths, self.six_a)
+        card = self.card()
+        self.assertLess(card.index(">Mathematics<"), card.index(">Sanskrit<"))
+        maths = card.split(">Mathematics<")[1].split(">Sanskrit<")[0]
+        self.assertLess(maths.index(">6-A<"), maths.index(">6-B<"))
+
+    def test_no_subjects_still_shows_the_card(self):
+        self.class_teacher(self.rao, self.six_a)
+        card = self.card()
+        self.assertIn("No subjects assigned today", card)
+        self.assertIn("No subjects are assigned to you today.", card)
+        self.assertNotIn("0 classes", card)
+
+
+class ShortSectionLabelTests(SimpleTestCase):
+    def label(self, grade, section):
+        return short_section_label(
+            SimpleNamespace(name=section, class_grade=SimpleNamespace(name=grade)))
+
+    def test_the_agreed_examples(self):
+        for grade, section, expected in (
+            ("Grade 2", "B", "2-B"), ("Class 10", "A", "10-A"), ("LKG", "A", "LKG-A"),
+            ("Nursery", "Rose", "Nur-Ros"), ("UKG", "AB", "UKG-AB"), ("Grade 6", "Lotus", "6-Lot"),
+        ):
+            with self.subTest(grade=grade, section=section):
+                self.assertEqual(self.label(grade, section), expected)
