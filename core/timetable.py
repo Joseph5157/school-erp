@@ -267,14 +267,40 @@ def teacher_week(user, any_date, today, year_is_instructional):
     """
     from core.authorization import current_teacher_assignments
 
+    def rows_on(day):
+        assignments = list(current_teacher_assignments(user, day))
+        rows = teacher_timetable_on(
+            assignments, day, lambda year: year_is_instructional(year, day)
+        )
+        for row in rows or ():
+            row["short"] = short_section_label(row["section"])
+        return rows
+
+    def key_of(days):
+        sections = {}
+        for day in days:
+            for row in day["rows"]:
+                sections.setdefault(row["section"].pk, row)
+        ordered = sorted(
+            sections.values(),
+            key=lambda r: (r["section"].class_grade.display_order, r["section"].name),
+        )
+        return [{"short": r["short"], "full": str(r["section"])} for r in ordered]
+
+    return _assemble_week(any_date, today, rows_on, year_is_instructional, key_of)
+
+
+def _assemble_week(any_date, today, rows_on, year_is_instructional, key_of):
+    """Shared week assembly: day headers, Saturday rule, grid, key and heading.
+
+    `rows_on(day)` returns that day's rows (each with a "short" label) or None when no timetable
+    shows that day; `key_of(days)` builds the key from the assembled days.
+    """
     monday = week_monday(any_date)
     days = []
     for offset in range(6):
         day = monday + timedelta(days=offset)
-        assignments = list(current_teacher_assignments(user, day))
-        rows = teacher_timetable_on(
-            assignments, day, lambda year, day=day: year_is_instructional(year, day)
-        )
+        rows = rows_on(day)
         if rows is None and offset == 5:
             continue
         is_open = rows is not None
@@ -286,8 +312,6 @@ def teacher_week(user, any_date, today, year_is_instructional):
             is_open = any(year_is_instructional(year, day) for year in holding)
             if not is_open:
                 label = "Holiday" if holding else "No school"
-        for row in rows or ():
-            row["short"] = short_section_label(row["section"])
         days.append(
             {
                 "date": day,
@@ -310,23 +334,86 @@ def teacher_week(user, any_date, today, year_is_instructional):
         }
         for sequence in sequences
     ]
-    sections = {}
-    for day in days:
-        for row in day["rows"]:
-            sections.setdefault(row["section"].pk, row)
-    ordered = sorted(
-        sections.values(),
-        key=lambda r: (r["section"].class_grade.display_order, r["section"].name),
-    )
     return {
         "monday": monday,
         "days": days,
         "grid": grid,
-        "key": [{"short": r["short"], "full": str(r["section"])} for r in ordered],
+        "key": key_of(days),
         "is_empty": not sequences,
         "heading": _week_heading(monday, days[-1]["date"]),
         "contains_today": week_monday(today) == monday,
     }
+
+
+def short_subject_label(name):
+    """Short grid label for a subject: "Mathematics" -> "Mat". Always shown beside the full name."""
+    return name.strip()[:3]
+
+
+def class_timetable_on(section, on_date, year_is_instructional):
+    """Every period of `section` on `on_date`, with subject and teacher (read-only class view).
+
+    Only Academic Years holding this Section's slots that day count; None when none of them is an
+    instructional day. Rows follow period sequence. The teacher is the holder of the offering +
+    Section assignment effective that day (ADR 0018 D9), or None.
+    """
+    slots_today = TimetableSlot.objects.effective_on(on_date).filter(section=section)
+    years = AcademicYear.objects.filter(
+        pk__in=slots_today.values("period__academic_year_id")
+    )
+    open_year_ids = {year.pk for year in years if year_is_instructional(year)}
+    if not open_year_ids:
+        return None
+    slots = list(
+        slots_today.filter(
+            weekday=on_date.weekday(), period__academic_year_id__in=open_year_ids
+        )
+        .select_related("period", "offering__subject")
+        .order_by("period__sequence", "pk")
+    )
+    teachers = {}
+    if slots:
+        assignments = (
+            AssessmentTeacherAssignment.objects.effective_on(on_date)
+            .filter(section=section, offering_id__in={s.offering_id for s in slots})
+            .select_related("teacher")
+            .order_by("pk")
+        )
+        for assignment in assignments:
+            teachers.setdefault(assignment.offering_id, assignment.teacher)
+    rows = []
+    for slot in slots:
+        teacher = teachers.get(slot.offering_id)
+        subject = slot.offering.subject.name
+        rows.append(
+            {
+                "period": slot.period.label,
+                "sequence": slot.period.sequence,
+                "section": section,
+                "subject": subject,
+                "teacher": teacher,
+                "teacher_name": _teacher_name(teacher) if teacher else "No teacher assigned",
+                "short": short_subject_label(subject),
+            }
+        )
+    return rows
+
+
+def class_week(section, any_date, today, year_is_instructional):
+    """One class's week, Monday to Saturday, built like `teacher_week` from `class_timetable_on`."""
+
+    def rows_on(day):
+        return class_timetable_on(
+            section, day, lambda year: year_is_instructional(year, day)
+        )
+
+    def key_of(days):
+        subjects = {
+            row["subject"]: row["short"] for day in days for row in day["rows"]
+        }
+        return [{"short": subjects[name], "full": name} for name in sorted(subjects)]
+
+    return _assemble_week(any_date, today, rows_on, year_is_instructional, key_of)
 
 
 def week_monday(any_date):
