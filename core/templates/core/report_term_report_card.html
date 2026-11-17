@@ -30,6 +30,6 @@
 {% endfor %}
 <section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="remark-heading">
 <h2 class="h5" id="remark-heading">Teacher's remark</h2>
-<p class="mb-0">{% if remark %}{{ remark.remark|linebreaksbr }}{% else %}<span class="text-muted">No remark.</span>{% endif %}</p>
+<p class="mb-0 erp-wrap-anywhere">{% if remark %}{{ remark.remark|linebreaksbr }}{% else %}<span class="text-muted">No remark.</span>{% endif %}</p>
 </section>
 {% endblock %}

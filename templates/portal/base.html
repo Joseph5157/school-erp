@@ -11,14 +11,14 @@
 </head>
 {% with here=request.resolver_match.url_name %}
 <body class="erp has-tabbar">
-    <a class="visually-hidden-focusable" href="#main">Skip to content</a>
+    <a class="visually-hidden-focusable erp-skip" href="#main">Skip to content</a>
     <header class="erp-topbar">
         {% include "portal/_shell_brand.html" %}
         <span class="erp-spacer"></span>
         {% include "partials/_account_menu.html" %}
     </header>
     {% include "partials/_install_bar.html" %}
-    <main id="main" class="erp-main">
+    <main id="main" class="erp-main" tabindex="-1">
         <div class="erp-content">
             {% if switcher_children and student %}{% include "portal/_child_switcher.html" %}{% endif %}
             {% block content %}{% endblock %}

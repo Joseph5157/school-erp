@@ -150,7 +150,7 @@ class NavigationConsistencyTests(PortalFixture, TestCase):
                     self.url("portal:report-card", self.asha_grant, card.public_id)):
             with self.subTest(url=url):
                 html = self.portal.get(url).content.decode()
-                self.assertIn('<a class="visually-hidden-focusable" href="#main">', html)
+                self.assertIn('<a class="visually-hidden-focusable erp-skip" href="#main">', html)
                 self.assertIn('id="main"', html)
                 self.assertEqual(html.count("<h1"), 1)
                 levels = [int(n) for n in re.findall(r"<h([1-6])[ >]", html)]

@@ -241,6 +241,12 @@ fieldset:disabled .btn {
   outline: 3px solid var(--erp-focus-color);
   outline-offset: 2px;
 }
+/* Skip link (audit 11 AS-01): when focused it floats over the top bar instead of pushing the page down.
+   Its target, <main tabindex="-1">, takes focus so the next Tab starts in the content. */
+.erp-skip:focus { position: fixed; top: .5rem; left: .5rem; z-index: 1090; padding: .5rem .85rem; border-radius: var(--erp-radius-sm); background: var(--erp-surface); color: var(--erp-action-strong); font-weight: 600; box-shadow: 0 .25rem 1rem rgba(24, 33, 43, .18); }
+.erp-main:focus { outline: none; }
+/* Focus, skip and fragment jumps stop below the sticky top bar (audit 11 AS-02). */
+html { scroll-padding-top: calc(var(--erp-topbar-h) + var(--erp-space-4)); }
 .form-control:focus, .form-select:focus, .btn:focus-visible {
   border-color: var(--erp-focus-color);
   box-shadow: var(--erp-focus-ring);
@@ -248,7 +254,7 @@ fieldset:disabled .btn {
 
 /* ---------- Layout ---------- */
 
-body.erp { min-height: 100vh; }
+body.erp { min-height: 100vh; min-height: 100dvh; }
 
 .erp-topbar {
   position: sticky; top: 0; z-index: 1030;
@@ -298,7 +304,7 @@ body.erp { min-height: 100vh; }
 .erp-year-panel {
   position: absolute; left: 0; top: calc(100% + .4rem); z-index: 1040;
   list-style: none; margin: 0; padding: .35rem;
-  min-width: 10rem; max-width: calc(100vw - 2rem); max-height: min(20rem, 70vh); overflow-y: auto;
+  min-width: 10rem; max-width: calc(100vw - 2rem); max-height: min(20rem, 70vh); max-height: min(20rem, 70dvh); overflow-y: auto;
   background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius-sm);
   box-shadow: 0 8px 24px rgba(24, 33, 43, .12);
 }
@@ -337,6 +343,11 @@ body.erp { min-height: 100vh; }
 .erp-sidebar .nav-link { color: var(--erp-ink); border-radius: 6px; padding: .4rem .75rem; }
 .erp-sidebar .nav-link:hover { background: var(--erp-paper); }
 .erp-sidebar .nav-link.active { background: var(--erp-brand-wash); color: var(--erp-brand); font-weight: 600; }
+/* High Contrast drops the tinted pill and edge bar, so the current page is underlined (audit 11 AS-05). */
+@media (forced-colors: active) {
+  .erp-sidebar .nav-link.active, .erp-topbar-links a.active, .erp-tabbar a.active, .erp-portal-nav a.active,
+  .erp-breadcrumb a[aria-current] { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: .2em; }
+}
 .erp-sidebar .nav-link { display: flex; align-items: center; gap: var(--erp-space-2); }
 .erp-nav-icon { flex: none; width: 1rem; height: 1rem; }
 .erp-nav-badge {
@@ -644,7 +655,7 @@ body.erp { min-height: 100vh; }
 }
 .erp-account-panel {
   position: absolute; right: 0; top: calc(100% + .4rem); z-index: 1040;
-  width: min(18rem, calc(100vw - 2rem));
+  width: min(18rem, calc(100vw - 2rem)); width: min(18rem, calc(100dvw - 2rem));
   background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
   box-shadow: 0 8px 24px rgba(24, 33, 43, .12); padding: .5rem;
 }
@@ -1576,9 +1587,9 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
 .erp-student-cards-empty { padding: var(--erp-space-4); background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius); }
 
 .erp-breadcrumb ol { display: flex; flex-wrap: wrap; gap: var(--erp-space-2); list-style: none; padding: 0; margin: 0 0 var(--erp-space-3); font-size: var(--erp-text-sm); color: var(--erp-ink-soft); }
-.erp-breadcrumb li + li::before { content: "/"; margin-right: var(--erp-space-2); }
+.erp-breadcrumb li + li::before { content: "/"; content: "/" / ""; margin-right: var(--erp-space-2); }
 .erp-breadcrumb a { color: var(--erp-action); }
-.erp-breadcrumb li[aria-current] { color: var(--erp-ink); }
+.erp-breadcrumb a[aria-current] { color: var(--erp-ink); text-decoration: none; font-weight: 600; }
 
 .erp-sort-link { color: inherit; text-decoration: none; display: inline-flex; align-items: center; min-height: 2.75rem; }
 .erp-sort-link:hover { text-decoration: underline; }
@@ -1628,7 +1639,7 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
 }
 
 /* Jumps from the section menu must clear the sticky top bar. */
-.erp-main section[id] { scroll-margin-top: calc(var(--erp-topbar-h) + var(--erp-space-4)); }
+.erp-main section[id] { scroll-margin-top: 0; }  /* html scroll-padding-top already clears the top bar */
 
 /* Guardian portal: one nav list, desktop header nav and mobile tab bar (G-02/G-04). */
 .erp-portal-nav { min-width: 0; overflow-x: auto; }
@@ -1741,7 +1752,7 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
 .erp-switcher-panel {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 1060; background: var(--erp-surface);
   border-radius: 12px 12px 0 0; padding: var(--erp-space-4) var(--erp-space-4) calc(var(--erp-space-4) + env(safe-area-inset-bottom));
-  max-height: 70vh; overflow-y: auto;
+  max-height: 70vh; max-height: 70dvh; overflow-y: auto;
 }
 .erp-switcher[open]::before { content: ""; position: fixed; inset: 0; z-index: 1055; background: rgba(24, 33, 43, .4); }
 .erp-switcher-title { margin: 0 0 var(--erp-space-2); font-weight: 700; }
@@ -2110,7 +2121,7 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
    calmer group headings, and who is signed in plus Log out pinned at the foot. The desktop sidebar is unchanged. */
 @media (max-width: 991.98px) {
   .erp-sidebar.offcanvas-lg {
-    --bs-offcanvas-width: min(20rem, 86vw);
+    --bs-offcanvas-width: min(20rem, 86vw); --bs-offcanvas-width: min(20rem, 86dvw);
     border-right: 0; border-radius: 0 1rem 1rem 0; box-shadow: 0 0 2.5rem rgba(24, 33, 43, .18);
   }
   .erp-drawer-head { gap: .75rem; padding: 1rem; border-bottom: 1px solid var(--erp-rule); }

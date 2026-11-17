@@ -211,6 +211,6 @@ class PartialAndCssTests(TestCase):
         css = (Path(settings.BASE_DIR) / "static" / "css" / "erp.css").read_text(encoding="utf-8")
 
         self.assertIn(".erp-section-nav", css)
-        self.assertRegex(css, r"\.erp-main section\[id\]\s*\{[^}]*scroll-margin-top")
+        self.assertIn("html { scroll-padding-top: calc(var(--erp-topbar-h) + var(--erp-space-4)); }", css)
         self.assertNotIn("--erp-border", css.split(".erp-section-nav", 1)[1][:1500])
         self.assertNotIn("--erp-muted", css.split(".erp-section-nav", 1)[1][:1500])
