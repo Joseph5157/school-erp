@@ -899,12 +899,11 @@
   // One-shot submit buttons: disable after the first submit so a double click cannot
   // publish twice. The form carries its own hidden confirm input, so nothing is lost.
   // With data-erp-once-busy (audit 19 UPL-01) the button also says what is happening, e.g.
-  // "Checking file…", and one polite status repeats it; no percentage is invented. Coming Back
-  // to the page from the browser cache puts the button and its label back.
+  // "Checking file…", and one polite status repeats it; no percentage is invented. Back does not
+  // bring the button back to life (a second notice could go to every guardian): reload instead.
   document.querySelectorAll("[data-erp-once]").forEach(function (button) {
     var form = button.form;
     if (!form) return;
-    var label = button.innerHTML;
     var busy = button.getAttribute("data-erp-once-busy");
     var status = null;
     if (busy) {
@@ -921,14 +920,6 @@
         form.setAttribute("aria-busy", "true");
         status.textContent = busy;
       }, 0);
-    });
-    window.addEventListener("pageshow", function (event) {
-      if (!event.persisted) return;
-      button.disabled = false;
-      if (!busy) return;
-      button.innerHTML = label;
-      form.removeAttribute("aria-busy");
-      status.textContent = "";
     });
   });
 })();

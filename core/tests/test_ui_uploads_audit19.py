@@ -87,7 +87,8 @@ class UploadScriptTests(TestCase):
         self.assertIn("data-erp-once-busy", block)
         self.assertIn('setAttribute("aria-busy", "true")', block)
         self.assertIn('setAttribute("role", "status")', block)
-        self.assertIn("pageshow", block)  # Back from the next page re-enables the button
+        # Back must not bring a one-shot button back to life (test_modern_web_quick_wins).
+        self.assertNotIn("pageshow", JS)
 
     def test_logo_preview_checks_size_and_type_before_decoding(self):
         block = JS.split("[data-erp-logo-form]")[1][:3000]
