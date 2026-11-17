@@ -308,7 +308,7 @@ class BreadcrumbRenderingTests(AuthorizationClientsMixin, TestCase):
     def test_student_detail_renders_breadcrumb_nav(self):
         response = self.administrator.get(reverse("core:student-detail", args=[self.student.pk]))
         self.assertContains(response, 'aria-label="Breadcrumb"')
-        self.assertContains(response, '<li aria-current="page">Student</li>', html=False)
+        self.assertContains(response, f'<li><a href="{response.wsgi_request.path}" aria-current="page">Student</a></li>', html=False)
         self.assertContains(response, reverse("core:student-list"))
 
     def test_deactivate_confirm_links_back_to_student(self):

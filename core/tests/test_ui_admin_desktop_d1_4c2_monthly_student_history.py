@@ -108,8 +108,10 @@ class C2BreadcrumbTests(C2Fixture, TestCase):
         content = self.client_with(SCHOOL, ENTRY).get(self.history).content.decode()
         nav = breadcrumb_nav(content)
         self.assertEqual(breadcrumb_labels(content), ["Overview", "Attendance"])
-        self.assertNotIn(reverse("core:student-list"), nav)
-        self.assertNotIn(reverse("core:student-detail", args=[self.ravi.student_id]), nav)
+        # Compare whole hrefs: the current crumb links to this page, whose path starts with /students/.
+        hrefs = re.findall(r'href="([^"]+)"', nav)
+        self.assertNotIn(reverse("core:student-list"), hrefs)
+        self.assertNotIn(reverse("core:student-detail", args=[self.ravi.student_id]), hrefs)
 
 
 # --- Monthly summary ----------------------------------------------------------------------

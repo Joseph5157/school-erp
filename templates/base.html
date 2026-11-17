@@ -12,7 +12,7 @@
     <script>try { if (localStorage.getItem("erp.nav.collapsed") === "1") document.documentElement.classList.add("erp-nav-collapsed"); } catch (e) {}</script>{% endif %}
 </head>
 <body class="erp{% if office_nav %} has-sidebar{% endif %}{% if current_area == 'teacher' %} erp-teacher{% endif %}{% block tabbar_class %}{% if current_area == 'teacher' or guardian_shell %} has-tabbar{% endif %}{% endblock %}">
-    <a class="visually-hidden-focusable" href="#main">Skip to content</a>
+    <a class="visually-hidden-focusable erp-skip" href="#main">Skip to content</a>
     <header class="erp-topbar">
         {% if office_nav %}
         <button class="btn btn-outline-secondary btn-sm erp-menu-btn d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#erp-sidebar" aria-controls="erp-sidebar" aria-expanded="false" aria-label="Menu"><svg class="erp-hamburger" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
@@ -51,7 +51,7 @@
     </header>
     {% if office_nav %}{% include "partials/_sidebar.html" %}{% endif %}
     {% include "partials/_install_bar.html" %}
-    <main id="main" class="erp-main">
+    <main id="main" class="erp-main" tabindex="-1">
         {% include "partials/_messages.html" %}
         <div class="erp-content">
             {% include "partials/_breadcrumbs.html" %}

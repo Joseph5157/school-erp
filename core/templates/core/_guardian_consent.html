@@ -25,7 +25,7 @@
     {% endif %}
     {% if consents|length > 1 %}
     <details class="mt-3"><summary>History ({{ consents|length }})</summary>
-        <ul class="list-unstyled small mt-2 mb-0">{% for consent in consents %}<li>{{ consent.recorded_at|date:"j M Y H:i" }} &middot; {{ consent.get_status_display }} &middot; {{ consent.get_source_display }}{% if consent.note %} &middot; {{ consent.note }}{% endif %} &middot; {{ consent.recorded_by.username }}</li>{% endfor %}</ul>
+        <ul class="list-unstyled small mt-2 mb-0 erp-wrap-anywhere">{% for consent in consents %}<li>{{ consent.recorded_at|date:"j M Y H:i" }} &middot; {{ consent.get_status_display }} &middot; {{ consent.get_source_display }}{% if consent.note %} &middot; {{ consent.note }}{% endif %} &middot; {{ consent.recorded_by.username }}</li>{% endfor %}</ul>
     </details>
     {% endif %}
 </div></div>

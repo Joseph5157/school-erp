@@ -2,7 +2,7 @@
 <nav class="erp-breadcrumb" aria-label="Breadcrumb">
     <ol>
         {% for crumb in breadcrumbs %}
-        <li{% if forloop.last %} aria-current="page"{% endif %}>{% if crumb.url %}<a href="{{ crumb.url }}">{{ crumb.label }}</a>{% else %}{{ crumb.label }}{% endif %}</li>
+        <li>{% if forloop.last %}<a href="{{ request.path }}" aria-current="page">{{ crumb.label }}</a>{% else %}<a href="{{ crumb.url }}">{{ crumb.label }}</a>{% endif %}</li>
         {% endfor %}
     </ol>
 </nav>

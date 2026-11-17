@@ -119,7 +119,7 @@ class WordingTests(AuthorizationClientsMixin, TestCase):
             ("core:subject-update", (subject.pk,), "Edit subject"),
         ]:
             with self.subTest(page=name):
-                self.assertIn(f'aria-current="page">{text}</li>', self.page(name, *args))
+                self.assertIn(f'aria-current="page">{text}</a></li>', self.page(name, *args))
 
     def test_announcement_form_counters_use_the_form_limits(self):
         page = self.page("core:announcement-create")

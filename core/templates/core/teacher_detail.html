@@ -35,11 +35,11 @@
 <section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="teacher-assignments-heading">
 <h2 class="h5 mb-3" id="teacher-assignments-heading">Assignments</h2>
 <h3 class="h6">Subjects</h3>
-<ul class="erp-teacher-groups">
+<ul class="erp-teacher-groups" role="list">
     {% for group in subject_groups %}{% include "partials/_teacher_assignment_group.html" with group=group show_year=True only %}{% empty %}<li class="text-muted">None</li>{% endfor %}
 </ul>
 <h3 class="h6">Class teacher</h3>
-<ul class="erp-teacher-groups{% if not perms.core.view_sectionclassteacher %} mb-0{% endif %}">
+<ul class="erp-teacher-groups{% if not perms.core.view_sectionclassteacher %} mb-0{% endif %}" role="list">
     {% for group in class_groups %}{% include "partials/_teacher_assignment_group.html" with group=group show_year=True only %}{% empty %}<li class="text-muted">None</li>{% endfor %}
 </ul>
 {% if perms.core.view_sectionclassteacher %}<p class="mb-0"><a href="{% url 'core:teacher-load' teacher.pk %}">View full workload</a></p>{% endif %}
