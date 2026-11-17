@@ -3,12 +3,13 @@
 {% block content %}
 {% if perms.core.add_applicant %}{% url 'core:applicant-create' as applicant_create_url %}{% endif %}
 {% include "partials/_page_header.html" with eyebrow="People" title="Applicants" purpose="Review applications and progress accepted applicants into student records." primary_url=applicant_create_url primary_label="Register applicant" only %}
-<form method="get" class="erp-toolbar" aria-label="Filter applicants">
+<search aria-label="Filter applicants">
+<form method="get" action="{% url 'core:applicant-list' %}" class="erp-toolbar">
     {% if table.sort_param %}<input type="hidden" name="sort" value="{{ table.sort_param }}">{% endif %}
     <div class="row g-2 align-items-end">
         <div class="col-12 col-md-5 col-lg-4">
             <label for="applicant-search" class="form-label">Search applicants</label>
-            <input type="search" id="applicant-search" name="q" value="{{ query }}" class="form-control" placeholder="Name, phone, or email">
+            <input type="search" id="applicant-search" name="q" value="{{ query }}" class="form-control" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="search" placeholder="Name, phone, or email">
         </div>
         <div class="col-12 col-md-4 col-lg-3">
             <label for="applicant-status" class="form-label">Admission status</label>
@@ -27,6 +28,7 @@
         {% endif %}
     </div>
 </form>
+</search>
 <div class="erp-panel">
 <div class="erp-table-scroll" role="region" aria-label="Applicants" tabindex="0">
 <table class="table erp-rows-link">

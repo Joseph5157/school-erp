@@ -3,17 +3,19 @@
 {% block content %}
 {% if perms.core.add_guardian %}{% url 'core:guardian-create' as guardian_create_url %}{% endif %}
 {% include "partials/_page_header.html" with eyebrow="People" title="Guardians" purpose="Parents and carers linked to students, and their portal access. Search by parent or student name, phone or email." primary_url=guardian_create_url primary_label="Create Guardian" only %}
-<form method="get" class="erp-toolbar" role="search" aria-label="Search guardians">
+<search aria-label="Search guardians">
+<form method="get" action="{% url 'core:guardian-list' %}" class="erp-toolbar">
     {% if table.sort_param %}<input type="hidden" name="sort" value="{{ table.sort_param }}">{% endif %}
     <div class="row g-2 align-items-end">
         <div class="col-12 col-md-6 col-lg-5">
             <label for="guardian-search" class="form-label">Search guardians</label>
-            <input type="search" id="guardian-search" name="q" value="{{ query }}" class="form-control" placeholder="Parent or student name, phone, or email">
+            <input type="search" id="guardian-search" name="q" value="{{ query }}" class="form-control" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="search" placeholder="Parent or student name, phone, or email">
         </div>
         <div class="col-auto"><button type="submit" class="btn btn-outline-secondary">Search</button></div>
         {% if query %}<div class="col-auto"><a class="btn btn-link" href="{% url 'core:guardian-list' %}">Clear search</a></div>{% endif %}
     </div>
 </form>
+</search>
 {% if perms.core.view_guardianaccessreview %}<p class="small"><a href="{% url 'core:guardian-access-reviews' %}">Guardian access reviews</a>{% if perms.accounts.clear_login_lockout %} &middot; <a href="{% url 'core:login-lockouts' %}">Sign-in lockouts</a>{% endif %}</p>{% endif %}
 {% if table.paginator.count %}{% include "partials/_card_sort.html" with table=table label="Sort guardians" only %}{% endif %}
 {# A4 portrait is narrower than the md breakpoint, so printing must pick the table explicitly. #}

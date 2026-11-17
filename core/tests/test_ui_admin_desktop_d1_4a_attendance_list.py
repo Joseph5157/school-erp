@@ -62,7 +62,7 @@ class StructureTests(AttendanceListFixture, TestCase):
     def test_one_h1_and_a_labelled_four_field_get_toolbar(self):
         content = self.client.get(self.url).content.decode()
         self.assertEqual(content.count("<h1"), 1)
-        form = content.split('aria-label="Filter attendance registers"')[0].rsplit("<form", 1)[1]
+        form = content.split('<search aria-label="Filter attendance registers">')[1].split(">", 1)[0]
         self.assertIn('method="get"', form)
         self.assertIn("erp-toolbar", form)
         tag = content.split('aria-label="Filter attendance registers"')[1].split("</form>")[0]
