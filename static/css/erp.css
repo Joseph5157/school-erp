@@ -2791,6 +2791,7 @@ body:has(.erp-dialog[open]) { overflow: hidden; }
 }
 .erp-tt-week td > a + a { margin-top: 4px; }
 .erp-tt-week td > a:hover { border-color: var(--erp-action); }
+.erp-tt-week td.is-today > a { background: var(--erp-action-wash); }
 .erp-tt-hint { margin-block: var(--erp-space-2); font-size: .88rem; color: var(--erp-ink-soft); }
 .erp-tt-key { display: grid; gap: 4px; margin: 0 0 var(--erp-space-4); padding: 0; list-style: none; font-size: .88rem; }
 .erp-tt-key-short { display: inline-block; min-width: 3.2rem; font-weight: 800; }
