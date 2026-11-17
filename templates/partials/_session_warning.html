@@ -1,0 +1,11 @@
+{% if session_limits %}{# Audit 15 NOTIF-01 / audit 18 ERR-01: a warning before the server signs out an idle or 8-hour session. Hidden until erp.js shows it, so no-JS pages are unchanged. Only the first sentence is a live alert; the countdown is plain text, so it is not read out every second. #}
+<section class="erp-session-warning" aria-label="Sign-out warning" data-erp-session data-idle="{{ session_limits.idle }}" data-absolute="{{ session_limits.absolute }}" data-status-url="{% url 'session-status' %}" data-login-url="{% url 'login' %}" hidden>
+    <p class="erp-session-say" role="alert" data-erp-session-say></p>
+    <p class="erp-session-time" data-erp-session-time></p>
+    <div class="erp-session-actions">
+        <form method="post" action="{% url 'session-status' %}" data-erp-session-stay>{% csrf_token %}<button type="submit" class="btn btn-primary btn-sm">Stay signed in</button></form>
+        <form method="post" action="{% url 'logout' %}" data-erp-session-logout>{% csrf_token %}<button type="submit" class="btn btn-outline-secondary btn-sm">Log out</button></form>
+        <a class="btn btn-primary btn-sm" href="{% url 'login' %}" data-erp-session-login hidden>Log in again</a>
+    </div>
+</section>
+{% endif %}

@@ -19,6 +19,7 @@ INTENTIONALLY_UNPERMISSIONED = {
     "root:choose-area": "login required; lists only the areas the login itself holds",
     "root:pwa-install": "login required; static install instructions",
     "root:pwa-manifest": "public by design: the web app manifest is fetched before sign-in and holds no school data",
+    "root:session-status": "seconds left in the caller's own session; 401 without a login; no school data",
 }
 # Django-owned routes (admin, stock sign-in/out/password views) are listed with a reason in
 # route_inventory.FRAMEWORK_OWNED and flagged `framework_owned`.
@@ -59,7 +60,7 @@ class RouteInventoryTests(SimpleTestCase):
         root = {name for name in self.current if name.startswith("root:")}
         self.assertEqual(root, {
             "root:admin", "root:choose-area", "root:home", "root:login", "root:logout",
-            "root:password_change", "root:pwa-install", "root:pwa-manifest",
+            "root:password_change", "root:pwa-install", "root:pwa-manifest", "root:session-status",
         })
         for name in ("root:admin", "root:login", "root:logout", "root:password_change"):
             self.assertIn("framework_owned", self.current[name]["flags"], name)

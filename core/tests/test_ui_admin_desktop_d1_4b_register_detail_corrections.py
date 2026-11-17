@@ -128,8 +128,11 @@ class DraftDetailTests(DetailFixture, TestCase):
         self.assertIn('name="action" value="submit"', content)
         # Logout forms (account menu and phone drawer) + the one capture form. (The shared partial's
         # two-line {# #} comment renders literally, adding a stray "<form id=...>" text outside this gate's scope.)
+        # The sign-out warning (audit 15 NOTIF-01) adds its own Stay signed in and Log out forms.
         logout = f'<form method="post" action="{reverse("logout")}">'
-        self.assertEqual(content.count('<form method="post"') - content.count(logout), 1)
+        warning = content.count("data-erp-session-stay>") + content.count("data-erp-session-logout>")
+        self.assertEqual(warning, 2)
+        self.assertEqual(content.count('<form method="post"') - content.count(logout) - warning, 1)
         self.assertEqual(content.count(f'action="{capture}"'), 1)
         self.assertNotContains(response, "Submitted attendance")
 
