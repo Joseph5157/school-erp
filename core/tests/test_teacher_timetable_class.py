@@ -1,6 +1,6 @@
 """Class timetable builders: any Section's periods with subject and teacher."""
 
-from datetime import date
+from datetime import date, timedelta
 
 from django.db import connection
 from django.test import TestCase
@@ -9,7 +9,9 @@ from django.test.utils import CaptureQueriesContext
 from core.models import (
     AcademicSubjectOffering,
     AcademicYear,
+    ClassGrade,
     SchoolCalendarDay,
+    Section,
     Subject,
     TimetablePeriod,
 )
@@ -20,6 +22,7 @@ from core.timetable import (
     class_timetable_on,
     class_week,
     short_subject_label,
+    timetable_picker,
 )
 
 
@@ -136,3 +139,44 @@ class ClassTimetableTests(TimetableDashboardFixture, TestCase):
             week = self.week(self.six_a)
         self.assertEqual(sum(len(d["rows"]) for d in week["days"]), 10)
         self.assertEqual(len(large), len(small))
+
+
+class PickerTests(TimetableDashboardFixture, TestCase):
+    def grade7_section(self):
+        grade7 = ClassGrade.objects.create(name="Grade 7", display_order=self.grade6.display_order + 1)
+        offering = AcademicSubjectOffering.objects.create(
+            academic_year=self.year, class_grade=grade7, subject=self.maths.subject
+        )
+        return grade7, offering, Section.objects.create(class_grade=grade7, name="A")
+
+    def test_mine_lists_class_teacher_section_first_then_subject_sections_once(self):
+        self.class_teacher(self.rao, self.six_b)
+        self.assign(self.rao, self.maths, self.six_a)
+        self.assign(self.rao, self.sanskrit, self.six_b)
+        self.assertEqual(timetable_picker(self.rao, [MONDAY])["mine"], [self.six_b, self.six_a])
+
+    def test_all_classes_grouped_by_grade_in_display_order(self):
+        grade7, offering7, seven_a = self.grade7_section()
+        self.slot(section=seven_a, offering=offering7)
+        self.slot(section=self.six_b, offering=self.sanskrit)
+        self.slot()
+        grades = timetable_picker(self.rao, [MONDAY])["grades"]
+        self.assertEqual(
+            [(g["grade"], g["sections"]) for g in grades],
+            [(self.grade6, [self.six_a, self.six_b]), (grade7, [seven_a])],
+        )
+
+    def test_week_dates_include_sections_active_any_day(self):
+        self.slot()
+        self.slot(section=self.six_b, offering=self.sanskrit, start_date=date(2026, 10, 14))
+        def flat(dates):
+            return [s for g in timetable_picker(self.rao, dates)["grades"] for s in g["sections"]]
+
+        self.assertEqual(flat([MONDAY]), [self.six_a])
+        week = [MONDAY + timedelta(days=i) for i in range(6)]
+        self.assertEqual(flat(week), [self.six_a, self.six_b])
+
+    def test_sections_without_slots_are_not_listed(self):
+        self.slot()
+        grades = timetable_picker(self.rao, [MONDAY])["grades"]
+        self.assertEqual([s for g in grades for s in g["sections"]], [self.six_a])

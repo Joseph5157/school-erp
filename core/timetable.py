@@ -421,3 +421,37 @@ def week_monday(any_date):
     if any_date.weekday() == 6:
         return any_date + timedelta(days=1)
     return any_date - timedelta(days=any_date.weekday())
+
+
+def timetable_picker(user, dates):
+    """The class sheet's two lists for the given dates (one date for Day, the week's days for Week).
+
+    "mine": the user's class-teacher Sections first, then the Sections they teach a subject in,
+    de-duplicated, each group in (grade display order, section name) order. "grades": every
+    Section with a slot effective on any of `dates`, grouped by Class/Grade in display order.
+    Queries per date are fixed; nothing is queried per Section.
+    """
+    from core.authorization import class_teacher_assignments, current_teacher_assignments
+    from core.models import Section
+
+    def ordered(sections):
+        return sorted(sections, key=lambda s: (s.class_grade.display_order, s.name))
+
+    class_teacher, subject, listed_ids = {}, {}, set()
+    for day in dates:
+        for row in class_teacher_assignments(user, day).select_related("section__class_grade"):
+            class_teacher[row.section_id] = row.section
+        for row in current_teacher_assignments(user, day).select_related("section__class_grade"):
+            subject[row.section_id] = row.section
+        listed_ids.update(
+            TimetableSlot.objects.effective_on(day).values_list("section_id", flat=True)
+        )
+    mine = ordered(class_teacher.values())
+    mine += ordered(s for pk, s in subject.items() if pk not in class_teacher)
+
+    grades = []
+    for section in ordered(Section.objects.filter(pk__in=listed_ids).select_related("class_grade")):
+        if not grades or grades[-1]["grade"].pk != section.class_grade_id:
+            grades.append({"grade": section.class_grade, "sections": []})
+        grades[-1]["sections"].append(section)
+    return {"mine": mine, "grades": grades}
