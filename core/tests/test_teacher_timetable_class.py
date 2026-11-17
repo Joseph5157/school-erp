@@ -1,10 +1,12 @@
 """Class timetable builders: any Section's periods with subject and teacher."""
 
+import re
 from datetime import date, timedelta
 
 from django.db import connection
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
+from django.urls import reverse
 
 from core.models import (
     AcademicSubjectOffering,
@@ -180,3 +182,139 @@ class PickerTests(TimetableDashboardFixture, TestCase):
         self.slot()
         grades = timetable_picker(self.rao, [MONDAY])["grades"]
         self.assertEqual([s for g in grades for s in g["sections"]], [self.six_a])
+
+
+class ClassPageTests(TimetableDashboardFixture, TestCase):
+    """/my/timetable/?section=<pk> (fixture business date is Monday 12 Oct 2026)."""
+
+    def setUp(self):
+        super().setUp()
+        self.url = reverse("core:my-timetable")
+
+    def get(self, params=None, client=None):
+        return (client or self.teacher).get(self.url, params or {})
+
+    def chip(self, page):
+        match = re.search(r'<a class="erp-tt-pick"[^>]*>(.*?)</a>', page.content.decode(), re.S)
+        self.assertIsNotNone(match)
+        return re.sub(r"<[^>]+>|\s+", " ", match.group(1)).strip()
+
+    def six_a_day(self):
+        self.assign(self.rao, self.maths, self.six_a)
+        self.slot()
+        self.slot(period=self.p2, offering=self.science)
+
+    def test_chip_says_my_timetable_and_class_name(self):
+        self.assertEqual(self.chip(self.get()), "My timetable")
+        self.assertEqual(self.chip(self.get({"section": self.six_a.pk})), "Grade 6 - A")
+
+    def test_class_day_cards_show_subject_and_teacher(self):
+        self.six_a_day()
+        iyer = self.client_class()
+        iyer.login(username="iyer", password="pass-12345")
+        for client in (self.teacher, iyer):
+            page = self.get({"section": self.six_a.pk}, client)
+            self.assertEqual(page.status_code, 200)
+            self.assertEqual(page.context["section"], self.six_a)
+            self.assertContains(page, "Mathematics")
+            self.assertContains(page, _teacher_name(self.rao))
+            self.assertContains(page, "Science")
+            self.assertContains(page, "No teacher assigned")
+
+    def test_class_week_boxes_and_key(self):
+        self.six_a_day()
+        page = self.get({"view": "week", "section": self.six_a.pk})
+        pk = self.six_a.pk
+        self.assertContains(
+            page,
+            f'<a href="{self.url}?date=2026-10-12&amp;section={pk}" '
+            f'aria-label="Mathematics, {_teacher_name(self.rao)}, period 1, Monday 12 October">Mat</a>',
+            html=False,
+        )
+        self.assertContains(page, '<span class="erp-tt-key-short">Mat</span> Mathematics')
+        self.assertContains(page, '<span class="erp-tt-key-short">Sci</span> Science')
+
+    def test_class_links_keep_section(self):
+        self.six_a_day()
+        pk = self.six_a.pk
+        needle = f"section={pk}"
+        day = self.get({"date": "2026-10-14", "section": pk}).content.decode()
+        chips = re.findall(r'<a class="erp-tt-chip[^"]*" href="([^"]+)"', day)
+        self.assertTrue(chips)
+        for href in chips:
+            self.assertIn(needle, href)
+        self.assertIn(f"{self.url}?view=week&amp;date=2026-10-14&amp;{needle}", day)
+        self.assertIn(f'class="erp-tt-today" href="{self.url}?{needle}"', day)
+        week = self.get({"view": "week", "date": "2026-10-14", "section": pk}).content.decode()
+        for label in ("Previous week", "Next week"):
+            self.assertRegex(week, rf'href="[^"]*{needle}[^"]*" aria-label="{label}"')
+        self.assertIn(f'href="{self.url}?date=2026-10-14&amp;{needle}"', week)
+        sheet = re.search(r"<dialog.*?</dialog>", week, re.S).group(0)
+        mine_link = re.search(r'<a[^>]*href="([^"]+)"[^>]*>\s*My timetable', sheet)
+        self.assertIsNotNone(mine_link)
+        self.assertNotIn("section=", mine_link.group(1))
+
+    def test_bad_section_values_fall_back_to_mine(self):
+        for value in ("abc", "-1", "99999999", "1.5", ""):
+            page = self.get({"section": value})
+            self.assertEqual(page.status_code, 200, value)
+            self.assertIsNone(page.context["section"], value)
+            self.assertEqual(self.chip(page), "My timetable", value)
+
+    def sheet_setup(self):
+        self.class_teacher(self.rao, self.six_a)
+        self.assign(self.rao, self.sanskrit, self.six_b)
+        self.slot()
+        self.slot(section=self.six_b, offering=self.sanskrit)
+
+    def test_sheet_lists_three_groups(self):
+        self.sheet_setup()
+        html = self.get({"view": "week", "date": "2026-10-14"}).content.decode()
+        sheet = re.search(r"<dialog.*?</dialog>", html, re.S).group(0)
+        for text in ("Choose a timetable", "My timetable", "My classes", "All classes"):
+            self.assertIn(text, sheet)
+        self.assertRegex(sheet, r'<label[^>]*for="(\w[\w-]*)"[^>]*>\s*Search classes')
+        self.assertIn('type="search"', sheet)
+        for section in (self.six_a, self.six_b):
+            self.assertIn(
+                f'href="{self.url}?view=week&amp;date=2026-10-14&amp;section={section.pk}"', sheet
+            )
+
+    def test_no_js_pick_list(self):
+        self.sheet_setup()
+        page = self.get({"pick": "1"})
+        html = page.content.decode()
+        self.assertTrue(page.context["pick"])
+        outside = re.sub(r"<dialog.*?</dialog>", "", html, flags=re.S)
+        for text in ("My classes", "All classes"):
+            self.assertIn(text, outside)
+        self.assertIn(f"section={self.six_a.pk}", outside)
+        self.assertRegex(html, r'<a class="erp-tt-pick"[^>]*href="[^"]*\?pick=1&amp;')
+        self.assertNotIn("All classes", re.sub(r"<dialog.*?</dialog>", "", self.get().content.decode(), flags=re.S))
+
+    def test_class_view_writes_nothing(self):
+        self.six_a_day()
+        with CaptureQueriesContext(connection) as queries:
+            self.get({"section": self.six_a.pk})
+            self.get({"view": "week", "section": self.six_a.pk})
+        writes = [
+            q["sql"] for q in queries
+            if q["sql"].lstrip().upper().startswith(("INSERT", "UPDATE", "DELETE"))
+            and "django_session" not in q["sql"]  # the session middleware, not the view
+        ]
+        self.assertEqual(writes, [])
+
+    def test_non_teacher_gets_403_with_section(self):
+        params = {"section": self.six_a.pk}
+        self.client.login(username="admin", password="pass-12345")
+        self.assertEqual(self.get(params, self.client).status_code, 403)
+        self.make_user("plain")
+        plain = self.client_class()
+        plain.login(username="plain", password="pass-12345")
+        self.assertEqual(self.get(params, plain).status_code, 403)
+        self.assertEqual(self.get(params, self.client_class()).status_code, 302)
+
+    def test_existing_section_with_nothing_scheduled_stays_on_that_class(self):
+        page = self.get({"section": self.six_b.pk})
+        self.assertEqual(self.chip(page), "Grade 6 - B")
+        self.assertContains(page, "No school timetable on this day.")

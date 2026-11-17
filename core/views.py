@@ -1280,10 +1280,32 @@ def my_timetable(request):
             instructional[(year.pk, day)] = year.is_instructional_day(day)
         return instructional[(year.pk, day)]
 
-    context = {"selected": selected, "today": today, "is_today": selected == today}
-    if request.GET.get("view") == "week":
-        window = timedelta(days=timetable.TIMETABLE_DATE_WINDOW_DAYS)
+    # Any teacher may open any Section's timetable read-only; a missing, malformed or unknown id
+    # simply shows "My timetable".
+    section = None
+    try:
+        section_id = int(request.GET.get("section", ""))
+    except ValueError:
+        section_id = None
+    if section_id is not None and 0 < section_id < 2**31:
+        section = Section.objects.select_related("class_grade").filter(pk=section_id).first()
+    week_view = request.GET.get("view") == "week"
+    if week_view:
         monday = timetable.week_monday(selected)
+        picker_dates = [monday + timedelta(days=i) for i in range(6)]
+    else:
+        picker_dates = [selected]
+    context = {
+        "selected": selected,
+        "today": today,
+        "is_today": selected == today,
+        "section": section,
+        "section_qs": f"&section={section.pk}" if section else "",
+        "pick": request.GET.get("pick") == "1",
+        "picker": timetable.timetable_picker(request.user, picker_dates),
+    }
+    if week_view:
+        window = timedelta(days=timetable.TIMETABLE_DATE_WINDOW_DAYS)
         # Arrows open the neighbouring week's Monday; at the window's start the previous week
         # is opened by its Saturday when only that end of it is still inside the window.
         previous_week = next(
@@ -1292,23 +1314,27 @@ def my_timetable(request):
             None,
         )
         next_week = monday + timedelta(days=7)
+        if section:
+            week = timetable.class_week(section, selected, today, year_is_instructional)
+        else:
+            week = timetable.teacher_week(request.user, selected, today, year_is_instructional)
         context.update(
             view="week",
-            week=timetable.teacher_week(request.user, selected, today, year_is_instructional),
+            week=week,
             prev_week_date=previous_week,
             next_week_date=next_week if next_week <= today + window else None,
         )
     else:
-        assignments = list(
-            current_teacher_assignments(request.user, selected).select_related(
-                "section__class_grade", "offering__subject", "offering__academic_year"
+        if section:
+            rows = timetable.class_timetable_on(section, selected, year_is_instructional)
+        else:
+            assignments = list(
+                current_teacher_assignments(request.user, selected).select_related(
+                    "section__class_grade", "offering__subject", "offering__academic_year"
+                )
             )
-        )
-        context.update(
-            view="day",
-            strip=timetable.date_strip(selected, today),
-            rows=timetable.teacher_timetable_on(assignments, selected, year_is_instructional),
-        )
+            rows = timetable.teacher_timetable_on(assignments, selected, year_is_instructional)
+        context.update(view="day", strip=timetable.date_strip(selected, today), rows=rows)
     return render(request, "core/my_timetable.html", context)
 
 

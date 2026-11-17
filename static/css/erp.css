@@ -2797,6 +2797,33 @@ body:has(.erp-dialog[open]) { overflow: hidden; }
 .erp-tt-key { display: grid; gap: 4px; margin: 0 0 var(--erp-space-4); padding: 0; list-style: none; font-size: .88rem; }
 .erp-tt-key-short { display: inline-block; min-width: 3.2rem; font-weight: 800; }
 
+/* Teacher timetable class picker: the chip under the title, the sheet (a .erp-dialog) and the no-JS list. */
+.erp-tt-pick {
+  display: inline-flex; align-items: center; gap: var(--erp-space-2); min-height: 44px; max-width: 100%;
+  padding-inline: 14px; margin-block-end: var(--erp-space-3); border: 1px solid var(--erp-rule);
+  border-radius: 999px; background: var(--erp-surface); color: var(--erp-ink); font-weight: 700; text-decoration: none;
+}
+.erp-tt-pick::after { content: ""; flex: 0 0 auto; width: .5rem; height: .5rem; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: translateY(-2px) rotate(45deg); }
+.erp-tt-pick:hover { border-color: var(--erp-action); }
+.erp-tt-pick > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.erp-tt-picklist { margin-block-end: var(--erp-space-4); }
+.erp-tt-search-label { display: block; margin-block-end: 4px; font-size: .88rem; font-weight: 700; color: var(--erp-ink-soft); }
+.erp-tt-search { min-height: 44px; margin-block-end: var(--erp-space-3); }
+.erp-tt-pickgroup + .erp-tt-pickgroup { margin-top: var(--erp-space-3); }
+.erp-tt-pickhead, .erp-tt-pickgrade-name {
+  margin: 0 0 4px; font-size: .78rem; font-weight: 800; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--erp-ink-soft);
+}
+.erp-tt-pickgrade { margin-block-end: var(--erp-space-2); }
+.erp-tt-pickrow {
+  display: flex; align-items: center; min-height: 44px; padding-inline: 12px; border-radius: 10px;
+  color: var(--erp-ink); font-weight: 700; text-decoration: none;
+}
+.erp-tt-pickrow:hover { background: var(--erp-action-wash); }
+.erp-tt-pickrow.is-current { background: var(--erp-action-wash); color: var(--erp-action-strong); }
+.erp-tt-pickrow[hidden], .erp-tt-pickgrade[hidden], .erp-tt-pickgroup[hidden] { display: none; }
+.erp-tt-pick-none { margin: 0; color: var(--erp-ink-soft); }
+
 /* UI-D1-4B: the register detail context line (Section name + date) wraps a long unbroken name instead of being clipped. */
 .erp-attendance-detail-page .erp-page-header-copy { min-width: 0; }
 .erp-attendance-detail-page .erp-page-purpose { overflow-wrap: break-word; }

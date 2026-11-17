@@ -234,7 +234,9 @@ class TimetablePageTests(TimetableDashboardFixture, TestCase):
             [("P1", "Grade 6 - A")],
         )
         self.assertContains(page, "Grade 6 - A")
-        self.assertNotContains(page, "Grade 6 - B")
+        # The class sheet (a <dialog>) lists every class; the timetable itself must not.
+        outside = re.sub(r"<dialog.*?</dialog>", "", page.content.decode(), flags=re.S)
+        self.assertNotIn("Grade 6 - B", outside)
 
     def test_non_teacher_gets_403(self):
         self.client.login(username="admin", password="pass-12345")
@@ -534,7 +536,9 @@ class TimetableWeekPageTests(TimetableDashboardFixture, TestCase):
         self.slot(section=self.six_b, period=self.p2)
         page = self.week_page()
         self.assertContains(page, "Grade 6 - A")
-        self.assertNotContains(page, "Grade 6 - B")
+        # The class sheet (a <dialog>) lists every class; the timetable itself must not.
+        outside = re.sub(r"<dialog.*?</dialog>", "", page.content.decode(), flags=re.S)
+        self.assertNotIn("Grade 6 - B", outside)
 
     def test_non_teacher_gets_403(self):
         self.client.login(username="admin", password="pass-12345")
