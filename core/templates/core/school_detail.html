@@ -27,6 +27,7 @@
     {% if logo_form %}
     <form method="post" action="{% url 'core:school-logo-upload' %}" enctype="multipart/form-data" class="mb-2" data-erp-logo-form>
         {% csrf_token %}
+        {% include "partials/_form_error_summary.html" with form=logo_form action_text="uploading the logo" only %}
         {% include "partials/_form_field.html" with field=logo_form.image %}
         {# Starts hidden; erp.js fills it in. Without JS the form works as before, and the server checks the file either way. #}
         <div class="mb-3" data-erp-logo-preview hidden>
@@ -35,7 +36,7 @@
             <p class="erp-field-help mb-1" data-erp-logo-preview-details aria-live="polite"></p>
             <button type="button" class="btn btn-link btn-sm p-0" data-erp-logo-preview-cancel>Cancel selection</button>
         </div>
-        <button type="submit" class="btn btn-outline-primary">{% if logo %}Replace logo{% else %}Upload logo{% endif %}</button>
+        <button type="submit" class="btn btn-outline-primary" data-erp-once data-erp-once-busy="{% if logo %}Replacing logo…{% else %}Uploading logo…{% endif %}">{% if logo %}Replace logo{% else %}Upload logo{% endif %}</button>
     </form>
     {% if logo %}
     <a class="btn btn-outline-danger" href="{% url 'core:school-logo-remove' %}">Remove logo</a>

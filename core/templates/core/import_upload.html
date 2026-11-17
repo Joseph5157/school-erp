@@ -11,7 +11,7 @@
     {% for field in form %}{% include "partials/_form_field.html" with field=field only %}{% endfor %}
     <p class="erp-note-text">What happens next: the file is checked and you see a preview with any errors or warnings. A file with errors is rejected: the batch is kept so you can see the problems, and no school records are imported. A checked file can be confirmed within 24 hours.</p>
     <div class="erp-form-actions">
-        <button type="submit" class="btn btn-primary">Check file</button>
+        <button type="submit" class="btn btn-primary" data-erp-once data-erp-once-busy="Checking file…">Check file</button>
         {% if perms.core.view_importbatch %}<a class="btn btn-link" href="{% url 'core:import-list' %}">Cancel</a>{% endif %}
     </div>
 </form>
