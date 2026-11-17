@@ -1,9 +1,13 @@
 """Timetable page: rows for any date (ADR 0021 D10)."""
 
+import re
 from datetime import date, timedelta
 
 from django.test import SimpleTestCase, TestCase
+from django.urls import reverse
 
+from core.models import SchoolCalendarDay
+from core.navigation import teacher_tabs
 from core.timetable import (
     date_strip,
     parse_timetable_date,
@@ -110,3 +114,125 @@ class DateStripTests(SimpleTestCase):
         chips = date_strip(sunday, self.TODAY)
         self.assertEqual(len(chips), 30)
         self.assertFalse(any(c["is_selected"] for c in chips))
+
+
+class TimetablePageTests(TimetableDashboardFixture, TestCase):
+    """The /my/timetable/ page (fixture business date is Monday 12 Oct 2026)."""
+
+    def setUp(self):
+        super().setUp()
+        self.url = reverse("core:my-timetable")
+
+    def get(self, date_value=None, client=None):
+        client = client or self.teacher
+        return client.get(self.url, {"date": date_value} if date_value is not None else {})
+
+    def test_teacher_sees_own_periods_for_the_chosen_date(self):
+        self.assign(self.rao, self.maths, self.six_a)
+        self.slot(weekday=1, period=self.p2)           # Tuesday P2
+        tue = self.get("2026-10-13")
+        self.assertEqual(tue.status_code, 200)
+        self.assertEqual(
+            [r["period"] for r in tue.context["rows"]], ["P2"]
+        )
+        self.assertContains(tue, "Grade 6 - A")
+        self.assertContains(tue, "Mathematics")
+        self.assertContains(tue, "Tuesday, 13 October 2026")
+        self.assertEqual(self.get("2026-10-12").context["rows"], [])
+        self.assertContains(
+            self.get("2026-10-12"), "No periods scheduled for you on this day."
+        )
+
+    def test_default_date_is_today_with_no_query(self):
+        self.assign(self.rao, self.maths, self.six_a)
+        self.slot()
+        page = self.get()
+        self.assertEqual(page.context["selected"], MONDAY)
+        self.assertEqual(page.context["today"], MONDAY)
+        self.assertTrue(page.context["is_today"])
+        self.assertEqual([r["period"] for r in page.context["rows"]], ["P1"])
+        self.assertContains(page, "Monday, 12 October 2026")
+        self.assertContains(page, "‹ My day")
+        self.assertEqual(page.content.decode().count("<h1"), 1)
+
+    def test_bad_date_values_load_today_not_500(self):
+        for raw in ("abc", "", "2026-13-40", "9999-12-31", "0001-01-01"):
+            with self.subTest(raw=raw):
+                page = self.get(raw)
+                self.assertEqual(page.status_code, 200)
+                self.assertEqual(page.context["selected"], MONDAY)
+
+    def test_sunday_shows_non_school_sentence_and_strip(self):
+        self.assign(self.rao, self.maths, self.six_a)
+        self.slot()
+        page = self.get(SUNDAY.isoformat())
+        self.assertEqual(page.status_code, 200)
+        self.assertIsNone(page.context["rows"])
+        self.assertContains(page, "No school timetable on this day.")
+        self.assertContains(page, 'aria-label="Pick a day"')
+        self.assertEqual(len(page.context["strip"]), 30)
+
+    def test_no_assignments_shows_empty_sentence(self):
+        page = self.get()
+        self.assertEqual(page.context["rows"], [])
+        self.assertContains(page, "No periods scheduled for you on this day.")
+
+    def test_holiday_shows_non_school_sentence(self):
+        self.assign(self.rao, self.maths, self.six_a)
+        self.slot()
+        SchoolCalendarDay.objects.create(
+            academic_year=self.year, date=MONDAY, is_instructional=False, label="Holiday"
+        )
+        page = self.get()
+        self.assertIsNone(page.context["rows"])
+        self.assertContains(page, "No school timetable on this day.")
+        self.assertNotContains(page, "No periods scheduled for you on this day.")
+
+    def test_past_date_uses_assignments_effective_then(self):
+        self.assign_between(self.rao, self.maths, self.six_a, date(2026, 6, 1), date(2026, 10, 4))
+        self.assign_between(self.iyer, self.maths, self.six_a, date(2026, 10, 5))
+        self.slot()
+        iyer = self.client_class()
+        iyer.login(username="iyer", password="pass-12345")
+        past = "2026-10-05"                            # a Monday, Iyer's first day
+        self.assertEqual(self.get(past).context["rows"], [])
+        self.assertEqual(
+            [r["subject"] for r in self.get(past, iyer).context["rows"]], ["Mathematics"]
+        )
+        before = "2026-09-28"                          # Rao's last Monday
+        self.assertEqual(
+            [r["subject"] for r in self.get(before).context["rows"]], ["Mathematics"]
+        )
+        self.assertEqual(self.get(before, iyer).context["rows"], [])
+
+    def test_other_teachers_slots_never_appear(self):
+        self.assign(self.iyer, self.maths, self.six_b)
+        self.slot(section=self.six_b)
+        page = self.get()
+        self.assertEqual(page.context["rows"], [])
+        self.assertNotContains(page, "Grade 6 - B")
+
+    def test_non_teacher_gets_403(self):
+        self.client.login(username="admin", password="pass-12345")
+        self.assertEqual(self.client.get(self.url).status_code, 403)
+        self.make_user("parent")
+        guardian = self.client_class()
+        guardian.login(username="parent", password="pass-12345")
+        self.assertEqual(guardian.get(self.url).status_code, 403)
+        self.assertEqual(self.client_class().get(self.url).status_code, 302)
+
+    def test_selected_chip_has_aria_current_and_today_link_goes_to_bare_route(self):
+        page = self.get("2026-10-14")
+        html = page.content.decode()
+        self.assertEqual(html.count('aria-current="date"'), 1)
+        selected = re.search(r'<a[^>]*aria-current="date"[^>]*>', html).group(0)
+        self.assertIn("date=2026-10-14", selected)
+        self.assertIn("erp-tt-chip", selected)
+        self.assertRegex(html, r'<a[^>]*href="' + re.escape(self.url) + r'"[^>]*>\s*Today\s*</a>')
+        self.assertContains(page, "October 2026")
+
+    def test_today_tab_stays_active(self):
+        active = [
+            t["mobile_label"] for t in teacher_tabs("my-timetable") if t["active"]
+        ]
+        self.assertEqual(active, ["Today"])

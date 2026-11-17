@@ -150,6 +150,7 @@ class NestedPageActiveTabTests(TestCase):
                 "my-attendance": "Today", "my-attendance-submit": "Today",
                 "my-attendance-history": "Today",
                 "my-attendance-assignment": "Today", "my-attendance-register": "Today",
+                "my-timetable": "Today",
                 "my-student-detail": "Students",
                 "my-gradebook": "Assessments", "assessment-marks-entry": "Assessments",
                 "my-subject-results": "Results", "my-report-card": "Results",

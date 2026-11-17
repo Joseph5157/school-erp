@@ -1225,6 +1225,39 @@ def my_home(request):
     )
 
 
+@teacher_required
+def my_timetable(request):
+    today = business_today()
+    selected = timetable.parse_timetable_date(request.GET.get("date"), today)
+    assignments = list(
+        current_teacher_assignments(request.user, selected).select_related(
+            "section__class_grade", "offering__subject", "offering__academic_year"
+        )
+    )
+    instructional = {}
+
+    def year_is_instructional(year):
+        if year.pk not in instructional:
+            instructional[year.pk] = year.is_instructional_day(selected)
+        return instructional[year.pk]
+
+    return render(
+        request,
+        "core/my_timetable.html",
+        {
+            "selected": selected,
+            "today": today,
+            "is_today": selected == today,
+            "strip": timetable.date_strip(selected, today),
+            # No assignments means no Academic Year to ask about the day; the page
+            # says "no periods for you", not "no school".
+            "rows": timetable.teacher_timetable_on(
+                assignments, selected, year_is_instructional
+            ) if assignments else [],
+        },
+    )
+
+
 # --- Phase 5 Gate 3: class teacher attendance (ADR 0012 D4, D5, D7) -------
 
 

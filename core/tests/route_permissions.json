@@ -972,6 +972,15 @@
     "route": "my/results/<int:pk>/",
     "view": "views.my_subject_results"
   },
+  "core:my-timetable": {
+    "flags": [
+      "teacher_required"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "my/timetable/",
+    "view": "views.my_timetable"
+  },
   "core:notification-dismiss": {
     "flags": [
       "require_POST"
