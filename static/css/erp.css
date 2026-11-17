@@ -1960,9 +1960,21 @@ search { display: block; }  /* the filter landmark around each toolbar form; blo
 /* Credential slip: paper shows only the card. Visibility, so the card can stay where it is in the page. */
 .erp-credential-card { max-width: 28rem; margin-bottom: var(--erp-space-3); padding: var(--erp-space-4); border: 1px solid var(--erp-rule); border-radius: .375rem; overflow-wrap: anywhere; }
 .erp-credential-school { margin-bottom: var(--erp-space-1); font-size: 1.125rem; font-weight: 600; }
+/* Printing (audit 17 PRT-01/PRT-02). Every page prints its main content without the app shell; a
+   credential slip page prints only the card. Screen-only scrolling, clipping and sticky rules are reset,
+   because paper cannot scroll: a clipped column or row would simply be missing. */
 @media print {
-  body * { visibility: hidden; }
-  .erp-credential-card, .erp-credential-card * { visibility: visible; }
+  .erp-skip, .erp-topbar, .erp-sidebar, .erp-tabbar, .erp-install-bar, .erp-messages, .erp-breadcrumb,
+  .erp-section-nav, .erp-switcher, .erp-pagination, .erp-actionbar, .erp-main search, .erp-main .btn { display: none !important; }
+  body, body.has-sidebar .erp-main, body.has-tabbar .erp-content, .erp-content { margin: 0 !important; padding: 0 !important; }
+  body { background: #fff; }
+  .erp-main { overflow: visible; }
+  .erp-table-scroll, .erp-import-scroll { contain: none; overflow: visible; max-height: none; scrollbar-gutter: auto; }
+  .erp-main th, .erp-main td { position: static !important; white-space: normal; box-shadow: none; }
+  .erp-main thead { display: table-header-group; }
+  .erp-main tr { break-inside: avoid; }
+  body:has(.erp-credential-card) * { visibility: hidden; }
+  body:has(.erp-credential-card) .erp-credential-card, body:has(.erp-credential-card) .erp-credential-card * { visibility: visible; }
   .erp-credential-card { position: absolute; top: 0; left: 0; }
 }
 
