@@ -290,20 +290,20 @@ class MultipleAcademicYearTests(TimetableDashboardFixture, TestCase):
                                              is_instructional=False, label="Closure")
         return other
 
-    def test_each_year_is_judged_by_its_own_calendar(self):
+    # ADR 0021 D10 amendment 2026-11-17 (current year): once a newer Academic Year has started,
+    # only its timetable shows; the older year's periods stop even if its dates overlap.
+
+    def test_the_newest_started_year_decides_the_day(self):
         self.assign(self.rao, self.maths, self.six_a)
         self.slot()
         self.second_year(holiday=True)
-        self.assertEqual(self.labels(), ["P1 · Grade 6 - A · Mathematics"])
+        self.assertIsNone(self.shown())                # newest year closed today: no timetable
 
-    def test_when_both_years_are_instructional_rows_from_both_are_listed_in_order(self):
+    def test_when_both_years_are_open_only_the_newest_years_rows_show(self):
         self.assign(self.rao, self.maths, self.six_a)
         self.slot(period=self.p2)
         self.second_year()
-        self.assertEqual(
-            self.labels(),
-            ["Q1 · Grade 8 - A · History", "P2 · Grade 6 - A · Mathematics"],
-        )
+        self.assertEqual(self.labels(), ["Q1 · Grade 8 - A · History"])
 
     def test_a_year_that_is_closed_today_does_not_make_a_timetable_for_another(self):
         other = self.second_year(holiday=True)
