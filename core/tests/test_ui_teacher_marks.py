@@ -235,8 +235,12 @@ class MyStudentsTests(MarksFixture, TestCase):
         self.make_student("Kiran", section=self.six_b)
         self.assign(self.rao, self.sanskrit, self.six_b)
         self.register(submit=True)
-        page = self.teacher.get(self.url).content.decode()
-        six_b_part = page[page.index(str(self.six_b)):]
+        # My students shows one class at a time (picker, 6476bdf): open 6-B's list explicitly.
+        response = self.teacher.get(self.url, {"group": f"{self.six_b.pk}:{self.year.pk}"})
+        self.assertEqual(response.context["selected_group"]["section"], self.six_b)
+        page = response.content.decode()
+        six_b_part = page[page.index('<section class="erp-students-group"'):]
+        self.assertIn("Kiran", six_b_part)
         self.assertNotIn("erp-pill is-present", six_b_part)
         self.assertNotIn("not submitted yet", six_b_part)
 
