@@ -325,12 +325,12 @@ class TeacherWeekTests(TimetableDashboardFixture, TestCase):
             self.slot(weekday=weekday)
         SchoolCalendarDay.objects.create(
             academic_year=self.year, date=date(2026, 10, 14), is_instructional=False,
-            label="Holiday",
+            label="Diwali",
         )
         week = self.week()
         wed = week["days"][2]
         self.assertFalse(wed["is_school_day"])
-        self.assertEqual(wed["label"], "Holiday")
+        self.assertEqual(wed["label"], "Holiday")             # the fixed word, not "Diwali"
         self.assertEqual(self.cell(week, 1, date(2026, 10, 14)), [])
         self.assertEqual(week["days"][1]["label"], "")
 
@@ -438,13 +438,28 @@ class TimetableWeekPageTests(TimetableDashboardFixture, TestCase):
         self.assertContains(page, "19 – 23 Oct 2026")
         self.assertNotContains(page, "This week")
 
-    def test_arrows_move_seven_days(self):
+    def test_arrows_go_to_the_neighbouring_weeks_mondays(self):
         page = self.week_page("2026-10-14")
         self.assertContains(
-            page, f'href="{self.url}?view=week&amp;date=2026-10-07" aria-label="Previous week"'
+            page, f'href="{self.url}?view=week&amp;date=2026-10-05" aria-label="Previous week"'
         )
         self.assertContains(
-            page, f'href="{self.url}?view=week&amp;date=2026-10-21" aria-label="Next week"'
+            page, f'href="{self.url}?view=week&amp;date=2026-10-19" aria-label="Next week"'
+        )
+
+    def test_next_arrow_shows_while_next_monday_is_inside_the_window(self):
+        saturday = MONDAY + timedelta(days=362)        # Saturday; next Monday is day 364
+        self.assertEqual(saturday.weekday(), 5)
+        page = self.week_page(saturday.isoformat())
+        self.assertContains(page, 'aria-label="Next week"')
+
+    def test_previous_arrow_falls_back_to_the_last_day_of_that_week_inside_the_window(self):
+        monday = MONDAY - timedelta(days=364)          # previous Monday is day -371, Saturday -366
+        self.assertEqual(monday.weekday(), 0)
+        page = self.week_page(monday.isoformat())
+        target = (monday - timedelta(days=2)).isoformat()
+        self.assertContains(
+            page, f'href="{self.url}?view=week&amp;date={target}" aria-label="Previous week"'
         )
 
     def test_arrows_stop_at_the_window_edges_and_far_dates_load(self):
@@ -499,11 +514,12 @@ class TimetableWeekPageTests(TimetableDashboardFixture, TestCase):
             self.slot(weekday=weekday)
         SchoolCalendarDay.objects.create(
             academic_year=self.year, date=date(2026, 10, 14), is_instructional=False,
-            label="Holiday",
+            label="Diwali",
         )
         html = self.week_page().content.decode()
         head = html.split("<thead>")[1].split("</thead>")[0]
         self.assertRegex(head, r'<th scope="col" class="[^"]*is-closed[^"]*"[^>]*>.*?Holiday')
+        self.assertNotIn("Diwali", html)
 
     def test_empty_week_sentence(self):
         self.slot()
@@ -531,3 +547,43 @@ class TimetableWeekPageTests(TimetableDashboardFixture, TestCase):
         head = html.split("<thead>")[1].split("</thead>")[0]
         today = re.search(r'<th[^>]*aria-current="date"[^>]*>', head).group(0)
         self.assertIn("is-today", today)
+
+
+class TimetableWeekReviewFixTests(TimetableDashboardFixture, TestCase):
+    """Final-review fixes on PR #260."""
+
+    def week(self, any_date=MONDAY, today=MONDAY):
+        return teacher_week(
+            self.rao, any_date, today, lambda year, day: year.is_instructional_day(day)
+        )
+
+    def test_open_days_before_the_timetable_starts_are_not_closed(self):
+        self.assign(self.rao, self.maths, self.six_a)
+        self.slot(weekday=2, start_date=date(2026, 10, 14))   # timetable starts Wednesday
+        days = self.week()["days"]
+        self.assertEqual([d["label"] for d in days[:2]], ["", ""])
+        self.assertEqual([d["is_school_day"] for d in days[:3]], [True, True, True])
+
+    def test_sunday_shows_the_coming_week_as_this_week(self):
+        self.assign(self.rao, self.maths, self.six_a)
+        self.slot()
+        week = self.week(SUNDAY, today=SUNDAY)
+        self.assertEqual(week["monday"], MONDAY)
+        self.assertTrue(week["contains_today"])
+
+    def test_sunday_week_page_opens_the_coming_week(self):
+        with self.day(SUNDAY):
+            page = self.teacher.get(reverse("core:my-timetable"), {"view": "week"})
+        self.assertEqual(page.context["week"]["monday"], MONDAY)
+        self.assertContains(page, "This week")
+
+
+class TimetableWeekCssTests(SimpleTestCase):
+    def test_closed_today_header_keeps_readable_weekday(self):
+        from django.conf import settings
+
+        css = (settings.BASE_DIR / "static" / "css" / "erp.css").read_text(encoding="utf-8")
+        self.assertIn(
+            ".erp-tt-week-day.is-today.is-closed > span:first-child { color: var(--erp-ink-soft); }",
+            css,
+        )

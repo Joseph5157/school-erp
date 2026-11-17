@@ -1283,12 +1283,19 @@ def my_timetable(request):
     context = {"selected": selected, "today": today, "is_today": selected == today}
     if request.GET.get("view") == "week":
         window = timedelta(days=timetable.TIMETABLE_DATE_WINDOW_DAYS)
-        previous_week = selected - timedelta(days=7)
-        next_week = selected + timedelta(days=7)
+        monday = timetable.week_monday(selected)
+        # Arrows open the neighbouring week's Monday; at the window's start the previous week
+        # is opened by its Saturday when only that end of it is still inside the window.
+        previous_week = next(
+            (d for d in (monday - timedelta(days=7), monday - timedelta(days=2))
+             if d >= today - window),
+            None,
+        )
+        next_week = monday + timedelta(days=7)
         context.update(
             view="week",
             week=timetable.teacher_week(request.user, selected, today, year_is_instructional),
-            prev_week_date=previous_week if previous_week >= today - window else None,
+            prev_week_date=previous_week,
             next_week_date=next_week if next_week <= today + window else None,
         )
     else:

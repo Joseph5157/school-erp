@@ -2784,6 +2784,7 @@ body:has(.erp-dialog[open]) { overflow: hidden; }
 .erp-tt-week-label { margin-top: 2px; font-size: .62rem; font-weight: 700; overflow-wrap: break-word; }
 .erp-tt-week td.is-today { background: var(--erp-action-wash); border-radius: 10px; }
 .erp-tt-week .is-closed { background: var(--erp-rule); color: var(--erp-ink-soft); border-radius: 10px; }
+.erp-tt-week-day.is-today.is-closed > span:first-child { color: var(--erp-ink-soft); }
 .erp-tt-week td > a {
   display: flex; align-items: center; justify-content: center; min-height: 44px; padding-inline: 2px;
   background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: 10px;

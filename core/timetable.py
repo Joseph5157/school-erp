@@ -267,7 +267,7 @@ def teacher_week(user, any_date, today, year_is_instructional):
     """
     from core.authorization import current_teacher_assignments
 
-    monday = any_date - timedelta(days=any_date.weekday())
+    monday = week_monday(any_date)
     days = []
     for offset in range(6):
         day = monday + timedelta(days=offset)
@@ -277,9 +277,15 @@ def teacher_week(user, any_date, today, year_is_instructional):
         )
         if rows is None and offset == 5:
             continue
+        is_open = rows is not None
         label = ""
-        if rows is None:
-            label = "Holiday" if TimetableSlot.objects.effective_on(day).exists() else "No school"
+        if not is_open:
+            # Closed only when no Academic Year holding the day is open: a school day before the
+            # timetable starts is an open day with blank cells, not "No school".
+            holding = AcademicYear.objects.filter(start_date__lte=day, end_date__gte=day)
+            is_open = any(year_is_instructional(year, day) for year in holding)
+            if not is_open:
+                label = "Holiday" if holding else "No school"
         for row in rows or ():
             row["short"] = short_section_label(row["section"])
         days.append(
@@ -287,7 +293,7 @@ def teacher_week(user, any_date, today, year_is_instructional):
                 "date": day,
                 "weekday": day.strftime("%a"),
                 "is_today": day == today,
-                "is_school_day": rows is not None,
+                "is_school_day": is_open,
                 "label": label,
                 "rows": rows or [],
             }
@@ -319,5 +325,12 @@ def teacher_week(user, any_date, today, year_is_instructional):
         "key": [{"short": r["short"], "full": str(r["section"])} for r in ordered],
         "is_empty": not sequences,
         "heading": _week_heading(monday, days[-1]["date"]),
-        "contains_today": monday <= today <= monday + timedelta(days=5),
+        "contains_today": week_monday(today) == monday,
     }
+
+
+def week_monday(any_date):
+    """Monday of the week shown for `any_date`; a Sunday shows the coming week."""
+    if any_date.weekday() == 6:
+        return any_date + timedelta(days=1)
+    return any_date - timedelta(days=any_date.weekday())
