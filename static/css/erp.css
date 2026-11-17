@@ -1895,6 +1895,7 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
 .erp-panel .table > tbody > tr:last-child > * { border-bottom: 0; }
 /* The name cell is the row header for screen readers; it keeps the look of a normal cell. */
 .erp-rows-link > tbody th[scope="row"] { font-weight: inherit; text-align: start; }
+.erp-row-heads-plain > tbody th[scope="row"] { font-weight: inherit; text-align: start; }  /* Student detail tables */
 /* Hover only where a pointer can hover; on touch a tapped row would stay tinted. */
 @media (hover: hover) { .erp-panel .table > tbody > tr:hover > * { background: var(--erp-paper); } }
 .erp-panel .table > tbody > tr.table-warning > * { background: var(--erp-warn-wash); }

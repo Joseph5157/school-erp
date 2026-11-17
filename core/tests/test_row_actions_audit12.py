@@ -41,6 +41,13 @@ class StudentDetailTests(AuthorizationClientsMixin, Phase4Fixture, TestCase):
         self.assertIn(f'<th scope="row">{self.enrollment.academic_year}</th>', self.page)
         self.assertRegex(self.page, r'<th scope="row"><a href="[^"]+">Meena Rao</a></th>')
 
+    def test_row_headers_keep_the_look_of_a_normal_cell(self):
+        for table in tables(self.page):
+            if "<caption" in table and "Sections" not in table:
+                self.assertIn('class="table erp-row-heads-plain"', table)
+        css = Path(settings.BASE_DIR, "static", "css", "erp.css").read_text(encoding="utf-8")
+        self.assertIn('.erp-row-heads-plain > tbody th[scope="row"] { font-weight: inherit; text-align: start; }', css)
+
     def test_actions_column_has_a_name(self):
         guardians = [t for t in tables(self.page) if ">Guardians</caption>" in t][0]
         self.assertIn(f'<th scope="col">{VH}Actions</span></th>', guardians)
