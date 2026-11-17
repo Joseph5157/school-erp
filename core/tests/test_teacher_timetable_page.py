@@ -8,14 +8,14 @@ from django.urls import reverse
 
 from core.models import SchoolCalendarDay
 from core.navigation import teacher_tabs
+from core.tests.test_phase5_teacher_home import MONDAY, SUNDAY
+from core.tests.test_ui_teacher_timetable import TUESDAY, TimetableDashboardFixture
 from core.timetable import (
     date_strip,
     parse_timetable_date,
     teacher_timetable_on,
     todays_teacher_timetable,
 )
-from core.tests.test_phase5_teacher_home import MONDAY, SUNDAY
-from core.tests.test_ui_teacher_timetable import TUESDAY, TimetableDashboardFixture
 
 
 class TimetableRowsOnTests(TimetableDashboardFixture, TestCase):
@@ -45,7 +45,9 @@ class TimetableRowsOnTests(TimetableDashboardFixture, TestCase):
     def test_todays_wrapper_still_returns_the_same_rows(self):
         mine = [self.assign(self.rao, self.maths, self.six_a)]
         self.slot()
-        check = lambda year: year.is_instructional_day(MONDAY)
+        def check(year):
+            return year.is_instructional_day(MONDAY)
+
         self.assertEqual(
             todays_teacher_timetable(mine, MONDAY, check),
             teacher_timetable_on(mine, MONDAY, check),
