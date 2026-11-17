@@ -84,7 +84,7 @@ class DateStripTests(SimpleTestCase):
             ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
         )
         self.assertNotIn(6, [c["date"].weekday() for c in chips])
-        self.assertEqual(chips[15]["day"], 16)
+        self.assertEqual(chips[12]["day"], 16)
 
     def test_strip_marks_exactly_one_selected_and_one_today_and_none_when_today_is_outside(self):
         selected = date(2026, 11, 19)
