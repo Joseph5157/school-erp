@@ -4,7 +4,7 @@
 {% include "partials/_page_header.html" with eyebrow="Timetable" title="Delete period" purpose=period.label only %}
 <p class="erp-note-text">{{ academic_year.name }}</p>
 {% if in_use %}
-<p role="alert">{{ in_use_message }}</p>
+<p role="note">{{ in_use_message }}</p>
 <a class="btn btn-outline-secondary" href="{% url 'core:timetable-periods' academic_year.pk %}">Back to periods</a>
 {% else %}
 <p>Period {{ period.label }} (order {{ period.sequence }}) will be removed from {{ academic_year.name }}. It is not used by any timetable slot.</p>

@@ -7,6 +7,7 @@ from django.contrib.messages import constants
 from django.contrib.messages.storage.base import Message
 from django.template.loader import render_to_string
 from django.test import SimpleTestCase
+from django.utils.safestring import mark_safe
 
 CSS = (settings.BASE_DIR / "static" / "css" / "erp.css").read_text(encoding="utf-8")
 PAPER, WHITE, INK = "#f5f6f3", "#ffffff", "#18212b"
@@ -59,10 +60,13 @@ class HeatmapContrastTests(SimpleTestCase):
             with self.subTest(pair=name):
                 self.assertGreaterEqual(contrast(background, text), 4.5)
 
-    def test_tiers_stay_ordered_light_to_dark(self):
-        heat = [_luminance(token(f"erp-viz-heat-{n}")) for n in (1, 2, 3)]
-        self.assertGreater(heat[0], heat[1])
-        self.assertGreater(heat[1], heat[2])
+    def test_tiers_stay_ordered_and_clearly_apart(self):
+        heat = [token(f"erp-viz-heat-{n}") for n in (1, 2, 3)]
+        for lighter, darker in zip(heat, heat[1:], strict=False):
+            with self.subTest(step=f"{lighter}->{darker}"):
+                self.assertGreater(_luminance(lighter), _luminance(darker))
+                # Review of #264: adjacent tiers carry no other cue, so keep a visible step.
+                self.assertGreaterEqual(contrast(lighter, darker), 1.6)
 
 
 class StudentChartForcedColoursTests(SimpleTestCase):
@@ -98,6 +102,13 @@ class BelowTargetBarTests(SimpleTestCase):
         self.assertIn('aria-label="Grade 6, below the 90% attendance target"', html)
         self.assertIn('aria-label="Grade 7"', html)
 
+    def test_low_bar_has_a_visible_tag_that_survives_high_contrast(self):
+        html = self.render()
+        grade6, grade7 = html.split('<li class="erp-class-row">')[1:3]
+        self.assertIn('<span class="erp-class-flag" aria-hidden="true">Below 90%</span>', grade6)
+        self.assertNotIn("erp-class-flag", grade7)
+        self.assertIn(".erp-class-flag", CSS)
+
     def test_phone_branch_explains_red(self):
         source = (
             settings.BASE_DIR / "templates" / "partials" / "_attendance_analytics.html"
@@ -116,6 +127,7 @@ class StaticWarningRoleTests(SimpleTestCase):
         "attendance_submit_confirm", "calendar_day_delete_confirm",
         "guardian_access_grant_confirm", "school_logo_remove_confirm",
         "student_deactivate_confirm", "student_reactivate_confirm", "teacher_deactivate_confirm",
+        "guardian_revoke_form", "timetable_slot_delete", "timetable_period_delete",
     ]
 
     def test_confirm_pages_use_note_not_alert(self):
@@ -131,13 +143,27 @@ class StaticWarningRoleTests(SimpleTestCase):
 class ToastDismissNameTests(SimpleTestCase):
     """Audit 15: each toast's Dismiss button names the message it closes."""
 
-    def test_dismiss_buttons_are_told_apart(self):
-        html = render_to_string(
-            "partials/_messages.html",
-            {"messages": [
-                Message(constants.SUCCESS, "Attendance saved."),
-                Message(constants.ERROR, "Upload failed."),
-            ]},
+    def render(self, *messages):
+        return render_to_string("partials/_messages.html", {"messages": list(messages)})
+
+    def test_dismiss_buttons_are_named_by_their_message(self):
+        html = self.render(
+            Message(constants.SUCCESS, "Attendance saved."),
+            Message(constants.ERROR, "Upload failed."),
         )
-        self.assertIn('aria-label="Dismiss: Attendance saved."', html)
-        self.assertIn('aria-label="Dismiss: Upload failed."', html)
+        for n, text in ((1, "Attendance saved."), (2, "Upload failed.")):
+            with self.subTest(message=text):
+                self.assertIn(f'<span id="erp-msg-{n}">{text}</span>', html)
+                self.assertIn(f'aria-labelledby="erp-dismiss-{n} erp-msg-{n}"', html)
+                self.assertIn(f'<span id="erp-dismiss-{n}" hidden>Dismiss</span>', html)
+        self.assertNotIn('aria-label="Dismiss', html)
+
+    def test_a_message_with_a_link_keeps_its_markup_out_of_attributes(self):
+        # Review of #264: format_html/mark_safe messages (e.g. "Prepared 5 messages. <a>View</a>")
+        # must not be copied into an attribute, where quotes break the button.
+        link = mark_safe('Prepared 5 messages. <a href="/notifications/">View "batch"</a>')
+        html = self.render(Message(constants.SUCCESS, link))
+        button = re.search(r"<button[^>]*>", html).group(0)
+        self.assertNotIn("<a", button)
+        self.assertNotIn("Prepared", button)
+        self.assertIn('<a href="/notifications/">View "batch"</a>', html)

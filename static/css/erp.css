@@ -43,7 +43,7 @@
   --erp-viz-marks: #eb6834;
   --erp-viz-heat-1: #86b6ef;
   --erp-viz-heat-2: #2a6fc6; /* audit 16 CLR-03: white day numbers reach 5.0:1 (was #3987e5, 3.64:1) */
-  --erp-viz-heat-3: #1c5cab;
+  --erp-viz-heat-3: #144686; /* review of #264: darker than tier 3 by 1.86:1 (was #1c5cab, 1.32:1) */
   --erp-viz-low: #d03b3b;
   --erp-viz-grid: #e1e0d9;
   --erp-viz-student: #39424e;
@@ -1585,6 +1585,17 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
 @media (forced-colors: active) {
   .erp-sidebar .nav-link.active, .erp-topbar-links a.active, .erp-tabbar a.active, .erp-portal-nav a.active,
   .erp-breadcrumb a[aria-current] { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: .2em; }
+}
+
+/* Audit 16 CLR-05 (review of #264): a red phone bar also carries a visible "Below N%" tag on its own line,
+   so the status survives monochrome and High Contrast, where the red fill is lost. */
+.erp-class-flag {
+  grid-column: 2 / -1; justify-self: start; margin-top: calc(-1 * var(--erp-space-2));
+  padding: .05rem .5rem; border-radius: 999px; background: var(--erp-bad-wash); color: var(--erp-bad);
+  font-size: var(--erp-text-xs); font-weight: 700;
+}
+@media (forced-colors: active) {
+  .erp-class-flag { border: 1px solid CanvasText; }
 }
 
 /* Audit 16 CLR-04: the student progress charts (bullet and radar) take system colours in High Contrast.
