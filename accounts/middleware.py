@@ -20,7 +20,8 @@ from accounts import request_cache
 from accounts.return_path import return_path
 
 # The logo is shown in the header of the password-change page itself.
-ALLOWED_WHILE_CHANGE_REQUIRED = {"password_change", "logout", "school-logo"}
+# session-status: the sign-out warning also runs on the password-change page.
+ALLOWED_WHILE_CHANGE_REQUIRED = {"password_change", "logout", "school-logo", "session-status"}
 # A literal, not reverse(): this runs on every request, including under a test URLconf that has no
 # such route. config/urls.py routes this same path; a test keeps the two in step.
 MANIFEST_PATH = "/manifest.webmanifest"

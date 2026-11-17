@@ -96,6 +96,15 @@ class SessionStatusTests(SessionFixture, TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertNotIn("_auth_user_id", self.client.session)
 
+    def test_answers_while_a_password_change_is_due(self):
+        self.user.must_change_password = True
+        self.user.save(update_fields=["must_change_password"])
+        client = self.client_class()
+        client.login(username="meena", password=self.password)
+        response = client.get(SESSION_STATUS_PATH)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("idle", response.json())
+
     def test_signed_out_gets_401_and_answers_are_not_cached(self):
         self.assertEqual(Client().get(SESSION_STATUS_PATH).status_code, 401)
         self.assertIn("no-store", self.client.get(SESSION_STATUS_PATH)["Cache-Control"])
@@ -118,6 +127,9 @@ class WarningMarkupTests(SessionFixture, TestCase):
         self.assertIn('var box = document.querySelector("[data-erp-session]");', js)
         self.assertIn("if (secondsLeft(data) > WARN + 10) schedule(data); else warn(data);", js)
         self.assertIn('method: "POST", credentials: "same-origin",', js)
+        # Only a redirect to the sign-in page counts as signed out (a due password change also redirects).
+        self.assertIn("var toLogin = response.redirected && new URL(response.url).pathname === loginPath;", js)
+        self.assertIn('expired: Date.now() >= absoluteAt - 5000 ? "limit" : "idle",', js)
 
 
 class CacheTests(SessionFixture, TestCase):

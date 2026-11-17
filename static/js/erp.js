@@ -1011,14 +1011,21 @@
     var stay = box.querySelector("[data-erp-session-stay]");
     var logoutForm = box.querySelector("[data-erp-session-logout]");
     var loginLink = box.querySelector("[data-erp-session-login]");
-    var timer = null, tick = null, deadline = 0, reason = "idle", returnFocus = null;
+    var loginPath = new URL(box.getAttribute("data-login-url"), location.href).pathname;
+    var timer = null, tick = null, deadline = 0, absoluteAt = Infinity, returnFocus = null;
     var json = { "X-Requested-With": "XMLHttpRequest", Accept: "application/json" };
 
-    function secondsLeft(data) { return Math.min(data.idle, data.absolute); }
+    function secondsLeft(data) {
+      absoluteAt = Date.now() + data.absolute * 1000; // remembered, so a late sign-out names the right limit
+      return Math.min(data.idle, data.absolute);
+    }
     function ask(options) {
       return fetch(url, options).then(function (response) {
-        if (response.redirected || response.status === 401) throw new Error("signed-out");
-        if (!response.ok) throw new Error("failed");
+        // Only a redirect to the sign-in page means signed out; another redirect (such as a password
+        // change that is due) means the session is alive but this answer is not usable.
+        var toLogin = response.redirected && new URL(response.url).pathname === loginPath;
+        if (toLogin || response.status === 401) throw new Error("signed-out");
+        if (!response.ok || response.redirected) throw new Error("failed");
         return response.json();
       });
     }
@@ -1056,7 +1063,6 @@
       stop();
       deadline = Date.now() + secondsLeft(data) * 1000;
       var canStay = data.absolute > data.idle;
-      reason = canStay ? "idle" : "limit";
       stay.hidden = !canStay;
       show(canStay
         ? "You will be signed out soon because nothing has happened for a while."
@@ -1075,7 +1081,7 @@
       logoutForm.hidden = true;
       time.textContent = "";
       loginLink.href = box.getAttribute("data-login-url") + "?" + new URLSearchParams({
-        next: location.pathname + location.search, expired: reason,
+        next: location.pathname + location.search, expired: Date.now() >= absoluteAt - 5000 ? "limit" : "idle",
       }).toString();
       loginLink.hidden = false;
       show("You have been signed out. Anything on this page that was not saved is lost.");
@@ -1088,7 +1094,7 @@
         headers: Object.assign({ "X-CSRFToken": token ? token.value : "" }, json),
       }).then(schedule, function (error) {
         if (error.message === "signed-out") signedOut();
-        else say.textContent = "Could not reach the school server. Check the connection and try again.";
+        else say.textContent = "Could not keep you signed in. Reload the page and try again.";
       });
     });
     schedule({ idle: Number(box.getAttribute("data-idle")), absolute: Number(box.getAttribute("data-absolute")) });
