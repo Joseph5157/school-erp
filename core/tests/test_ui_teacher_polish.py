@@ -522,31 +522,34 @@ class MyAssessmentsPolishTests(MarksFixture, TestCase):
     def test_heading_is_kept(self):
         page = self.page()
         self.assertContains(page, '<h1 class="h3 mb-3">My assessments</h1>')
-        self.assertContains(page, "Term remarks</h2>")
         self.assertNotContains(page, "You enter marks for nothing yet")
 
-    def test_each_duty_is_one_group_with_subject_section_dominant(self):
-        self.assign(self.rao, self.sanskrit, self.six_b)
+    def test_class_selector_shows_one_duty_at_a_time(self):
+        sanskrit_duty = self.assign(self.rao, self.sanskrit, self.six_b)
         self.make_assessment(offering=self.sanskrit, section=self.six_b, name="Sanskrit Quiz",
                              on=date(2026, 7, 20))
         page = self.page()
         duties = page.context["duties"]
         self.assertEqual(len(duties), 2)
+        self.assertContains(page, '<search class="erp-assess-picker">')
+        self.assertContains(page, '<label for="assessment-duty">Class and subject</label>')
+        self.assertContains(page, '<select id="assessment-duty" name="duty">')
+        self.assertContains(page, '<button type="submit" class="btn btn-outline-primary">Show</button>')
+        self.assertEqual(page.content.decode().count("<option "), 2)
         blocks = self.duty_blocks(page)
-        self.assertEqual(len(blocks), 2)
-        for duty in duties:
-            title = (f'<h2 class="erp-assess-title" id="duty-{duty.pk}">'
-                     f'{duty.offering.subject.name} &middot; {duty.section}</h2>')
-            block = next(b for b in blocks if title in b)
-            self.assertIn(
-                f'<p class="erp-card-meta">{duty.offering.academic_year.name}</p>', block)
-            self.assertEqual(block.count("Gradebook</a>"), 1)
-            self.assertIn(f'href="{reverse("core:my-gradebook", args=[duty.pk])}"', block)
-        by_title = {("Mathematics" in b): b for b in blocks}
-        self.assertIn("Unit Test 1", by_title[True])
-        self.assertNotIn("Sanskrit Quiz", by_title[True])
-        self.assertIn("Sanskrit Quiz", by_title[False])
-        self.assertNotIn("Unit Test 1", by_title[False])
+        self.assertEqual(len(blocks), 1)
+        self.assertIn("Mathematics", blocks[0])
+        self.assertIn("Unit Test 1", blocks[0])
+        self.assertNotIn("Sanskrit Quiz", blocks[0])
+
+        selected = self.teacher.get(self.url, {"duty": sanskrit_duty.pk, "status": "all"})
+        block = self.duty_blocks(selected)[0]
+        self.assertIn("Sanskrit", block)
+        self.assertIn("Sanskrit Quiz", block)
+        self.assertNotIn("Unit Test 1", block)
+        self.assertEqual(block.count("Gradebook</a>"), 1)
+        self.assertIn(
+            f'href="{reverse("core:my-gradebook", args=[sanskrit_duty.pk])}"', block)
 
     def test_assessment_rows_have_name_date_status_and_one_entry_link(self):
         block = self.duty_blocks(self.page())[0]
@@ -570,13 +573,30 @@ class MyAssessmentsPolishTests(MarksFixture, TestCase):
         page = self.page()
         self.assertContains(page, '<span class="erp-pill is-draft">Draft</span>', count=2)
         self.force_finalize(self.test1)
-        page = self.page()
+        page = self.teacher.get(self.url, {"status": "all"})
         self.assertContains(page, '<span class="erp-pill is-submitted">Finalized</span>', count=1)
         self.assertContains(page, '<span class="erp-pill is-draft">Draft</span>', count=1)
         for block in self.duty_blocks(page):
             for pill in re.findall(r'<span class="erp-pill[^"]*">[^<]+</span>', block):
                 before = block[:block.index(pill)]
                 self.assertTrue(before.rfind("</a>") > before.rfind("<a "))
+
+    def test_status_filters_default_to_drafts_and_keep_counts(self):
+        self.force_finalize(self.test1)
+        needs = self.page()
+        self.assertContains(needs, "Unit Test 2")
+        self.assertNotContains(needs, "Unit Test 1")
+        self.assertContains(needs, 'status=needs" aria-current="page">Needs action <span>1</span>')
+        self.assertContains(needs, 'status=finalized">Finalized <span>1</span>')
+        self.assertContains(needs, 'status=all">All <span>2</span>')
+
+        finalized = self.teacher.get(self.url, {"status": "finalized"})
+        self.assertContains(finalized, "Unit Test 1")
+        self.assertNotContains(finalized, "Unit Test 2")
+        self.assertContains(
+            finalized,
+            'status=finalized" aria-current="page">Finalized <span>1</span>',
+        )
 
     def test_no_duty_shows_the_purposeful_empty_state(self):
         iyer = self.client_class()
@@ -590,7 +610,7 @@ class MyAssessmentsPolishTests(MarksFixture, TestCase):
     def test_term_remarks_are_whole_row_links_with_the_section_query(self):
         self.class_teacher()
         page = self.page()
-        links = page.context["remark_links"]
+        links = page.context["selected_remark_links"]
         self.assertTrue(links)
         html = page.content.decode()
         remarks = html.split('id="assess-remarks"', 1)[1].split("</section>", 1)[0]
@@ -606,7 +626,7 @@ class MyAssessmentsPolishTests(MarksFixture, TestCase):
     def test_no_remark_sections_shows_a_quiet_empty_state(self):
         page = self.page()
         self.assertEqual(page.context["remark_links"], [])
-        self.assertContains(page, "No Sections are available for term remarks.")
+        self.assertNotContains(page, 'id="assess-remarks"')
         self.assertNotContains(page, "erp-day-linkcard")
         self.assertNotContains(page, "<li>No Sections assigned.</li>")
 

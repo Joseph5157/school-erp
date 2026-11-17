@@ -1869,20 +1869,83 @@ def my_assessments(request):
     query = Q(pk__in=[])
     for duty in duties:
         query |= _owned_assessments_q(request.user, duty.offering, duty.section)
-    assessments = _assessments().filter(query).order_by("-assessment_date", "name")
+    assessments = list(
+        _assessments().filter(query).order_by("-assessment_date", "name")
+    )
     remark_links = []
-    years = {
-        row.academic_year
-        for row in class_teacher_assignments(request.user).select_related("academic_year")
-    }
+    class_teacher_rows = list(
+        class_teacher_assignments(request.user).select_related("academic_year", "section")
+    )
+    years = {row.academic_year for row in class_teacher_rows}
     for year in sorted(years, key=lambda y: y.start_date):
         for term in year.terms.all():
             for section in term_remark_sections(request.user, term):
                 remark_links.append((term, section))
+
+    selected_duty = None
+    requested_duty = request.GET.get("duty", "")
+    if requested_duty.isdigit():
+        selected_duty = next((duty for duty in duties if duty.pk == int(requested_duty)), None)
+    if selected_duty is None and duties:
+        class_teacher_slots = {
+            (row.section_id, row.academic_year_id) for row in class_teacher_rows
+        }
+        selected_duty = next(
+            (
+                duty
+                for duty in duties
+                if (duty.section_id, duty.offering.academic_year_id) in class_teacher_slots
+            ),
+            duties[0],
+        )
+
+    status_filter = request.GET.get("status", "needs")
+    if status_filter not in {"needs", "finalized", "all"}:
+        status_filter = "needs"
+    selected_assessments = []
+    selected_remark_links = []
+    assessment_counts = {"needs": 0, "finalized": 0, "all": 0}
+    if selected_duty is not None:
+        slot_assessments = [
+            assessment
+            for assessment in assessments
+            if assessment.offering_id == selected_duty.offering_id
+            and assessment.section_id == selected_duty.section_id
+        ]
+        draft_assessments = [assessment for assessment in slot_assessments if not assessment.is_finalized]
+        finalized_assessments = [assessment for assessment in slot_assessments if assessment.is_finalized]
+        assessment_counts = {
+            "needs": len(draft_assessments),
+            "finalized": len(finalized_assessments),
+            "all": len(slot_assessments),
+        }
+        if status_filter == "needs":
+            selected_assessments = draft_assessments
+        elif status_filter == "finalized":
+            selected_assessments = finalized_assessments
+        else:
+            selected_assessments = draft_assessments + finalized_assessments
+        selected_remark_links = [
+            (term, section)
+            for term, section in remark_links
+            if section.pk == selected_duty.section_id
+            and term.academic_year_id == selected_duty.offering.academic_year_id
+        ]
+    visible_remark_links = selected_remark_links if selected_duty is not None else remark_links
     return render(
         request,
         "core/my_assessments.html",
-        {"duties": duties, "assessments": assessments, "remark_links": remark_links},
+        {
+            "duties": duties,
+            "assessments": assessments,
+            "remark_links": remark_links,
+            "selected_duty": selected_duty,
+            "selected_assessments": selected_assessments,
+            "selected_remark_links": selected_remark_links,
+            "visible_remark_links": visible_remark_links,
+            "assessment_counts": assessment_counts,
+            "status_filter": status_filter,
+        },
     )
 
 

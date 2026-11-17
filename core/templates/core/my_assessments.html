@@ -3,17 +3,38 @@
 {% block content %}
 <div class="erp-day erp-assess-page">
 <h1 class="h3 mb-3">My assessments</h1>
-{% for duty in duties %}
-<section class="erp-assess-duty" aria-labelledby="duty-{{ duty.pk }}">
+{% if selected_duty %}
+<search class="erp-assess-picker">
+    <form method="get" action="{% url 'core:my-assessments' %}">
+        <label for="assessment-duty">Class and subject</label>
+        <div class="erp-assess-picker-row">
+            <select id="assessment-duty" name="duty">
+                {% for duty in duties %}<option value="{{ duty.pk }}"{% if duty.pk == selected_duty.pk %} selected{% endif %}>{{ duty.offering.subject.name }} &middot; {{ duty.section }}</option>{% endfor %}
+            </select>
+            <input type="hidden" name="status" value="{{ status_filter }}">
+            <button type="submit" class="btn btn-outline-primary">Show</button>
+        </div>
+    </form>
+</search>
+
+<section class="erp-assess-duty" aria-labelledby="duty-{{ selected_duty.pk }}">
     <div class="erp-assess-head">
         <div class="erp-assess-headtext">
-            <h2 class="erp-assess-title" id="duty-{{ duty.pk }}">{{ duty.offering.subject.name }} &middot; {{ duty.section }}</h2>
-            <p class="erp-card-meta">{{ duty.offering.academic_year.name }}</p>
+            <h2 class="erp-assess-title" id="duty-{{ selected_duty.pk }}">{{ selected_duty.offering.subject.name }} &middot; {{ selected_duty.section }}</h2>
+            <p class="erp-card-meta">{{ selected_duty.offering.academic_year.name }}</p>
         </div>
-        <a class="btn btn-outline-secondary" href="{% url 'core:my-gradebook' duty.pk %}" aria-label="Gradebook for {{ duty.offering.subject.name }}, {{ duty.section }}">Gradebook</a>
+        <div class="erp-assess-actions">
+            <a class="btn btn-outline-secondary" href="{% url 'core:my-gradebook' selected_duty.pk %}" aria-label="Gradebook for {{ selected_duty.offering.subject.name }}, {{ selected_duty.section }}">Gradebook</a>
+            {% if selected_remark_links %}<a class="btn btn-outline-secondary" href="#assess-remarks">Term remarks</a>{% endif %}
+        </div>
     </div>
+    <nav class="erp-assess-filters" aria-label="Assessment status">
+        <a href="{% url 'core:my-assessments' %}?duty={{ selected_duty.pk }}&amp;status=needs"{% if status_filter == "needs" %} aria-current="page"{% endif %}>Needs action <span>{{ assessment_counts.needs }}</span></a>
+        <a href="{% url 'core:my-assessments' %}?duty={{ selected_duty.pk }}&amp;status=finalized"{% if status_filter == "finalized" %} aria-current="page"{% endif %}>Finalized <span>{{ assessment_counts.finalized }}</span></a>
+        <a href="{% url 'core:my-assessments' %}?duty={{ selected_duty.pk }}&amp;status=all"{% if status_filter == "all" %} aria-current="page"{% endif %}>All <span>{{ assessment_counts.all }}</span></a>
+    </nav>
     <ul class="erp-assess-list list-unstyled">
-        {% for assessment in assessments %}{% if assessment.offering_id == duty.offering_id and assessment.section_id == duty.section_id %}
+        {% for assessment in selected_assessments %}
         <li class="erp-assess-row position-relative">
             <span class="erp-assess-main">
                 <a class="erp-assess-name stretched-link" href="{% url 'core:assessment-marks-entry' assessment.pk %}">{{ assessment.name }}</a>
@@ -22,27 +43,29 @@
             <span class="erp-pill{% if assessment.is_finalized %} is-submitted{% else %} is-draft{% endif %}">{{ assessment.get_status_display }}</span>
             <span class="erp-day-chevron" aria-hidden="true">&rsaquo;</span>
         </li>
-        {% endif %}{% endfor %}
+        {% empty %}
+        <li class="erp-assess-list-empty">{% if status_filter == "needs" %}No assessments need action for this class.{% elif status_filter == "finalized" %}No finalized assessments for this class.{% else %}No assessments assigned to this class.{% endif %}</li>
+        {% endfor %}
     </ul>
 </section>
-{% empty %}
+{% else %}
 <div class="erp-assess-empty">
 {% include "partials/_empty.html" with title="No assessments assigned" text="You are not assigned to a Subject and Section yet. Subject and Section assignments are set by the school office; once you have one, its assessments appear here." %}
 </div>
-{% endfor %}
+{% endif %}
 
-<section aria-labelledby="assess-remarks">
+{% if visible_remark_links %}
+<section class="erp-assess-remarks" aria-labelledby="assess-remarks">
 <h2 class="erp-section-title" id="assess-remarks">Term remarks</h2>
-{% for term, section in remark_links %}
+{% for term, section in visible_remark_links %}
 <a class="erp-card erp-day-card erp-day-linkcard" href="{% url 'core:term-remarks' term.pk %}?section={{ section.pk }}">
     <span class="erp-card-row">
         <span class="erp-day-title">{{ term.academic_year.name }} {{ term.name }} &middot; {{ section }}</span>
         <span class="erp-day-chevron" aria-hidden="true">&rsaquo;</span>
     </span>
 </a>
-{% empty %}
-<p class="erp-card-meta">No Sections are available for term remarks. Term remarks open for Sections you are class teacher of; those assignments are set by the school office.</p>
 {% endfor %}
 </section>
+{% endif %}
 </div>
 {% endblock %}

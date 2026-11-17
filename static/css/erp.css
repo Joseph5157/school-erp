@@ -566,9 +566,21 @@ body.erp { min-height: 100vh; min-height: 100dvh; }
   outline: 2px solid var(--erp-focus-color); outline-offset: -2px;
 }
 .erp-teacher .erp-student-chevron { flex: none; color: var(--erp-ink-soft); font-size: 1.5rem; line-height: 1; }
-/* U3.1 My assessments (Gate T4). One bordered group per Subject + Section duty: a header
-   (Subject + Section dominant, year secondary, Gradebook as a secondary action) and
-   divided assessment rows. Reuses the My day link-card language for term remarks. */
+/* U3.1 My assessments (Gate T4). One selected Subject + Section duty at a time, with
+   server-rendered class and status filters above divided assessment rows. */
+.erp-teacher .erp-assess-picker { display: block; max-width: 42rem; margin-bottom: 1rem; }
+.erp-teacher .erp-assess-picker form { margin: 0; }
+.erp-teacher .erp-assess-picker label {
+  display: block; margin-bottom: .375rem; color: var(--erp-ink); font-weight: 700;
+}
+.erp-teacher .erp-assess-picker-row { display: flex; align-items: stretch; gap: .5rem; }
+.erp-teacher .erp-assess-picker select {
+  flex: 1 1 auto; min-width: 0; min-height: 3rem; padding: .625rem 2.25rem .625rem .75rem;
+  border: 1px solid var(--erp-control-border); border-radius: var(--erp-radius-sm);
+  background-color: var(--erp-surface); color: var(--erp-ink);
+  font: inherit; font-size: max(1rem, 1em);
+}
+.erp-teacher .erp-assess-picker .btn { flex: none; min-height: 3rem; }
 .erp-teacher .erp-assess-duty {
   overflow: hidden; background: var(--erp-surface);
   border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
@@ -578,10 +590,28 @@ body.erp { min-height: 100vh; min-height: 100dvh; }
   gap: .5rem .75rem; padding: 1rem;
 }
 .erp-teacher .erp-assess-headtext { flex: 1 1 12rem; min-width: 0; display: grid; gap: .25rem; }
+.erp-teacher .erp-assess-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
 .erp-teacher .erp-assess-title {
   margin: 0; font-size: 1.125rem; font-weight: 700; line-height: 1.25;
   color: var(--erp-ink); overflow-wrap: anywhere;
 }
+.erp-teacher .erp-assess-filters {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .375rem;
+  padding: .5rem; border-top: 1px solid var(--erp-rule); background: var(--erp-paper);
+}
+.erp-teacher .erp-assess-filters a {
+  display: flex; align-items: center; justify-content: center; gap: .35rem; min-height: 2.75rem;
+  padding: .4rem .5rem; border: 1px solid var(--erp-rule); border-radius: var(--erp-radius-sm);
+  background: var(--erp-surface); color: var(--erp-ink); font-size: .875rem; font-weight: 600;
+  line-height: 1.15; text-align: center; text-decoration: none;
+}
+.erp-teacher .erp-assess-filters a[aria-current="page"] {
+  border-color: var(--erp-action); background: var(--erp-action); color: #fff;
+}
+.erp-teacher .erp-assess-filters a:focus-visible {
+  outline: 2px solid var(--erp-focus-color); outline-offset: 2px;
+}
+.erp-teacher .erp-assess-filters span { font-size: var(--erp-text-xs); font-variant-numeric: tabular-nums; }
 .erp-teacher .erp-assess-list { margin: 0; padding: 0; }
 .erp-teacher .erp-assess-row {
   display: flex; align-items: center; gap: .75rem; min-height: 3rem; padding: .5rem 1rem;
@@ -596,6 +626,19 @@ body.erp { min-height: 100vh; min-height: 100dvh; }
 .erp-teacher .erp-assess-name:focus-visible { outline: none; }
 .erp-teacher .erp-assess-name:focus-visible::after {
   outline: 2px solid var(--erp-focus-color); outline-offset: -2px;
+}
+.erp-teacher .erp-assess-list-empty {
+  padding: 1rem; border-top: 1px solid var(--erp-rule); color: var(--erp-ink-soft);
+}
+.erp-teacher .erp-assess-remarks { margin-top: 1.5rem; }
+.erp-teacher .erp-assess-remarks .erp-card-row { flex-wrap: nowrap; }
+.erp-teacher .erp-assess-remarks .erp-day-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.erp-teacher .erp-assess-remarks .erp-day-chevron { flex: none; }
+@media (max-width: 575.98px) {
+  .erp-teacher .erp-assess-head { align-items: flex-start; }
+  .erp-teacher .erp-assess-actions { flex: 1 1 100%; }
+  .erp-teacher .erp-assess-actions .btn { flex: 1 1 auto; }
+  .erp-teacher .erp-assess-filters a { flex-direction: column; gap: .125rem; }
 }
 /* U3.1 Results (Gate T5). Current and past duties are whole-row links in a bordered list;
    "Starting soon" is informational (dashed, no link affordance); "Read-only" is a plain pill. */
