@@ -3725,13 +3725,16 @@ def _parse_id(request, name, valid_ids):
     return value if value in valid_ids else None
 
 
-def _student_chips(request, chip, include_absent=True):
-    """Chip links: each keeps the other filters, only the active one is marked.
+def _student_chips(request, chip, include_absent=True, sort_param=""):
+    """Chip links: each keeps the other filters and the chosen sort; only the active one is marked.
 
+    ``sort_param`` is the table's whitelisted sort token, never the raw GET value (audit 13 SF-04).
     The absent chip is only offered to logins who may see attendance (Security Gate 4B).
     """
     active = chip or "all"
     base = {k: v for k, v in request.GET.items() if v and k not in ("sort", "page", "chip")}
+    if sort_param:
+        base["sort"] = sort_param
     chips = []
     for key, label in STUDENT_CHIP_CHOICES:
         if key == "absent" and not include_absent:
@@ -3867,7 +3870,9 @@ def student_list(request):
             "status": status,
             "status_choices": Student.Status.choices,
             "chip": chip,
-            "chips": _student_chips(request, chip, include_absent=can_see_absences),
+            "chips": _student_chips(
+                request, chip, include_absent=can_see_absences, sort_param=table.sort_param
+            ),
             "can_see_guardians": can_see_guardians,
             "class_filter": class_filter,
             "section_filter": section_filter,
@@ -4196,7 +4201,10 @@ def attendance_register_list(request):
         if status:
             registers = registers.filter(status=status)
         filters_applied = any((section, start, end, status))
-    today_only = request.GET.get("today") == "1"
+    # Today is part of the same filter decision: an invalid submission applies no filter at all,
+    # so the page never says "showing all registers" while still showing only today's (audit 13 SF-05).
+    filters_invalid = form.is_bound and not form.is_valid()
+    today_only = request.GET.get("today") == "1" and not filters_invalid
     if today_only:
         registers = registers.filter(date=business_today())
         filters_applied = True
@@ -4225,6 +4233,7 @@ def attendance_register_list(request):
             "section_summary": section_summary,
             "section_total": sum(counts.values()) if section_summary is not None else None,
             "filters_applied": filters_applied,
+            "filters_invalid": filters_invalid,
             "today_only": today_only,
         },
     )

@@ -4,7 +4,8 @@
 {% if perms.core.add_attendanceregister %}{% url 'core:attendance-register-create' as attendance_create_url %}{% endif %}
 {% if perms.core.view_attendanceentry %}{% url 'core:attendance-reports' as attendance_reports_url %}{% endif %}
 {% include "partials/_page_header.html" with eyebrow="Daily operations" title="Attendance" purpose="Open registers, review completion, and find recent attendance by section or date." primary_url=attendance_create_url primary_label="Open register" secondary_url=attendance_reports_url secondary_label="View reports" only %}
-<form method="get" class="erp-toolbar erp-toolbar--inline" aria-label="Filter attendance registers">
+<search aria-label="Filter attendance registers">
+<form method="get" action="{% url 'core:attendance-register-list' %}" class="erp-toolbar erp-toolbar--inline">
     {% if form.errors %}
     <div class="erp-form-errors" role="alert">
         {% for error in form.non_field_errors %}<p class="mb-1">{{ error }}</p>{% endfor %}
@@ -20,9 +21,10 @@
     <div class="erp-form-actions">
         <button type="submit" class="btn btn-outline-secondary">Filter</button>
         {% if not today_only %}<a class="btn btn-outline-secondary" href="?today=1">Today</a>{% endif %}
-        {% if filters_applied %}<a class="btn btn-link" href="{% url 'core:attendance-register-list' %}">Clear filters</a>{% endif %}
+        {% if filters_applied or filters_invalid %}<a class="btn btn-link" href="{% url 'core:attendance-register-list' %}">Clear filters</a>{% endif %}
     </div>
 </form>
+</search>
 {% if section_summary is not None %}
 <section class="erp-panel p-3 p-md-4" aria-labelledby="attendance-summary-title">
     <div class="erp-panel-head">

@@ -3,12 +3,13 @@
 {% block content %}
 {% url 'core:teacher-create' as create_url %}
 {% include "partials/_page_header.html" with eyebrow="School setup" title="Teachers" purpose="Create and manage teacher logins. Classes and subjects are assigned from Academic Years." primary_url=create_url primary_label="Add teacher" only %}
-<form method="get" class="erp-toolbar" role="search" aria-label="Search teachers">
+<search aria-label="Search teachers">
+<form method="get" action="{% url 'core:teacher-list' %}" class="erp-toolbar">
     {% if table.sort_param %}<input type="hidden" name="sort" value="{{ table.sort_param }}">{% endif %}
     <div class="row g-2 align-items-end">
         <div class="col-12 col-md-5 col-lg-4">
             <label for="teacher-search" class="form-label">Search teachers</label>
-            <input type="search" id="teacher-search" name="q" value="{{ query }}" class="form-control" placeholder="Name, username, or email">
+            <input type="search" id="teacher-search" name="q" value="{{ query }}" class="form-control" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="search" placeholder="Name, username, or email">
         </div>
         <div class="col-6 col-md-3 col-lg-2">
             <label for="teacher-status" class="form-label">Status</label>
@@ -27,6 +28,7 @@
         {% endif %}
     </div>
 </form>
+</search>
 {% if table.paginator.count %}
 {% include "partials/_card_sort.html" with table=table label="Sort teachers" only %}
 {% endif %}
