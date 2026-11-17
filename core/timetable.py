@@ -15,7 +15,7 @@ follow the assignment rows alone (ADR 0018 D9). Everything here works on date ra
 """
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from itertools import combinations
 
 from django.core.exceptions import ValidationError
@@ -192,3 +192,39 @@ def teacher_timetable_on(assignments, on_date, year_is_instructional):
 def todays_teacher_timetable(assignments, today, year_is_instructional):
     """Rows for the Teacher dashboard's "Today's timetable" section (ADR 0021 D10)."""
     return teacher_timetable_on(assignments, today, year_is_instructional)
+
+
+TIMETABLE_DATE_WINDOW_DAYS = 366
+
+
+def parse_timetable_date(raw, today):
+    """Parse ?date=; anything invalid or outside today +/- 366 days is today."""
+    try:
+        parsed = date.fromisoformat(raw)
+    except (ValueError, TypeError):
+        return today
+    if abs((parsed - today).days) > TIMETABLE_DATE_WINDOW_DAYS:
+        return today
+    return parsed
+
+
+def date_strip(selected, today):
+    """Mon-Sat chips from two weeks before to two weeks after selected's week."""
+    monday = selected - timedelta(days=selected.weekday())
+    chips = []
+    previous = None
+    for week in range(-2, 3):
+        for offset in range(6):
+            day = monday + timedelta(weeks=week, days=offset)
+            chips.append(
+                {
+                    "date": day,
+                    "weekday": day.strftime("%a"),
+                    "day": day.day,
+                    "is_today": day == today,
+                    "is_selected": day == selected,
+                    "month_start": previous is not None and day.month != previous,
+                }
+            )
+            previous = day.month
+    return chips
