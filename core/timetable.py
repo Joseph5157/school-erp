@@ -244,3 +244,80 @@ def date_strip(selected, today):
             )
             previous = day.month
     return chips
+
+
+def _week_heading(first, last):
+    """"12 – 17 Oct 2026", "28 Sep – 3 Oct 2026", "28 Dec 2026 – 2 Jan 2027"."""
+    if first.year != last.year:
+        return f"{first.day} {first:%b %Y} – {last.day} {last:%b %Y}"
+    if first.month != last.month:
+        return f"{first.day} {first:%b} – {last.day} {last:%b %Y}"
+    return f"{first.day} – {last.day} {last:%b %Y}"
+
+
+def teacher_week(user, any_date, today, year_is_instructional):
+    """The teacher's own week, Monday to Saturday, around `any_date` (ADR 0021 D10, amended).
+
+    Each day is judged exactly as the Day view judges it: the teacher's subject assignments
+    effective ON THAT DAY (ADR 0018) and `teacher_timetable_on`. `year_is_instructional(year,
+    day)` answers `AcademicYear.is_instructional_day(day)`. Saturday is left out when it is not
+    a school day. A day that is not a school day carries a header label ("Holiday" when a
+    timetable runs that day but the school is closed, otherwise "No school"); blank cells are
+    empty lists, never "free" periods. The number of queries depends on the six days only.
+    """
+    from core.authorization import current_teacher_assignments
+
+    monday = any_date - timedelta(days=any_date.weekday())
+    days = []
+    for offset in range(6):
+        day = monday + timedelta(days=offset)
+        assignments = list(current_teacher_assignments(user, day))
+        rows = teacher_timetable_on(
+            assignments, day, lambda year, day=day: year_is_instructional(year, day)
+        )
+        if rows is None and offset == 5:
+            continue
+        label = ""
+        if rows is None:
+            label = "Holiday" if TimetableSlot.objects.effective_on(day).exists() else "No school"
+        for row in rows or ():
+            row["short"] = short_section_label(row["section"])
+        days.append(
+            {
+                "date": day,
+                "weekday": day.strftime("%a"),
+                "is_today": day == today,
+                "is_school_day": rows is not None,
+                "label": label,
+                "rows": rows or [],
+            }
+        )
+
+    sequences = sorted({row["sequence"] for day in days for row in day["rows"]})
+    grid = [
+        {
+            "sequence": sequence,
+            "cells": [
+                {"day": day, "rows": [r for r in day["rows"] if r["sequence"] == sequence]}
+                for day in days
+            ],
+        }
+        for sequence in sequences
+    ]
+    sections = {}
+    for day in days:
+        for row in day["rows"]:
+            sections.setdefault(row["section"].pk, row)
+    ordered = sorted(
+        sections.values(),
+        key=lambda r: (r["section"].class_grade.display_order, r["section"].name),
+    )
+    return {
+        "monday": monday,
+        "days": days,
+        "grid": grid,
+        "key": [{"short": r["short"], "full": str(r["section"])} for r in ordered],
+        "is_empty": not sequences,
+        "heading": _week_heading(monday, days[-1]["date"]),
+        "contains_today": monday <= today <= monday + timedelta(days=5),
+    }

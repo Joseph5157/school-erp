@@ -3,7 +3,9 @@
 import re
 from datetime import date, timedelta
 
+from django.db import connection
 from django.test import SimpleTestCase, TestCase
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from core.models import SchoolCalendarDay
@@ -14,6 +16,7 @@ from core.timetable import (
     date_strip,
     parse_timetable_date,
     teacher_timetable_on,
+    teacher_week,
     todays_teacher_timetable,
 )
 
@@ -257,3 +260,132 @@ class TimetablePageTests(TimetableDashboardFixture, TestCase):
             t["mobile_label"] for t in teacher_tabs("my-timetable") if t["active"]
         ]
         self.assertEqual(active, ["Today"])
+
+
+class TeacherWeekTests(TimetableDashboardFixture, TestCase):
+    """teacher_week(): the teacher's own week, Monday to Saturday (fixture week 12-17 Oct 2026)."""
+
+    def week(self, any_date=MONDAY, user=None):
+        return teacher_week(
+            user or self.rao, any_date, MONDAY,
+            lambda year, day: year.is_instructional_day(day),
+        )
+
+    def cell(self, week, sequence, day):
+        for period in week["grid"]:
+            if period["sequence"] == sequence:
+                for cell in period["cells"]:
+                    if cell["day"]["date"] == day:
+                        return cell["rows"]
+        raise AssertionError(f"no cell for period {sequence} on {day}")
+
+    def test_week_runs_monday_to_friday_when_saturday_is_not_a_school_day(self):
+        self.assign(self.rao, self.maths, self.six_a)
+        self.slot()
+        week = self.week(date(2026, 10, 15))           # a Thursday picks its own week
+        self.assertEqual(week["monday"], MONDAY)
+        self.assertEqual(
+            [d["weekday"] for d in week["days"]], ["Mon", "Tue", "Wed", "Thu", "Fri"]
+        )
+        self.assertTrue(week["days"][0]["is_today"])
+        self.assertTrue(all(d["is_school_day"] for d in week["days"]))
+        self.assertEqual(week["heading"], "12 – 16 Oct 2026")
+        self.assertTrue(week["contains_today"])
+
+    def test_cells_hold_that_days_rows_and_periods_list_only_used_sequences(self):
+        self.assign(self.rao, self.maths, self.six_a)
+        self.slot()                                    # Monday P1
+        self.slot(weekday=2, period=self.p2)           # Wednesday P2
+        week = self.week()
+        self.assertEqual([p["sequence"] for p in week["grid"]], [1, 2])
+        self.assertEqual(
+            [r["subject"] for r in self.cell(week, 1, MONDAY)], ["Mathematics"]
+        )
+        self.assertEqual(self.cell(week, 1, date(2026, 10, 14)), [])
+        self.assertEqual(self.cell(week, 2, date(2026, 10, 14))[0]["short"], "6-A")
+        self.assertFalse(week["is_empty"])
+
+    def test_mid_week_hand_over_shows_each_days_own_rows(self):
+        self.assign_between(self.rao, self.maths, self.six_a, date(2026, 6, 1), date(2026, 10, 13))
+        self.assign_between(self.iyer, self.maths, self.six_a, date(2026, 10, 14))
+        for weekday in range(5):
+            self.slot(weekday=weekday)
+        rao = self.week()
+        iyer = self.week(user=self.iyer)
+        filled = [d for d in (MONDAY + timedelta(days=i) for i in range(5))
+                  if self.cell(rao, 1, d)]
+        self.assertEqual(filled, [MONDAY, date(2026, 10, 13)])
+        filled = [d for d in (MONDAY + timedelta(days=i) for i in range(5))
+                  if self.cell(iyer, 1, d)]
+        self.assertEqual(filled, [date(2026, 10, 14), date(2026, 10, 15), date(2026, 10, 16)])
+
+    def test_holiday_column_is_not_a_school_day_and_carries_a_label(self):
+        self.assign(self.rao, self.maths, self.six_a)
+        for weekday in range(5):
+            self.slot(weekday=weekday)
+        SchoolCalendarDay.objects.create(
+            academic_year=self.year, date=date(2026, 10, 14), is_instructional=False,
+            label="Holiday",
+        )
+        week = self.week()
+        wed = week["days"][2]
+        self.assertFalse(wed["is_school_day"])
+        self.assertEqual(wed["label"], "Holiday")
+        self.assertEqual(self.cell(week, 1, date(2026, 10, 14)), [])
+        self.assertEqual(week["days"][1]["label"], "")
+
+    def test_instructional_saturday_is_shown(self):
+        self.year.set_saturdays_instructional(True)
+        self.assign(self.rao, self.maths, self.six_a)
+        self.slot(weekday=5)
+        week = self.week()
+        self.assertEqual(week["days"][-1]["weekday"], "Sat")
+        self.assertEqual(week["heading"], "12 – 17 Oct 2026")
+        self.assertEqual(len(self.cell(week, 1, date(2026, 10, 17))), 1)
+
+    def test_empty_week_and_no_timetable_week(self):
+        self.slot()
+        week = self.week()
+        self.assertTrue(week["is_empty"])
+        self.assertEqual(week["grid"], [])
+        self.assertEqual(week["key"], [])
+        far = self.week(date(2027, 10, 11))            # outside the Academic Year
+        self.assertTrue(far["is_empty"])
+        self.assertEqual({d["label"] for d in far["days"]}, {"No school"})
+
+    def test_other_teachers_slots_never_appear(self):
+        self.assign(self.rao, self.maths, self.six_a)
+        self.assign(self.iyer, self.maths, self.six_b)
+        self.slot(section=self.six_a)
+        self.slot(section=self.six_b, period=self.p2)
+        week = self.week()
+        self.assertEqual([p["sequence"] for p in week["grid"]], [1])
+        self.assertEqual([k["full"] for k in week["key"]], ["Grade 6 - A"])
+
+    def test_key_lists_each_section_once_in_grid_order(self):
+        self.assign(self.rao, self.maths, self.six_b)
+        self.assign(self.rao, self.maths, self.six_a)
+        self.slot(section=self.six_b)
+        self.slot(section=self.six_a, period=self.p2)
+        self.slot(section=self.six_a, period=self.p2, weekday=1)
+        week = self.week()
+        self.assertEqual(
+            week["key"],
+            [{"short": "6-A", "full": "Grade 6 - A"}, {"short": "6-B", "full": "Grade 6 - B"}],
+        )
+
+    def test_headings_across_months_and_years(self):
+        self.assertEqual(self.week(date(2026, 10, 1))["heading"], "28 Sep – 2 Oct 2026")
+        self.assertFalse(self.week(date(2026, 10, 1))["contains_today"])
+
+    def test_query_count_does_not_grow_with_rows(self):
+        self.assign(self.rao, self.maths, self.six_a)
+        self.slot()
+        with CaptureQueriesContext(connection) as small:
+            self.week()
+        for weekday in range(1, 5):
+            self.slot(weekday=weekday)
+            self.slot(weekday=weekday, period=self.p2)
+        with CaptureQueriesContext(connection) as large:
+            self.week()
+        self.assertEqual(len(large), len(small))
