@@ -3,6 +3,7 @@
 import re
 from datetime import date, timedelta
 
+from django.conf import settings
 from django.db import connection
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
@@ -233,6 +234,22 @@ class ClassPageTests(TimetableDashboardFixture, TestCase):
         )
         self.assertContains(page, '<span class="erp-tt-key-short">Mat</span> Mathematics')
         self.assertContains(page, '<span class="erp-tt-key-short">Sci</span> Science')
+
+    def test_class_week_hint_says_tap_a_box(self):
+        self.six_a_day()
+        page = self.get({"view": "week", "section": self.six_a.pk})
+        self.assertContains(page, "Tap a box to open that day.")
+        self.assertNotContains(page, "Tap a class to open that day.")
+
+    def test_picker_rows_and_script_support_short_search(self):
+        self.six_a_day()
+        page = self.get()
+        self.assertContains(page, 'data-name="grade 6 - a"')
+        js = (settings.BASE_DIR / "static" / "js" / "erp.js").read_text(encoding="utf-8")
+        block = js.split("Timetable class picker", 1)[1].split("Order dialogs", 1)[0]
+        self.assertIn("[^a-z0-9]", block)  # letters and digits only, so "6a" finds "Grade 6 - A"
+        self.assertIn('addEventListener("close"', block)
+        self.assertIn('search.value = ""', block)  # reopening shows the full list
 
     def test_class_links_keep_section(self):
         self.six_a_day()

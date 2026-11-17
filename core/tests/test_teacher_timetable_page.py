@@ -504,7 +504,7 @@ class TimetableWeekPageTests(TimetableDashboardFixture, TestCase):
         self.slot()
         self.slot(section=self.six_b, period=self.p2)
         page = self.week_page()
-        self.assertContains(page, "Tap a class to open that day.")
+        self.assertContains(page, "Tap a box to open that day.")
         html = page.content.decode()
         key = html.split('class="erp-tt-key"')[1].split("</ul>")[0]
         self.assertLess(key.index("Grade 6 - A"), key.index("Grade 6 - B"))
