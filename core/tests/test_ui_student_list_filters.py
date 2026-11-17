@@ -3,6 +3,7 @@ current-placement and guardian columns, and the two empty states."""
 
 from datetime import date, timedelta
 
+from django.db.models import Max
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -162,7 +163,13 @@ class StudentListFilterTests(AuthorizationClientsMixin, Phase4Fixture, TestCase)
 
     def test_invalid_class_and_section_are_ignored(self):
         self.place("Student One")
-        response = self.administrator.get(self.url, {"class": "999", "section": "999"})
+        # IDs one past the highest in use: a fixed number such as 999 can belong to
+        # a real class or section on PostgreSQL, where sequences are not reset.
+        missing_class = (ClassGrade.objects.aggregate(top=Max("pk"))["top"] or 0) + 1
+        missing_section = (Section.objects.aggregate(top=Max("pk"))["top"] or 0) + 1
+        response = self.administrator.get(
+            self.url, {"class": str(missing_class), "section": str(missing_section)}
+        )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(self.names(response), ["Student One"])
 
