@@ -536,7 +536,6 @@ body.erp { min-height: 100vh; min-height: 100dvh; }
   background: var(--erp-ok-wash); color: var(--erp-ok-strong); border-color: transparent;
 }
 .erp-teacher .erp-assign-group.is-class .erp-assign-rows { background: var(--erp-ok-wash); }
-.erp-teacher .erp-assign-group.is-subjects .erp-assign-rows { background: var(--erp-info-wash); }
 .erp-teacher .erp-remarks .erp-assign-rows { background: var(--erp-day-remark-wash); }
 .erp-teacher .erp-assign-group .erp-assign-row + .erp-assign-row,
 .erp-teacher .erp-remarks .erp-assign-row + .erp-assign-row { border-top-color: var(--erp-day-tint-rule); }

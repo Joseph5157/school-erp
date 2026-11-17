@@ -452,8 +452,8 @@ class SubjectsCardTests(DashboardFixture, TestCase):
         self.assign(self.rao, self.maths, self.six_a)
         self.assign(self.rao, self.maths, self.six_b)
         html = self.page().content.decode()
-        opening_tag = html.split('class="erp-subj-card"')[1].split(">")[0]
-        self.assertNotIn("open", opening_tag)
+        opening_tag = re.search(r"<details\b[^>]*erp-subj-card[^>]*>", html).group(0)
+        self.assertNotRegex(opening_tag, r"\sopen\b")
         card = self.card()
         self.assertIn("<summary", card)
         self.assertIn("Subjects I teach", card)
