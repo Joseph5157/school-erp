@@ -2545,6 +2545,58 @@ body:has(.erp-dialog[open]) { overflow: hidden; }
 .erp-access-decision-options { display: flex; flex-wrap: wrap; gap: var(--erp-space-2) var(--erp-space-4); }
 .erp-access-decision-option { display: inline-flex; align-items: center; gap: var(--erp-space-2); min-height: 2.75rem; margin: 0; cursor: pointer; }
 
+/* Teacher timetable day page (ADR 0021): date strip, period cards, and the My day entry link. */
+.erp-tt-month { font-weight: 700; }
+.erp-tt-today {
+  display: inline-flex; align-items: center; min-height: 44px; padding-inline: var(--erp-space-3);
+  border-radius: 999px; background: var(--erp-action-wash); color: var(--erp-action-strong);
+  font-weight: 700; text-decoration: none;
+}
+.erp-tt-strip {
+  position: relative; display: flex; gap: 6px; overflow-x: auto; scroll-snap-type: x proximity;
+  margin-inline: -1rem; padding-inline: 1rem; padding-block: 6px; margin-block-end: var(--erp-space-3);
+}
+.erp-tt-chip {
+  flex: 0 0 52px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; min-height: 64px; padding-block: 6px; border-radius: var(--erp-radius);
+  color: var(--erp-ink); text-decoration: none; scroll-snap-align: center;
+}
+.erp-tt-chip > span:first-child {
+  font-size: .72rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--erp-ink-soft);
+}
+.erp-tt-chip > span:last-child {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 50%; font-weight: 700;
+}
+.erp-tt-chip.is-today > span:last-child { box-shadow: inset 0 0 0 2px var(--erp-action); }
+.erp-tt-chip.is-selected { background: var(--erp-action-wash); }
+.erp-tt-chip.is-selected > span:last-child { background: var(--erp-action); color: #fff; box-shadow: none; }
+.erp-tt-card {
+  display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 12px 14px; margin-block-end: 8px;
+  background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: 12px;
+}
+.erp-tt-badge {
+  flex: 0 0 36px; display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--erp-action-wash); color: var(--erp-action-strong); font-weight: 800;
+}
+.erp-tt-card .fw-bold { font-weight: 700; }
+.erp-tt-card .text-muted { font-size: .88rem; color: var(--erp-ink-soft) !important; }
+.erp-tt-entry {
+  display: flex; align-items: center; gap: 14px; min-height: 64px; padding: 12px 14px;
+  margin-block: var(--erp-space-4); background: var(--erp-surface); border: 1px solid var(--erp-rule);
+  border-radius: 12px; color: var(--erp-ink); text-decoration: none;
+}
+.erp-tt-entry:hover { border-color: var(--erp-action); color: var(--erp-ink); }
+.erp-tt-entry-icon {
+  flex: 0 0 44px; display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; border-radius: 12px; background: var(--erp-action-wash); color: var(--erp-action-strong);
+}
+.erp-tt-entry-text { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.erp-tt-entry-title { font-weight: 700; }
+.erp-tt-entry-meta { font-size: .88rem; color: var(--erp-ink-soft); }
+.erp-tt-entry-chevron { color: var(--erp-ink-soft); font-size: 1.4rem; line-height: 1; }
+
 /* UI-D1-4B: the register detail context line (Section name + date) wraps a long unbroken name instead of being clipped. */
 .erp-attendance-detail-page .erp-page-header-copy { min-width: 0; }
 .erp-attendance-detail-page .erp-page-purpose { overflow-wrap: break-word; }

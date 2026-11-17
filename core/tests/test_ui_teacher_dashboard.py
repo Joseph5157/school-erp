@@ -222,12 +222,18 @@ class MarksTileTests(DashboardFixture, TestCase):
 
 
 class PageShapeTests(DashboardFixture, TestCase):
-    def test_no_timetable_section_or_placeholder(self):
+    def test_no_timetable_list_or_placeholder_when_none_is_configured(self):
+        # Since 2026-11-17 (ADR 0021 D10 amendment) a Timetable card links to the teacher's
+        # Timetable page every day; with nothing configured it says so, and nothing else on the
+        # dashboard mentions a timetable, a period or a "coming soon" placeholder.
         self.class_teacher(self.rao, self.six_a)
         self.assign(self.rao, self.maths, self.six_a)
-        html = self.page().content.decode().lower()
+        html = self.page().content.decode()
+        card = html.split('class="erp-tt-entry"')[1].split("</a>")[0]
+        self.assertIn("No timetable for today", card)
+        rest = html.replace(card, "").lower()
         for word in ("timetable", "period", "coming soon"):
-            self.assertNotIn(word, html)
+            self.assertNotIn(word, rest)
 
     def test_old_large_attendance_and_marks_sections_are_gone(self):
         self.class_teacher(self.rao, self.six_a)

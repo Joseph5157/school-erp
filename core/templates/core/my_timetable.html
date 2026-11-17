@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Timetable{% endblock %}
+{% block content %}
+<p class="mb-2"><a href="{% url 'core:my-home' %}">‹ My day</a></p>
+<h1 class="h3 mb-1">Timetable</h1>
+<p class="text-muted mb-3">{{ selected|date:"l, j F Y" }}</p>
+
+<p class="erp-tt-month mb-1">{{ selected|date:"F Y" }}{% if not is_today %} · <a class="erp-tt-today" href="{% url 'core:my-timetable' %}">Today</a>{% endif %}</p>
+<nav class="erp-tt-strip" aria-label="Pick a day">
+{% for chip in strip %}<a class="erp-tt-chip{% if chip.is_today %} is-today{% endif %}{% if chip.is_selected %} is-selected{% endif %}" href="{% url 'core:my-timetable' %}?date={{ chip.date|date:'Y-m-d' }}" aria-label="{{ chip.date|date:'l j F Y' }}"{% if chip.is_selected %} aria-current="date"{% endif %}><span>{{ chip.weekday }}</span> <span>{{ chip.day }}</span></a>
+{% endfor %}</nav>
+
+{% if rows is None %}
+<p class="text-muted">No school timetable on this day.</p>
+{% elif not rows %}
+<p class="text-muted">No periods scheduled for you on this day.</p>
+{% else %}
+{% for row in rows %}
+<div class="erp-tt-card">
+    <span class="erp-tt-badge">{{ row.sequence }}</span>
+    <div>
+        <div class="fw-bold">{{ row.section }}</div>
+        <div class="text-muted">{{ row.subject }}</div>
+    </div>
+</div>
+{% endfor %}
+{% endif %}
+{% endblock %}

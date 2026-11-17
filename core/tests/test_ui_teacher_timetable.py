@@ -1,4 +1,8 @@
-"""TDB-5 Teacher dashboard: Today's timetable (ADR 0021 D10, TDB-0 spec section 3)."""
+"""TDB-5 Teacher dashboard timetable (ADR 0021 D10, amended 2026-11-17).
+
+Today's rows are still built for the dashboard, but they are shown as one Timetable card that
+counts them and links to the Timetable page, not as a list of periods.
+"""
 
 import re
 from contextlib import ExitStack
@@ -25,7 +29,9 @@ from core.tests.test_phase5_teacher_home import MONDAY, SUNDAY, on
 from core.tests.test_ui_teacher_dashboard import DashboardFixture
 
 TUESDAY = date(2026, 10, 13)
-EMPTY_LINE = "No periods scheduled for you today."
+NO_PERIODS = "No periods for you today"
+NO_SCHOOL = "No school today"
+NO_TIMETABLE = "No timetable for today"
 
 
 class TimetableDashboardFixture(DashboardFixture):
@@ -66,9 +72,9 @@ class TimetableDashboardFixture(DashboardFixture):
         return None if rows is None else [
             f"{r['period']} · {r['section']} · {r['subject']}" for r in rows]
 
-    def section_html(self, page):
+    def card_html(self, page):
         html = page.content.decode()
-        return html.split('id="day-timetable"')[1].split("</section>")[0]
+        return html.split('class="erp-tt-entry"')[1].split("</a>")[0]
 
 
 class FilteringTests(TimetableDashboardFixture, TestCase):
@@ -87,35 +93,37 @@ class FilteringTests(TimetableDashboardFixture, TestCase):
         with self.day(TUESDAY):
             self.assertEqual(self.labels(), ["P1 · Grade 6 - A · Mathematics"])
 
-    def test_rows_render_as_plain_text_in_the_section_after_the_overview(self):
+    def test_the_card_sits_between_the_overview_and_the_assignments(self):
         self.class_teacher(self.rao, self.six_a)
         self.assign(self.rao, self.maths, self.six_a)
         self.slot()
         page = self.page()
         html = page.content.decode()
         self.assertEqual(html.count("<h1"), 1)
-        self.assertIn("P1 &middot; Grade 6 - A &middot; Mathematics", self.section_html(page))
-        self.assertLess(html.index('id="day-overview"'), html.index('id="day-timetable"'))
-        self.assertLess(html.index('id="day-timetable"'), html.index('id="day-assignments"'))
+        self.assertIn("1 period today", self.card_html(page))
+        self.assertLess(html.index('id="day-overview"'), html.index('class="erp-tt-entry"'))
+        self.assertLess(html.index('class="erp-tt-entry"'), html.index('id="day-assignments"'))
 
-    def test_no_links_clock_times_free_periods_or_placeholders(self):
+    def test_no_period_list_clock_times_free_periods_or_placeholders_on_the_dashboard(self):
         self.assign(self.rao, self.maths, self.six_a)
         self.slot()
         self.slot(period=self.p2, weekday=3)  # other weekday: must not become a free period
-        section = self.section_html(self.page())
-        self.assertNotIn("<a ", section)
-        self.assertNotIn("href", section)
-        self.assertNotRegex(section, r"\d{1,2}:\d{2}")
+        page = self.page()
+        html = page.content.decode()
+        card = self.card_html(page)
+        self.assertNotIn("P1 &middot;", html)          # the list is gone; only a count remains
+        self.assertNotIn('id="day-timetable"', html)
+        self.assertNotRegex(card, r"\d{1,2}:\d{2}")
         for word in ("Free", "free", "Break", "Lunch", "Room", "placeholder"):
-            self.assertNotIn(word, section)
-        self.assertEqual(section.count("<li"), 1)
+            self.assertNotIn(word, card)
+        self.assertIn("1 period today", card)
 
-    def test_a_teacher_with_no_assignments_sees_the_empty_line_when_a_timetable_exists(self):
+    def test_a_teacher_with_no_assignments_sees_no_periods_when_a_timetable_exists(self):
         self.assign(self.iyer, self.maths, self.six_a)
         self.slot()
         page = self.page()
         self.assertEqual(self.labels(page), [])
-        self.assertIn(EMPTY_LINE, self.section_html(page))
+        self.assertIn(NO_PERIODS, self.card_html(page))
 
 
 class OrderingTests(TimetableDashboardFixture, TestCase):
@@ -133,13 +141,12 @@ class OrderingTests(TimetableDashboardFixture, TestCase):
              "A-last · Grade 6 - A · Mathematics"],
         )
 
-    def test_rendered_order_matches(self):
+    def test_the_card_counts_every_period_today(self):
         self.assign(self.rao, self.maths, self.six_a)
         self.assign(self.rao, self.sanskrit, self.six_b)
         self.slot(period=self.p2)
         self.slot(period=self.p1, section=self.six_b, offering=self.sanskrit)
-        html = self.section_html(self.page())
-        self.assertLess(html.index("P1 &middot;"), html.index("P2 &middot;"))
+        self.assertIn("2 periods today", self.card_html(self.page()))
 
 
 class EffectiveDateTests(TimetableDashboardFixture, TestCase):
@@ -189,7 +196,9 @@ class EffectiveDateTests(TimetableDashboardFixture, TestCase):
         self.slot(section=self.six_b)
         page = self.page()
         self.assertEqual(self.labels(page), [])
-        self.assertNotIn("Mathematics", self.section_html(page))
+        card = self.card_html(page)
+        self.assertIn(NO_PERIODS, card)
+        self.assertNotIn("Mathematics", card)
 
     def test_a_future_assignment_does_not_show_a_row_today(self):
         self.assign_between(self.rao, self.maths, self.six_a, date(2026, 10, 13))
@@ -198,14 +207,13 @@ class EffectiveDateTests(TimetableDashboardFixture, TestCase):
 
 
 class VisibilityTests(TimetableDashboardFixture, TestCase):
-    def test_no_timetable_configured_hides_the_section(self):
+    def test_no_timetable_configured_still_shows_the_card_saying_so(self):
         self.assign(self.rao, self.maths, self.six_a)
         page = self.page()
         self.assertIsNone(self.shown(page))
-        html = page.content.decode()
-        self.assertNotIn('id="day-timetable"', html)
-        self.assertNotIn(EMPTY_LINE, html)
-        self.assertNotIn("imetable", html)
+        card = self.card_html(page)
+        self.assertIn(NO_TIMETABLE, card)
+        self.assertNotIn(NO_SCHOOL, card)
 
     def test_a_slot_that_is_not_effective_today_does_not_count_as_a_timetable(self):
         self.assign(self.rao, self.maths, self.six_a)
@@ -213,31 +221,32 @@ class VisibilityTests(TimetableDashboardFixture, TestCase):
         self.slot(period=self.p2, end_date=date(2026, 10, 11))
         self.assertIsNone(self.shown())
 
-    def test_an_instructional_day_with_a_timetable_and_no_rows_shows_the_empty_line(self):
+    def test_an_instructional_day_with_a_timetable_and_no_rows_shows_no_periods(self):
         self.assign(self.rao, self.maths, self.six_a)
         self.slot(weekday=3)   # effective today but on Thursdays only
         page = self.page()
         self.assertEqual(self.labels(page), [])
-        self.assertIn(EMPTY_LINE, self.section_html(page))
-        self.assertEqual(self.section_html(page).count("<li"), 0)
+        self.assertIn(NO_PERIODS, self.card_html(page))
 
-    def test_a_non_instructional_day_hides_the_section(self):
+    def test_a_non_instructional_day_keeps_the_card_and_says_no_school(self):
         self.assign(self.rao, self.maths, self.six_a)
         self.slot()
         with self.day(SUNDAY):
             page = self.page()
             self.assertIsNone(self.shown(page))
-            self.assertNotIn('id="day-timetable"', page.content.decode())
+            self.assertIn(NO_SCHOOL, self.card_html(page))
             self.assertIn("Not a school day", page.content.decode())
 
-    def test_a_holiday_on_a_normal_weekday_hides_the_section(self):
+    def test_a_holiday_on_a_normal_weekday_keeps_the_card_and_says_no_school(self):
         self.assign(self.rao, self.maths, self.six_a)
         self.slot()
         SchoolCalendarDay.objects.create(academic_year=self.year, date=MONDAY,
                                          is_instructional=False, label="Holiday")
         page = self.page()
         self.assertIsNone(self.shown(page))
-        self.assertNotIn(EMPTY_LINE, page.content.decode())
+        card = self.card_html(page)
+        self.assertIn(NO_SCHOOL, card)
+        self.assertNotIn(NO_PERIODS, card)
 
     def test_a_working_saturday_shows_that_days_slots(self):
         self.year.saturdays_instructional = True
@@ -386,16 +395,48 @@ class TeacherPagesAcceptanceTests(TimetableDashboardFixture, TestCase):
             page = self.teacher.get(reverse(f"core:{name}"))
             self.assertEqual(page.status_code, 200, name)
             hrefs = re.findall(r'href="([^"]+)"', page.content.decode())
-            leaked = [h for h in hrefs if any(part in h for part in self.OFFICE)]
+            own = reverse("core:my-timetable")   # the teacher's own page, not an office screen
+            leaked = [h for h in hrefs
+                      if not h.startswith(own) and any(part in h for part in self.OFFICE)]
             self.assertEqual(leaked, [], name)
 
-    def test_the_dashboard_has_one_h1_and_the_timetable_heading_once_in_order(self):
+    def test_the_dashboard_has_one_h1_and_no_timetable_list_heading(self):
         self.class_teacher(self.rao, self.six_a)
         self.assign(self.rao, self.maths, self.six_a)
         self.slot()
         html = self.page().content.decode()
         self.assertEqual(html.count("<h1"), 1)
-        self.assertEqual(html.count("Today's timetable"), 1)
+        self.assertEqual(html.count("Today's timetable"), 0)
+        self.assertEqual(html.count('class="erp-tt-entry"'), 1)
         headings = re.findall(r"<h2[^>]*>([^<]+)</h2>", html)
-        self.assertEqual(headings[:3],
-                         ["Today overview", "Today's timetable", "Teaching assignments"])
+        self.assertEqual(headings[:2], ["Today overview", "Teaching assignments"])
+
+
+class TimetableCardTests(TimetableDashboardFixture, TestCase):
+    """The My day Timetable card: one link to the Timetable page, shown every day."""
+
+    def test_the_card_links_to_the_timetable_page(self):
+        self.assign(self.rao, self.maths, self.six_a)
+        self.slot()
+        card = self.card_html(self.page())
+        self.assertIn(f'href="{reverse("core:my-timetable")}"', card)
+        self.assertIn("Timetable", card)
+        self.assertNotIn("Full timetable", self.page().content.decode())
+
+    def test_one_period_is_singular_and_more_are_plural(self):
+        self.assign(self.rao, self.maths, self.six_a)
+        self.slot()
+        self.assertIn("1 period today", self.card_html(self.page()))
+        self.slot(period=self.p2)
+        self.assertIn("2 periods today", self.card_html(self.page()))
+
+    def test_a_class_teacher_with_no_subjects_still_gets_the_card(self):
+        self.class_teacher(self.rao, self.six_a)
+        page = self.page()
+        self.assertIn(f'href="{reverse("core:my-timetable")}"', self.card_html(page))
+
+    def test_the_card_text_is_not_a_heading(self):
+        self.assign(self.rao, self.maths, self.six_a)
+        self.slot()
+        card = self.card_html(self.page())
+        self.assertNotRegex(card, r"<h\d")

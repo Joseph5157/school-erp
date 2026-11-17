@@ -15,7 +15,7 @@ follow the assignment rows alone (ADR 0018 D9). Everything here works on date ra
 """
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from itertools import combinations
 
 from django.core.exceptions import ValidationError
@@ -144,21 +144,21 @@ def ensure_no_clash(slot):
     raise ValidationError(lines)
 
 
-def todays_teacher_timetable(assignments, today, year_is_instructional):
-    """Rows for the Teacher dashboard's "Today's timetable" section (ADR 0021 D10).
+def teacher_timetable_on(assignments, on_date, year_is_instructional):
+    """Rows for the teacher's timetable on `on_date` (ADR 0021 D10).
 
     `assignments` are the teacher's own current subject assignments (ADR 0018); a slot
     belongs to the teacher only through its offering + Section. `year_is_instructional`
-    answers `AcademicYear.is_instructional_day(today)` for a year (and may cache it).
+    answers `AcademicYear.is_instructional_day(on_date)` for a year (and may cache it).
 
-    Returns None when the section must be hidden: no slot is effective today in an
-    Academic Year that is an instructional day today (no timetable configured, or a
+    Returns None when the section must be hidden: no slot is effective on that date in an
+    Academic Year that is an instructional day on that date (no timetable configured, or a
     non-school day). Otherwise a list of rows, possibly empty (the "no periods for you"
     state), ordered by period sequence. Never stores or guesses a teacher, and never
     invents free periods or placeholders.
     """
     years = AcademicYear.objects.filter(
-        pk__in=TimetableSlot.objects.effective_on(today).values("period__academic_year_id")
+        pk__in=TimetableSlot.objects.effective_on(on_date).values("period__academic_year_id")
     )
     open_year_ids = {year.pk for year in years if year_is_instructional(year)}
     if not open_year_ids:
@@ -167,9 +167,9 @@ def todays_teacher_timetable(assignments, today, year_is_instructional):
     if not pairs:
         return []
     slots = (
-        TimetableSlot.objects.effective_on(today)
+        TimetableSlot.objects.effective_on(on_date)
         .filter(
-            weekday=today.weekday(),
+            weekday=on_date.weekday(),
             period__academic_year_id__in=open_year_ids,
             offering_id__in={offering for offering, _ in pairs},
             section_id__in={section for _, section in pairs},
@@ -180,9 +180,51 @@ def todays_teacher_timetable(assignments, today, year_is_instructional):
     return [
         {
             "period": slot.period.label,
+            "sequence": slot.period.sequence,
             "section": slot.section,
             "subject": slot.offering.subject.name,
         }
         for slot in slots
         if (slot.offering_id, slot.section_id) in pairs
     ]
+
+
+def todays_teacher_timetable(assignments, today, year_is_instructional):
+    """Today's rows for the Teacher dashboard's Timetable card (ADR 0021 D10, amended 2026-11-17)."""
+    return teacher_timetable_on(assignments, today, year_is_instructional)
+
+
+TIMETABLE_DATE_WINDOW_DAYS = 366
+
+
+def parse_timetable_date(raw, today):
+    """Parse ?date=; anything invalid or outside today +/- 366 days is today."""
+    try:
+        parsed = date.fromisoformat(raw)
+    except (ValueError, TypeError):
+        return today
+    if abs((parsed - today).days) > TIMETABLE_DATE_WINDOW_DAYS:
+        return today
+    return parsed
+
+
+def date_strip(selected, today):
+    """Mon-Sat chips from two weeks before to two weeks after selected's week."""
+    monday = selected - timedelta(days=selected.weekday())
+    chips = []
+    previous = None
+    for week in range(-2, 3):
+        for offset in range(6):
+            day = monday + timedelta(weeks=week, days=offset)
+            chips.append(
+                {
+                    "date": day,
+                    "weekday": day.strftime("%a"),
+                    "day": day.day,
+                    "is_today": day == today,
+                    "is_selected": day == selected,
+                    "month_start": previous is not None and day.month != previous,
+                }
+            )
+            previous = day.month
+    return chips
