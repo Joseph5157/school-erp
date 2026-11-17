@@ -45,6 +45,30 @@
     <span class="erp-tt-entry-chevron" aria-hidden="true">&rsaquo;</span>
 </a>
 
+{# Subjects I teach card (2026-11-17): closed by default; opening it shows the classes as chips grouped by subject. #}
+<details class="erp-subj-card">
+<summary>
+    <span class="erp-tt-entry-icon">{% include "partials/_tab_icon.html" with name="subjects" %}</span>
+    <span class="erp-tt-entry-text">
+        <span class="erp-tt-entry-title">Subjects I teach</span>
+        <span class="erp-tt-entry-meta">{{ subjects_card.meta }}</span>
+    </span>
+    <span class="erp-tt-entry-chevron" aria-hidden="true">&rsaquo;</span>
+</summary>
+<div class="erp-subj-body">
+{% for group in subjects_card.groups %}
+<div class="erp-subj-group">
+<p class="erp-subj-name">{{ group.subject }}</p>
+<ul class="erp-subj-chips">
+{% for section in group.sections %}<li class="erp-subj-chip"><span aria-hidden="true">{{ section.short }}</span><span class="visually-hidden">{{ section.full }}</span></li>{% endfor %}
+</ul>
+</div>
+{% empty %}
+<p class="erp-assign-empty">No subjects are assigned to you today.</p>
+{% endfor %}
+</div>
+</details>
+
 <section aria-labelledby="day-assignments">
 <h2 class="erp-section-title" id="day-assignments">Teaching assignments</h2>
 <div class="erp-assign-group is-class">
@@ -63,23 +87,6 @@
 </ul>
 {% else %}
 {% include "partials/_empty.html" with title="You are not a class teacher today." text="Class and subject assignments are set by the school office. If you expected to see a class here, ask the office to check your assignment." %}
-{% endif %}
-</div>
-<div class="erp-assign-group is-subjects">
-<h3 class="erp-assign-label" id="assign-subjects">Subjects I teach</h3>
-{% if subject_rows %}
-<ul class="erp-day-rows erp-assign-rows" aria-labelledby="assign-subjects">
-{% for row in subject_rows %}
-<li class="erp-assign-row">
-    <span class="erp-day-main">
-        <span class="erp-day-title">{{ row.section }} &middot; {{ row.subject }}</span>
-        <span class="erp-card-meta">{{ row.year.name }}</span>
-    </span>
-</li>
-{% endfor %}
-</ul>
-{% else %}
-<p class="erp-assign-empty">No subjects are assigned to you today.</p>
 {% endif %}
 </div>
 </section>

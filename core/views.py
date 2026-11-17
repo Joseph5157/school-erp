@@ -1098,6 +1098,32 @@ def _timetable_card(rows, school_day):
     return {"meta": "No timetable for today"}
 
 
+def _subjects_card(subject_rows):
+    """My day "Subjects I teach" card (2026-11-17): a summary line and chips grouped by subject.
+
+    Chips run in class display order, then Section name, so "Grade 10" never sorts before
+    "Grade 2". Each chip carries the short label and the full Section name.
+    """
+    def chip_order(row):
+        grade = row["section"].class_grade
+        return (grade.display_order is None, grade.display_order or 0, grade.name,
+                row["section"].name)
+
+    groups = {}
+    for row in sorted(subject_rows, key=chip_order):
+        groups.setdefault(row["subject"], []).append(
+            {"short": timetable.short_section_label(row["section"]), "full": str(row["section"])})
+    count = len(subject_rows)
+    if not count:
+        meta = "No subjects assigned today"
+    else:
+        classes = f"{count} class{'es' if count != 1 else ''}"
+        meta = (f"{next(iter(groups))} · {classes}" if len(groups) == 1
+                else f"{len(groups)} subjects · {classes}")
+    return {"meta": meta,
+            "groups": [{"subject": name, "sections": groups[name]} for name in sorted(groups)]}
+
+
 def _marks_tile(assessments, has_subject_duty):
     """Today-overview Marks tile. The summed count is marks, never students."""
     if assessments:
@@ -1209,6 +1235,14 @@ def my_home(request):
                     "written": sum(1 for s in students if s.pk in written),
                 }
             )
+    subject_rows = sorted(
+        (
+            {"section": row.section, "subject": row.offering.subject.name,
+             "year": row.offering.academic_year}
+            for row in subject_duties
+        ),
+        key=lambda r: (str(r["section"]), r["subject"]),
+    )
     return render(
         request,
         "core/my_home.html",
@@ -1220,14 +1254,8 @@ def my_home(request):
                  "url": reverse("core:my-attendance", args=[duty.section_id])}
                 for duty in sorted(duties, key=lambda d: str(d.section))
             ],
-            "subject_rows": sorted(
-                (
-                    {"section": row.section, "subject": row.offering.subject.name,
-                     "year": row.offering.academic_year}
-                    for row in subject_duties
-                ),
-                key=lambda r: (str(r["section"]), r["subject"]),
-            ),
+            "subject_rows": subject_rows,
+            "subjects_card": _subjects_card(subject_rows),
             "school_day": school_day,
             "timetable_rows": timetable_rows,
             "timetable_card": _timetable_card(timetable_rows, school_day),

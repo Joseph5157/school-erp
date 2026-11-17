@@ -14,6 +14,7 @@ follow the assignment rows alone (ADR 0018 D9). Everything here works on date ra
 "today's teacher".
 """
 
+import re
 from dataclasses import dataclass
 from datetime import date, timedelta
 from itertools import combinations
@@ -195,6 +196,21 @@ def todays_teacher_timetable(assignments, today, year_is_instructional):
 
 
 TIMETABLE_DATE_WINDOW_DAYS = 366
+
+
+def short_section_label(section):
+    """Short chip/grid label for a Section: "Grade 2" + "B" -> "2-B", "Nursery" + "Rose" -> "Nur-Ros".
+
+    Class part: the trailing number of the Class/Grade name, otherwise its first 3 characters.
+    Section part: the Section name when it is 1 or 2 characters long, otherwise its first 3.
+    The full name must always be shown or announced next to it; the label alone may clash.
+    """
+    grade = section.class_grade.name.strip()
+    number = re.search(r"(\d+)$", grade)
+    class_part = number.group(1) if number else grade[:3]
+    name = section.name.strip()
+    section_part = name if len(name) <= 2 else name[:3]
+    return f"{class_part}-{section_part}"
 
 
 def parse_timetable_date(raw, today):
