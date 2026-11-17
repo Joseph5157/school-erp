@@ -2,7 +2,7 @@
 {% block title %}Withdraw notice{% endblock %}
 {% block content %}
 {% include "partials/_page_header.html" with eyebrow="Announcement" title="Withdraw this notice?" purpose=notice.title|add:" · "|add:notice.audience_label only %}
-<div class="alert alert-warning" role="alert">
+<div class="alert alert-warning" role="note">
     <p class="fw-semibold mb-2">This change has the following consequences:</p>
     <ul class="mb-0">
         <li>Guardians stop seeing this notice in the portal at once.</li>

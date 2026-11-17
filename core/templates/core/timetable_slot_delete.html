@@ -4,7 +4,7 @@
 {% include "partials/_page_header.html" with eyebrow="Timetable" title="Delete slot" purpose=section only %}
 <p class="erp-note-text">{{ slot.period.label }} &middot; {{ slot.get_weekday_display }}</p>
 {% if started %}
-<p role="alert">This timetable slot has taken effect and cannot be deleted, so the timetable keeps its history. End it instead: it will stop applying after the last day you choose.</p>
+<p role="note">This timetable slot has taken effect and cannot be deleted, so the timetable keeps its history. End it instead: it will stop applying after the last day you choose.</p>
 <div class="erp-form-actions">
     {% if can_end %}<a class="btn btn-primary" href="{{ end_url }}">End this slot</a>{% endif %}
     <a class="btn btn-link" href="{{ grid_url }}">Back to timetable</a>

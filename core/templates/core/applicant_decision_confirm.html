@@ -3,7 +3,7 @@
 {% block content %}
 {% include "partials/_page_header.html" with eyebrow="Admission decision" title=decision_label|add:" applicant" purpose=applicant.full_name only %}
 <p>You are about to {{ decision_label|lower }} <strong>{{ applicant.full_name }}</strong>.</p>
-<div class="alert {% if decision == 'REJECTED' %}alert-danger{% else %}alert-warning{% endif %}" role="alert">
+<div class="alert {% if decision == 'REJECTED' %}alert-danger{% else %}alert-warning{% endif %}" role="note">
     {% if decision == "ACCEPTED" %}
     This decision is final. You can then progress this applicant to a Student.
     {% else %}

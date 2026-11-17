@@ -3,13 +3,13 @@
 {% block content %}
 {% include "partials/_page_header.html" with eyebrow="Classes/Grades" title=title purpose=purpose only %}
 {% if blockers %}
-<div class="alert alert-warning" role="alert">
+<div class="alert alert-warning" role="note">
     <p class="mb-2"><strong>This {{ noun }} is still in use, so it cannot be archived yet.</strong> Move or end these first:</p>
     <ul class="mb-0">{% for reason in blockers %}<li>{{ reason }}</li>{% endfor %}</ul>
 </div>
 <p><a class="btn btn-link" href="{% url 'core:class-grade-detail' class_grade.pk %}">Back to {{ class_grade.name }}</a></p>
 {% else %}
-<div class="alert alert-warning" role="alert">
+<div class="alert alert-warning" role="note">
     <ul class="mb-0">{% for line in consequences %}<li>{{ line }}</li>{% endfor %}</ul>
 </div>
 <form method="post" class="erp-form">

@@ -5,7 +5,7 @@
 <dl class="erp-details-list mb-3">
     {% for label, value in details %}<div><dt>{{ label }}</dt><dd class="text-break">{{ value }}</dd></div>{% endfor %}
 </dl>
-<div class="alert alert-warning" role="alert">
+<div class="alert alert-warning" role="note">
     <p class="fw-semibold mb-2">This change has the following consequences:</p>
     <ul class="mb-0">
         {% for line in consequences %}<li>{{ line }}</li>{% endfor %}

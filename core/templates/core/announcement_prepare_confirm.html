@@ -3,7 +3,7 @@
 {% block content %}
 {% include "partials/_page_header.html" with eyebrow="Announcement" title="Prepare WhatsApp messages?" purpose=notice.title|add:" · "|add:notice.audience_label only %}
 {% if counts.opted_in %}
-<div class="alert alert-warning" role="alert">
+<div class="alert alert-warning" role="note">
     <p class="mb-0">This queues a message for {{ counts.opted_in }} opted-in guardian(s). Nothing is sent from here.</p>
 </div>
 <p>Office staff send the messages from the <a href="{% url 'core:notifications-to-send' %}">Message queue</a>.</p>
