@@ -5,5 +5,5 @@
 <span id="erp-count-unmarked" data-erp-count="unmarked" hx-swap-oob="true">{{ counts.unmarked }}</span>
 <span id="erp-count-present" data-erp-count="present" hx-swap-oob="true">{{ counts.present }}</span>
 <span id="erp-count-absent" data-erp-count="absent" hx-swap-oob="true">{{ counts.absent }}</span>
-<span id="erp-hint" class="erp-actionbar-status{% if counts.unmarked %} is-warn{% endif %}" data-erp-hint aria-live="polite" hx-swap-oob="true">{% if counts.unmarked %}Mark all students to submit ({{ counts.unmarked }} unmarked){% else %}All students marked{% endif %}</span>
+<span id="erp-hint" class="erp-actionbar-status{% if counts.unmarked %} is-warn{% endif %}" data-erp-hint hx-swap-oob="true">{% if counts.unmarked %}Mark all students to submit ({{ counts.unmarked }} unmarked){% else %}All students marked{% endif %}</span>
 {% endif %}
