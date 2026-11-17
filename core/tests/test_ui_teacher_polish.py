@@ -381,6 +381,13 @@ class MyStudentsPolishTests(MarksFixture, TestCase):
     def rows(self, page):
         return ROW.findall(page.content.decode())
 
+    def group_selection(self, page, section):
+        return next(
+            group["selection"]
+            for group in page.context["groups"]
+            if group["section"] == section
+        )
+
     def register(self, submit):
         register = AttendanceRegister.objects.create(
             academic_year=self.year, class_grade=self.grade6, section=self.six_a,
@@ -395,7 +402,7 @@ class MyStudentsPolishTests(MarksFixture, TestCase):
 
     def test_heading_and_context_wording_are_kept(self):
         page = self.page()
-        self.assertContains(page, '<h1 class="h3 mb-1">My students</h1>')
+        self.assertContains(page, '<h1 class="h3 mb-1" id="students-title">My students</h1>')
         self.assertContains(page, "Students enrolled today (")
         self.assertContains(page, "in Sections you are class teacher of or teach a Subject in.")
         self.assertContains(page, f"{self.six_a} ")
@@ -426,11 +433,13 @@ class MyStudentsPolishTests(MarksFixture, TestCase):
     def test_class_teacher_badge_only_on_class_teacher_sections(self):
         self.make_student("Kiran", section=self.six_b)
         self.assign(self.rao, self.sanskrit, self.six_b)
-        html = self.page().content.decode()
-        six_a = html[html.index(str(self.six_a)):html.index(str(self.six_b))]
-        six_b = html[html.index(str(self.six_b)):]
-        self.assertIn('<span class="erp-pill is-accepted">Class teacher</span>', six_a)
-        self.assertNotIn("Class teacher</span>", six_b)
+        initial = self.page()
+        self.assertEqual(initial.context["selected_group"]["section"], self.six_a)
+        self.assertContains(initial, '<span class="erp-pill is-accepted">Class teacher</span>')
+
+        six_b = self.teacher.get(self.url, {"group": self.group_selection(initial, self.six_b)})
+        self.assertEqual(six_b.context["selected_group"]["section"], self.six_b)
+        self.assertNotContains(six_b, "Class teacher</span>")
 
     def test_submitted_attendance_shows_semantic_non_interactive_chips(self):
         self.register(submit=True)
@@ -458,12 +467,12 @@ class MyStudentsPolishTests(MarksFixture, TestCase):
         self.make_student("Kiran", section=self.six_b)
         self.assign(self.rao, self.sanskrit, self.six_b)
         self.register(submit=True)
-        html = self.page().content.decode()
-        part = html[html.index(str(self.six_b)):]
-        self.assertNotIn("erp-pill is-present", part)
-        self.assertNotIn("erp-pill is-absent", part)
-        self.assertNotIn("not submitted yet", part)
-        self.assertIn("Kiran", part)
+        initial = self.page()
+        page = self.teacher.get(self.url, {"group": self.group_selection(initial, self.six_b)})
+        self.assertNotContains(page, "erp-pill is-present")
+        self.assertNotContains(page, "erp-pill is-absent")
+        self.assertNotContains(page, "not submitted yet")
+        self.assertContains(page, "Kiran")
 
     def test_empty_state_for_a_teacher_with_no_sections(self):
         iyer = self.client_class()
@@ -473,29 +482,44 @@ class MyStudentsPolishTests(MarksFixture, TestCase):
         self.assertContains(page, "Ask the school office if this looks wrong.")
         self.assertEqual(self.rows(page), [])
 
-    def test_order_and_urls_follow_the_view(self):
+    def test_selected_class_order_and_urls_follow_the_view(self):
         self.make_student("Kiran", section=self.six_b)
         self.assign(self.rao, self.sanskrit, self.six_b)
         page = self.page()
         html = page.content.decode()
         names = re.findall(r'class="erp-student-name[^"]*" href="[^"]+">([^<]+)</a>', html)
         hrefs = re.findall(r'class="erp-student-name[^"]*" href="([^"]+)">', html)
-        groups = page.context["groups"]
+        selected = page.context["selected_group"]
         self.assertEqual(
-            names, [e.student.full_name for g in groups for e in g["enrollments"]])
+            names, [e.student.full_name for e in selected["enrollments"]])
         self.assertEqual(
             hrefs,
-            [reverse("core:my-student-detail", args=[e.student.pk])
-             for g in groups for e in g["enrollments"]])
-        for group in groups:
-            in_group = [e.student.full_name for e in group["enrollments"]]
-            self.assertEqual(in_group, sorted(in_group))
+            [reverse("core:my-student-detail", args=[e.student.pk]) for e in selected["enrollments"]],
+        )
+        self.assertEqual(names, sorted(names))
 
-    def test_no_table_search_or_sort_controls(self):
+    def test_class_picker_and_student_search_filter_the_selected_class(self):
+        self.make_student("Kiran", section=self.six_b)
+        self.assign(self.rao, self.sanskrit, self.six_b)
+        initial = self.page()
         html = self.page().content.decode()
         self.assertNotIn("<table", html)
-        self.assertNotIn('type="search"', html)
-        self.assertNotIn("<select", html)
+        self.assertIn('<search class="erp-students-picker">', html)
+        self.assertIn('<label for="student-group">Class</label>', html)
+        self.assertIn('<label for="student-search">Search students</label>', html)
+        self.assertIn('type="search"', html)
+        self.assertIn('<select id="student-group" name="group">', html)
+        self.assertIn('enterkeyhint="search"', html)
+        self.assertEqual(html.count("<option "), 2)
+
+        page = self.teacher.get(
+            self.url,
+            {"group": self.group_selection(initial, self.six_b), "q": "kir"},
+        )
+        self.assertContains(page, "Kiran")
+        self.assertNotContains(page, "Asha")
+        self.assertEqual(len(self.rows(page)), 1)
+        self.assertContains(page, 'value="kir"')
 
 
 class MyAssessmentsPolishTests(MarksFixture, TestCase):

@@ -1717,7 +1717,41 @@ def my_students(request):
     for group in groups:
         # Name the year only when one Section appears for two years, so headings stay distinct.
         group["show_year"] = sections_shown.count(group["section"].pk) > 1
-    return render(request, "core/my_students.html", {"groups": groups, "today": today})
+        group["selection"] = f"{group['section'].pk}:{group['academic_year'].pk}"
+
+    selected_group = None
+    requested_group = request.GET.get("group", "")
+    if requested_group:
+        selected_group = next(
+            (group for group in groups if group["selection"] == requested_group), None
+        )
+    if selected_group is None and groups:
+        selected_group = next(
+            (group for group in groups if group["is_class_teacher"]), groups[0]
+        )
+
+    student_query = request.GET.get("q", "").strip()
+    selected_enrollments = []
+    if selected_group is not None:
+        selected_enrollments = selected_group["enrollments"]
+        if student_query:
+            query_folded = student_query.casefold()
+            selected_enrollments = [
+                enrollment
+                for enrollment in selected_enrollments
+                if query_folded in enrollment.student.full_name.casefold()
+            ]
+    return render(
+        request,
+        "core/my_students.html",
+        {
+            "groups": groups,
+            "today": today,
+            "selected_group": selected_group,
+            "selected_enrollments": selected_enrollments,
+            "student_query": student_query,
+        },
+    )
 
 
 def _teacher_visible_results(user, student, academic_year):

@@ -545,6 +545,20 @@ body.erp { min-height: 100vh; min-height: 100dvh; }
 .erp-teacher .erp-section-note { margin: 0 0 .5rem; }
 /* U3.1 My students (Gate T3). One bordered list per Section with divided, whole-row
    targets; scoped to the Teacher area so the shared .erp-entry list is not changed. */
+.erp-teacher .erp-students-picker { display: block; max-width: 42rem; margin-bottom: 1rem; }
+.erp-teacher .erp-students-picker form {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .5rem;
+}
+.erp-teacher .erp-students-picker-field { min-width: 0; display: grid; gap: .375rem; }
+.erp-teacher .erp-students-picker-class { grid-column: 1 / -1; }
+.erp-teacher .erp-students-picker label { color: var(--erp-ink); font-weight: 700; }
+.erp-teacher .erp-students-picker :is(input, select) {
+  width: 100%; min-width: 0; min-height: 3rem; padding: .625rem .75rem;
+  border: 1px solid var(--erp-control-border); border-radius: var(--erp-radius-sm);
+  background: var(--erp-surface); color: var(--erp-ink); font: inherit; font-size: max(1rem, 1em);
+}
+.erp-teacher .erp-students-picker select { padding-right: 2.25rem; }
+.erp-teacher .erp-students-picker .btn { align-self: end; min-height: 3rem; }
 .erp-teacher .erp-students-group + .erp-students-group { margin-top: 1.5rem; }
 .erp-teacher .erp-students-page .erp-section-title { margin: 0 0 .5rem; }
 .erp-teacher .erp-students {
@@ -556,6 +570,7 @@ body.erp { min-height: 100vh; min-height: 100dvh; }
 }
 .erp-teacher .erp-student-row + .erp-student-row { border-top: 1px solid var(--erp-rule); }
 .erp-teacher .erp-student-row:hover { background: var(--erp-paper); }
+.erp-teacher .erp-students-empty { padding: 1rem; color: var(--erp-ink-soft); }
 .erp-teacher .erp-student-row .erp-initials { flex: none; width: 2rem; height: 2rem; font-size: .9rem; }
 .erp-teacher .erp-student-name {
   flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: 1.0625rem; font-weight: 600;

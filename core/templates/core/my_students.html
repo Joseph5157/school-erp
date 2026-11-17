@@ -2,25 +2,43 @@
 {% block title %}My students{% endblock %}
 {% block content %}
 <div class="erp-students-page">
-<h1 class="h3 mb-1">My students</h1>
+<h1 class="h3 mb-1" id="students-title">My students</h1>
 <p class="text-muted">Students enrolled today ({{ today }}) in Sections you are class teacher of or teach a Subject in.</p>
-{% for group in groups %}
-<section class="erp-students-group" aria-labelledby="students-section-{{ forloop.counter }}">
-<h2 class="erp-section-title" id="students-section-{{ forloop.counter }}">{{ group.section }}{% if group.show_year %} <span class="text-muted small">({{ group.academic_year }})</span>{% endif %} {% if group.is_class_teacher %}<span class="erp-pill is-accepted">Class teacher</span>{% endif %}</h2>
-{% if group.is_class_teacher and not group.attendance_submitted %}<p class="text-muted small mb-2">Today's attendance not submitted yet.</p>{% endif %}
+{% if selected_group %}
+<search class="erp-students-picker">
+    <form method="get" action="{% url 'core:my-students' %}" aria-labelledby="students-title">
+        <div class="erp-students-picker-field erp-students-picker-class">
+            <label for="student-group">Class</label>
+            <select id="student-group" name="group">
+                {% for group in groups %}<option value="{{ group.selection }}"{% if group.selection == selected_group.selection %} selected{% endif %}>{{ group.section }}{% if group.show_year %} ({{ group.academic_year }}){% endif %}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="erp-students-picker-field">
+            <label for="student-search">Search students</label>
+            <input id="student-search" name="q" type="search" value="{{ student_query }}" enterkeyhint="search">
+        </div>
+        <button type="submit" class="btn btn-outline-primary">Show</button>
+    </form>
+</search>
+
+<section class="erp-students-group" aria-labelledby="students-section-{{ selected_group.section.pk }}">
+<h2 class="erp-section-title" id="students-section-{{ selected_group.section.pk }}">{{ selected_group.section }}{% if selected_group.show_year %} <span class="text-muted small">({{ selected_group.academic_year }})</span>{% endif %} {% if selected_group.is_class_teacher %}<span class="erp-pill is-accepted">Class teacher</span>{% endif %}</h2>
+{% if selected_group.is_class_teacher and not selected_group.attendance_submitted %}<p class="text-muted small mb-2">Today's attendance not submitted yet.</p>{% endif %}
 <ul class="erp-students list-unstyled">
-    {% for enrollment in group.enrollments %}
+    {% for enrollment in selected_enrollments %}
     <li class="erp-student-row position-relative">
         <span class="erp-initials" aria-hidden="true">{{ enrollment.student.full_name|slice:":1"|upper }}</span>
         <a class="erp-student-name stretched-link" href="{% url 'core:my-student-detail' enrollment.student.pk %}">{{ enrollment.student.full_name }}</a>
-        {% if group.is_class_teacher and enrollment.today_status %}<span class="erp-pill is-{{ enrollment.today_status|lower }}">{% if enrollment.today_status == "PRESENT" %}Present{% else %}Absent{% endif %}</span>{% endif %}
+        {% if selected_group.is_class_teacher and enrollment.today_status %}<span class="erp-pill is-{{ enrollment.today_status|lower }}">{% if enrollment.today_status == "PRESENT" %}Present{% else %}Absent{% endif %}</span>{% endif %}
         <span class="erp-student-chevron" aria-hidden="true">&rsaquo;</span>
     </li>
+    {% empty %}
+    <li class="erp-students-empty">{% if student_query %}No students match “{{ student_query }}” in this class.{% else %}No students are enrolled in this class today.{% endif %}</li>
     {% endfor %}
 </ul>
 </section>
-{% empty %}
+{% else %}
 {% include "partials/_empty.html" with title="No Students in your Sections today." text="Students appear here once you are assigned as class teacher or subject teacher of a Section. Ask the school office if this looks wrong." %}
-{% endfor %}
+{% endif %}
 </div>
 {% endblock %}
