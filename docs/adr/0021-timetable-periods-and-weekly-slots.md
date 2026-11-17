@@ -211,6 +211,16 @@ rows on the dashboard, derived through their own assignments. No staff or HR rec
    is an instructional day today.
 8. Placement stays "immediately after Today overview" (TDB-0).
 
+**Amendment, 2026-11-17 (teacher Timetable page, Step 1).** Steps 1 to 4 and 6 still hold, but the
+dashboard no longer lists the rows (steps 5 and 7 are replaced). The rows feed a single Timetable
+card in the same place, which links to the teacher's Timetable page (`core:my-timetable`, a day view
+with a date strip) and is shown every day. Its text is a count, never a list:
+- rows exist: "N periods today" ("1 period today");
+- a timetable exists and the teacher has no row: "No periods for you today";
+- no timetable applies and the teacher's own year is closed today: "No school today";
+- otherwise (no timetable configured): "No timetable for today".
+Still no clock times, free periods or placeholders, on the card or on the Timetable page.
+
 ### D11 Product scope
 
 This ADR brings a **narrow** timetable capability into scope: office configuration of periods and

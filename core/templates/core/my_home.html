@@ -35,25 +35,15 @@
 {% endif %}
 </section>
 
-{% if timetable_rows is not None %}
-<section aria-labelledby="day-timetable">
-<h2 class="erp-section-title" id="day-timetable">Today's timetable</h2>
-{% if timetable_rows %}
-<ul class="erp-day-rows erp-assign-rows" aria-labelledby="day-timetable">
-{% for row in timetable_rows %}
-<li class="erp-assign-row">
-    <span class="erp-day-main">
-        <span class="erp-day-title">{{ row.period }} &middot; {{ row.section }} &middot; {{ row.subject }}</span>
+{# Timetable card (ADR 0021 D10, amended 2026-11-17): a count of today's periods, linking to the Timetable page; shown every day. #}
+<a class="erp-tt-entry" href="{% url 'core:my-timetable' %}">
+    <span class="erp-tt-entry-icon">{% include "partials/_tab_icon.html" with name="today" %}</span>
+    <span class="erp-tt-entry-text">
+        <span class="erp-tt-entry-title">Timetable</span>
+        <span class="erp-tt-entry-meta">{{ timetable_card.meta }}</span>
     </span>
-</li>
-{% endfor %}
-</ul>
-{% else %}
-<p class="erp-assign-empty">No periods scheduled for you today.</p>
-{% endif %}
-</section>
-<a class="erp-tt-open" href="{% url 'core:my-timetable' %}">Full timetable ›</a>
-{% endif %}
+    <span class="erp-tt-entry-chevron" aria-hidden="true">&rsaquo;</span>
+</a>
 
 <section aria-labelledby="day-assignments">
 <h2 class="erp-section-title" id="day-assignments">Teaching assignments</h2>

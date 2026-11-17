@@ -190,7 +190,7 @@ def teacher_timetable_on(assignments, on_date, year_is_instructional):
 
 
 def todays_teacher_timetable(assignments, today, year_is_instructional):
-    """Rows for the Teacher dashboard's "Today's timetable" section (ADR 0021 D10)."""
+    """Today's rows for the Teacher dashboard's Timetable card (ADR 0021 D10, amended 2026-11-17)."""
     return teacher_timetable_on(assignments, today, year_is_instructional)
 
 

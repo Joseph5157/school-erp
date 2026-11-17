@@ -1083,6 +1083,21 @@ def _attendance_tile(attendance):
     }
 
 
+def _timetable_card(rows, school_day):
+    """My day Timetable card text (ADR 0021 D10, amended 2026-11-17): a count, never a list.
+
+    `rows` is today's teacher timetable (None when no timetable applies today). `school_day`
+    is the header status (False only when the teacher's own year is closed today).
+    """
+    if rows:
+        return {"meta": f"{len(rows)} period{'s' if len(rows) != 1 else ''} today"}
+    if rows == []:
+        return {"meta": "No periods for you today"}
+    if school_day is False:
+        return {"meta": "No school today"}
+    return {"meta": "No timetable for today"}
+
+
 def _marks_tile(assessments, has_subject_duty):
     """Today-overview Marks tile. The summed count is marks, never students."""
     if assessments:
@@ -1215,6 +1230,7 @@ def my_home(request):
             ),
             "school_day": school_day,
             "timetable_rows": timetable_rows,
+            "timetable_card": _timetable_card(timetable_rows, school_day),
             "attendance": attendance,
             "attendance_tile": _attendance_tile(attendance),
             "attendance_rows": [r for r in attendance if r["state"] != "NOT_INSTRUCTIONAL"],
