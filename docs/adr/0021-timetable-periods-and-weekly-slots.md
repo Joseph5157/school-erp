@@ -236,6 +236,14 @@ subject and its teacher, derived on the date shown from the offering and Section
 effective that day (ADR 0018), or "No teacher assigned". The view writes nothing and the audience
 is unchanged (`teacher_required`). Still no clock times, free periods or placeholders.
 
+**Amendment, 2026-11-17 (one Academic Year per date).** When Academic Years overlap, only the
+newest one that has started on a date shows a timetable on that date (the same choice as
+`current_academic_year`): once a new year starts, the old year's periods are no longer shown, and
+that newest year's calendar alone decides whether the day is a school day. This replaces the earlier
+rule that every year holding effective slots was judged by its own calendar and listed together.
+Archived Sections are left out of the Timetable page's class picker lists; a link to one still opens
+its timetable.
+
 ### D11 Product scope
 
 This ADR brings a **narrow** timetable capability into scope: office configuration of periods and

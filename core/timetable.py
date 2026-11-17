@@ -145,6 +145,20 @@ def ensure_no_clash(slot):
     raise ValidationError(lines)
 
 
+def timetable_year(on_date):
+    """The one Academic Year whose timetable shows on `on_date`: the newest that has started.
+
+    Once a new Academic Year starts, the old year's timetable is no longer shown, even if the old
+    year's dates overlap (user rule 2026-11-17; same choice as `current_academic_year`). None when
+    no Academic Year holds the date.
+    """
+    return (
+        AcademicYear.objects.filter(start_date__lte=on_date, end_date__gte=on_date)
+        .order_by("-start_date")
+        .first()
+    )
+
+
 def teacher_timetable_on(assignments, on_date, year_is_instructional):
     """Rows for the teacher's timetable on `on_date` (ADR 0021 D10).
 
@@ -158,12 +172,16 @@ def teacher_timetable_on(assignments, on_date, year_is_instructional):
     state), ordered by period sequence. Never stores or guesses a teacher, and never
     invents free periods or placeholders.
     """
-    years = AcademicYear.objects.filter(
-        pk__in=TimetableSlot.objects.effective_on(on_date).values("period__academic_year_id")
-    )
-    open_year_ids = {year.pk for year in years if year_is_instructional(year)}
-    if not open_year_ids:
+    year = timetable_year(on_date)
+    if (
+        year is None
+        or not TimetableSlot.objects.effective_on(on_date)
+        .filter(period__academic_year=year)
+        .exists()
+        or not year_is_instructional(year)
+    ):
         return None
+    open_year_ids = {year.pk}
     pairs = {(row.offering_id, row.section_id) for row in assignments}
     if not pairs:
         return []
@@ -308,10 +326,10 @@ def _assemble_week(any_date, today, rows_on, year_is_instructional, key_of):
         if not is_open:
             # Closed only when no Academic Year holding the day is open: a school day before the
             # timetable starts is an open day with blank cells, not "No school".
-            holding = AcademicYear.objects.filter(start_date__lte=day, end_date__gte=day)
-            is_open = any(year_is_instructional(year, day) for year in holding)
+            year = timetable_year(day)
+            is_open = year is not None and year_is_instructional(year, day)
             if not is_open:
-                label = "Holiday" if holding else "No school"
+                label = "Holiday" if year is not None else "No school"
         days.append(
             {
                 "date": day,
@@ -357,13 +375,15 @@ def class_timetable_on(section, on_date, year_is_instructional):
     instructional day. Rows follow period sequence. The teacher is the holder of the offering +
     Section assignment effective that day (ADR 0018 D9), or None.
     """
-    slots_today = TimetableSlot.objects.effective_on(on_date).filter(section=section)
-    years = AcademicYear.objects.filter(
-        pk__in=slots_today.values("period__academic_year_id")
-    )
-    open_year_ids = {year.pk for year in years if year_is_instructional(year)}
-    if not open_year_ids:
+    year = timetable_year(on_date)
+    if year is None:
         return None
+    slots_today = TimetableSlot.objects.effective_on(on_date).filter(
+        section=section, period__academic_year=year
+    )
+    if not slots_today.exists() or not year_is_instructional(year):
+        return None
+    open_year_ids = {year.pk}
     slots = list(
         slots_today.filter(
             weekday=on_date.weekday(), period__academic_year_id__in=open_year_ids
@@ -443,14 +463,22 @@ def timetable_picker(user, dates):
             class_teacher[row.section_id] = row.section
         for row in current_teacher_assignments(user, day).select_related("section__class_grade"):
             subject[row.section_id] = row.section
-        listed_ids.update(
-            TimetableSlot.objects.effective_on(day).values_list("section_id", flat=True)
-        )
-    mine = ordered(class_teacher.values())
-    mine += ordered(s for pk, s in subject.items() if pk not in class_teacher)
+        year = timetable_year(day)
+        if year is not None:
+            listed_ids.update(
+                TimetableSlot.objects.effective_on(day)
+                .filter(period__academic_year=year)
+                .values_list("section_id", flat=True)
+            )
+    # Archived classes are no longer in use, so the sheet leaves them out; a link still opens one.
+    mine = ordered(s for s in class_teacher.values() if s.archived_at is None)
+    mine += ordered(
+        s for pk, s in subject.items() if pk not in class_teacher and s.archived_at is None
+    )
 
     grades = []
-    for section in ordered(Section.objects.filter(pk__in=listed_ids).select_related("class_grade")):
+    listed = Section.objects.active().filter(pk__in=listed_ids).select_related("class_grade")
+    for section in ordered(listed):
         if not grades or grades[-1]["grade"].pk != section.class_grade_id:
             grades.append({"grade": section.class_grade, "sections": []})
         grades[-1]["sections"].append(section)

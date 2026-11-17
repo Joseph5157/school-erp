@@ -88,14 +88,14 @@ class ClassTimetableTests(TimetableDashboardFixture, TestCase):
         self.slot(
             period=period, offering=offering, section=self.six_b, start_date=date(2026, 10, 1)
         )
-        rows = self.day_rows(self.six_a)
-        self.assertEqual([r["subject"] for r in rows], ["Mathematics"])
-        self.assertEqual([r["subject"] for r in self.day_rows(self.six_b)], ["Drawing"])
-        # 6-A's own year is closed that Monday; only the other year is open: nothing to show.
-        SchoolCalendarDay.objects.create(
-            academic_year=self.year, date=MONDAY, is_instructional=False, label="Holiday"
-        )
+        # The newer year has started (1 Oct), so only its timetable shows (user rule 2026-11-17):
+        # 6-A's older-year slots are gone, 6-B's newer-year slot shows.
         self.assertIsNone(self.day_rows(self.six_a))
+        self.assertEqual([r["subject"] for r in self.day_rows(self.six_b)], ["Drawing"])
+        # Before the newer year starts, the older year's timetable still shows.
+        self.assertEqual(
+            [r["subject"] for r in self.day_rows(self.six_a, date(2026, 9, 28))], ["Mathematics"]
+        )
 
     def test_class_week_teacher_changes_mid_week(self):
         self.assign_between(self.rao, self.maths, self.six_a, date(2026, 6, 1), date(2026, 10, 13))
