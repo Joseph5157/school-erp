@@ -8,6 +8,8 @@
   --erp-paper: #f5f6f3;
   --erp-surface: #ffffff;
   --erp-rule: #dde1dc;
+  /* Input, select and checkbox edges: 3.43:1 on white, 3.16:1 on paper, so a field can be seen (WCAG 1.4.11; audit 12 A11Y-02). */
+  --erp-control-border: #848d84;
 
   /* Legacy accent trio: kept as plain hex for tests; rules use brand, action and ok below. */
   --erp-accent: #0e6b66;
@@ -241,6 +243,9 @@ fieldset:disabled .btn {
   outline: 3px solid var(--erp-focus-color);
   outline-offset: 2px;
 }
+/* Bootstrap fields outside .erp-field (toolbars, login, password) get the same visible edge. Invalid,
+   checked and focus states keep their own colours because those rules are more specific. */
+.form-control, .form-select, .form-check-input { border-color: var(--erp-control-border); }
 .form-control:focus, .form-select:focus, .btn:focus-visible {
   border-color: var(--erp-focus-color);
   box-shadow: var(--erp-focus-ring);
@@ -914,7 +919,7 @@ body.has-tabbar .erp-messages {
   max-width: 100%;
   min-height: 2.75rem;
   padding: .55rem .7rem;
-  border: 1px solid #aeb6ae;
+  border: 1px solid var(--erp-control-border);
   border-radius: var(--erp-radius-sm);
   background: var(--erp-surface);
   color: var(--erp-ink);
