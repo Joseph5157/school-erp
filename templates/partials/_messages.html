@@ -1,10 +1,10 @@
-{% if messages %}
-<div class="erp-messages" role="status" aria-live="polite">
+{% if messages %}{# First in <main>, so its Dismiss buttons come before the page in Tab order; CSS still pins it to a screen edge. #}
+<section class="erp-messages" aria-label="Notifications">
     {% for message in messages %}
-    <div class="alert alert-{% if message.level_tag == 'error' %}danger{% elif message.level_tag == 'debug' %}secondary{% else %}{{ message.level_tag }}{% endif %} alert-dismissible fade show"{% if message.level_tag == 'success' or message.level_tag == 'info' %} data-erp-autohide{% endif %}>
+    <div class="alert alert-{% if message.level_tag == 'error' %}danger{% elif message.level_tag == 'debug' %}secondary{% else %}{{ message.level_tag }}{% endif %} alert-dismissible fade show" role="{% if message.level_tag == 'error' %}alert{% else %}status{% endif %}"{% if message.level_tag == 'success' or message.level_tag == 'info' %} data-erp-autohide{% endif %}>
         {{ message }}
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Dismiss"></button>
     </div>
     {% endfor %}
-</div>
+</section>
 {% endif %}
