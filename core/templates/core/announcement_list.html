@@ -7,12 +7,13 @@
 {% else %}
 {% include "partials/_page_header.html" with eyebrow="Daily" title="Announcements" purpose="Notices appear in the guardian portal as soon as they are published. Sending them on WhatsApp is a separate step on each notice." only %}
 {% endif %}
-<form method="get" class="erp-toolbar" role="search" aria-label="Filter announcements">
+<search aria-label="Filter announcements">
+<form method="get" action="{% url 'core:announcement-list' %}" class="erp-toolbar">
     {% if table.sort_param %}<input type="hidden" name="sort" value="{{ table.sort_param }}">{% endif %}
     <div class="row g-2 align-items-end">
         <div class="col-12 col-md-5 col-lg-4">
             <label for="announcement-search" class="form-label">Search notices</label>
-            <input type="search" id="announcement-search" name="q" value="{{ query }}" class="form-control" placeholder="Title or message">
+            <input type="search" id="announcement-search" name="q" value="{{ query }}" class="form-control" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="search" placeholder="Title or message">
         </div>
         <div class="col-6 col-md-3 col-lg-2">
             <label for="announcement-status" class="form-label">Status</label>
@@ -38,6 +39,7 @@
         {% endif %}
     </div>
 </form>
+</search>
 {# A4 portrait is narrower than the md breakpoint, so printing must pick the table explicitly. #}
 <div class="d-none d-md-block d-print-block">
 <div class="erp-panel">

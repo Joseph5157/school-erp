@@ -1,9 +1,12 @@
 """Phase 7 Gate 1 views: guardian consent and the ASSIST To send page (ADR 0015)."""
 
+from urllib.parse import urlencode
+
 from django.conf import settings
 from django.contrib import messages
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
@@ -36,6 +39,24 @@ def guardian_consent_record(request, pk):
     else:
         messages.error(request, "Consent was not recorded. Choose a decision and how it was given.")
     return redirect("core:guardian-detail", pk=pk)
+
+
+def _back_to_queue(request):
+    """Redirect to the queue page the action came from (audit 13 SF-06).
+
+    Only a whole ASCII page number above 1 and a whitelisted sort token are carried; the paginator
+    clamps a page that the action just emptied.
+    """
+    url = reverse("core:notifications-to-send")
+    params = {}
+    page = request.POST.get("page", "")
+    # isascii(): "²".isdigit() is True but int("²") raises; the length cap keeps int() cheap.
+    if page.isascii() and page.isdigit() and len(page) <= 6 and int(page) > 1:
+        params["page"] = page
+    sort = request.POST.get("sort", "")
+    if sort.lstrip("-") in {column.key for column in QUEUE_COLUMNS if column.sortable}:
+        params["sort"] = sort
+    return redirect(f"{url}?{urlencode(params)}" if params else url)
 
 
 @administrator_required("core.send_notification")
@@ -82,7 +103,7 @@ def notification_open_whatsapp(request, pk):
         result, link = notifications.open_whatsapp(notification)
     except notifications.NotificationError as problem:
         messages.error(request, str(problem))
-        return redirect("core:notifications-to-send")
+        return _back_to_queue(request)
     if link is None:
         if result.status == Notification.Status.DISMISSED:
             messages.info(
@@ -96,7 +117,7 @@ def notification_open_whatsapp(request, pk):
                 "The guardian has opted out, so this message is recorded as not sent "
                 "and WhatsApp was not opened.",
             )
-        return redirect("core:notifications-to-send")
+        return _back_to_queue(request)
     return HttpResponseRedirect(link)
 
 
@@ -121,7 +142,7 @@ def notification_mark_sent(request, pk):
             messages.info(
                 request, "The guardian has opted out, so this message is recorded as not sent."
             )
-    return redirect("core:notifications-to-send")
+    return _back_to_queue(request)
 
 
 @administrator_required("core.send_notification")
@@ -134,4 +155,4 @@ def notification_dismiss(request, pk):
         messages.error(request, str(problem))
     else:
         messages.info(request, "Message dismissed. It will not be sent.")
-    return redirect("core:notifications-to-send")
+    return _back_to_queue(request)

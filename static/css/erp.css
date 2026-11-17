@@ -1870,6 +1870,7 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
 .erp-panel > .erp-table-scroll { border-radius: 0; scrollbar-gutter: auto; }
 
 /* Toolbar: filter strip above a data table. */
+search { display: block; }  /* the filter landmark around each toolbar form; block in browsers that predate it */
 .erp-toolbar {
   margin-bottom: var(--erp-space-3); padding: var(--erp-space-3) var(--erp-space-4);
   background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);

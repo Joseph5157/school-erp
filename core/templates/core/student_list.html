@@ -2,12 +2,13 @@
 {% block title %}Students{% endblock %}
 {% block content %}
 {% if can_see_guardians %}{% include "partials/_page_header.html" with eyebrow="People" title="Students" purpose="Search by student or parent name, email or phone; filter by class and status." only %}{% else %}{% include "partials/_page_header.html" with eyebrow="People" title="Students" purpose="Search by student name, email or phone; filter by class and status." only %}{% endif %}
-<form method="get" class="erp-toolbar" role="search" aria-label="Filter students">
+<search aria-label="Filter students">
+<form method="get" action="{% url 'core:student-list' %}" class="erp-toolbar">
     {% if table.sort_param %}<input type="hidden" name="sort" value="{{ table.sort_param }}">{% endif %}
     <div class="row g-2 align-items-end">
         <div class="col-12 col-md-5 col-lg-4">
             <label for="student-search" class="form-label">Search students</label>
-            <input type="search" id="student-search" name="q" value="{{ query }}" class="form-control" placeholder="{% if can_see_guardians %}Student or parent name, email, or phone{% else %}Student name, email, or phone{% endif %}">
+            <input type="search" id="student-search" name="q" value="{{ query }}" class="form-control" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="search" placeholder="{% if can_see_guardians %}Student or parent name, email, or phone{% else %}Student name, email, or phone{% endif %}">
         </div>
         <div class="col-6 col-md-3 col-lg-2">
             <label for="student-status" class="form-label">Status</label>
@@ -44,6 +45,7 @@
         {% endif %}
     </div>
 </form>
+</search>
 <nav class="erp-chips mb-3" aria-label="Student quick filters">
     {% for chip in chips %}
     <a href="{{ chip.url }}"{% if chip.active %} class="active" aria-current="page"{% endif %}>{{ chip.label }}</a>

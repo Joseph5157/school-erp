@@ -33,7 +33,8 @@ class AdminDesktopD0Tests(AuthorizationClientsMixin, TestCase):
 
     def test_student_filters_render_as_a_toolbar(self):
         response = self.get("core:student-list")
-        self.assertContains(response, 'class="erp-toolbar" role="search"')
+        self.assertContains(response, '<search aria-label="Filter students">')
+        self.assertContains(response, 'class="erp-toolbar">')
 
     def test_year_list_action_lives_in_the_page_header(self):
         response = self.get("core:academic-year-list")
