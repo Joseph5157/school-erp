@@ -73,8 +73,10 @@ class PortalHomeTests(PortalFixture, TestCase):
     def test_no_database_ids_and_no_excluded_features(self):
         page = self.portal.get(reverse("portal:home")).content.decode().lower()
         self.assertNotIn(f"/students/{self.asha.pk}/", page)
-        # Random CSRF tokens can spell "fee" or "pdf" by chance; check the page without them.
+        # Random CSRF tokens and public UUIDs can spell "fee" by chance; check the page
+        # without them.
         page = re.sub(r'name="csrfmiddlewaretoken" value="[^"]*"', "", page)
+        page = re.sub(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", "", page)
         for word in ("fee", "announcement", "pdf", "download"):
             self.assertNotIn(word, page)
 
