@@ -206,10 +206,16 @@ class TimetablePageTests(TimetableDashboardFixture, TestCase):
         self.assertEqual(self.get(before, iyer).context["rows"], [])
 
     def test_other_teachers_slots_never_appear(self):
+        self.assign(self.rao, self.maths, self.six_a)
         self.assign(self.iyer, self.maths, self.six_b)
-        self.slot(section=self.six_b)
+        self.slot(section=self.six_a)
+        self.slot(section=self.six_b, period=self.p2)
         page = self.get()
-        self.assertEqual(page.context["rows"], [])
+        self.assertEqual(
+            [(r["period"], str(r["section"])) for r in page.context["rows"]],
+            [("P1", "Grade 6 - A")],
+        )
+        self.assertContains(page, "Grade 6 - A")
         self.assertNotContains(page, "Grade 6 - B")
 
     def test_non_teacher_gets_403(self):
