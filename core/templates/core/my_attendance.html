@@ -3,6 +3,7 @@
 {% block tabbar_class %}{% if not capture_form.enrollments %}{{ block.super }}{% endif %}{% endblock %}
 {% block tabbar %}{% if not capture_form.enrollments %}{{ block.super }}{% endif %}{% endblock %}
 {% block content %}
+<div class="erp-teacher-attendance-page">
 <p class="mb-2"><a href="{% url 'core:my-home' %}">‹ My day</a></p>
 {% with header_line=today|date:"l, j F Y"|add:" · "|add:year.name %}
 {% if register.is_submitted %}
@@ -36,7 +37,7 @@
     </div>
     {% include "core/_attendance_entries.html" %}
 {% else %}
-    <p class="text-muted">Unmarked Students are <strong>not</strong> treated as absent.</p>
+    <p class="text-muted erp-attendance-guidance">Unmarked Students are <strong>not</strong> treated as absent.</p>
     {% if capture_form.enrollments %}
     <form method="post" id="attendance-capture" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
         {% csrf_token %}
@@ -46,5 +47,6 @@
     {% include "partials/_empty.html" with text="No Students are enrolled in this Section today." %}
     {% endif %}
 {% endif %}
+</div>
 {% endblock %}
 {% block extra_js %}{% if autosave_url %}<script src="{% static 'vendor/htmx/2.0.4/htmx.min.js' %}" defer></script>{% endif %}{% endblock %}

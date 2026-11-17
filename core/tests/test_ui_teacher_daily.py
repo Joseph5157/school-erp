@@ -85,6 +85,7 @@ class CapturePartialTests(U2Fixture, TestCase):
     def test_static_counts(self):
         self.draft(asha="PRESENT", ravi="ABSENT")
         page = self.teacher.get(self.url)
+        self.assertContains(page, 'class="erp-count-label"', count=4)
         self.assertContains(page, 'data-erp-count="unmarked">1<')
         self.assertContains(page, 'data-erp-count="present">1<')
         self.assertContains(page, 'data-erp-count="absent">1<')
@@ -125,6 +126,12 @@ class CapturePartialTests(U2Fixture, TestCase):
 
 
 class TakeAttendancePageTests(U2Fixture, TestCase):
+    def test_draft_has_teacher_attendance_density_scope(self):
+        self.draft()
+        page = self.teacher.get(self.url)
+        self.assertContains(page, 'class="erp-teacher-attendance-page"')
+        self.assertContains(page, 'class="text-muted erp-attendance-guidance"')
+
     def test_tab_bar_hidden_only_while_draft_open(self):
         start = self.teacher.get(self.url)
         self.assertContains(start, "Start today's register")

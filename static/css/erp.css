@@ -1104,6 +1104,74 @@ body.has-tabbar .erp-messages {
 @media (max-width: 991.98px) {
   body:has(.erp-actionbar) .erp-messages { bottom: calc(7rem + env(safe-area-inset-bottom, 0px)); }
 }
+/* Teacher attendance on phones: keep the roster in the first view. The office register uses the
+   same partial, so every density change is scoped to this page rather than changing it globally. */
+@media (max-width: 575.98px) {
+  .erp-teacher-attendance-page > .erp-page-header {
+    margin-bottom: var(--erp-space-3);
+    padding-bottom: var(--erp-space-3);
+  }
+  .erp-teacher-attendance-page .erp-page-header-copy {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: var(--erp-space-2);
+    align-items: center;
+  }
+  .erp-teacher-attendance-page .erp-page-eyebrow,
+  .erp-teacher-attendance-page .erp-page-purpose { grid-column: 1 / -1; }
+  .erp-teacher-attendance-page .erp-page-title { grid-column: 1; grid-row: 2; }
+  .erp-teacher-attendance-page .erp-page-header-meta {
+    grid-column: 2;
+    grid-row: 2;
+    margin-top: 0 !important;
+  }
+  .erp-teacher-attendance-page .erp-page-purpose { margin-top: var(--erp-space-1); }
+  .erp-attendance-guidance {
+    margin-bottom: var(--erp-space-2);
+    font-size: var(--erp-text-sm);
+  }
+  .erp-teacher-attendance-page .erp-countbar {
+    margin-bottom: var(--erp-space-2);
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  .erp-teacher-attendance-page .erp-count-tabs {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--erp-space-1);
+    padding-block: 2px;
+  }
+  .erp-teacher-attendance-page .erp-count-tabs [data-erp-filter] {
+    display: grid;
+    place-content: center;
+    row-gap: 1px;
+    min-width: 0;
+    min-height: 2.75rem;
+    padding: var(--erp-space-1);
+    font-size: var(--erp-text-sm);
+    line-height: 1.1;
+  }
+  .erp-teacher-attendance-page .erp-count-label,
+  .erp-teacher-attendance-page .erp-count-tabs [data-erp-count] { display: block; }
+  .erp-teacher-attendance-page .erp-count-tabs [data-erp-count] { font-size: var(--erp-text-xs); }
+  .erp-teacher-attendance-page .erp-mark-present {
+    grid-column: 1 / -1;
+    margin-left: 0;
+  }
+  .erp-teacher-attendance-page .erp-roster-row { padding: var(--erp-space-2); }
+  .erp-teacher-attendance-page .erp-row-status:empty { display: none; }
+  .erp-teacher-attendance-page .erp-actionbar {
+    padding-top: var(--erp-space-2);
+    padding-bottom: calc(var(--erp-space-2) + env(safe-area-inset-bottom, 0px));
+  }
+  .erp-teacher-attendance-page .erp-actionbar .btn-outline-primary { flex: 2 1 0; }
+  .erp-teacher-attendance-page .erp-actionbar .btn-primary {
+    flex: 3 1 0;
+    white-space: nowrap;
+  }
+}
 @media (min-width: 576px) {
   .erp-actionbar-status { flex: 1 1 auto; }
   .erp-actionbar .btn { flex: 0 0 auto; }

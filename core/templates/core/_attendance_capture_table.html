@@ -7,10 +7,10 @@ With autosave_url (teacher page) each row also saves its own draft over HTMX; th
     <div class="erp-countbar">
         <p class="erp-count-line" data-erp-static-counts>{{ counts.all }} student{{ counts.all|pluralize }} &middot; {{ counts.present }} present &middot; {{ counts.absent }} absent &middot; <span class="erp-count-unmarked{% if counts.unmarked %} is-warn{% endif %}">{{ counts.unmarked }} unmarked</span></p>
         <div class="erp-count-tabs" data-erp-tabs hidden>
-            <button type="button" data-erp-filter="all" aria-pressed="true">All <span id="erp-count-all" data-erp-count="all">{{ counts.all }}</span></button>
-            <button type="button" data-erp-filter="unmarked" class="erp-count-unmarked{% if counts.unmarked %} is-warn{% endif %}" aria-pressed="false">Unmarked <span id="erp-count-unmarked" data-erp-count="unmarked">{{ counts.unmarked }}</span></button>
-            <button type="button" data-erp-filter="present" aria-pressed="false">Present <span id="erp-count-present" data-erp-count="present">{{ counts.present }}</span></button>
-            <button type="button" data-erp-filter="absent" aria-pressed="false">Absent <span id="erp-count-absent" data-erp-count="absent">{{ counts.absent }}</span></button>
+            <button type="button" data-erp-filter="all" aria-pressed="true"><span class="erp-count-label">All</span><span id="erp-count-all" data-erp-count="all">{{ counts.all }}</span></button>
+            <button type="button" data-erp-filter="unmarked" class="erp-count-unmarked{% if counts.unmarked %} is-warn{% endif %}" aria-pressed="false"><span class="erp-count-label">Unmarked</span><span id="erp-count-unmarked" data-erp-count="unmarked">{{ counts.unmarked }}</span></button>
+            <button type="button" data-erp-filter="present" aria-pressed="false"><span class="erp-count-label">Present</span><span id="erp-count-present" data-erp-count="present">{{ counts.present }}</span></button>
+            <button type="button" data-erp-filter="absent" aria-pressed="false"><span class="erp-count-label">Absent</span><span id="erp-count-absent" data-erp-count="absent">{{ counts.absent }}</span></button>
             <button type="button" class="btn btn-outline-secondary btn-sm erp-mark-present" data-erp-mark-present{% if autosave_url and bulk_present_url %} data-erp-bulk-url="{{ bulk_present_url }}"{% endif %}>Mark unanswered as present</button>
         </div>
     </div>
