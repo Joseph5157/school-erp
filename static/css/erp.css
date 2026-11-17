@@ -2752,6 +2752,49 @@ body:has(.erp-dialog[open]) { overflow: hidden; }
   color: var(--erp-action-strong); font-weight: 700;
 }
 
+/* Teacher timetable Day | Week toggle and week grid (ADR 0021 D10, amended 2026-11-17): blank cells stay empty. */
+.erp-tt-toggle {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin-block-end: var(--erp-space-3);
+  background: var(--erp-rule); border-radius: 12px;
+}
+.erp-tt-toggle > a {
+  display: flex; align-items: center; justify-content: center; min-height: 44px; border-radius: 9px;
+  color: var(--erp-ink-soft); font-weight: 700; text-decoration: none;
+}
+.erp-tt-toggle > a.is-active { background: var(--erp-surface); color: var(--erp-action-strong); box-shadow: 0 1px 2px rgb(0 0 0 / .12); }
+.erp-tt-weekhead { display: flex; align-items: center; gap: var(--erp-space-2); margin-block-end: var(--erp-space-3); }
+.erp-tt-arrow {
+  flex: 0 0 44px; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px;
+  border: 1px solid var(--erp-rule); border-radius: 50%; background: var(--erp-surface);
+  color: var(--erp-ink); font-size: 1.3rem; text-decoration: none;
+}
+.erp-tt-arrow.is-off { visibility: hidden; }
+.erp-tt-weektitle { flex: 1; min-width: 0; text-align: center; }
+.erp-tt-weekrange { margin: 0; font-weight: 800; }
+.erp-tt-weeknow { margin: 0; font-size: .82rem; color: var(--erp-action-strong); }
+.erp-tt-week { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 4px; margin-inline: -4px; }
+.erp-tt-week th, .erp-tt-week td { padding: 0; border: 0; text-align: center; vertical-align: middle; }
+.erp-tt-week thead td, .erp-tt-week tbody th { width: 1.5rem; }
+.erp-tt-week tbody th { font-weight: 700; color: var(--erp-ink-soft); }
+.erp-tt-week-day { padding-block: 6px !important; border-radius: 10px; font-weight: 800; line-height: 1.2; }
+.erp-tt-week-day > span { display: block; }
+.erp-tt-week-day > span:first-child { font-size: .78rem; font-weight: 700; color: var(--erp-ink-soft); }
+.erp-tt-week-day.is-today { background: var(--erp-action); color: #fff; }
+.erp-tt-week-day.is-today > span:first-child { color: #fff; }
+.erp-tt-week-label { margin-top: 2px; font-size: .62rem; font-weight: 700; overflow-wrap: break-word; }
+.erp-tt-week td.is-today { background: var(--erp-action-wash); border-radius: 10px; }
+.erp-tt-week .is-closed { background: var(--erp-rule); color: var(--erp-ink-soft); border-radius: 10px; }
+.erp-tt-week td > a {
+  display: flex; align-items: center; justify-content: center; min-height: 44px; padding-inline: 2px;
+  background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: 10px;
+  color: var(--erp-ink); font-size: .82rem; font-weight: 800; text-decoration: none; overflow-wrap: break-word;
+}
+.erp-tt-week td > a + a { margin-top: 4px; }
+.erp-tt-week td > a:hover { border-color: var(--erp-action); }
+.erp-tt-hint { margin-block: var(--erp-space-2); font-size: .88rem; color: var(--erp-ink-soft); }
+.erp-tt-key { display: grid; gap: 4px; margin: 0 0 var(--erp-space-4); padding: 0; list-style: none; font-size: .88rem; }
+.erp-tt-key-short { display: inline-block; min-width: 3.2rem; font-weight: 800; }
+
 /* UI-D1-4B: the register detail context line (Section name + date) wraps a long unbroken name instead of being clipped. */
 .erp-attendance-detail-page .erp-page-header-copy { min-width: 0; }
 .erp-attendance-detail-page .erp-page-purpose { overflow-wrap: break-word; }

@@ -1273,31 +1273,36 @@ def my_home(request):
 def my_timetable(request):
     today = business_today()
     selected = timetable.parse_timetable_date(request.GET.get("date"), today)
-    assignments = list(
-        current_teacher_assignments(request.user, selected).select_related(
-            "section__class_grade", "offering__subject", "offering__academic_year"
-        )
-    )
     instructional = {}
 
-    def year_is_instructional(year):
-        if year.pk not in instructional:
-            instructional[year.pk] = year.is_instructional_day(selected)
-        return instructional[year.pk]
+    def year_is_instructional(year, day=selected):
+        if (year.pk, day) not in instructional:
+            instructional[(year.pk, day)] = year.is_instructional_day(day)
+        return instructional[(year.pk, day)]
 
-    return render(
-        request,
-        "core/my_timetable.html",
-        {
-            "selected": selected,
-            "today": today,
-            "is_today": selected == today,
-            "strip": timetable.date_strip(selected, today),
-            "rows": timetable.teacher_timetable_on(
-                assignments, selected, year_is_instructional
-            ),
-        },
-    )
+    context = {"selected": selected, "today": today, "is_today": selected == today}
+    if request.GET.get("view") == "week":
+        window = timedelta(days=timetable.TIMETABLE_DATE_WINDOW_DAYS)
+        previous_week = selected - timedelta(days=7)
+        next_week = selected + timedelta(days=7)
+        context.update(
+            view="week",
+            week=timetable.teacher_week(request.user, selected, today, year_is_instructional),
+            prev_week_date=previous_week if previous_week >= today - window else None,
+            next_week_date=next_week if next_week <= today + window else None,
+        )
+    else:
+        assignments = list(
+            current_teacher_assignments(request.user, selected).select_related(
+                "section__class_grade", "offering__subject", "offering__academic_year"
+            )
+        )
+        context.update(
+            view="day",
+            strip=timetable.date_strip(selected, today),
+            rows=timetable.teacher_timetable_on(assignments, selected, year_is_instructional),
+        )
+    return render(request, "core/my_timetable.html", context)
 
 
 # --- Phase 5 Gate 3: class teacher attendance (ADR 0012 D4, D5, D7) -------

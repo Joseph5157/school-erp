@@ -389,3 +389,145 @@ class TeacherWeekTests(TimetableDashboardFixture, TestCase):
         with CaptureQueriesContext(connection) as large:
             self.week()
         self.assertEqual(len(large), len(small))
+
+
+class TimetableWeekPageTests(TimetableDashboardFixture, TestCase):
+    """/my/timetable/?view=week (fixture business date is Monday 12 Oct 2026)."""
+
+    def setUp(self):
+        super().setUp()
+        self.url = reverse("core:my-timetable")
+
+    def get(self, params=None, client=None):
+        return (client or self.teacher).get(self.url, params or {})
+
+    def week_page(self, date_value=None, client=None):
+        params = {"view": "week"}
+        if date_value is not None:
+            params["date"] = date_value
+        return self.get(params, client)
+
+    def test_toggle_links_keep_the_date(self):
+        day = self.get({"date": "2026-10-14"})
+        self.assertEqual(day.context["view"], "day")
+        self.assertContains(day, f'href="{self.url}?view=week&amp;date=2026-10-14"')
+        week = self.week_page("2026-10-14")
+        self.assertEqual(week.context["view"], "week")
+        self.assertContains(week, f'href="{self.url}?date=2026-10-14"')
+        html = week.content.decode()
+        current = re.search(r'<a[^>]*aria-current="page"[^>]*>\s*Week\s*</a>', html)
+        self.assertIsNotNone(current)
+
+    def test_unknown_view_means_day(self):
+        page = self.get({"view": "month"})
+        self.assertEqual(page.context["view"], "day")
+        self.assertContains(page, 'aria-label="Pick a day"')
+
+    def test_week_has_no_date_line_and_no_strip(self):
+        self.assign(self.rao, self.maths, self.six_a)
+        self.slot()
+        page = self.week_page()
+        self.assertNotContains(page, "Monday, 12 October 2026")
+        self.assertNotContains(page, 'aria-label="Pick a day"')
+        self.assertContains(page, "12 – 16 Oct 2026")
+        self.assertContains(page, "This week")
+        self.assertEqual(page.content.decode().count("<h1"), 1)
+
+    def test_other_week_has_no_this_week_line(self):
+        page = self.week_page("2026-10-21")
+        self.assertContains(page, "19 – 23 Oct 2026")
+        self.assertNotContains(page, "This week")
+
+    def test_arrows_move_seven_days(self):
+        page = self.week_page("2026-10-14")
+        self.assertContains(
+            page, f'href="{self.url}?view=week&amp;date=2026-10-07" aria-label="Previous week"'
+        )
+        self.assertContains(
+            page, f'href="{self.url}?view=week&amp;date=2026-10-21" aria-label="Next week"'
+        )
+
+    def test_arrows_stop_at_the_window_edges_and_far_dates_load(self):
+        edge = (MONDAY + timedelta(days=366)).isoformat()
+        page = self.week_page(edge)
+        self.assertEqual(page.status_code, 200)
+        self.assertNotContains(page, 'aria-label="Next week"')
+        self.assertContains(page, 'aria-label="Previous week"')
+        edge = (MONDAY - timedelta(days=366)).isoformat()
+        page = self.week_page(edge)
+        self.assertNotContains(page, 'aria-label="Previous week"')
+        for raw in ("abc", "", "9999-12-31", "0001-01-01"):
+            with self.subTest(raw=raw):
+                page = self.week_page(raw)
+                self.assertEqual(page.status_code, 200)
+                self.assertEqual(page.context["week"]["monday"], MONDAY)
+
+    def test_filled_cells_link_to_that_day_with_full_label_and_blank_cells_are_empty(self):
+        self.assign(self.rao, self.maths, self.six_a)
+        self.slot(weekday=1, period=self.p2)           # Tuesday P2
+        self.slot(period=self.p1)                      # Monday P1
+        html = self.week_page().content.decode()
+        self.assertIn(
+            f'<a href="{self.url}?date=2026-10-13" '
+            'aria-label="Grade 6 - A, period 2, Tuesday 13 October">6-A</a>',
+            html,
+        )
+        table = html.split('<table class="erp-keep erp-tt-week"')[1].split("</table>")[0]
+        body = table.split("<tbody>")[1]
+        cells = re.findall(r"<td[^>]*>(.*?)</td>", body, re.S)
+        self.assertEqual(len(cells), 2 * 5)
+        self.assertEqual(sum(1 for c in cells if c.strip()), 2)
+        self.assertTrue(all(c == "" for c in cells if not c.strip()))
+        for word in ("Free", "free", "Break", "Lunch"):
+            self.assertNotIn(word, table)
+
+    def test_key_lists_short_and_full_names(self):
+        self.assign(self.rao, self.maths, self.six_a)
+        self.assign(self.rao, self.maths, self.six_b)
+        self.slot()
+        self.slot(section=self.six_b, period=self.p2)
+        page = self.week_page()
+        self.assertContains(page, "Tap a class to open that day.")
+        html = page.content.decode()
+        key = html.split('class="erp-tt-key"')[1].split("</ul>")[0]
+        self.assertLess(key.index("Grade 6 - A"), key.index("Grade 6 - B"))
+        self.assertIn("6-A", key)
+
+    def test_holiday_header_label(self):
+        self.assign(self.rao, self.maths, self.six_a)
+        for weekday in range(5):
+            self.slot(weekday=weekday)
+        SchoolCalendarDay.objects.create(
+            academic_year=self.year, date=date(2026, 10, 14), is_instructional=False,
+            label="Holiday",
+        )
+        html = self.week_page().content.decode()
+        head = html.split("<thead>")[1].split("</thead>")[0]
+        self.assertRegex(head, r'<th scope="col" class="[^"]*is-closed[^"]*"[^>]*>.*?Holiday')
+
+    def test_empty_week_sentence(self):
+        self.slot()
+        page = self.week_page()
+        self.assertContains(page, "No periods for you this week.")
+        self.assertNotContains(page, "erp-tt-week\"")
+
+    def test_other_teachers_slots_never_appear(self):
+        self.assign(self.rao, self.maths, self.six_a)
+        self.assign(self.iyer, self.maths, self.six_b)
+        self.slot(section=self.six_a)
+        self.slot(section=self.six_b, period=self.p2)
+        page = self.week_page()
+        self.assertContains(page, "Grade 6 - A")
+        self.assertNotContains(page, "Grade 6 - B")
+
+    def test_non_teacher_gets_403(self):
+        self.client.login(username="admin", password="pass-12345")
+        self.assertEqual(self.client.get(self.url, {"view": "week"}).status_code, 403)
+
+    def test_today_column_is_marked(self):
+        self.assign(self.rao, self.maths, self.six_a)
+        self.slot()
+        html = self.week_page().content.decode()
+        head = html.split("<thead>")[1].split("</thead>")[0]
+        today = re.search(r'<th[^>]*aria-current="date"[^>]*>', head).group(0)
+        self.assertIn("is-today", today)

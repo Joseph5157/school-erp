@@ -221,6 +221,14 @@ with a date strip) and is shown every day. Its text is a count, never a list:
 - otherwise (no timetable configured): "No timetable for today".
 Still no clock times, free periods or placeholders, on the card or on the Timetable page.
 
+**Amendment, 2026-11-17 (teacher Timetable page, Week view).** The Timetable page also has a Week
+view (`?view=week`): a grid of the teacher's own periods, period numbers down and school days
+across, built day by day from the same rule as the Day view (assignments effective on that day).
+An empty cell is an empty table cell with no text; it never says "Free" and is not a period. A day
+that is not a school day keeps its column greyed, and its column header may carry "Holiday" (a
+timetable runs that day but the school is closed) or "No school"; that label describes the day, not
+a period. Saturday is left out when it is not a school day. Still no clock times.
+
 ### D11 Product scope
 
 This ADR brings a **narrow** timetable capability into scope: office configuration of periods and
