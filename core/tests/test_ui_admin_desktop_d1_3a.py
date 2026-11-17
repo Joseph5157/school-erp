@@ -212,7 +212,7 @@ class TeacherListTests(D13AFixture, TestCase):
     def test_shell_and_toolbar(self):
         content = self.client.get(self.teachers_url).content.decode()
         self.assert_panel_shell(content, "Teachers", 6)
-        self.assertIn('role="search"', content)
+        self.assertIn('<search aria-label="Search teachers">', content)
         self.assertIn('<label for="teacher-search" class="form-label">Search teachers</label>', content)
         self.assertIn('<label for="teacher-status" class="form-label">Status</label>', content)
         self.assertNotIn("input-group", content)
