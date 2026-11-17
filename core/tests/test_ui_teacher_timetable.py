@@ -386,7 +386,9 @@ class TeacherPagesAcceptanceTests(TimetableDashboardFixture, TestCase):
             page = self.teacher.get(reverse(f"core:{name}"))
             self.assertEqual(page.status_code, 200, name)
             hrefs = re.findall(r'href="([^"]+)"', page.content.decode())
-            leaked = [h for h in hrefs if any(part in h for part in self.OFFICE)]
+            own = reverse("core:my-timetable")   # the teacher's own page, not an office screen
+            leaked = [h for h in hrefs
+                      if not h.startswith(own) and any(part in h for part in self.OFFICE)]
             self.assertEqual(leaked, [], name)
 
     def test_the_dashboard_has_one_h1_and_the_timetable_heading_once_in_order(self):
@@ -399,3 +401,25 @@ class TeacherPagesAcceptanceTests(TimetableDashboardFixture, TestCase):
         headings = re.findall(r"<h2[^>]*>([^<]+)</h2>", html)
         self.assertEqual(headings[:3],
                          ["Today overview", "Today's timetable", "Teaching assignments"])
+
+
+class FullTimetableLinkTests(TimetableDashboardFixture, TestCase):
+    def test_full_timetable_link_sits_outside_the_plain_text_section(self):
+        self.assign(self.rao, self.maths, self.six_a)
+        self.slot()
+        page = self.page()
+        html = page.content.decode()
+        self.assertIn(f'href="{reverse("core:my-timetable")}"', html)
+        self.assertIn("Full timetable", html)
+        section = self.section_html(page)
+        self.assertNotIn("<a ", section)
+        self.assertNotIn("href", section)
+        self.assertNotIn("Full timetable", section)
+        self.assertLess(html.index('id="day-timetable"'), html.index("Full timetable"))
+        self.assertLess(html.index("Full timetable"), html.index('id="day-assignments"'))
+
+    def test_link_hidden_when_the_section_is_hidden(self):
+        self.assign(self.rao, self.maths, self.six_a)
+        page = self.page()
+        self.assertIsNone(self.shown(page))
+        self.assertNotIn("Full timetable", page.content.decode())

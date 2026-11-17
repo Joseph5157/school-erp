@@ -996,3 +996,13 @@
     });
   });
 })();
+
+// Teacher timetable: centre the selected day in the date strip (no animation).
+(function () {
+  document.addEventListener("DOMContentLoaded", function () {
+    var chip = document.querySelector('.erp-tt-strip [aria-current="date"]');
+    var strip = chip && chip.closest(".erp-tt-strip");
+    if (!strip) return;
+    strip.scrollLeft = chip.offsetLeft - (strip.clientWidth - chip.offsetWidth) / 2;
+  });
+})();
