@@ -57,6 +57,15 @@ class TeacherTimetableYearTests(CurrentYearFixture, TestCase):
         )
         self.assertEqual(self.rows(MONDAY, mine), [])  # new year open, no row for Rao
 
+    def test_new_year_without_a_timetable_yet_hides_the_old_one(self):
+        # User-confirmed (2026-11-17): after rollover, nothing shows until the new grid is built.
+        mine = [self.assign_between(self.rao, self.maths, self.six_a, date(2026, 6, 1))]
+        self.slot()                                    # old year only; the new year has no slots
+        self.assertIsNone(self.rows(MONDAY, mine))
+        self.assertEqual(
+            [r["subject"] for r in self.rows(BEFORE_NEW_YEAR, mine)], ["Mathematics"]
+        )
+
     def test_new_year_periods_show(self):
         mine = [self.assign_between(self.rao, self.drawing, self.six_b, date(2026, 10, 1))]
         self.slot()
