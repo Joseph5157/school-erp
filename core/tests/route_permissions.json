@@ -1757,7 +1757,7 @@
     "inner": [],
     "perms": [],
     "route": "accounts/logout/",
-    "view": "auth_views.LogoutView.as_view"
+    "view": "account_views.logout"
   },
   "root:password_change": {
     "flags": [
@@ -1784,5 +1784,15 @@
     "perms": [],
     "route": "MANIFEST_PATH.lstrip('/')",
     "view": "pwa_views.manifest"
+  },
+  "root:session-status": {
+    "flags": [
+      "never_cache",
+      "require_http_methods"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "accounts/session/",
+    "view": "account_views.session_status"
   }
 }

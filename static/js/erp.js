@@ -995,4 +995,108 @@
       );
     });
   });
+
+  // Sign-out warning (audit 15 NOTIF-01, audit 18 ERR-01). The server signs out after 30 idle minutes
+  // or 8 hours; two minutes before the earlier one, this shows a warning with Stay signed in and Log
+  // out. Before showing it, it asks the server (a GET that is not activity) because another tab may
+  // have kept the session alive. Focus is not moved: the first sentence is announced once as an
+  // alert, and the countdown is plain text. Only the idle limit can be extended.
+  (function () {
+    var box = document.querySelector("[data-erp-session]");
+    if (!box || !window.fetch) return;
+    var WARN = 120;
+    var url = box.getAttribute("data-status-url");
+    var say = box.querySelector("[data-erp-session-say]");
+    var time = box.querySelector("[data-erp-session-time]");
+    var stay = box.querySelector("[data-erp-session-stay]");
+    var logoutForm = box.querySelector("[data-erp-session-logout]");
+    var loginLink = box.querySelector("[data-erp-session-login]");
+    var loginPath = new URL(box.getAttribute("data-login-url"), location.href).pathname;
+    var timer = null, tick = null, deadline = 0, absoluteAt = Infinity, returnFocus = null;
+    var json = { "X-Requested-With": "XMLHttpRequest", Accept: "application/json" };
+
+    function secondsLeft(data) {
+      absoluteAt = Date.now() + data.absolute * 1000; // remembered, so a late sign-out names the right limit
+      return Math.min(data.idle, data.absolute);
+    }
+    function ask(options) {
+      return fetch(url, options).then(function (response) {
+        // Only a redirect to the sign-in page means signed out; another redirect (such as a password
+        // change that is due) means the session is alive but this answer is not usable.
+        var toLogin = response.redirected && new URL(response.url).pathname === loginPath;
+        if (toLogin || response.status === 401) throw new Error("signed-out");
+        if (!response.ok || response.redirected) throw new Error("failed");
+        return response.json();
+      });
+    }
+    function stop() { clearTimeout(timer); clearInterval(tick); }
+    function hide() {
+      var hadFocus = box.contains(document.activeElement);
+      box.hidden = true;
+      say.textContent = "";
+      if (hadFocus) {
+        var back = returnFocus && document.contains(returnFocus) ? returnFocus : document.getElementById("main");
+        if (back) back.focus();
+      }
+    }
+    function schedule(data) {
+      stop();
+      hide();
+      timer = setTimeout(check, Math.max(0, secondsLeft(data) - WARN) * 1000);
+    }
+    function check() {
+      ask({ credentials: "same-origin", headers: json }).then(function (data) {
+        if (secondsLeft(data) > WARN + 10) schedule(data); else warn(data);
+      }, function (error) {
+        if (error.message === "signed-out") signedOut();
+        else timer = setTimeout(check, 30000); // offline: try again; the server still decides
+      });
+    }
+    function show(message) {
+      var wasHidden = box.hidden;
+      if (wasHidden) returnFocus = document.activeElement;
+      box.hidden = false;
+      // Set the text after the region is visible, so screen readers announce it.
+      setTimeout(function () { say.textContent = message; }, 50);
+    }
+    function warn(data) {
+      stop();
+      deadline = Date.now() + secondsLeft(data) * 1000;
+      var canStay = data.absolute > data.idle;
+      stay.hidden = !canStay;
+      show(canStay
+        ? "You will be signed out soon because nothing has happened for a while."
+        : "You will be signed out soon: you have been signed in for almost 8 hours. Save your work now.");
+      countdown();
+      tick = setInterval(countdown, 1000);
+    }
+    function countdown() {
+      var s = Math.max(0, Math.round((deadline - Date.now()) / 1000));
+      time.textContent = "Time left: " + Math.floor(s / 60) + ":" + (s % 60 < 10 ? "0" : "") + (s % 60);
+      if (s === 0) { clearInterval(tick); check(); }
+    }
+    function signedOut() {
+      stop();
+      stay.hidden = true;
+      logoutForm.hidden = true;
+      time.textContent = "";
+      loginLink.href = box.getAttribute("data-login-url") + "?" + new URLSearchParams({
+        next: location.pathname + location.search, expired: Date.now() >= absoluteAt - 5000 ? "limit" : "idle",
+      }).toString();
+      loginLink.hidden = false;
+      show("You have been signed out. Anything on this page that was not saved is lost.");
+    }
+    stay.addEventListener("submit", function (event) {
+      event.preventDefault();
+      var token = stay.querySelector("[name=csrfmiddlewaretoken]");
+      ask({
+        method: "POST", credentials: "same-origin",
+        headers: Object.assign({ "X-CSRFToken": token ? token.value : "" }, json),
+      }).then(schedule, function (error) {
+        if (error.message === "signed-out") signedOut();
+        else say.textContent = "Could not keep you signed in. Reload the page and try again.";
+      });
+    });
+    schedule({ idle: Number(box.getAttribute("data-idle")), absolute: Number(box.getAttribute("data-absolute")) });
+  })();
 })();

@@ -640,6 +640,21 @@ body.erp { min-height: 100vh; min-height: 100dvh; }
 .erp-install-bar-actions .btn[hidden] { display: none; }
 @media (min-width: 768px) { .erp-install-bar { display: none !important; } }
 
+/* Sign-out warning (audit 15 NOTIF-01): pinned under the top bar, above pop-up messages, with the
+   warning colour on its edge so it reads as different from a routine message. */
+.erp-session-warning {
+  position: fixed; z-index: 1060; left: 1rem; right: 1rem; top: calc(var(--erp-topbar-h) + .5rem);
+  max-width: 30rem; margin-inline: auto; padding: var(--erp-space-3) var(--erp-space-4);
+  background: var(--erp-surface); color: var(--erp-ink); border: 1px solid var(--erp-rule);
+  border-left: 4px solid var(--erp-warn); border-radius: var(--erp-radius-sm); box-shadow: 0 6px 18px rgba(24, 33, 43, .16);
+}
+.erp-session-warning[hidden] { display: none; }
+.erp-session-say { margin: 0; font-weight: 600; }
+.erp-session-time { margin: var(--erp-space-1) 0 0; color: var(--erp-ink-soft); font-variant-numeric: tabular-nums; }
+.erp-session-actions { display: flex; flex-wrap: wrap; gap: var(--erp-space-2); margin-top: var(--erp-space-3); }
+.erp-session-actions form { margin: 0; }
+.erp-session-actions [hidden] { display: none !important; }
+
 /* ---------- Account menu (details/summary, works without JS) ---------- */
 
 .erp-account { position: relative; }
@@ -1964,7 +1979,7 @@ search { display: block; }  /* the filter landmark around each toolbar form; blo
    credential slip page prints only the card. Screen-only scrolling, clipping and sticky rules are reset,
    because paper cannot scroll: a clipped column or row would simply be missing. */
 @media print {
-  .erp-skip, .erp-topbar, .erp-sidebar, .erp-tabbar, .erp-install-bar, .erp-messages, .erp-breadcrumb,
+  .erp-skip, .erp-topbar, .erp-session-warning, .erp-sidebar, .erp-tabbar, .erp-install-bar, .erp-messages, .erp-breadcrumb,
   .erp-section-nav, .erp-switcher, .erp-pagination, .erp-actionbar, .erp-main search, .erp-main .btn { display: none !important; }
   body, body.has-sidebar .erp-main, body.has-tabbar .erp-content, .erp-content { margin: 0 !important; padding: 0 !important; }
   body { background: #fff; }

@@ -8,6 +8,9 @@
         <p class="erp-login-eyebrow">Welcome back</p>
         <h1>Log in</h1>
         <p class="text-secondary">Use the username the school gave you.</p>
+        {% if request.method == "GET" and request.GET.expired %}{# Audit 18 ERR-01: say why the login page appeared. Only the reason is in the URL, never what was posted. #}
+        <div class="alert alert-info" id="login-expired" role="status">{% if request.GET.expired == "limit" %}You were signed out because you had been signed in for 8 hours.{% else %}You were signed out after 30 minutes without activity.{% endif %}{% if request.GET.unsaved %} What you were saving was not saved. Log in, then do it again.{% endif %}</div>
+        {% endif %}
         {% if form.non_field_errors %}
         <div class="alert alert-danger" id="login-error" role="alert">{% for error in form.non_field_errors %}{{ error }}{% endfor %}</div>
         {% endif %}

@@ -1,11 +1,15 @@
 from django.contrib import messages
 from django.contrib.auth import get_user_model, password_validation
 from django.contrib.auth import views as auth_views
+from django.http import JsonResponse
 from django.shortcuts import render
 from django.urls import reverse, reverse_lazy
 from django.views.decorators.cache import never_cache
+from django.views.decorators.http import require_http_methods
 
+from accounts.middleware import seconds_left
 from accounts.models import SecurityEvent
+from accounts.return_path import return_path
 
 
 def csrf_failure(request, reason=""):
@@ -13,12 +17,38 @@ def csrf_failure(request, reason=""):
 
     A form's security token goes stale when a page is left open for a long time or the user signs in
     or out in another tab, which phone users hit often. Nothing was saved, so the page offers a fresh
-    copy of the same address. Logout is POST-only, so its retry goes home instead.
+    copy of the page that showed the form (audit 18 ERR-02: an action-only URL would answer 405).
+    Logout is POST-only, so its retry goes home instead.
     """
-    path = request.path
-    if not path.startswith("/") or path.startswith("//") or path == reverse("logout"):
+    path = return_path(request, reverse("home"))
+    if path.split("?", 1)[0] == reverse("logout"):
         path = reverse("home")
     return render(request, "403_csrf.html", {"retry_url": path}, status=403)
+
+
+@never_cache
+@require_http_methods(["GET", "POST"])
+def session_status(request):
+    """Seconds left before sign-out (GET, which is not activity) or Stay signed in (POST).
+
+    accounts.middleware has already signed out an expired session and redirected to login, so an
+    answer here means the session is live; a POST counted as activity there (audit 15 NOTIF-01).
+    """
+    if not request.user.is_authenticated:
+        return JsonResponse({"idle": 0, "absolute": 0}, status=401)
+    return JsonResponse(seconds_left(request.session))
+
+
+class LogoutView(auth_views.LogoutView):
+    """Log out and ask the browser to drop cached signed-in pages (audit 18 ERR-03)."""
+
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        response["Clear-Site-Data"] = '"cache"'
+        return response
+
+
+logout = LogoutView.as_view()
 
 
 class PasswordChangeView(auth_views.PasswordChangeView):
