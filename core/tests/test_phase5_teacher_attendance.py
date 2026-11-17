@@ -371,7 +371,9 @@ class TeacherAttendanceAutosaveTests(Phase4Fixture, TestCase):
         self.assertContains(page, "data-erp-mark-present")
         self.assertContains(page, "vendor/htmx/2.0.4/htmx.min.js")
         self.assertContains(page, "Save draft")
-        self.assertContains(page, "Save and submit")
+        self.assertContains(page, "Review and submit")
+        self.assertContains(page, "data-erp-save-fallback")
+        self.assertContains(page, "data-erp-autosave-state")
 
     def test_submitted_page_does_not_load_htmx(self):
         self.both()
@@ -392,6 +394,9 @@ class TeacherAttendanceAutosaveTests(Phase4Fixture, TestCase):
         self.assertNotContains(page, "hx-post")
         self.assertNotContains(page, "htmx")
         self.assertNotContains(page, "data-erp-wait-message")
+        self.assertContains(page, "Save draft")
+        self.assertContains(page, "Save and submit")
+        self.assertNotContains(page, "Review and submit")
 
     def test_ordinary_save_and_submit_still_work_after_autosave(self):
         self.autosave(self.asha, "PRESENT")

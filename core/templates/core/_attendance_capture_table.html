@@ -36,8 +36,9 @@ With autosave_url (teacher page) each row also saves its own draft over HTMX; th
 
     <div class="erp-actionbar">
         <span id="erp-hint" class="erp-actionbar-status{% if counts.unmarked %} is-warn{% endif %}" data-erp-hint>{{ counts.unmarked }} unmarked</span>
-        <button type="submit" name="action" value="save" class="btn btn-outline-primary">Save draft</button>
-        {% if can_submit %}<button type="submit" name="action" value="submit" class="btn btn-primary">Save and submit</button>{% endif %}
+        {% if autosave_url %}<span class="erp-autosave-state" data-erp-autosave-state role="status" aria-live="polite" hidden>All changes saved</span>{% endif %}
+        <button type="submit" name="action" value="save" class="btn btn-outline-primary"{% if autosave_url %} data-erp-save-fallback{% endif %}>Save draft</button>
+        {% if can_submit %}<button type="submit" name="action" value="submit" class="btn btn-primary">{% if autosave_url %}Review and submit{% else %}Save and submit{% endif %}</button>{% endif %}
     </div>
     {% if autosave_url %}<p class="small text-danger mb-1" role="alert" data-erp-wait-message hidden>Waiting for attendance changes to save. Try again in a moment.</p>{% endif %}
     {% if autosave_url %}<p class="visually-hidden" role="status" aria-live="polite" data-erp-autosave-announce></p>{% endif %}

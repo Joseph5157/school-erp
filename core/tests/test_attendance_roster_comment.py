@@ -115,6 +115,9 @@ class TeacherRosterTests(RosterFixture, TestCase):
             self.assertIn(f'hx-vals=\'{{"enrollment": {enrollment.pk}}}\'', form)
         self.assertIn("data-erp-wait-message hidden", form)
         self.assertIn("data-erp-autosave-announce", form)
+        self.assertIn("data-erp-save-fallback", form)
+        self.assertIn("data-erp-autosave-state", form)
+        self.assertIn("Review and submit", form)
         self.assertEqual(content.count("<form"), content.count("</form>"))
 
 

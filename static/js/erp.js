@@ -241,6 +241,27 @@
     var filter = "all";
     var autosaveOn = false; // set once HTMX autosave is wired below
     var unsaved = false; // only ever set when autosave is off, see the warning below
+    var saveFallback = roster.querySelector("[data-erp-save-fallback]");
+    var autosaveState = roster.querySelector("[data-erp-autosave-state]");
+
+    function setAutosaveState(text, failed) {
+      if (!autosaveState) return;
+      autosaveState.hidden = false;
+      autosaveState.textContent = text;
+      autosaveState.classList.toggle("is-error", failed);
+      if (saveFallback) saveFallback.hidden = !failed;
+    }
+
+    function syncAutosaveState() {
+      if (!autosaveOn) return;
+      if (rows.some(function (row) { return row._dirty; })) {
+        setAutosaveState("Saving…", false);
+      } else if (rows.some(function (row) { return row.classList.contains("is-unsaved"); })) {
+        setAutosaveState("Changes not saved", true);
+      } else {
+        setAutosaveState("All changes saved", false);
+      }
+    }
 
     function statusOf(row) {
       var checked = row.querySelector('input[type="radio"]:checked');
@@ -321,9 +342,9 @@
     });
     refresh();
 
-    // HTMX draft autosave (teacher page only). Each row saves itself on change; the form's
-    // Save draft / Save and submit buttons remain the complete fallback and the only way to
-    // submit. A row is only shown as saved once the server confirms it.
+    // HTMX draft autosave (teacher page only). Each row saves itself on change. Once autosave is
+    // active the manual Save draft button becomes a failure fallback, while Review and submit is
+    // the one normal action. A row is only shown as saved once the server confirms it.
     var announce = roster.querySelector("[data-erp-autosave-announce]");
     var swapping = null;
 
@@ -384,6 +405,7 @@
         statusOfRow(row).textContent = "Saving…";
         body.append("enrollment", row.getAttribute("data-erp-enrollment"));
       });
+      syncAutosaveState();
       fetch(bulkUrl, {
         method: "POST",
         body: body,
@@ -419,6 +441,7 @@
           if (waitMessage && !rows.some(function (row) { return row._dirty; })) {
             waitMessage.hidden = true;
           }
+          syncAutosaveState();
         });
     }
 
@@ -440,6 +463,7 @@
         var target = statusOfRow(row);
         if (target) target.textContent = "Saving…";
         row.classList.remove("is-unsaved");
+        syncAutosaveState();
       }, true);
 
       // Present never carries a note: clear it with the choice, as the server would refuse it.
@@ -482,10 +506,12 @@
           if (status !== 409 && status !== 422) showFailure(row, "Not saved.");
         }
         if (!othersDirty()) refresh();
+        syncAutosaveState();
       });
       autosaveOn = true;
+      syncAutosaveState();
 
-      // Save draft / Save and submit wait for in-flight row saves so the two never race.
+      // The fallback save and Review and submit wait for in-flight row saves so requests never race.
       var form = roster.closest("form");
       var waitMessage = roster.querySelector("[data-erp-wait-message]");
       function anyDirty() {
