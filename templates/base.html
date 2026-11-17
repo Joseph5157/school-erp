@@ -52,13 +52,13 @@
     {% if office_nav %}{% include "partials/_sidebar.html" %}{% endif %}
     {% include "partials/_install_bar.html" %}
     <main id="main" class="erp-main">
+        {% include "partials/_messages.html" %}
         <div class="erp-content">
             {% include "partials/_breadcrumbs.html" %}
             {% if year_is_scoped_page and not viewing_year_is_current %}{% include "partials/_year_note.html" %}{% endif %}
             {% block content %}{% endblock %}
         </div>
     </main>
-    {% include "partials/_messages.html" %}
     {% block tabbar %}{% if current_area == 'teacher' %}{% include "partials/_tabbar.html" with tabs=teacher_tabs tabbar_label="Teaching" %}{% elif guardian_shell %}{% include "portal/_tabbar.html" %}{% endif %}{% endblock %}
     <script src="{% static 'vendor/bootstrap/5.3.3/js/bootstrap.bundle.min.js' %}" defer></script>
     {% block extra_js %}{% endblock %}
