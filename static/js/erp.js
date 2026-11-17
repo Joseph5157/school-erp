@@ -739,6 +739,56 @@
     }
   }
 
+  // Timetable class picker (teacher Timetable page): the chip is a plain link to a list in the page; with
+  // <dialog> it opens the sheet instead. Search filters rows by class name; Back/Escape close the sheet.
+  (function () {
+    var opener = document.querySelector("[data-erp-pick-open]");
+    var dialog = document.getElementById("tt-pick-sheet");
+    if (!opener || !dialog || typeof dialog.showModal !== "function") return;
+    var search = dialog.querySelector("[data-erp-pick-search]");
+    var none = dialog.querySelector("[data-erp-pick-none]");
+    opener.addEventListener("click", function (event) {
+      event.preventDefault();
+      var gap = window.innerWidth - document.documentElement.clientWidth;
+      if (gap > 0) document.body.style.paddingRight = gap + "px";
+      dialog.showModal();
+      if (search) search.focus();
+    });
+    dialog.querySelectorAll("[data-erp-dialog-close]").forEach(function (button) {
+      button.addEventListener("click", function () { dialog.close(); });
+    });
+    // Letters and digits only, so "6a", "6-a", "6 a" and "Grade 6 - A" all find Grade 6 - A.
+    function compact(text) { return (text || "").toLowerCase().replace(/[^a-z0-9]/g, ""); }
+    function filterRows() {
+      var query = compact(search ? search.value : "");
+      var shown = 0;
+      dialog.querySelectorAll(".erp-tt-pickrow").forEach(function (row) {
+        var match = compact(row.getAttribute("data-name")).indexOf(query) !== -1;
+        row.hidden = !match;
+        if (match) shown += 1;
+      });
+      dialog.querySelectorAll("[data-erp-pick-grade], [data-erp-pick-group]").forEach(function (box) {
+        box.hidden = !box.querySelector(".erp-tt-pickrow:not([hidden])");
+      });
+      if (none) none.hidden = shown !== 0;
+    }
+    // However the sheet closes, reopening shows the full list.
+    dialog.addEventListener("close", function () {
+      document.body.style.paddingRight = "";
+      if (search && search.value !== "") {
+        search.value = "";
+        filterRows();
+      }
+    });
+    var pressedBackdrop = false;
+    dialog.addEventListener("pointerdown", function (event) { pressedBackdrop = event.target === dialog; });
+    dialog.addEventListener("click", function (event) {
+      if (pressedBackdrop && event.target === dialog) dialog.close();
+      pressedBackdrop = false;
+    });
+    if (search) search.addEventListener("input", filterRows);
+  })();
+
   // Order dialogs (Classes/Grades, Subjects offered): a native modal <dialog>, so Escape and the
   // phone's Back close it, the page behind is inert and focus goes back to the opener. Arrows always
   // work; dragging is added when the library loaded. Nothing is saved until Save order, and closing

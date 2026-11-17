@@ -5,60 +5,88 @@
 <h1 class="h3 mb-1">Timetable</h1>
 {% if view == "day" %}<p class="text-muted mb-3">{{ selected|date:"l, j F Y" }}</p>{% endif %}
 
+<a class="erp-tt-pick" href="{% url 'core:my-timetable' %}?pick=1{% if view == 'week' %}&amp;view=week{% endif %}&amp;date={{ selected|date:'Y-m-d' }}{{ section_qs }}" data-erp-pick-open aria-haspopup="dialog"><span>{% if section %}{{ section }}{% else %}My timetable{% endif %}</span></a>
+
+{% if pick %}
+<section class="erp-tt-picklist" aria-labelledby="tt-pick-list-title">
+    <h2 class="h5" id="tt-pick-list-title">Choose a timetable</h2>
+    {% include "core/_timetable_picker_list.html" %}
+</section>
+{% endif %}
+
 <nav class="erp-tt-toggle" aria-label="Timetable view">
-    <a href="{% url 'core:my-timetable' %}?date={{ selected|date:'Y-m-d' }}"{% if view == "day" %} class="is-active" aria-current="page"{% endif %}>Day</a>
-    <a href="{% url 'core:my-timetable' %}?view=week&amp;date={{ selected|date:'Y-m-d' }}"{% if view == "week" %} class="is-active" aria-current="page"{% endif %}>Week</a>
+    <a href="{% url 'core:my-timetable' %}?date={{ selected|date:'Y-m-d' }}{{ section_qs }}"{% if view == "day" %} class="is-active" aria-current="page"{% endif %}>Day</a>
+    <a href="{% url 'core:my-timetable' %}?view=week&amp;date={{ selected|date:'Y-m-d' }}{{ section_qs }}"{% if view == "week" %} class="is-active" aria-current="page"{% endif %}>Week</a>
 </nav>
 
 {% if view == "week" %}
 <div class="erp-tt-weekhead">
-    {% if prev_week_date %}<a class="erp-tt-arrow" href="{% url 'core:my-timetable' %}?view=week&amp;date={{ prev_week_date|date:'Y-m-d' }}" aria-label="Previous week">‹</a>{% else %}<span class="erp-tt-arrow is-off" aria-hidden="true"></span>{% endif %}
+    {% if prev_week_date %}<a class="erp-tt-arrow" href="{% url 'core:my-timetable' %}?view=week&amp;date={{ prev_week_date|date:'Y-m-d' }}{{ section_qs }}" aria-label="Previous week">‹</a>{% else %}<span class="erp-tt-arrow is-off" aria-hidden="true"></span>{% endif %}
     <div class="erp-tt-weektitle">
         <p class="erp-tt-weekrange">{{ week.heading }}</p>
         {% if week.contains_today %}<p class="erp-tt-weeknow">This week</p>{% endif %}
     </div>
-    {% if next_week_date %}<a class="erp-tt-arrow" href="{% url 'core:my-timetable' %}?view=week&amp;date={{ next_week_date|date:'Y-m-d' }}" aria-label="Next week">›</a>{% else %}<span class="erp-tt-arrow is-off" aria-hidden="true"></span>{% endif %}
+    {% if next_week_date %}<a class="erp-tt-arrow" href="{% url 'core:my-timetable' %}?view=week&amp;date={{ next_week_date|date:'Y-m-d' }}{{ section_qs }}" aria-label="Next week">›</a>{% else %}<span class="erp-tt-arrow is-off" aria-hidden="true"></span>{% endif %}
 </div>
 
 {% if week.is_empty %}
-<p class="text-muted">No periods for you this week.</p>
+<p class="text-muted">{% if section %}No periods for this class this week.{% else %}No periods for you this week.{% endif %}</p>
 {% else %}
 <table class="erp-keep erp-tt-week">
-    <caption class="visually-hidden">Your periods, {{ week.heading }}</caption>
+    <caption class="visually-hidden">{% if section %}{{ section }} periods,{% else %}Your periods,{% endif %} {{ week.heading }}</caption>
     <thead>
         <tr><td></td>{% for day in week.days %}<th scope="col" class="erp-tt-week-day{% if day.is_today %} is-today{% endif %}{% if not day.is_school_day %} is-closed{% endif %}"{% if day.is_today %} aria-current="date"{% endif %}><span>{{ day.weekday }}</span> <span>{{ day.date.day }}</span>{% if day.label %}<span class="erp-tt-week-label">{{ day.label }}</span>{% endif %}</th>{% endfor %}</tr>
     </thead>
     <tbody>
-        {% for period in week.grid %}<tr><th scope="row">{{ period.sequence }}</th>{% for cell in period.cells %}<td class="{% if cell.day.is_today %}is-today{% endif %}{% if not cell.day.is_school_day %} is-closed{% endif %}">{% for row in cell.rows %}<a href="{% url 'core:my-timetable' %}?date={{ cell.day.date|date:'Y-m-d' }}" aria-label="{{ row.section }}, period {{ period.sequence }}, {{ cell.day.date|date:'l j F' }}">{{ row.short }}</a>{% endfor %}</td>{% endfor %}</tr>
+        {% for period in week.grid %}<tr><th scope="row">{{ period.sequence }}</th>{% for cell in period.cells %}<td class="{% if cell.day.is_today %}is-today{% endif %}{% if not cell.day.is_school_day %} is-closed{% endif %}">{% for row in cell.rows %}{% if section %}<a href="{% url 'core:my-timetable' %}?date={{ cell.day.date|date:'Y-m-d' }}{{ section_qs }}" aria-label="{{ row.subject }}, {% if row.teacher_name %}{{ row.teacher_name }}{% else %}No teacher assigned{% endif %}, period {{ period.sequence }}, {{ cell.day.date|date:'l j F' }}">{{ row.short }}</a>{% else %}<a href="{% url 'core:my-timetable' %}?date={{ cell.day.date|date:'Y-m-d' }}" aria-label="{{ row.section }}, period {{ period.sequence }}, {{ cell.day.date|date:'l j F' }}">{{ row.short }}</a>{% endif %}{% endfor %}</td>{% endfor %}</tr>
         {% endfor %}
     </tbody>
 </table>
-<p class="erp-tt-hint">Tap a class to open that day.</p>
+<p class="erp-tt-hint">Tap a box to open that day.</p>
 <ul class="erp-tt-key">
     {% for entry in week.key %}<li><span class="erp-tt-key-short">{{ entry.short }}</span> {{ entry.full }}</li>
     {% endfor %}
 </ul>
 {% endif %}
 {% else %}
-<p class="erp-tt-month mb-1">{{ selected|date:"F Y" }}{% if not is_today %} · <a class="erp-tt-today" href="{% url 'core:my-timetable' %}">Today</a>{% endif %}</p>
+<p class="erp-tt-month mb-1">{{ selected|date:"F Y" }}{% if not is_today %} · <a class="erp-tt-today" href="{% url 'core:my-timetable' %}{% if section %}?section={{ section.pk }}{% endif %}">Today</a>{% endif %}</p>
 <nav class="erp-tt-strip" aria-label="Pick a day">
-{% for chip in strip %}<a class="erp-tt-chip{% if chip.is_today %} is-today{% endif %}{% if chip.is_selected %} is-selected{% endif %}" href="{% url 'core:my-timetable' %}?date={{ chip.date|date:'Y-m-d' }}" aria-label="{{ chip.date|date:'l j F Y' }}"{% if chip.is_selected %} aria-current="date"{% endif %}><span>{{ chip.weekday }}</span> <span>{{ chip.day }}</span></a>
+{% for chip in strip %}<a class="erp-tt-chip{% if chip.is_today %} is-today{% endif %}{% if chip.is_selected %} is-selected{% endif %}" href="{% url 'core:my-timetable' %}?date={{ chip.date|date:'Y-m-d' }}{{ section_qs }}" aria-label="{{ chip.date|date:'l j F Y' }}"{% if chip.is_selected %} aria-current="date"{% endif %}><span>{{ chip.weekday }}</span> <span>{{ chip.day }}</span></a>
 {% endfor %}</nav>
 
 {% if rows is None %}
 <p class="text-muted">No school timetable on this day.</p>
 {% elif not rows %}
-<p class="text-muted">No periods scheduled for you on this day.</p>
+<p class="text-muted">{% if section %}No periods scheduled for this class on this day.{% else %}No periods scheduled for you on this day.{% endif %}</p>
 {% else %}
 {% for row in rows %}
 <div class="erp-tt-card">
     <span class="erp-tt-badge">{{ row.sequence }}</span>
     <div>
-        <div class="fw-bold">{{ row.section }}</div>
-        <div class="text-muted">{{ row.subject }}</div>
+        {% if section %}<div class="fw-bold">{{ row.subject }}</div>
+        <div class="text-muted">{% if row.teacher_name %}{{ row.teacher_name }}{% else %}No teacher assigned{% endif %}</div>
+        {% else %}<div class="fw-bold">{{ row.section }}</div>
+        <div class="text-muted">{{ row.subject }}</div>{% endif %}
     </div>
 </div>
 {% endfor %}
 {% endif %}
 {% endif %}
+
+<dialog class="erp-dialog erp-tt-sheet" id="tt-pick-sheet" aria-labelledby="tt-pick-title">
+    <div class="erp-dialog-content">
+        <div class="erp-dialog-header">
+            <h2 class="h5" id="tt-pick-title">Choose a timetable</h2>
+            <button type="button" class="btn-close" data-erp-dialog-close aria-label="Close"></button>
+        </div>
+        <div class="erp-dialog-body">
+            <label class="erp-tt-search-label" for="tt-pick-search">Search classes</label>
+            <input class="form-control erp-tt-search" type="search" id="tt-pick-search" autocomplete="off" data-erp-pick-search>
+            <div data-erp-pick-list>
+                {% include "core/_timetable_picker_list.html" %}
+            </div>
+            <p class="erp-tt-pick-none" data-erp-pick-none hidden>No class matches.</p>
+        </div>
+    </div>
+</dialog>
 {% endblock %}

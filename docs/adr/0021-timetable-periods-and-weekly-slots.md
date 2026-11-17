@@ -229,6 +229,13 @@ that is not a school day keeps its column greyed, and its column header may carr
 timetable runs that day but the school is closed) or "No school"; that label describes the day, not
 a period. Saturday is left out when it is not a school day. Still no clock times.
 
+**Amendment, 2026-11-17 (teacher Timetable page, class view).** Any teacher may open any Section's
+timetable read-only from the Timetable page (`?section=<id>`), in the Day and Week views, picked
+from a sheet that lists "My timetable", "My classes" and "All classes". Each period shows its
+subject and its teacher, derived on the date shown from the offering and Section assignment
+effective that day (ADR 0018), or "No teacher assigned". The view writes nothing and the audience
+is unchanged (`teacher_required`). Still no clock times, free periods or placeholders.
+
 ### D11 Product scope
 
 This ADR brings a **narrow** timetable capability into scope: office configuration of periods and

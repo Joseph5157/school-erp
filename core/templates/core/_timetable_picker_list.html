@@ -1,0 +1,23 @@
+{# The class picker's three groups: used in the sheet (search filters it) and, without JS, in the page. #}
+<div class="erp-tt-pickgroup" data-erp-pick-group>
+    <a class="erp-tt-pickrow{% if not section %} is-current{% endif %}" href="{% url 'core:my-timetable' %}?{% if view == 'week' %}view=week&amp;{% endif %}date={{ selected|date:'Y-m-d' }}"{% if not section %} aria-current="true"{% endif %} data-name="my timetable">My timetable</a>
+</div>
+{% if picker.mine %}
+<div class="erp-tt-pickgroup" data-erp-pick-group>
+    <h3 class="erp-tt-pickhead">My classes</h3>
+    {% for s in picker.mine %}<a class="erp-tt-pickrow{% if s == section %} is-current{% endif %}" href="{% url 'core:my-timetable' %}?{% if view == 'week' %}view=week&amp;{% endif %}date={{ selected|date:'Y-m-d' }}&amp;section={{ s.pk }}"{% if s == section %} aria-current="true"{% endif %} data-name="{{ s|lower }}">{{ s }}</a>
+    {% endfor %}
+</div>
+{% endif %}
+{% if picker.grades %}
+<div class="erp-tt-pickgroup" data-erp-pick-group>
+    <h3 class="erp-tt-pickhead">All classes</h3>
+    {% for entry in picker.grades %}
+    <div class="erp-tt-pickgrade" data-erp-pick-grade>
+        <p class="erp-tt-pickgrade-name">{{ entry.grade }}</p>
+        {% for s in entry.sections %}<a class="erp-tt-pickrow{% if s == section %} is-current{% endif %}" href="{% url 'core:my-timetable' %}?{% if view == 'week' %}view=week&amp;{% endif %}date={{ selected|date:'Y-m-d' }}&amp;section={{ s.pk }}"{% if s == section %} aria-current="true"{% endif %} data-name="{{ s|lower }}">{{ s }}</a>
+        {% endfor %}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}

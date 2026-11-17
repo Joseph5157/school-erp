@@ -234,7 +234,9 @@ class TimetablePageTests(TimetableDashboardFixture, TestCase):
             [("P1", "Grade 6 - A")],
         )
         self.assertContains(page, "Grade 6 - A")
-        self.assertNotContains(page, "Grade 6 - B")
+        # The class sheet (a <dialog>) lists every class; the timetable itself must not.
+        outside = re.sub(r"<dialog.*?</dialog>", "", page.content.decode(), flags=re.S)
+        self.assertNotIn("Grade 6 - B", outside)
 
     def test_non_teacher_gets_403(self):
         self.client.login(username="admin", password="pass-12345")
@@ -502,7 +504,7 @@ class TimetableWeekPageTests(TimetableDashboardFixture, TestCase):
         self.slot()
         self.slot(section=self.six_b, period=self.p2)
         page = self.week_page()
-        self.assertContains(page, "Tap a class to open that day.")
+        self.assertContains(page, "Tap a box to open that day.")
         html = page.content.decode()
         key = html.split('class="erp-tt-key"')[1].split("</ul>")[0]
         self.assertLess(key.index("Grade 6 - A"), key.index("Grade 6 - B"))
@@ -534,7 +536,9 @@ class TimetableWeekPageTests(TimetableDashboardFixture, TestCase):
         self.slot(section=self.six_b, period=self.p2)
         page = self.week_page()
         self.assertContains(page, "Grade 6 - A")
-        self.assertNotContains(page, "Grade 6 - B")
+        # The class sheet (a <dialog>) lists every class; the timetable itself must not.
+        outside = re.sub(r"<dialog.*?</dialog>", "", page.content.decode(), flags=re.S)
+        self.assertNotIn("Grade 6 - B", outside)
 
     def test_non_teacher_gets_403(self):
         self.client.login(username="admin", password="pass-12345")
