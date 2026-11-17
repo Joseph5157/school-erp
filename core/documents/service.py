@@ -69,5 +69,8 @@ def pdf_for(document, *, actor):
 def pdf_response(document, *, actor):
     response = HttpResponse(pdf_for(document, actor=actor), content_type="application/pdf")
     name = document.serial.replace("/", "-")
-    response["Content-Disposition"] = f'inline; filename="{name}.pdf"'
+    # "Download PDF" means a download (audit 17 PRT-06), and a school record must not stay in a shared
+    # browser's cache, the same rule as credential slips.
+    response["Content-Disposition"] = f'attachment; filename="{name}.pdf"'
+    response["Cache-Control"] = "no-store, no-cache, must-revalidate, private"
     return response
