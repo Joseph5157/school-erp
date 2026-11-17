@@ -111,21 +111,6 @@ class SchoolForm(forms.ModelForm):
         return mode
 
 
-class SchoolLogoForm(forms.Form):
-    """Upload or replace the school logo (ADR 0020). The view stores the result."""
-
-    image = forms.FileField(
-        label="Logo image",
-        help_text="PNG or JPEG, up to 512 KB and 2000 × 2000 pixels. It is stored "
-                  "at most 600 pixels wide.",
-    )
-
-    def clean_image(self):
-        data = school_logo.read_upload(self.cleaned_data["image"])
-        school_logo.normalize(data)  # surface problems as field errors
-        return data
-
-
 class AcademicYearForm(forms.ModelForm):
     class Meta:
         model = AcademicYear
@@ -280,6 +265,30 @@ class FieldAccessibilityMixin:
     def full_clean(self):
         super().full_clean()
         self.apply_error_state()
+
+
+class SchoolLogoForm(FieldAccessibilityMixin, forms.Form):
+    """Upload or replace the school logo (ADR 0020). The view stores the result.
+
+    Audit 19: the chooser offers PNG/JPEG only and carries the limits so erp.js can warn before
+    previewing; `accept` is advisory, the server still decodes and checks every file.
+    """
+
+    image = forms.FileField(
+        label="Logo image",
+        help_text="PNG or JPEG, up to 512 KB and 2000 × 2000 pixels. It is stored "
+                  "at most 600 pixels wide.",
+        widget=forms.FileInput(attrs={
+            "accept": "image/png,image/jpeg,.png,.jpg,.jpeg",
+            "data-erp-max-bytes": school_logo.MAX_UPLOAD_BYTES,
+            "data-erp-max-px": school_logo.MAX_DIMENSION,
+        }),
+    )
+
+    def clean_image(self):
+        data = school_logo.read_upload(self.cleaned_data["image"])
+        school_logo.normalize(data)  # surface problems as field errors
+        return data
 
 
 class TimetablePeriodForm(FieldAccessibilityMixin, forms.ModelForm):
@@ -1482,7 +1491,7 @@ class RollNumberForm(forms.Form):
 # --- Phase 7: bulk import (ADR 0017) -----------------------------------------
 
 
-class ImportUploadForm(forms.Form):
+class ImportUploadForm(FieldAccessibilityMixin, forms.Form):
     """Choose the Academic Year, the enrollment start date and the workbook."""
 
     academic_year = forms.ModelChoiceField(queryset=AcademicYear.objects.all())
@@ -1491,7 +1500,13 @@ class ImportUploadForm(forms.Form):
         help_text="Every imported student is placed from this date. It must fall within "
         "the Academic Year and cannot be in the future.",
     )
-    file = forms.FileField(help_text="An .xlsx workbook based on the import template, up to 2 MB.")
+    file = forms.FileField(
+        help_text="An .xlsx workbook based on the import template, up to 2 MB.",
+        # Advisory filter only (audit 19 UPL-03); clean_file still checks the name and size.
+        widget=forms.FileInput(attrs={
+            "accept": ".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        }),
+    )
 
     def clean_file(self):
         from core.imports import MAX_FILE_BYTES

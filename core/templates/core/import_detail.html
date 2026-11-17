@@ -150,7 +150,7 @@
                 <label class="form-check-label" for="reviewed">I have reviewed the warnings.</label>
             </div>
         {% endif %}
-        <button type="submit" class="btn btn-primary">Confirm import</button>
+        <button type="submit" class="btn btn-primary" data-erp-once data-erp-once-busy="Importing records…">Confirm import</button>
     </form>
     {% endif %}
     <form method="post" action="{% url 'core:import-discard' batch.pk %}">

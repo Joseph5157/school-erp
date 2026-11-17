@@ -713,8 +713,26 @@
       if (!file) return;
       box.hidden = false;
       details.textContent = file.name;
+      // Audit 19 UPL-03: check what can be checked without decoding, so a file the server will
+      // refuse (too big, not PNG/JPEG) is never decoded for a preview. The server still decides.
+      var maxBytes = Number(input.getAttribute("data-erp-max-bytes")) || 0;
+      var maxPx = Number(input.getAttribute("data-erp-max-px")) || 0;
+      if (maxBytes && file.size > maxBytes) {
+        image.hidden = true;
+        details.textContent = file.name + " is " + Math.ceil(file.size / 1024) + " KB, larger than " +
+          Math.round(maxBytes / 1024) + " KB, so it will be refused.";
+        return;
+      }
+      if (file.type && !/^image\/(png|jpeg)$/.test(file.type)) {
+        image.hidden = true;
+        details.textContent = file.name + " is not a PNG or JPEG image, so it will be refused.";
+        return;
+      }
       image.onload = function () {
         details.textContent = file.name + ", " + image.naturalWidth + " \u00d7 " + image.naturalHeight + " pixels";
+        if (maxPx && (image.naturalWidth > maxPx || image.naturalHeight > maxPx)) {
+          details.textContent += ", larger than " + maxPx + " \u00d7 " + maxPx + " pixels, so it will be refused.";
+        }
       };
       image.onerror = function () {
         image.hidden = true;
@@ -880,11 +898,28 @@
 
   // One-shot submit buttons: disable after the first submit so a double click cannot
   // publish twice. The form carries its own hidden confirm input, so nothing is lost.
+  // With data-erp-once-busy (audit 19 UPL-01) the button also says what is happening, e.g.
+  // "Checking file…", and one polite status repeats it; no percentage is invented. Back does not
+  // bring the button back to life (a second notice could go to every guardian): reload instead.
   document.querySelectorAll("[data-erp-once]").forEach(function (button) {
     var form = button.form;
     if (!form) return;
+    var busy = button.getAttribute("data-erp-once-busy");
+    var status = null;
+    if (busy) {
+      status = document.createElement("span");
+      status.className = "visually-hidden";
+      status.setAttribute("role", "status");
+      button.insertAdjacentElement("afterend", status);
+    }
     form.addEventListener("submit", function () {
-      window.setTimeout(function () { button.disabled = true; }, 0);
+      window.setTimeout(function () {
+        button.disabled = true;
+        if (!busy) return;
+        button.textContent = busy;
+        form.setAttribute("aria-busy", "true");
+        status.textContent = busy;
+      }, 0);
     });
   });
 })();
