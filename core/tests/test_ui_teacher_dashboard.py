@@ -293,15 +293,17 @@ class DashboardQueryCountTests(DashboardFixture, TestCase):
 
 class TeachingAssignmentTests(DashboardFixture, TestCase):
     def groups(self):
-        """(Class teacher group html, Subjects I teach card html).
+        """(Class teacher group html, Subjects I teach link html).
 
-        Since 2026-11-17 the subjects are a collapsible card under the Timetable card, not a
-        group inside Teaching assignments.
+        Subjects are linked above Teaching assignments rather than repeated in that section.
         """
         html = self.page().content.decode()
         class_part = html.split('id="day-assignments"')[1].split("</section>")[0]
-        subject_part = html.split('class="erp-subj-card"')[1].split("</details>")[0]
+        subject_part = html.split('class="erp-tt-entry erp-subj-entry"')[1].split("</a>")[0]
         return class_part, subject_part
+
+    def subjects_page(self):
+        return self.teacher.get(reverse("core:my-subjects")).content.decode()
 
     def attendance_href(self, section):
         return reverse("core:my-attendance", args=[section.pk])
@@ -348,9 +350,10 @@ class TeachingAssignmentTests(DashboardFixture, TestCase):
         )
         _, subject_part = self.groups()
         self.assertIn("2 subjects · 3 classes", subject_part)
-        sanskrit = subject_part.split(">Sanskrit<")[1]
-        self.assertIn(f'<span class="visually-hidden">{self.six_b}</span>', sanskrit)
-        self.assertIn(">6-B<", sanskrit)
+        subjects = self.subjects_page()
+        sanskrit = subjects.split(">Sanskrit<")[1]
+        self.assertIn(f'<span class="erp-subject-class">{self.six_b}</span>', sanskrit)
+        self.assertNotIn(">6-B<", subjects)
 
     def test_ended_and_future_subject_assignments_do_not_appear(self):
         AssessmentTeacherAssignment.objects.create(
@@ -363,23 +366,24 @@ class TeachingAssignmentTests(DashboardFixture, TestCase):
         )
         self.assertEqual(self.page().context["subject_rows"], [])
         _, subject_part = self.groups()
-        self.assertIn("No subjects are assigned to you today.", subject_part)
-        self.assertNotIn("Mathematics", subject_part)
+        self.assertIn("No subjects assigned today", subject_part)
+        subjects = self.subjects_page()
+        self.assertIn("No subjects assigned today", subjects)
+        self.assertNotIn("Mathematics", subjects)
 
-    def test_subject_chips_have_no_links(self):
+    def test_subject_card_links_to_the_full_name_page(self):
         self.assign(self.rao, self.maths, self.six_a)
         _, subject_part = self.groups()
-        self.assertNotIn("<a ", subject_part)
-        self.assertNotIn("is-link", subject_part)
-        self.assertNotIn("erp-day-chevron", subject_part)
+        self.assertIn(f'href="{reverse("core:my-subjects")}"', subject_part)
+        self.assertIn("erp-tt-entry-chevron", subject_part)
 
     def test_same_section_may_be_in_both_groups(self):
         self.class_teacher(self.rao, self.six_a)
         self.assign(self.rao, self.maths, self.six_a)
         class_part, subject_part = self.groups()
         self.assertIn(str(self.six_a), class_part)
-        self.assertIn(f'<span class="visually-hidden">{self.six_a}</span>', subject_part)
-        self.assertIn(">Mathematics<", subject_part)
+        self.assertIn("Mathematics", subject_part)
+        self.assertIn(f'<span class="erp-subject-class">{self.six_a}</span>', self.subjects_page())
 
     def test_headings_after_the_overview_and_the_subjects_card_above_them(self):
         html = self.page().content.decode()
@@ -388,17 +392,23 @@ class TeachingAssignmentTests(DashboardFixture, TestCase):
             self.assertIn(f">{label}</h", html)
         self.assertNotIn('id="assign-subjects"', html)
         self.assertLess(html.index("Today overview"), html.index("Teaching assignments"))
-        self.assertLess(html.index('class="erp-tt-entry"'), html.index('class="erp-subj-card"'))
-        self.assertLess(html.index('class="erp-subj-card"'), html.index('id="day-assignments"'))
+        self.assertLess(
+            html.index('class="erp-tt-entry"'),
+            html.index('class="erp-tt-entry erp-subj-entry"'),
+        )
+        self.assertLess(
+            html.index('class="erp-tt-entry erp-subj-entry"'),
+            html.index('id="day-assignments"'),
+        )
 
     def test_empty_wording_for_each_group(self):
         class_part, subject_part = self.groups()
         self.assertIn("You are not a class teacher today.", class_part)
-        self.assertIn("No subjects are assigned to you today.", subject_part)
+        self.assertIn("No subjects assigned today", subject_part)
         self.class_teacher(self.rao, self.six_a)
         class_part, subject_part = self.groups()
         self.assertNotIn("You are not a class teacher today.", class_part)
-        self.assertIn("No subjects are assigned to you today.", subject_part)
+        self.assertIn("No subjects assigned today", subject_part)
 
     def test_handed_over_class_is_not_listed(self):
         self.class_teacher(self.rao, self.six_a)
@@ -442,20 +452,20 @@ class TermRemarksTreatmentTests(DashboardFixture, TestCase):
 
 
 class SubjectsCardTests(DashboardFixture, TestCase):
-    """My day "Subjects I teach" card (2026-11-17): closed by default, chips grouped by subject."""
+    """My day links to a full-name list of the teacher's active subject assignments."""
 
     def card(self):
         html = self.page().content.decode()
-        return html.split('class="erp-subj-card"')[1].split("</details>")[0]
+        return html.split('class="erp-tt-entry erp-subj-entry"')[1].split("</a>")[0]
 
-    def test_the_card_is_closed_by_default_and_says_what_is_inside(self):
+    def subjects_page(self):
+        return self.teacher.get(reverse("core:my-subjects")).content.decode()
+
+    def test_the_card_links_to_the_detail_page_and_says_what_is_inside(self):
         self.assign(self.rao, self.maths, self.six_a)
         self.assign(self.rao, self.maths, self.six_b)
-        html = self.page().content.decode()
-        opening_tag = re.search(r"<details\b[^>]*erp-subj-card[^>]*>", html).group(0)
-        self.assertNotRegex(opening_tag, r"\sopen\b")
         card = self.card()
-        self.assertIn("<summary", card)
+        self.assertIn(f'href="{reverse("core:my-subjects")}"', card)
         self.assertIn("Subjects I teach", card)
         self.assertIn("Mathematics · 2 classes", card)
 
@@ -463,21 +473,25 @@ class SubjectsCardTests(DashboardFixture, TestCase):
         self.assign(self.rao, self.maths, self.six_a)
         self.assertIn("Mathematics · 1 class<", self.card())
 
-    def test_chips_are_grouped_by_subject_in_name_order(self):
+    def test_full_class_names_are_grouped_by_subject_in_name_order(self):
         self.assign(self.rao, self.sanskrit, self.six_a)
         self.assign(self.rao, self.maths, self.six_b)
         self.assign(self.rao, self.maths, self.six_a)
-        card = self.card()
-        self.assertLess(card.index(">Mathematics<"), card.index(">Sanskrit<"))
-        maths = card.split(">Mathematics<")[1].split(">Sanskrit<")[0]
-        self.assertLess(maths.index(">6-A<"), maths.index(">6-B<"))
+        page = self.subjects_page()
+        self.assertLess(page.index(">Mathematics<"), page.index(">Sanskrit<"))
+        maths = page.split(">Mathematics<")[1].split(">Sanskrit<")[0]
+        self.assertLess(maths.index(str(self.six_a)), maths.index(str(self.six_b)))
+        self.assertNotIn(">6-A<", page)
 
     def test_no_subjects_still_shows_the_card(self):
         self.class_teacher(self.rao, self.six_a)
         card = self.card()
         self.assertIn("No subjects assigned today", card)
-        self.assertIn("No subjects are assigned to you today.", card)
         self.assertNotIn("0 classes", card)
+        self.assertIn(
+            "Subject and class assignments are set by the school office.",
+            self.subjects_page(),
+        )
 
 
 class ShortSectionLabelTests(SimpleTestCase):

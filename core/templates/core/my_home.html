@@ -45,29 +45,15 @@
     <span class="erp-tt-entry-chevron" aria-hidden="true">&rsaquo;</span>
 </a>
 
-{# Subjects I teach card (2026-11-17): closed by default; opening it shows the classes as chips grouped by subject. #}
-<details class="erp-subj-card">
-<summary>
+{# Subjects I teach follows Timetable to a dedicated page where full names have room. #}
+<a class="erp-tt-entry erp-subj-entry" href="{% url 'core:my-subjects' %}">
     <span class="erp-tt-entry-icon">{% include "partials/_tab_icon.html" with name="subjects" %}</span>
     <span class="erp-tt-entry-text">
         <span class="erp-tt-entry-title">Subjects I teach</span>
         <span class="erp-tt-entry-meta">{{ subjects_card.meta }}</span>
     </span>
     <span class="erp-tt-entry-chevron" aria-hidden="true">&rsaquo;</span>
-</summary>
-<div class="erp-subj-body">
-{% for group in subjects_card.groups %}
-<div class="erp-subj-group">
-<p class="erp-subj-name">{{ group.subject }}</p>
-<ul class="erp-subj-chips">
-{% for section in group.sections %}<li class="erp-subj-chip"><span aria-hidden="true">{{ section.short }}</span><span class="visually-hidden">{{ section.full }}</span></li>{% endfor %}
-</ul>
-</div>
-{% empty %}
-<p class="erp-assign-empty">No subjects are assigned to you today.</p>
-{% endfor %}
-</div>
-</details>
+</a>
 
 <section aria-labelledby="day-assignments">
 <h2 class="erp-section-title" id="day-assignments">Teaching assignments</h2>

@@ -2759,29 +2759,23 @@ body:has(.erp-dialog[open]) { overflow: hidden; }
 .erp-tt-entry-title { font-weight: 700; }
 .erp-tt-entry-meta { font-size: .88rem; color: var(--erp-ink-soft); }
 .erp-tt-entry-chevron { color: var(--erp-ink-soft); font-size: 1.4rem; line-height: 1; }
-/* My day "Subjects I teach" card: a closed-by-default disclosure under the Timetable card. */
-.erp-subj-card {
-  margin-block: calc(-1 * var(--erp-space-2)) var(--erp-space-4); background: var(--erp-surface);
-  border: 1px solid var(--erp-rule); border-radius: 12px;
+/* My day links to a dedicated full-name subject list, matching the Timetable entry. */
+.erp-subj-entry { margin-block: calc(-1 * var(--erp-space-2)) var(--erp-space-4); }
+.erp-subjects-page { max-width: 48rem; }
+.erp-subjects-summary { margin: var(--erp-space-2) 0 var(--erp-space-4); color: var(--erp-ink); font-weight: 700; }
+.erp-subjects-list { display: grid; gap: var(--erp-space-4); }
+.erp-subject-group {
+  overflow: hidden; background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: 12px;
 }
-.erp-subj-card > summary {
-  display: flex; align-items: center; gap: 14px; min-height: 64px; padding: 12px 14px;
-  cursor: pointer; list-style: none; color: var(--erp-ink);
+.erp-subject-group h2 {
+  margin: 0; padding: 12px 14px; border-bottom: 1px solid var(--erp-rule);
+  background: var(--erp-paper); font-size: 1rem; font-weight: 800;
 }
-.erp-subj-card > summary::-webkit-details-marker { display: none; }
-.erp-subj-card[open] .erp-tt-entry-chevron { transform: rotate(90deg); }
-.erp-subj-body { padding: var(--erp-space-3) 14px 14px; border-top: 1px solid var(--erp-rule); }
-.erp-subj-group + .erp-subj-group { margin-top: var(--erp-space-3); }
-.erp-subj-name {
-  margin: 0 0 var(--erp-space-2); font-size: .78rem; font-weight: 800; letter-spacing: .04em;
-  text-transform: uppercase; color: var(--erp-ink-soft);
-}
-.erp-subj-chips { display: flex; flex-wrap: wrap; gap: var(--erp-space-2); margin: 0; padding: 0; list-style: none; }
-.erp-subj-chip {
-  display: inline-flex; align-items: center; justify-content: center; min-width: 52px; min-height: 36px;
-  padding-inline: 10px; border-radius: 999px; background: var(--erp-action-wash);
-  color: var(--erp-action-strong); font-weight: 700;
-}
+.erp-subject-group ul { margin: 0; padding: 0; list-style: none; }
+.erp-subject-group li { display: grid; gap: 2px; padding: 12px 14px; }
+.erp-subject-group li + li { border-top: 1px solid var(--erp-rule); }
+.erp-subject-class { color: var(--erp-ink); font-size: 1.0625rem; font-weight: 700; }
+.erp-subject-year { color: var(--erp-ink-soft); font-size: .88rem; }
 
 /* Teacher timetable Day | Week toggle and week grid (ADR 0021 D10, amended 2026-11-17): blank cells stay empty. */
 .erp-tt-toggle {

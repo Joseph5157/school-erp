@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Subjects I teach{% endblock %}
+{% block content %}
+<div class="erp-subjects-page">
+<p class="mb-2"><a href="{% url 'core:my-home' %}">&lsaquo; My day</a></p>
+<h1 class="h3 mb-1">Subjects I teach</h1>
+<p class="text-muted mb-1">Your active teaching assignments on {{ today|date:"j F Y" }}.</p>
+
+{% if subject_groups %}
+<p class="erp-subjects-summary">{{ summary }}</p>
+<div class="erp-subjects-list">
+{% for group in subject_groups %}
+<section class="erp-subject-group">
+    <h2 id="subject-{{ forloop.counter }}">{{ group.subject }}</h2>
+    <ul role="list">
+    {% for section in group.sections %}
+        <li>
+            <span class="erp-subject-class">{{ section.full }}</span>
+            <span class="erp-subject-year">{{ section.year.name }}</span>
+        </li>
+    {% endfor %}
+    </ul>
+</section>
+{% endfor %}
+</div>
+{% else %}
+{% include "partials/_empty.html" with title="No subjects assigned today" text="Subject and class assignments are set by the school office. If you expected to see one here, ask the office to check your assignment." %}
+{% endif %}
+</div>
+{% endblock %}

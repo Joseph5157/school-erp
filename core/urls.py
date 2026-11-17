@@ -202,6 +202,7 @@ urlpatterns = [
     ),
     path("my/", views.my_home, name="my-home"),
     path("my/timetable/", views.my_timetable, name="my-timetable"),
+    path("my/subjects/", views.my_subjects, name="my-subjects"),
     path("my/students/", views.my_students, name="my-students"),
     path("my/results/", views.my_results, name="my-results"),
     path("my/results/<int:pk>/", views.my_subject_results, name="my-subject-results"),

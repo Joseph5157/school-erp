@@ -1099,20 +1099,30 @@ def _timetable_card(rows, school_day):
 
 
 def _subjects_card(subject_rows):
-    """My day "Subjects I teach" card (2026-11-17): a summary line and chips grouped by subject.
+    """Build the dashboard summary and full-name groups for "Subjects I teach".
 
-    Chips run in class display order, then Section name, so "Grade 10" never sorts before
-    "Grade 2". Each chip carries the short label and the full Section name.
+    Classes run in display order, then Section and Academic Year, so the detail page stays
+    deterministic even when overlapping years contain the same Section.
     """
-    def chip_order(row):
+    def class_order(row):
         grade = row["section"].class_grade
-        return (grade.display_order is None, grade.display_order or 0, grade.name,
-                row["section"].name)
+        return (
+            grade.display_order is None,
+            grade.display_order or 0,
+            grade.name,
+            row["section"].name,
+            row["year"].start_date,
+            row["year"].name,
+        )
 
     groups = {}
-    for row in sorted(subject_rows, key=chip_order):
+    for row in sorted(subject_rows, key=class_order):
         groups.setdefault(row["subject"], []).append(
-            {"short": timetable.short_section_label(row["section"]), "full": str(row["section"])})
+            {
+                "full": str(row["section"]),
+                "year": row["year"],
+            }
+        )
     count = len(subject_rows)
     if not count:
         meta = "No subjects assigned today"
@@ -1265,6 +1275,31 @@ def my_home(request):
             "assessments": assessments,
             "marks_tile": _marks_tile(assessments, bool(subject_duties)),
             "remarks": remarks,
+        },
+    )
+
+
+@teacher_required
+def my_subjects(request):
+    today = business_today()
+    subject_rows = [
+        {
+            "section": duty.section,
+            "subject": duty.offering.subject.name,
+            "year": duty.offering.academic_year,
+        }
+        for duty in current_teacher_assignments(request.user, today).select_related(
+            "section__class_grade"
+        )
+    ]
+    subjects_card = _subjects_card(subject_rows)
+    return render(
+        request,
+        "core/my_subjects.html",
+        {
+            "today": today,
+            "summary": subjects_card["meta"],
+            "subject_groups": subjects_card["groups"],
         },
     )
 
