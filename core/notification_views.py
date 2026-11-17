@@ -44,13 +44,14 @@ def guardian_consent_record(request, pk):
 def _back_to_queue(request):
     """Redirect to the queue page the action came from (audit 13 SF-06).
 
-    Only a positive whole page number and a whitelisted sort token are carried; the paginator
+    Only a whole ASCII page number above 1 and a whitelisted sort token are carried; the paginator
     clamps a page that the action just emptied.
     """
     url = reverse("core:notifications-to-send")
     params = {}
     page = request.POST.get("page", "")
-    if page.isdigit() and int(page) > 1:
+    # isascii(): "²".isdigit() is True but int("²") raises; the length cap keeps int() cheap.
+    if page.isascii() and page.isdigit() and len(page) <= 6 and int(page) > 1:
         params["page"] = page
     sort = request.POST.get("sort", "")
     if sort.lstrip("-") in {column.key for column in QUEUE_COLUMNS if column.sortable}:

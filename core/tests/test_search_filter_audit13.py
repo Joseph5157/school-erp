@@ -126,7 +126,7 @@ class QueueReturnTests(AlertFixture, TestCase):
 
     def test_bad_or_first_page_values_fall_back_to_the_plain_queue(self):
         for data in ({}, {"page": "1"}, {"page": "-2"}, {"page": "x"}, {"sort": "guardian"},
-                     {"page": "//evil.example"}):
+                     {"page": "//evil.example"}, {"page": "²"}, {"page": "9" * 5000}):
             with self.subTest(data=data):
                 response = self.post("core:notification-mark-sent", data)
                 self.assertRedirects(response, QUEUE, fetch_redirect_response=False)
