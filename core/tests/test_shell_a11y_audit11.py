@@ -46,6 +46,7 @@ class ShellCssTests(SimpleTestCase):
     def test_scroll_padding_replaces_the_section_only_margin(self):
         self.assertIn("html { scroll-padding-top: calc(var(--erp-topbar-h) + var(--erp-space-4)); }", css())
         self.assertIn(".erp-main section[id] { scroll-margin-top: 0; }", css())
+        self.assertIn(".erp-offering-group { scroll-margin-top: 0; }", css())  # #grade- jumps on Subjects offered
 
     def test_breadcrumb_divider_has_an_empty_alternative(self):
         self.assertIn('content: "/"; content: "/" / "";', css())

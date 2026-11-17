@@ -2302,7 +2302,7 @@ body:has(.erp-dialog[open]) { overflow: hidden; }
    summary's right edge because a button inside <summary> would also toggle the group. */
 .erp-offering-grade { position: relative; }
 .erp-offering-grade + .erp-offering-grade { border-top: 1px solid var(--erp-rule); }
-.erp-offering-group { scroll-margin-top: 4.5rem; }
+.erp-offering-group { scroll-margin-top: 0; }  /* html scroll-padding-top already clears the top bar */
 .erp-offering-group > summary {
   display: flex; align-items: center; gap: var(--erp-space-3); min-height: 3.25rem;
   padding: var(--erp-space-2) 9.5rem var(--erp-space-2) var(--erp-space-4);
