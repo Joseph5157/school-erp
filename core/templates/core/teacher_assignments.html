@@ -39,12 +39,12 @@
                     {% if item.can_end and perms.core.change_assessmentteacherassignment or item.can_delete and perms.core.delete_assessmentteacherassignment %}
                     <div class="erp-assignment-actions">
                         {% if item.can_end and perms.core.change_assessmentteacherassignment %}
-                        <a href="{% url 'core:teacher-assignment-end' item.row.pk %}">End</a>
+                        <a href="{% url 'core:teacher-assignment-end' item.row.pk %}">End<span class="visually-hidden"> assignment of {{ item.row.teacher.get_full_name|default:item.row.teacher.username }}, {{ slot.offering.subject }} for {{ slot.offering.class_grade }} {{ slot.section.name }}</span></a>
                         {% endif %}
                         {% if item.can_delete and perms.core.delete_assessmentteacherassignment %}
                         <form method="post" action="{% url 'core:teacher-assignment-delete' item.row.pk %}" class="d-inline">
                             {% csrf_token %}
-                            <button type="submit" class="btn btn-link btn-sm text-danger p-0">Delete planned</button>
+                            <button type="submit" class="btn btn-link btn-sm text-danger p-0">Delete planned<span class="visually-hidden"> assignment of {{ item.row.teacher.get_full_name|default:item.row.teacher.username }}, {{ slot.offering.subject }} for {{ slot.offering.class_grade }} {{ slot.section.name }}</span></button>
                         </form>
                         {% endif %}
                     </div>
@@ -55,7 +55,7 @@
             </td>
             <td class="text-end text-nowrap">
                 {% if perms.core.add_assessmentteacherassignment %}
-                <a class="btn btn-outline-primary btn-sm" href="{% url 'core:teacher-assignment-create' academic_year.pk %}?offering={{ slot.offering.pk }}&amp;section={{ slot.section.pk }}">Reassign</a>
+                <a class="btn btn-outline-primary btn-sm" href="{% url 'core:teacher-assignment-create' academic_year.pk %}?offering={{ slot.offering.pk }}&amp;section={{ slot.section.pk }}">Reassign<span class="visually-hidden"> {{ slot.offering.subject }} for {{ slot.offering.class_grade }} {{ slot.section.name }}</span></a>
                 {% endif %}
             </td>
         </tr>
@@ -99,7 +99,7 @@
                 <div class="erp-assignment-actions">
                     <form method="post" action="{% url 'core:teacher-assignment-delete' item.row.pk %}" class="d-inline">
                         {% csrf_token %}
-                        <button type="submit" class="btn btn-link btn-sm text-danger p-0">Delete planned</button>
+                        <button type="submit" class="btn btn-link btn-sm text-danger p-0">Delete planned<span class="visually-hidden"> assignment of {{ item.row.teacher.get_full_name|default:item.row.teacher.username }}, {{ slot.offering.subject }} for {{ slot.offering.class_grade }} {{ slot.section.name }}</span></button>
                     </form>
                 </div>
                 {% endif %}

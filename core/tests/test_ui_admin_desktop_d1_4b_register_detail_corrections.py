@@ -204,7 +204,9 @@ class SubmittedDetailTests(DetailFixture, TestCase):
         self.assertEqual(re.findall(r'<th scope="col">([^<]+)</th>', table),
                          ["Student", "Status", "Absence note", "Actions"])
         table_layout, phone_layout = content.split('<div class="d-md-none d-print-none')
-        self.assertEqual(table_layout.count("Correct</a>"), 2)  # one per entry, table layout
+        # One per entry in the table layout, each naming its student for screen readers (audit 12 A11Y-03).
+        self.assertEqual(len(re.findall(r'>Correct<span class="visually-hidden"> attendance for [^<]+</span></a>',
+                                        table_layout)), 2)
         self.assertEqual(phone_layout.count("Correct</a>"), 2)  # one per entry, phone cards
         self.assertContains(response, reverse("core:attendance-entry-correct", args=[self.entry.pk]))
         self.assertNotContains(response, 'id="attendance-capture"')
