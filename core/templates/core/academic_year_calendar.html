@@ -49,10 +49,10 @@
             <td>{{ day.label }}</td>
             <td class="text-end">
                 {% if perms.core.change_schoolcalendarday %}
-                    <a class="btn btn-link btn-sm" href="{% url 'core:calendar-day-update' day.pk %}">Edit label</a>
+                    <a class="btn btn-link btn-sm" href="{% url 'core:calendar-day-update' day.pk %}">Edit label<span class="visually-hidden"> for {{ day.date }}</span></a>
                 {% endif %}
                 {% if perms.core.delete_schoolcalendarday %}
-                <a class="btn btn-outline-danger btn-sm" href="{% url 'core:calendar-day-delete' day.pk %}">Remove</a>
+                <a class="btn btn-outline-danger btn-sm" href="{% url 'core:calendar-day-delete' day.pk %}">Remove<span class="visually-hidden"> {{ day.date }}</span></a>
                 {% endif %}
             </td>
         </tr>

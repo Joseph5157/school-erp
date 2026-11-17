@@ -74,7 +74,7 @@
             <td>{{ entry.get_status_display }}</td>
             <td class="text-break">{{ entry.absence_note }}</td>
             {% if perms.core.change_attendanceentry %}
-            <td><a href="{% url 'core:attendance-entry-correct' entry.pk %}">Correct</a></td>
+            <td><a href="{% url 'core:attendance-entry-correct' entry.pk %}">Correct<span class="visually-hidden"> attendance for {{ entry.academic_enrollment.student.full_name }}</span></a></td>
             {% endif %}
         </tr>
         {% empty %}

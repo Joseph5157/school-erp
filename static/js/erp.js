@@ -345,6 +345,10 @@
       retry.className = "btn btn-sm btn-outline-secondary";
       retry.setAttribute("data-erp-retry", "");
       retry.textContent = "Retry";
+      var who = document.createElement("span");  // the row it retries, for screen readers (audit 12 A11Y-03)
+      who.className = "visually-hidden";
+      who.textContent = " saving " + nameOf(row);
+      retry.appendChild(who);
       target.appendChild(message);
       target.appendChild(retry);
     }
