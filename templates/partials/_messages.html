@@ -2,8 +2,7 @@
 <section class="erp-messages" aria-label="Notifications">
     {% for message in messages %}
     <div class="alert alert-{% if message.level_tag == 'error' %}danger{% elif message.level_tag == 'debug' %}secondary{% else %}{{ message.level_tag }}{% endif %} alert-dismissible fade show" role="{% if message.level_tag == 'error' %}alert{% else %}status{% endif %}"{% if message.level_tag == 'success' or message.level_tag == 'info' %} data-erp-autohide{% endif %}>
-        {# The Dismiss button is named "Dismiss" + this message's own text by reference, so a message that
-           carries a link never has its markup copied into an attribute (review of #264). #}
+        {% comment %}The Dismiss button is named "Dismiss" + this message's own text by reference, so a message that carries a link never has its markup copied into an attribute (review of #264).{% endcomment %}
         <span id="erp-msg-{{ forloop.counter }}">{{ message }}</span>
         <span id="erp-dismiss-{{ forloop.counter }}" hidden>Dismiss</span>
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-labelledby="erp-dismiss-{{ forloop.counter }} erp-msg-{{ forloop.counter }}"></button>
