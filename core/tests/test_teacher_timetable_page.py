@@ -173,9 +173,22 @@ class TimetablePageTests(TimetableDashboardFixture, TestCase):
         self.assertEqual(len(page.context["strip"]), 30)
 
     def test_no_assignments_shows_empty_sentence(self):
+        self.slot()
         page = self.get()
         self.assertEqual(page.context["rows"], [])
         self.assertContains(page, "No periods scheduled for you on this day.")
+
+    def test_no_assignments_on_a_sunday_shows_non_school_sentence(self):
+        self.slot()
+        page = self.get(SUNDAY.isoformat())
+        self.assertIsNone(page.context["rows"])
+        self.assertContains(page, "No school timetable on this day.")
+
+    def test_chips_carry_full_date_labels(self):
+        html = self.get("2026-10-13").content.decode()
+        selected = re.search(r'<a[^>]*aria-current="date"[^>]*>', html).group(0)
+        self.assertIn('aria-label="Tuesday 13 October 2026"', selected)
+        self.assertIn('aria-label="Monday 28 September 2026"', html)
 
     def test_holiday_shows_non_school_sentence(self):
         self.assign(self.rao, self.maths, self.six_a)

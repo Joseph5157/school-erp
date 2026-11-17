@@ -1249,11 +1249,9 @@ def my_timetable(request):
             "today": today,
             "is_today": selected == today,
             "strip": timetable.date_strip(selected, today),
-            # No assignments means no Academic Year to ask about the day; the page
-            # says "no periods for you", not "no school".
             "rows": timetable.teacher_timetable_on(
                 assignments, selected, year_is_instructional
-            ) if assignments else [],
+            ),
         },
     )
 

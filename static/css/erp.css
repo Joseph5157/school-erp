@@ -2539,7 +2539,7 @@ body:has(.erp-dialog[open]) { overflow: hidden; }
 }
 .erp-tt-strip {
   position: relative; display: flex; gap: 6px; overflow-x: auto; scroll-snap-type: x proximity;
-  margin-inline: -1rem; padding-inline: 1rem; margin-block-end: var(--erp-space-3);
+  margin-inline: -1rem; padding-inline: 1rem; padding-block: 6px; margin-block-end: var(--erp-space-3);
 }
 .erp-tt-chip {
   flex: 0 0 52px; display: flex; flex-direction: column; align-items: center; justify-content: center;
