@@ -1,3 +1,5 @@
+from urllib.parse import urlsplit
+
 from django.contrib import messages
 from django.contrib.auth import get_user_model, password_validation
 from django.contrib.auth import views as auth_views
@@ -10,6 +12,23 @@ from django.views.decorators.http import require_http_methods
 from accounts.middleware import seconds_left
 from accounts.models import SecurityEvent
 from accounts.return_path import return_path
+
+
+class LoginView(auth_views.LoginView):
+    """Django's login page, sending a signed-in user on instead of showing the form.
+
+    redirect_authenticated_user sends a signed-in login to a safe ?next= or home. A ?next= that
+    points back at the login page is dropped: Django would refuse to redirect the page to itself
+    (ValueError, a 500) for a signed-in user, and loop an anonymous one straight back here.
+    """
+
+    redirect_authenticated_user = True
+
+    def get_redirect_url(self):
+        url = super().get_redirect_url()
+        if url and urlsplit(url).path == self.request.path:
+            return ""
+        return url
 
 
 def csrf_failure(request, reason=""):

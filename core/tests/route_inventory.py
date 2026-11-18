@@ -39,7 +39,9 @@ DATA_ACCESS = ROOT / "core" / "data_access.py"
 # a reviewed decision. Keyed by the callable as written in the URLconf.
 FRAMEWORK_OWNED = {
     "admin.site.urls": "Django admin: its own login and per-model permissions",
-    "auth_views.LoginView.as_view": "Django sign-in view; reachable without a login by design",
+    "account_views.LoginView.as_view": (
+        "Django sign-in view (subclass that sends a signed-in login on); reachable without a login by design"
+    ),
     "auth_views.LogoutView.as_view": "Django sign-out view; POST only",
 }
 # Module-level names that are not a plain function but are known, with the reason.

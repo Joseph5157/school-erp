@@ -1766,7 +1766,7 @@
     "inner": [],
     "perms": [],
     "route": "accounts/login/",
-    "view": "auth_views.LoginView.as_view"
+    "view": "account_views.LoginView.as_view"
   },
   "root:logout": {
     "flags": [

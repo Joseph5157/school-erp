@@ -11,9 +11,14 @@
         If you think you should be able to open it, contact the school office.
         Otherwise return to your own area.
     </p>
-    <p class="mb-0">
+    <div class="d-flex flex-wrap gap-2">
         <a class="btn btn-primary" href="{% url 'home' %}">Go to my area</a>
-        <a class="btn btn-outline-secondary" href="{% url 'login' %}">Go to the sign-in page</a>
-    </p>
+        {% if user.is_authenticated %}{# A login link would bounce a signed-in user home and back here; switching account means logging out. #}
+        <form method="post" action="{% url 'logout' %}" class="m-0">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-secondary">Log out and sign in as someone else</button>
+        </form>
+        {% endif %}
+    </div>
 </div>
 {% endblock %}
