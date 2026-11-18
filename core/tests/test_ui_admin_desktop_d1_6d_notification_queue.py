@@ -334,7 +334,7 @@ class AccessAndNavigationTests(Base, TestCase):
                     self.every_type()
                 page = html(self.client.get(URL))
                 self.assertEqual(re.findall(ACTIVE_LINK, page), [URL])
-                self.assertIn('aria-label="Breadcrumb"', page)
+                self.assertIn('aria-label="Breadcrumbs"', page)
         followed = self.client.post(
             reverse("core:notification-dismiss", args=[Notification.objects.first().pk]),
             {"reason": "x"}, follow=True)

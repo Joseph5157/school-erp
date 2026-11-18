@@ -307,7 +307,7 @@ class BreadcrumbRenderingTests(AuthorizationClientsMixin, TestCase):
 
     def test_student_detail_renders_breadcrumb_nav(self):
         response = self.administrator.get(reverse("core:student-detail", args=[self.student.pk]))
-        self.assertContains(response, 'aria-label="Breadcrumb"')
+        self.assertContains(response, 'aria-label="Breadcrumbs"')
         self.assertContains(response, f'<li><a href="{response.wsgi_request.path}" aria-current="page">Student</a></li>', html=False)
         self.assertContains(response, reverse("core:student-list"))
 
@@ -321,4 +321,4 @@ class BreadcrumbRenderingTests(AuthorizationClientsMixin, TestCase):
 
     def test_overview_page_itself_has_no_breadcrumb(self):
         response = self.administrator.get(reverse("core:admin-overview"))
-        self.assertNotContains(response, 'aria-label="Breadcrumb"')
+        self.assertNotContains(response, 'aria-label="Breadcrumbs"')

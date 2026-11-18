@@ -273,7 +273,7 @@ class ReportCardTests(ReportFixture, NoTotalsMixin, TestCase):
         self.assertIn("UT1", page)
         self.assertNotIn("UT2", page)                        # other Term
         self.assertNoTotals(page)
-        self.assertIn('aria-label="Breadcrumb"', page)
+        self.assertIn('aria-label="Breadcrumbs"', page)
 
     def test_teacher_only_rendering(self):
         self.class_teacher(self.rao)
@@ -286,7 +286,7 @@ class ReportCardTests(ReportFixture, NoTotalsMixin, TestCase):
         self.assertIn("UT1", page)
         self.assertNotIn("UT2", page)
         self.assertIn("Steady progress.", page)
-        self.assertNotIn('aria-label="Breadcrumb"', page)    # teacher shell has no admin trail
+        self.assertNotIn('aria-label="Breadcrumbs"', page)    # teacher shell has no admin trail
         self.assertEqual(teacher.get(self.card_url).status_code, 403)  # and no administrator access
 
     def test_dual_role_user_gets_chrome_by_area_and_links_by_permission(self):
@@ -297,12 +297,12 @@ class ReportCardTests(ReportFixture, NoTotalsMixin, TestCase):
         self.assertIn("Class report card", teacher_view)
         self.assertIn(f'href="{self.my_students}"', teacher_view)
         self.assertIn(f'href="{self.results_link}"', teacher_view)  # permission, not area, shows it
-        self.assertNotIn('aria-label="Breadcrumb"', teacher_view)
+        self.assertNotIn('aria-label="Breadcrumbs"', teacher_view)
         admin_view = html(dual.get(self.card_url))
         self.assertIn("Term report card", admin_view)
         self.assertNotIn(self.my_students, admin_view)
         self.assertIn(f'href="{self.results_link}"', admin_view)
-        self.assertIn('aria-label="Breadcrumb"', admin_view)
+        self.assertIn('aria-label="Breadcrumbs"', admin_view)
 
     def test_administrator_without_teacher_role_cannot_use_the_teacher_route(self):
         self.assertEqual(self.client.get(self.my_card).status_code, 403)

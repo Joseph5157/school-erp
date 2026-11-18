@@ -332,7 +332,7 @@ class AuthorizationIndependenceTests(TimetableDashboardFixture, TestCase):
         page = self.page()
         self.assertEqual(self.labels(page), [])
         self.assertEqual(page.context["subject_rows"], [])
-        self.assertIn("No subjects are assigned to you today.", page.content.decode())
+        self.assertIn("No subjects assigned today", page.content.decode())  # the "Subjects I teach" card meta
 
     def test_an_assignment_without_a_slot_keeps_access_and_shows_no_row(self):
         self.assign(self.rao, self.maths, self.six_a)

@@ -296,7 +296,7 @@ class TeacherManageTests(AuthorizationClientsMixin, TestCase):
 
     def test_breadcrumbs_link_back_to_the_teacher_and_the_list(self):
         response = self.administrator.get(self.url("teacher-deactivate"))
-        self.assertContains(response, 'aria-label="Breadcrumb"')
+        self.assertContains(response, 'aria-label="Breadcrumbs"')
         self.assertContains(response, f'href="{reverse("core:teacher-list")}"')
         self.assertContains(response, f'href="{self.url("teacher-detail")}"')
 
