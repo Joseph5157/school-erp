@@ -35,6 +35,9 @@ urlpatterns = [
         auth_views.LoginView.as_view(
             template_name="registration/login.html",
             authentication_form=ThrottledAuthenticationForm,
+            # A signed-in login is sent home (or to a safe ?next=) instead of seeing the
+            # form inside the app shell with the sidebar around it.
+            redirect_authenticated_user=True,
         ),
         name="login",
     ),
