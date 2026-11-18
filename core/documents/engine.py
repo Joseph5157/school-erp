@@ -18,8 +18,8 @@ _FONT_CSS = """
 """
 
 
-def render_pdf(template_name, context):
-    """Render a template to PDF bytes. Fonts are bundled, never the server's."""
+def render_document(template_name, context):
+    """Lay a template out into pages (a WeasyPrint Document). Fonts are bundled, never the server's."""
     if os.name == "nt" and os.path.isdir(_MSYS2_BIN):
         os.environ.setdefault("WEASYPRINT_DLL_DIRECTORIES", _MSYS2_BIN)
     from weasyprint import CSS, HTML  # lazy: needs system libraries (Pango)
@@ -35,6 +35,15 @@ def render_pdf(template_name, context):
         telugu=(FONT_DIR / "NotoSansTelugu-Regular.ttf").as_uri(),
     ))
     html = render_to_string(template_name, context)
-    return HTML(string=html, base_url=str(settings.BASE_DIR)).write_pdf(
+    return HTML(string=html, base_url=str(settings.BASE_DIR)).render(
         stylesheets=[fonts], font_config=font_config
     )
+
+
+def render_pdf(template_name, context):
+    """Render a template to tagged PDF bytes (audit 17, PRT-05).
+
+    pdf_tags writes a structure tree (headings, tables, reading order) for screen
+    readers. It is not a PDF/UA conformance claim; that needs a manual check.
+    """
+    return render_document(template_name, context).write_pdf(pdf_tags=True)
