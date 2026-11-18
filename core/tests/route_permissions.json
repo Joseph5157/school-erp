@@ -972,6 +972,15 @@
     "route": "my/results/<int:pk>/",
     "view": "views.my_subject_results"
   },
+  "core:my-subjects": {
+    "flags": [
+      "teacher_required"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "my/subjects/",
+    "view": "views.my_subjects"
+  },
   "core:my-timetable": {
     "flags": [
       "teacher_required"

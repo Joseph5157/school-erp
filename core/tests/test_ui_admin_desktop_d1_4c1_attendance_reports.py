@@ -84,9 +84,9 @@ def table_html(content, label):
 
 
 def breadcrumb_nav(content):
-    if 'aria-label="Breadcrumb"' not in content:
+    if 'aria-label="Breadcrumbs"' not in content:
         return ""
-    return content.split('aria-label="Breadcrumb"')[1].split("</nav>")[0]
+    return content.split('aria-label="Breadcrumbs"')[1].split("</nav>")[0]
 
 
 def breadcrumb_labels(content):

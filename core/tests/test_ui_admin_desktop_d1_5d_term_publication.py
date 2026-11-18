@@ -535,5 +535,5 @@ class BreadcrumbTests(UiFixture, TestCase):
 
     def test_rendered_detail_page_shows_the_trail(self):
         page = html(self.client.get(self.detail_url))
-        self.assertIn('aria-label="Breadcrumb"', page)
+        self.assertIn('aria-label="Breadcrumbs"', page)
         self.assertIn(f'href="{self.stale_url}"', page)

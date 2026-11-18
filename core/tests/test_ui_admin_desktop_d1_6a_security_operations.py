@@ -109,7 +109,7 @@ class LockoutPageTests(ViewerMixin, ThrottlingFixture, TestCase):
         user, clearer = self.client_with("clear_login_lockout")
         page = html(clearer.get(LOCKOUTS))
         self.assertIn('Clear<span class="visually-hidden"> lockout for meena</span>', page)
-        self.assertNotIn('aria-label="Breadcrumb"', page)
+        self.assertNotIn('aria-label="Breadcrumbs"', page)
         self.assertEqual(clearer.post(CLEAR, {"username": "meena"}).status_code, 302)
         self.assertTrue(SecurityEvent.objects.filter(
             event_type=SecurityEvent.EventType.LOCKOUT_CLEARED, actor=user).exists())
@@ -136,7 +136,7 @@ class LockoutNavigationTests(ViewerMixin, ThrottlingFixture, TestCase):
             with self.subTest(populated=populated):
                 page = html(self.client.get(LOCKOUTS))
                 self.assertEqual(re.findall(ACTIVE_LINK, page), [LOCKOUTS])
-                self.assertIn('aria-label="Breadcrumb"', page)
+                self.assertIn('aria-label="Breadcrumbs"', page)
         # the page a POST redirects to is highlighted too
         page = html(self.client.post(CLEAR, {"username": "meena"}, follow=True))
         self.assertEqual(re.findall(ACTIVE_LINK, page), [LOCKOUTS])
@@ -256,7 +256,7 @@ class EnrollReviewTests(ReviewFlowMixin, BoundaryFixture, TestCase):
 
     def test_page_gets_no_trail_and_no_false_sidebar_highlight(self):
         page = html(self.client.post(self.url, self.data))
-        self.assertNotIn('aria-label="Breadcrumb"', page)
+        self.assertNotIn('aria-label="Breadcrumbs"', page)
         self.assertEqual(re.findall(ACTIVE_LINK, page), [])
 
 
