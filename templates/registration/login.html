@@ -3,8 +3,13 @@
 {% block content %}
 <div class="erp-login">
     <div class="erp-auth erp-login-form">
-        {# Phones only: the desktop showcase panel is hidden there. #}
-        <div class="erp-login-art-top">{% include "registration/_login_scene.html" %}</div>
+        {# Phones only: a teal header with the mark; the form below sits on a white sheet. Static copy: the login page must not query school data. #}
+        <div class="erp-login-hero">
+            <span class="erp-login-hero-mark">{% include "partials/_brand_mark.html" %}</span>
+            <p class="erp-login-hero-name">Everclass ERP</p>
+            <p class="erp-login-hero-title">Welcome back</p>
+            <p class="erp-login-hero-text">Attendance, results and notices for your school.</p>
+        </div>
         <p class="erp-login-eyebrow">Welcome back</p>
         <h1>Log in</h1>
         <p class="text-secondary">Use the username the school gave you.</p>
