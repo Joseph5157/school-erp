@@ -43,7 +43,7 @@ def _attendance(rows=80):
             "letterhead": LETTERHEAD, "class_label": "7", "section_label": "B",
             "start": "2026-06-01", "end": "2026-10-31", "issued_on": "2026-11-18",
             "rows": [
-                {"student_name": f"ROW{i:02d}START {'Student name ' * 6} ROW{i:02d}END",
+                {"student_name": f"ROW{i:02d}START {'Student name ' * (3 + 5 * (i % 4))} ROW{i:02d}END",
                  "present": 90, "absent": 10, "total": 100, "percentage": "90.0"}
                 for i in range(rows)
             ],
