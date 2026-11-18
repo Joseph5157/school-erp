@@ -1,5 +1,6 @@
 {% extends "documents/base.html" %}
 {% block title %}Report card {{ serial }}{% endblock %}
+{% block docfooter %}{{ payload.term_label }} report card &middot; {{ payload.student_name }} &middot; Class {{ payload.class_label }}, Section {{ payload.section_label }} &middot; Serial no. {{ serial }}{% endblock %}
 {% block body %}
 {% include "documents/_letterhead.html" %}
 <div class="meta"><span>Serial no. {{ serial }}</span><span>Date: {{ payload.issued_on }}</span></div>
@@ -8,10 +9,11 @@
 {{ payload.academic_year_label }} &middot; Class {{ payload.class_label }}, Section {{ payload.section_label }}</p>
 {% if payload.is_partial %}<p><em>Some results for this Term are not yet published.</em></p>{% endif %}
 <table>
-    <thead><tr><th>Subject</th><th>Assessment</th><th>Date</th><th>Marks</th><th>%</th><th>Grade</th><th>Pass/Fail</th></tr></thead>
+    <caption>Assessment results</caption>
+    <thead><tr><th scope="col">Subject</th><th scope="col">Assessment</th><th scope="col">Date</th><th scope="col">Marks</th><th scope="col">%</th><th scope="col">Grade</th><th scope="col">Pass/Fail</th></tr></thead>
     <tbody>
     {% for e in payload.entries %}
-        <tr><td>{{ e.subject }}</td><td>{{ e.assessment }}</td><td>{{ e.date }}</td>
+        <tr><th scope="row">{{ e.subject }}</th><td>{{ e.assessment }}</td><td>{{ e.date }}</td>
             <td>{% if e.status == "MARKED" %}{{ e.score|floatformat:"-2" }} / {{ e.maximum_marks|floatformat:"-2" }}{% else %}Absent{% endif %}</td>
             <td>{% if e.percentage %}{{ e.percentage|floatformat:"-2" }}%{% endif %}</td>
             <td>{{ e.grade }}</td><td>{{ e.pass_fail }}</td></tr>
@@ -21,6 +23,8 @@
     </tbody>
 </table>
 {% if payload.remark_text %}<h2>Class teacher's remark</h2><p>{{ payload.remark_text|linebreaksbr }}</p>{% endif %}
+<div class="closing">
 <p style="font-size: 9pt;">Each assessment is shown separately; there are no totals, weighting or ranks.</p>
 <div class="signature">Principal{% if payload.letterhead.principal_name %}<br>{{ payload.letterhead.principal_name }}{% endif %}</div>
+</div>
 {% endblock %}

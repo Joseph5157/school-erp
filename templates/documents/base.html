@@ -4,7 +4,14 @@
 <meta charset="utf-8">
 <title>{% block title %}Document{% endblock %}</title>
 <style>
-  @page { size: A4; margin: 22mm 18mm; }
+  /* Every page carries who/what/serial and "Page X of Y", so a loose page can be
+     put back with its document (audit 17, PRT-04). The letterhead stays on page 1. */
+  @page {
+    size: A4; margin: 22mm 18mm;
+    @bottom-left { content: element(docfooter); vertical-align: top; padding-top: 4mm; }
+    @bottom-right { content: "Page " counter(page) " of " counter(pages); font-size: 9pt; font-weight: 400; line-height: 1.5; color: #111; vertical-align: top; padding-top: 4mm; }
+  }
+  .docfooter { position: running(docfooter); font-size: 9pt; color: #111; }
   body { font-family: 'DocLatin', 'DocTelugu', sans-serif; font-size: 12pt; line-height: 1.5; color: #111; }
   h1 { font-size: 18pt; text-align: center; margin: 18mm 0 10mm; text-transform: uppercase; }
   .letterhead { text-align: center; border-bottom: 1px solid #111; padding-bottom: 4mm; }
@@ -12,8 +19,19 @@
   .meta { display: flex; justify-content: space-between; margin-top: 6mm; }
   .signature { margin-top: 28mm; text-align: right; }
   table { border-collapse: collapse; width: 100%; }
+  caption { caption-side: top; text-align: left; font-weight: 700; padding-bottom: 2mm; }
   th, td { border: 1px solid #555; padding: 2mm 3mm; text-align: left; }
+  /* Page breaks (PRT-03): a row never splits, headings repeat, and the overall total
+     prints once at the end instead of repeating as a footer on every page. */
+  tbody th { font-weight: 400; }
+  tfoot td { font-weight: 700; }
+  tr { break-inside: avoid; }
+  thead { display: table-header-group; }
+  tfoot { display: table-row-group; }
+  h2 { break-after: avoid; }
+  p { orphans: 3; widows: 3; }
+  .closing { break-inside: avoid; }
 </style>
 </head>
-<body>{% block body %}{% endblock %}</body>
+<body><div class="docfooter">{% block docfooter %}{% endblock %}</div>{% block body %}{% endblock %}</body>
 </html>
