@@ -516,6 +516,12 @@ class MarksSnapshotViewTests(MarksFixture, TestCase):
         self.assertContains(response, "No finalized results yet.", count=2)  # subjects and attention
         self.assertNotContains(response, "erp-cols--marks")
 
+    def test_subject_bars_use_the_marks_colour(self):
+        self.assessment({self.s1: 4, self.s2: 6})  # 25%: low for attendance, never red for marks
+        html = self.administrator.get(self.url).content.decode()
+        self.assertIn("erp-class-bar--marks", html)
+        self.assertNotIn("erp-class-bar--low", html)
+
     def test_more_results_do_not_add_queries(self):
         self.assessment({self.s1: 15}, name="First")
         with CaptureQueriesContext(connection) as ctx:
@@ -554,8 +560,7 @@ class DesktopLayoutTests(AnalyticsFixture, TestCase):
         self.assertRegex(html, r'class="erp-heat-cell erp-heat-cell--t1" title="1 Jul: 50\.0%"')
 
     def test_marks_use_their_own_colour_not_the_attendance_one(self):
-        html = self.administrator.get(self.url).content.decode()
-        self.assertNotIn("erp-class-bar--marks", html)  # no marks permission/data here
+        # The page side is MarksSnapshotViewTests.test_subject_bars_use_the_marks_colour.
         from pathlib import Path
 
         from django.conf import settings

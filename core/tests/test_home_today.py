@@ -82,7 +82,7 @@ class TodayDataFixture(MarksFixture):
 class AttendanceTodayTests(TodayDataFixture, TestCase):
     def test_not_taken_lists_class_and_teacher_in_class_order(self):
         self.add_section("Grade 2")
-        rows = home_today.attendance_today(TODAY, can_open_registers=True)["not_taken"]
+        rows = home_today.attendance_today(TODAY, include_rows=True, can_view_registers=True, can_create_registers=True)["not_taken"]
         self.assertEqual([r["class_name"] for r in rows], ["Grade 1", "Grade 2"])
         self.assertEqual(rows[0]["teacher_name"], "Asha Rao")
         self.assertEqual(rows[0]["section_name"], "A")
@@ -91,39 +91,64 @@ class AttendanceTodayTests(TodayDataFixture, TestCase):
     def test_submitted_section_is_not_listed(self):
         self.add_section("Grade 2")
         self.day(TODAY, {self.s1: P, self.s2: A})
-        result = home_today.attendance_today(TODAY, can_open_registers=True)
+        result = home_today.attendance_today(TODAY, include_rows=True, can_view_registers=True, can_create_registers=True)
         self.assertTrue(result["school_day"])
         self.assertEqual([r["class_name"] for r in result["not_taken"]], ["Grade 2"])
 
     def test_username_used_when_teacher_has_no_name(self):
         self.teacher.first_name = self.teacher.last_name = ""
         self.teacher.save()
-        rows = home_today.attendance_today(TODAY, can_open_registers=False)["not_taken"]
+        rows = home_today.attendance_today(TODAY, include_rows=True)["not_taken"]
         self.assertEqual(rows[0]["teacher_name"], "mrs.rao")
 
     def test_not_taken_rows_link_only_with_permission(self):
         register = self.day(TODAY, {self.s1: P}, submit=False)
         self.add_section("Grade 2")
-        off = home_today.attendance_today(TODAY, can_open_registers=False)["not_taken"]
-        self.assertTrue(off)
-        self.assertTrue(all(r["url"] is None for r in off))
-        on = {r["class_name"]: r for r in
-              home_today.attendance_today(TODAY, can_open_registers=True)["not_taken"]}
-        self.assertEqual(on["Grade 1"]["url"], f"/attendance/{register.pk}/")
-        self.assertEqual(on["Grade 1"]["state"], AttendanceRegister.AttendanceState.DRAFT)
-        self.assertEqual(on["Grade 2"]["url"], "/attendance/create/")
+        detail, create = f"/attendance/{register.pk}/", "/attendance/create/"
+
+        def urls(**can):
+            rows = home_today.attendance_today(TODAY, include_rows=True, **can)["not_taken"]
+            self.assertEqual(rows[0]["state"], AttendanceRegister.AttendanceState.DRAFT)
+            return {r["class_name"]: r["url"] for r in rows}
+
+        self.assertEqual(urls(), {"Grade 1": None, "Grade 2": None})
+        # A draft opens on the register page (view_attendanceregister); a missing one on the
+        # create page (add_attendanceregister). Each link needs its own page's permission.
+        self.assertEqual(urls(can_view_registers=True), {"Grade 1": detail, "Grade 2": None})
+        self.assertEqual(urls(can_create_registers=True), {"Grade 1": None, "Grade 2": create})
+        self.assertEqual(
+            urls(can_view_registers=True, can_create_registers=True),
+            {"Grade 1": detail, "Grade 2": create},
+        )
+
+    def test_rows_are_left_out_unless_asked_for(self):
+        result = home_today.attendance_today(TODAY)
+        self.assertIsNone(result["not_taken"])
+        self.assertTrue(result["school_day"])
+
+    def test_late_rows_link_to_the_register_only_with_view_permission(self):
+        register = self.day(TODAY, {self.s1: P, self.s2: A})
+        self.submit_at(register, at(10, 20))
+        late = home_today.register_compliance(
+            TODAY, at(11, 0), datetime.time(10, 0), can_create_registers=True
+        )["late"]
+        self.assertIsNone(late[0]["url"])
+        late = home_today.register_compliance(
+            TODAY, at(11, 0), datetime.time(10, 0), can_view_registers=True
+        )["late"]
+        self.assertEqual(late[0]["url"], f"/attendance/{register.pk}/")
 
     def test_donut_has_only_present_and_absent(self):
         self.day(TODAY, {self.s1: P, self.s2: A})
-        result = home_today.attendance_today(TODAY, can_open_registers=False)
+        result = home_today.attendance_today(TODAY, include_rows=True)
         self.assertEqual([s["label"] for s in result["donut"]["segments"]], ["Present", "Absent"])
         self.assertEqual((result["present"], result["absent"]), (1, 1))
 
     def test_donut_is_none_when_nothing_submitted(self):
-        self.assertIsNone(home_today.attendance_today(TODAY, can_open_registers=False)["donut"])
+        self.assertIsNone(home_today.attendance_today(TODAY, include_rows=True)["donut"])
 
     def test_non_school_day_has_no_rows_and_says_so(self):
-        result = home_today.attendance_today(SATURDAY, can_open_registers=True)
+        result = home_today.attendance_today(SATURDAY, include_rows=True, can_view_registers=True, can_create_registers=True)
         self.assertFalse(result["school_day"])
         self.assertEqual(result["not_taken"], [])
         compliance = home_today.register_compliance(
@@ -179,7 +204,7 @@ class RegisterComplianceTests(TodayDataFixture, TestCase):
         def run():
             with CaptureQueriesContext(connection) as ctx:
                 home_today.register_compliance(TODAY, at(11, 0), self.CUTOFF)
-                home_today.attendance_today(TODAY, can_open_registers=True)
+                home_today.attendance_today(TODAY, include_rows=True, can_view_registers=True, can_create_registers=True)
             return len(ctx)
 
         self.add_section("Grade 2")

@@ -160,6 +160,21 @@ class HomeTabsTests(AnalyticsFixture, TestCase):
         self.assertIsNotNone(today["compliance"])
         self.assertEqual(today["overdue_marks"], [])
 
+    def test_not_taken_registers_need_view_attendanceregister(self):
+        self.day(TODAY, {self.s1: P, self.s2: A}, submit=False)
+        attendance = self.get(self.viewer("school-only", "view_school")).context["today"]["attendance"]
+        self.assertIsNone(attendance["not_taken"])  # sections and their teachers are not listed
+        self.assertTrue(attendance["school_day"])
+        rows = self.get(
+            self.viewer("registers", "view_school", "view_attendanceregister")
+        ).context["today"]["attendance"]["not_taken"]
+        self.assertEqual([r["class_name"] for r in rows], ["Grade 1"])
+        self.assertIsNotNone(rows[0]["url"])  # the draft opens on the register page
+        rows = self.get(
+            self.viewer("add-only", "view_school", "add_attendanceregister")
+        ).context["today"]["attendance"]["not_taken"]
+        self.assertIsNone(rows)
+
     def test_parents_tab_shows_guardians_and_links_only_what_the_viewer_may_open(self):
         response = self.get(self.superuser_client, tab="parents")
         parents = response.context["parents_tab"]

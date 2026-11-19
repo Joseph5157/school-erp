@@ -984,7 +984,8 @@ def _today_tab(user, today, *, can_see_names, can_view_registers):
         step["is_next"] = step["key"] == next_key
     cards = dashboard.overview_cards(user)
     attention_cards, _ = dashboard.split_cards(cards)
-    can_open_registers = user.has_perm("core.add_attendanceregister")
+    # Row links go to the register page (view) or the create page (add): each needs its own.
+    can_create_registers = user.has_perm("core.add_attendanceregister")
     can_view_assessments = user.has_perm("core.view_assessment")
     return {
         "cards": cards,
@@ -997,11 +998,18 @@ def _today_tab(user, today, *, can_see_names, can_view_registers):
         "setup_first": setup_checklist.foundation_incomplete(steps),
         "setup_done": done_count,
         "setup_total": len(steps),
-        "attendance": home_today.attendance_today(today, can_open_registers=can_open_registers),
+        # Counts for every administrator; the sections still to submit (with their class teachers)
+        # are register data, as on the Missing attendance report.
+        "attendance": home_today.attendance_today(
+            today,
+            include_rows=can_view_registers,
+            can_view_registers=can_view_registers,
+            can_create_registers=can_create_registers,
+        ),
         "compliance": (
             home_today.register_compliance(
                 today, timezone.now(), home_today.register_cutoff(),
-                can_open_registers=can_open_registers,
+                can_view_registers=True, can_create_registers=can_create_registers,
             )
             if can_view_registers
             else None

@@ -42,41 +42,50 @@ def _section_order(section):
     return (grade.display_order, natural_key(grade.name), natural_key(section.name))
 
 
-def _register_url(register, can_open):
-    if not can_open:
-        return None
+def _register_url(register, can):
+    """An existing register opens on its page (view_attendanceregister); a missing one on the
+    create page (add_attendanceregister). Without the target's permission there is no link."""
+    can_view, can_create = can
     if register is not None:
-        return reverse("core:attendance-register-detail", args=[register.pk])
-    return reverse("core:attendance-register-create")
+        return reverse("core:attendance-register-detail", args=[register.pk]) if can_view else None
+    return reverse("core:attendance-register-create") if can_create else None
 
 
-def _row(section, register, state, teachers, can_open):
+def _row(section, register, state, teachers, can):
     return {
         "class_name": section.class_grade.name,
         "section_name": section.name,
         "teacher_name": teachers.get(section.pk, ""),
         "state": state,
-        "url": _register_url(register, can_open),
+        "url": _register_url(register, can),
     }
 
 
-def _unsubmitted_rows(today, teachers, can_open):
+def _unsubmitted_rows(today, teachers, can):
     items = sorted(
         reports.missing_attendance(today, today), key=lambda item: _section_order(item["section"])
     )
-    return [
-        _row(item["section"], item["register"], item["state"], teachers, can_open)
-        for item in items
-    ]
+    return [_row(item["section"], item["register"], item["state"], teachers, can) for item in items]
 
 
-def attendance_today(today, *, can_open_registers):
-    """Today's present/absent split and the registers still not submitted."""
+def attendance_today(
+    today, *, include_rows=False, can_view_registers=False, can_create_registers=False
+):
+    """Today's present/absent split and the registers still not submitted.
+
+    The counts are school-wide aggregates. The not-taken rows name sections and their class
+    teachers, so they are built only with `include_rows` (the caller may view registers);
+    otherwise `not_taken` is None.
+    """
     school_day = bool(reports.expected_registers(today, today))
     strip = analytics.today_strip(today)
-    rows = []
-    if school_day:
-        rows = _unsubmitted_rows(today, _class_teachers(today), can_open_registers)
+    rows = None
+    if include_rows:
+        rows = []
+        if school_day:
+            rows = _unsubmitted_rows(
+                today, _class_teachers(today), (can_view_registers, can_create_registers)
+            )
     return {
         "school_day": school_day,
         "donut": charts.donut([("Present", strip["present"]), ("Absent", strip["absent"])]),
@@ -86,7 +95,9 @@ def attendance_today(today, *, can_open_registers):
     }
 
 
-def register_compliance(today, now, cutoff, *, can_open_registers=False):
+def register_compliance(
+    today, now, cutoff, *, can_view_registers=False, can_create_registers=False
+):
     """Registers submitted after the cut-off today, and ones still missing once it has passed."""
     local_now = timezone.localtime(now)
     before_cutoff = local_now.time() <= cutoff
@@ -94,6 +105,7 @@ def register_compliance(today, now, cutoff, *, can_open_registers=False):
     if not reports.expected_registers(today, today):
         return result
     teachers = _class_teachers(today)
+    can = (can_view_registers, can_create_registers)
     submitted = (
         AttendanceRegister.objects.filter(
             date=today, status=AttendanceRegister.Status.SUBMITTED, submitted_at__isnull=False
@@ -106,13 +118,13 @@ def register_compliance(today, now, cutoff, *, can_open_registers=False):
         if stamp.time() > cutoff:
             row = _row(
                 register.section, register, AttendanceRegister.Status.SUBMITTED,
-                teachers, can_open_registers,
+                teachers, can,
             )
             row["submitted_at"] = stamp
             late.append((_section_order(register.section), row))
     result["late"] = [row for _, row in sorted(late, key=lambda pair: pair[0])]
     if not before_cutoff:
-        result["missing"] = _unsubmitted_rows(today, teachers, can_open_registers)
+        result["missing"] = _unsubmitted_rows(today, teachers, can)
     return result
 
 
