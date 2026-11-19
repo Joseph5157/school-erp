@@ -2,7 +2,9 @@
 
 import datetime
 import re
+from pathlib import Path
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.db import connection
@@ -321,16 +323,123 @@ class HomeTabsTests(MarksFixture, TestCase):
         self.assertNotContains(response, "Marks overdue")
 
 
+    def seed_attendance(self):
+        for d in (1, 2, 3, 6, 7, 8):
+            self.day(datetime.date(2026, 7, d), {self.s1: P, self.s2: A})
+
+    def four_classes(self):
+        from core.models import ClassGrade, Section
+
+        for i in range(2, 5):
+            grade = ClassGrade.objects.create(name=f"Grade {i}")
+            section = Section.objects.create(class_grade=grade, name="A")
+            student = self.enroll_student(f"Class Pupil {i}", grade, section)
+            self.day(datetime.date(2026, 7, 2), {student: P}, section=section, class_grade=grade)
+
+    def test_attendance_cards_in_order(self):
+        self.seed_attendance()
+        html = self.get(tab="attendance").content.decode()
+        order = [html.index(t) for t in ("Attendance this month", "Attendance heatmap", "Day of the week", "Absentees")]
+        self.assertEqual(order, sorted(order))
+        self.assertNotIn("Best and worst classes", html)  # one class only
+
+    def test_absentee_switch_links_and_current(self):
+        self.seed_attendance()
+        month = self.get(tab="attendance").content.decode()
+        self.assertIn('href="?tab=attendance&amp;absent=term"', month)
+        self.assertRegex(month, r'<a class="erp-seg-link" href="\?tab=attendance" aria-current="page">This month</a>')
+        term = self.get(tab="attendance", absent="term")
+        self.assertEqual(term.context["attendance_tab"]["absent_view"], "term")
+        self.assertContains(term, "Meena Das")
+        self.assertContains(term, '<span class="erp-home-meta">0.0%</span>')
+        self.assertNotContains(term, "days absent")
+        self.assertContains(self.get(tab="attendance"), '<span class="erp-home-meta">6 days absent</span>')
+        self.assertEqual(self.get(tab="attendance", absent="x").context["attendance_tab"]["absent_view"], "month")
+
+    def test_no_names_in_either_absentee_view_without_view_student(self):
+        self.seed_attendance()
+        client = self.viewer("att-only", "view_school", "view_attendanceentry")
+        for view in ("month", "term"):
+            response = self.get(client, tab="attendance", absent=view)
+            self.assertNotContains(response, "Meena Das")
+            self.assertNotContains(response, "erp-seg")
+            self.assertContains(response, "erp-analytics--no-absent")
+
+    def test_class_links_need_view_classgrade(self):
+        self.seed_attendance()
+        self.four_classes()
+        self.assertContains(self.get(tab="attendance"), "erp-class-link")
+        client = self.viewer("no-classes", "view_school", "view_attendanceentry", "view_student")
+        response = self.get(client, tab="attendance")
+        self.assertContains(response, "Best and worst classes")
+        self.assertNotContains(response, "erp-class-link")
+
+    def test_attendance_tab_queries_do_not_grow_with_classes(self):
+        self.seed_attendance()
+        self.four_classes()
+        self.get(tab="attendance")
+        with CaptureQueriesContext(connection) as before:
+            self.get(tab="attendance")
+        from core.models import ClassGrade, Section
+
+        for i in range(5, 8):
+            grade = ClassGrade.objects.create(name=f"Grade {i}")
+            section = Section.objects.create(class_grade=grade, name="A")
+            student = self.enroll_student(f"Class Pupil {i}", grade, section)
+            self.day(datetime.date(2026, 7, 2), {student: P}, section=section, class_grade=grade)
+        with CaptureQueriesContext(connection) as after:
+            self.get(tab="attendance")
+        self.assertEqual(len(before), len(after))
+
+    def test_capped_absentee_list_does_not_say_show_all(self):
+        extra = [self.enroll_student(f"Many Absent {i}", self.class_grade, self.section) for i in range(11)]
+        for d in (1, 2, 3):
+            self.day(datetime.date(2026, 7, d), {self.s1: P, self.s2: A, **{s: A for s in extra}})
+        html = self.get(tab="attendance").content.decode()
+        self.assertNotIn("Show all", html)
+        self.assertIn("Show 5 more students", html)
+        self.assertIn("Showing 10 of 12.", html)
+
+    def test_absentee_row_omits_class_when_empty(self):
+        from django.template.loader import render_to_string
+
+        row = {"student_id": 1, "name": "No Class", "class_name": "", "absent_days": 3}
+        html = render_to_string("partials/home/_absentee_row.html", {"r": row, "view": "month"})
+        self.assertIn("No Class", html)
+        self.assertNotIn("&middot;", html)
+
+    def test_min_days_comes_from_context(self):
+        from core import analytics
+
+        self.seed_attendance()
+        context = self.get(tab="attendance", absent="term").context["attendance_tab"]
+        self.assertEqual(context["low_min_days"], analytics.LOW_ATTENDANCE_MIN_DAYS)
+        self.assertContains(self.get(tab="attendance", absent="term"), f"({analytics.LOW_ATTENDANCE_MIN_DAYS} or more days marked)")
+
+    def test_attendance_card_css_is_pinned(self):
+        css = Path(settings.BASE_DIR, "static/css/erp.css").read_text(encoding="utf-8")
+        for rule in ('.erp-seg-link[aria-current="page"]', ".erp-trend-figure",
+                     ".erp-home .erp-analytics > .erp-card--trend { grid-column: span 12; }",
+                     ".erp-home .erp-analytics > .erp-card--heat { grid-column: span 7; }",
+                     ".erp-home .erp-analytics > .erp-card--weekday { grid-column: span 5; }",
+                     ".erp-home .erp-analytics > .erp-card--absent { grid-column: span 6;",
+                     ".erp-home .erp-analytics--no-classes > .erp-card--absent { grid-column: span 12; }",
+                     ".erp-home .erp-analytics--no-absent > .erp-card--classes { grid-column: span 12; }"):
+            self.assertIn(rule, css)
+
+
 class OverviewNoBootstrapTests(MarksFixture, TestCase):
     BANNED = ('class="btn', " btn-", "visually-hidden", "text-muted", '"progress"', "progress-bar", "mt-auto", "align-self-start")
 
     OLD_CARD_NAMES = ("erp-home-card", "erp-chart-card", "erp-analytics-card", "erp-home-empty", "erp-analytics-empty")
 
     def test_overview_cards_use_erp_card(self):
-        for tab in ("today", "attendance", "academics"):
-            html = self.administrator.get(URL, {"tab": tab}).content.decode()
+        for d in (1, 2, 3, 6, 7, 8):
+            self.day(datetime.date(2026, 7, d), {self.s1: P, self.s2: A})
+        for tab, extra in (("today", {}), ("attendance", {}), ("attendance", {"absent": "term"}), ("academics", {})):
+            html = self.administrator.get(URL, {"tab": tab, **extra}).content.decode()
             body = html[html.index('class="erp-page-header'):html.index("</main>")]
-            with self.subTest(tab=tab):
+            with self.subTest(tab=tab, extra=extra):
                 self.assertIn("erp-card", body)
                 for old in self.OLD_CARD_NAMES:
                     self.assertNotIn(old, body)
@@ -338,8 +447,11 @@ class OverviewNoBootstrapTests(MarksFixture, TestCase):
     def test_overview_uses_no_bootstrap_classes(self):
         saw_setup = False
         saw_attention = False
-        for tab in TAB_KEYS:
-            response = self.administrator.get(URL, {"tab": tab})
+        for d in (1, 2, 3, 6, 7, 8):
+            self.day(datetime.date(2026, 7, d), {self.s1: P, self.s2: A})
+        pages = [(tab, {}) for tab in TAB_KEYS] + [("attendance", {"absent": "term"})]
+        for tab, extra in pages:
+            response = self.administrator.get(URL, {"tab": tab, **extra})
             self.assertEqual(response.status_code, 200)
             html = response.content.decode()
             saw_setup = saw_setup or "Set up your school" in html
@@ -347,6 +459,6 @@ class OverviewNoBootstrapTests(MarksFixture, TestCase):
             # Page header to the end of main: the base shell (sidebar, top bar) may still use Bootstrap.
             body = html[html.index('class="erp-page-header'):html.index("</main>")]
             for banned in self.BANNED:
-                with self.subTest(tab=tab, banned=banned):
+                with self.subTest(tab=tab, extra=extra, banned=banned):
                     self.assertNotIn(banned, body)
         self.assertTrue(saw_setup, "fixture should show the setup card")

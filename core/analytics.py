@@ -292,18 +292,176 @@ def month_to_date(today):
     return Period(today.replace(day=1), today)
 
 
-def attendance_tab_context(today, *, include_absentees):
-    """The admin home Attendance tab: the 4-week heatmap and this month's frequent absentees.
+def month_trend(today):
+    """This month so far against the whole previous calendar month, in percentage points."""
+    this_month = month_to_date(today)
+    last_end = this_month.start - datetime.timedelta(days=1)
+    last_month = Period(last_end.replace(day=1), last_end)
+    this = reports.counts(_entries(this_month))["percentage"]
+    last = reports.counts(_entries(last_month))["percentage"]
+    change = direction = None
+    if this is not None and last is not None:
+        change = round(this - last, 1)
+        direction = "same" if change == 0 else ("up" if change > 0 else "down")
+    return {
+        "this": this,
+        "last": last,
+        "change": change,
+        "direction": direction,
+        "last_label": last_end.strftime("%B"),
+    }
+
+
+WEEKDAY_WINDOW_DAYS = 56
+WEEKDAY_MIN_DAYS = 2
+WEEKDAY_GAP_POINTS = 2
+_WEEKDAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+
+def weekday_pattern(today, days=WEEKDAY_WINDOW_DAYS):
+    """Attendance % by weekday over the last `days` days, plus the weekday that lags the rest.
+
+    A weekday with fewer than WEEKDAY_MIN_DAYS dates of data is left out. `lowest` is set only
+    when at least two weekdays remain and the worst one trails the overall figure by at least
+    WEEKDAY_GAP_POINTS.
+    """
+    period = Period(today - datetime.timedelta(days=days - 1), today)
+    totals = {}
+    for row in daily_trend(period):
+        weekday = row["date"].weekday()
+        bucket = totals.setdefault(weekday, {"dates": 0, "present": 0, "absent": 0})
+        bucket["dates"] += 1
+        bucket["present"] += row["present"]
+        bucket["absent"] += row["absent"]
+    kept = {d: b for d, b in sorted(totals.items()) if b["dates"] >= WEEKDAY_MIN_DAYS}
+    rows = []
+    for weekday, bucket in kept.items():
+        value = reports.percentage(bucket["present"], bucket["absent"])
+        if value is None:
+            continue
+        rows.append(
+            {
+                "label": _WEEKDAY_NAMES[weekday][:3],
+                "value": value,
+                "display": f"{charts.percent_display(value, ATTENDANCE_TARGET_PERCENT)}%",
+                "low": value < ATTENDANCE_TARGET_PERCENT,
+                "url": None,
+                "weekday": weekday,
+            }
+        )
+    lowest = None
+    if len(rows) >= 2:
+        overall = reports.percentage(
+            sum(b["present"] for b in kept.values()), sum(b["absent"] for b in kept.values())
+        )
+        worst = min(rows, key=lambda r: r["value"])
+        if overall - worst["value"] >= WEEKDAY_GAP_POINTS:
+            lowest = {
+                "day": _WEEKDAY_NAMES[worst["weekday"]],
+                "gap": round(overall - worst["value"]),
+            }
+    for row in rows:
+        del row["weekday"]
+    return {"rows": rows, "lowest": lowest}
+
+
+LOW_ATTENDANCE_PERCENT = 75
+LOW_ATTENDANCE_MIN_DAYS = 5
+ABSENT_VIEWS = ("month", "term")
+
+
+def class_extremes(rows, *, with_links):
+    """The best and worst classes from `class_comparison` rows (lowest first), or None.
+
+    Under four classes there is nothing meaningful to split. Otherwise up to three each,
+    never overlapping: `best` highest first, `worst` lowest first.
+    """
+    if len(rows) < 4:
+        return None
+    k = min(3, len(rows) // 2)
+    return {
+        "best": [_class_row(r, with_links) for r in reversed(rows[-k:])],
+        "worst": [_class_row(r, with_links) for r in rows[:k]],
+    }
+
+
+def low_attendance_students(term, today, limit=ABSENTEE_LIST_LIMIT):
+    """Students below 75% this term with at least 5 marked days, lowest first.
+
+    Returns `{"rows": [...], "total": n}`; `total` ignores `limit`. The class shown is the
+    student's ACTIVE enrollment. Constant queries.
+    """
+    period = Period(term.start_date, min(today, term.end_date))
+    grouped = (
+        _entries(period)
+        .order_by()
+        .values("academic_enrollment__student_id", "academic_enrollment__student__full_name")
+        .annotate(
+            present=Count("id", filter=Q(status=AttendanceStatus.PRESENT)),
+            absent=Count("id", filter=Q(status=AttendanceStatus.ABSENT)),
+            total=Count("id"),
+        )
+        .filter(total__gte=LOW_ATTENDANCE_MIN_DAYS)
+    )
+    low = []
+    for r in grouped:
+        pct = reports.percentage(r["present"], r["absent"])
+        if pct is not None and pct < LOW_ATTENDANCE_PERCENT:
+            low.append((pct, r["academic_enrollment__student__full_name"], r))
+    low.sort(key=lambda t: (t[0], t[1]))
+    page = low[:limit]
+    student_ids = [t[2]["academic_enrollment__student_id"] for t in page]
+    class_by_student = {
+        e.student_id: e.class_grade.name
+        for e in AcademicEnrollment.objects.filter(
+            student_id__in=student_ids, status=AcademicEnrollment.Status.ACTIVE
+        ).select_related("class_grade")
+    }
+    rows = [
+        {
+            "student_id": r["academic_enrollment__student_id"],
+            "name": name,
+            "class_name": class_by_student.get(r["academic_enrollment__student_id"], ""),
+            "percentage": pct,
+        }
+        for pct, name, r in page
+    ]
+    return {"rows": rows, "total": len(low)}
+
+
+def attendance_tab_context(today, *, include_absentees, absent_view="month", class_links=False):
+    """The admin home Attendance tab: trend, heatmap, weekday pattern, class extremes, absentees.
 
     Absentee names are student data plus attendance, so the caller decides (`include_absentees`);
-    without it `absentees` is None and no names are queried.
+    without it `absentees` is None and no names are queried. Only the chosen `absent_view`
+    ("month" frequent absentees, or "term" below-75% list) is queried.
     """
+    if absent_view not in ABSENT_VIEWS:
+        absent_view = "month"
     heatmap = attendance_heatmap(today)
+    month = month_to_date(today)
+    absentees = None
+    if include_absentees:
+        if absent_view == "month":
+            absentees = frequent_absentees(month)
+        else:
+            term = current_term(today)
+            absentees = (
+                low_attendance_students(term, today)
+                if term
+                else {"rows": [], "total": 0, "no_term": True}
+            )
     return {
+        "trend": month_trend(today),
         "heatmap": heatmap,
         "has_data": any(cell["state"] == "data" for week in heatmap for cell in week),
-        "absentees": frequent_absentees(month_to_date(today)) if include_absentees else None,
+        "weekday": weekday_pattern(today),
+        "classes": class_extremes(class_comparison(month), with_links=class_links),
+        "absent_view": absent_view,
+        "absentees": absentees,
         "absentee_threshold": ABSENTEE_THRESHOLD_DAYS,
+        "low_percent": LOW_ATTENDANCE_PERCENT,
+        "low_min_days": LOW_ATTENDANCE_MIN_DAYS,
         "label": TAB_PERIOD_LABEL,
     }
 

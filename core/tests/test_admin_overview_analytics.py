@@ -293,7 +293,7 @@ class OverviewAnalyticsViewTests(AnalyticsFixture, TestCase):
     def test_absentee_cards_link_to_the_student(self):
         self.make_frequent_absentee()
         response = self.administrator.get(self.attendance_url)
-        self.assertContains(response, "Frequent absentees")
+        self.assertContains(response, "Absentees")
         self.assertContains(response, "Meena Das")
         self.assertContains(
             response, reverse("core:student-detail", args=[self.s2.student_id])
@@ -302,7 +302,7 @@ class OverviewAnalyticsViewTests(AnalyticsFixture, TestCase):
 
     def test_absentee_empty_state_names_the_threshold(self):
         response = self.administrator.get(self.attendance_url)
-        self.assertContains(response, "Frequent absentees")
+        self.assertContains(response, "Absentees")
         self.assertContains(response, "Absent 3 or more days, this month.")
         self.assertContains(response, "No student was absent 3 or more days this month.")
 
@@ -317,7 +317,7 @@ class OverviewAnalyticsViewTests(AnalyticsFixture, TestCase):
         client.login(username="overview-only", password="pass-12345")
         response = client.get(self.attendance_url)
         self.assertEqual(response.status_code, 200)
-        self.assertNotContains(response, "Frequent absentees")
+        self.assertNotContains(response, "Absentees")
         self.assertNotContains(response, "Meena Das")
 
     def test_heatmap_renders_with_a_text_alternative(self):
@@ -911,9 +911,7 @@ class OverviewNoHoleLayoutTests(AnalyticsFixture, TestCase):
     def test_desktop_rows_four_and_five_and_the_absentee_fallback(self):
         block = self.css()
         for rule in (
-            ".erp-analytics > .erp-card--attention { grid-column: span 7; align-self: start; }",
-            ".erp-analytics > .erp-card--absent { grid-column: span 5; align-self: start; }",
-            ".erp-analytics--no-absent > .erp-card--attention,\n  .erp-analytics--no-attention > .erp-card--absent { grid-column: span 12; }",
+            ".erp-analytics > .erp-card--attention { grid-column: span 12; align-self: start; }",
             ".erp-analytics > .erp-card--subjects { grid-column: span 7; }",
         ):
             self.assertIn(rule, block)

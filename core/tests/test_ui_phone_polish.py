@@ -63,10 +63,6 @@ class PhoneStylesheetTests(TestCase):
     def test_glance_summaries_are_left_out_on_phones(self):
         self.assertIn(".erp-glance-tile .erp-stat-summary { display: none; }", phone_block(CSS))
 
-    def test_absentee_rows_put_the_class_under_the_name(self):
-        self.assertIn(".erp-absentee-class { grid-column: 1; grid-row: 2;", CSS)
-        self.assertIn(".erp-absentee-days { grid-column: 2; grid-row: 1 / 3;", CSS)
-
     def test_attention_cards_are_compact_rows_that_open_from_anywhere_on_phones(self):
         phone = phone_block(CSS)
         # Count at the right end of the row, beside the title and sentence.
