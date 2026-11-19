@@ -39,8 +39,11 @@ def portal_grants(student):
     return portal_grants_for_students([student.pk])
 
 
-def portal_grants_for_students(student_ids):
-    """Active, non-pending grants whose guardian has an active portal login."""
+def portal_grants_for_students(student_ids, on_date=None):
+    """Active, non-pending grants whose guardian has an active portal login.
+
+    `on_date` is the date the pending review rule is judged on (default: today).
+    """
     active_login = GuardianAccount.objects.filter(
         guardian=OuterRef("student_guardian__guardian"),
         revoked_at__isnull=True, user__is_active=True,
@@ -53,7 +56,7 @@ def portal_grants_for_students(student_ids):
         .select_related("student_guardian__guardian", "student_guardian__student")
         .order_by("pk")
     )
-    pending = guardian_access.pending_map(grants)
+    pending = guardian_access.pending_map(grants, on_date)
     return [grant for grant in grants if not pending[grant.pk][0]]
 
 
