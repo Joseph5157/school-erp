@@ -355,7 +355,7 @@ class OverviewAnalyticsViewTests(AnalyticsFixture, TestCase):
         self.assertNotContains(response, "Attendance heatmap", status_code=403)
 
 
-# --- Marks by subject ------------------------------------------------------------------
+# --- Subjects ------------------------------------------------------------------
 
 
 class MarksFixture(AnalyticsFixture):
@@ -458,7 +458,7 @@ class MarksSnapshotViewTests(MarksFixture, TestCase):
     def test_renders_term_subject_bars(self):
         self.assessment({self.s1: 15, self.s2: 10})
         response = self.administrator.get(self.url)
-        self.assertContains(response, "Marks by subject")
+        self.assertContains(response, "Subjects")
         self.assertContains(response, "Term 2")
         self.assertContains(response, "Mathematics")
         self.assertContains(response, "63%")
@@ -466,7 +466,7 @@ class MarksSnapshotViewTests(MarksFixture, TestCase):
 
     def test_empty_state_is_honest(self):
         response = self.administrator.get(self.url)
-        self.assertContains(response, "Marks by subject")
+        self.assertContains(response, "Subjects")
         self.assertContains(response, "No finalized results yet.")
 
     def test_hidden_without_permission_to_view_results(self):
@@ -480,7 +480,7 @@ class MarksSnapshotViewTests(MarksFixture, TestCase):
         client.login(username="no-marks", password="pass-12345")
         response = client.get(self.url)
         self.assertEqual(response.status_code, 200)
-        self.assertNotContains(response, "Marks by subject")
+        self.assertNotContains(response, "Subjects")
 
     def test_marks_by_subject_lists_lowest_first_and_names_the_term(self):
         science = Subject.objects.create(name="Science")
@@ -493,7 +493,7 @@ class MarksSnapshotViewTests(MarksFixture, TestCase):
         )
         response = self.administrator.get(self.url)
         self.assertContains(response, "erp-card--subjects")
-        self.assertContains(response, "Marks by subject, Term 2")
+        self.assertContains(response, "Subjects, Term 2")
         content = response.content.decode()
         self.assertLess(content.index(">Science<"), content.index(">Mathematics<"))
         self.assertContains(response, "erp-class-bar--marks")
@@ -509,11 +509,11 @@ class MarksSnapshotViewTests(MarksFixture, TestCase):
         client = self.client_class()
         client.login(username="no-marks2", password="pass-12345")
         response = client.get(self.url)
-        self.assertNotContains(response, "Marks by subject")
+        self.assertNotContains(response, "Subjects")
 
     def test_no_results_shows_the_existing_empty_message(self):
         response = self.administrator.get(self.url)
-        self.assertContains(response, "No finalized results yet.", count=2)  # subjects and attention
+        self.assertContains(response, "No finalized results yet.", count=3)  # pass rate by class, subjects and attention
         self.assertNotContains(response, "erp-cols--marks")
 
     def test_subject_bars_use_the_marks_colour(self):
@@ -719,7 +719,7 @@ class StudentsNeedingAttentionViewTests(MarksFixture, TestCase):
     def test_rows_link_to_the_student_page_and_state_the_reason(self):
         self.fail_two(self.s1)
         card = self.card(self.administrator.get(self.url))
-        self.assertIn("Students needing attention", card)
+        self.assertIn("At-risk students", card)
         self.assertIn(reverse("core:student-detail", args=[self.s1.student_id]), card)
         self.assertIn(self.s1.student.full_name, card)
         self.assertIn("Below pass in Mathematics and Science (Term 2)", card)
@@ -805,14 +805,14 @@ class StudentsNeedingAttentionViewTests(MarksFixture, TestCase):
             )
         # Term 2 (2026-27) is running but has no finalized results, so Term 3 of 2025-26 is the fallback.
         html = self.administrator.get(self.url).content.decode()
-        self.assertEqual(html.count("Term 3, 2025-26"), 2)  # subjects title, attention reason
-        self.assertIn("Marks by subject, Term 3, 2025-26", html)
+        self.assertEqual(html.count("Term 3, 2025-26"), 3)  # pass-rate title, subjects title, attention reason
+        self.assertIn("Subjects, Term 3, 2025-26", html)
         self.assertIn("Below pass in Mathematics and Science (Term 3, 2025-26)", html)
 
     def test_a_term_in_the_current_year_is_not_given_a_year(self):
         self.fail_two(self.s1)
         html = self.administrator.get(self.url).content.decode()
-        self.assertIn("Marks by subject, Term 2<", html)
+        self.assertIn("Subjects, Term 2<", html)
         self.assertNotIn("Term 2, 2026-2027", html)
 
     def test_absences_are_not_queried_when_there_is_no_reporting_term(self):
@@ -852,7 +852,7 @@ class StudentsNeedingAttentionViewTests(MarksFixture, TestCase):
         all_three = self.login_with(
             "all-three", "view_school", "view_student", "view_studentresult", "view_attendanceentry"
         )
-        self.assertContains(all_three.get(self.url), "Students needing attention")
+        self.assertContains(all_three.get(self.url), "At-risk students")
         for name, codenames in (
             ("no-attendance", ("view_school", "view_student", "view_studentresult")),
             ("no-results", ("view_school", "view_student", "view_attendanceentry")),
@@ -863,7 +863,7 @@ class StudentsNeedingAttentionViewTests(MarksFixture, TestCase):
         ):
             response = self.login_with(name, *codenames).get(self.url)
             self.assertEqual(response.status_code, 200)
-            self.assertNotContains(response, "Students needing attention")
+            self.assertNotContains(response, "At-risk students")
             self.assertNotContains(response, self.s1.student.full_name)
 
     def test_query_count_does_not_grow_with_students(self):
@@ -911,8 +911,8 @@ class OverviewNoHoleLayoutTests(AnalyticsFixture, TestCase):
     def test_desktop_rows_four_and_five_and_the_absentee_fallback(self):
         block = self.css()
         for rule in (
-            ".erp-analytics > .erp-card--attention { grid-column: span 12; align-self: start; }",
-            ".erp-analytics > .erp-card--subjects { grid-column: span 7; }",
+            ".erp-home .erp-analytics > .erp-card--attention { grid-column: span 7; align-self: start; }",
+            ".erp-home .erp-analytics > .erp-card--subjects { grid-column: span 12; }",
         ):
             self.assertIn(rule, block)
 

@@ -293,3 +293,54 @@ def top_improvers(changes, limit=IMPROVER_LIMIT):
     ]
     rows.sort(key=lambda r: (-r["change"], r["name"].lower(), r["student_id"]))
     return rows[:limit]
+
+
+def academics_tab_context(
+    today, *, include_progress, publish_rows, include_marks, include_attention,
+    include_improvers, class_links,
+):
+    """The admin home Academics tab. Nothing is queried for a card the viewer may not see.
+
+    Results to finish uses the work term; the marks cards use the reporting term (the latest with
+    finalized results) and compare with the term before it. Absent days are this month's.
+    """
+    needs_marks = include_marks or include_attention or include_improvers
+    term = marks_analytics.reporting_term(today) if needs_marks else None
+    label = marks_analytics.term_label(term, today) if term else None
+    previous = marks_analytics.previous_term(term) if term else None
+    previous_label = marks_analytics.term_label(previous, today) if previous else None
+    changes = (
+        marks_analytics.student_average_changes(term, previous)
+        if previous and (include_attention or include_improvers)
+        else {}
+    )
+    classes = class_marks(term) if term and include_marks else []
+    attention = None
+    if include_attention:
+        attention = marks_analytics.students_needing_attention(
+            term,
+            analytics.absent_day_counts(analytics.month_to_date(today)) if term else {},
+            threshold=analytics.ABSENTEE_THRESHOLD_DAYS,
+            period_label=analytics.TAB_PERIOD_LABEL,
+            term_label=label,
+            falling={
+                student_id: c["change"]
+                for student_id, c in changes.items()
+                if c["change"] <= -FALLING_POINTS
+            },
+            falling_label=previous_label,
+        )
+    return {
+        "progress": results_to_finish(today, publish_rows=publish_rows) if include_progress else None,
+        "term": term,
+        "term_label": label,
+        "previous": previous,
+        "previous_label": previous_label,
+        "show_marks": include_marks,
+        "classes": classes,
+        "extremes": class_mark_extremes(classes, with_links=class_links) if include_marks else None,
+        "subjects": subject_changes(term, previous) if term and include_marks else [],
+        "attention": attention,
+        "improvers": top_improvers(changes) if include_improvers else None,
+        "class_links": class_links,
+    }

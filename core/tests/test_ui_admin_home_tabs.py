@@ -12,11 +12,41 @@ from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
-from core.models import Student
+from core.models import Assessment, ClassGrade, Section, Student, StudentResult
 from core.tests.test_admin_overview_analytics import TODAY, A, MarksFixture, P
 
 URL = reverse("core:admin-overview")
 TAB_KEYS = ("today", "attendance", "academics", "parents")
+
+
+def seed_academics(fx, extra_classes=3):
+    """Data for every Academics card: finalized marks in both terms, a ready and an in-progress draft, no publications.
+
+    Grade 1: s1 rises 40 points (improver), s2 falls 40 points (at risk). Each extra class has one
+    student with steady marks, so four classes have results (best and worst show).
+    """
+    for term, (m1, m2) in ((fx.term_a, (10, 18)), (fx.term_b, (18, 10))):
+        for n in (1, 2):
+            fx.assessment({fx.s1: m1, fx.s2: m2}, name=f"Quiz {n}", term=term, pass_mark=10)
+    for i in range(extra_classes):
+        grade = ClassGrade.objects.create(name=f"Grade {i + 2}")
+        section = Section.objects.create(class_grade=grade, name="A")
+        student = fx.enroll_student(f"Steady Pupil {i}", grade, section)
+        for term in (fx.term_a, fx.term_b):
+            for n in (1, 2):
+                fx.assessment(
+                    {student: 10 + 2 * i}, name=f"Quiz {n}", term=term, class_grade=grade,
+                    section=section, pass_mark=10,
+                )
+    fx.assessment({fx.s1: 15, fx.s2: 15}, name="Draft ready", finalize=False)
+    fx.assessment({fx.s1: 12}, name="Draft marking", finalize=False)  # s2 unmarked: in progress
+
+
+def card_html(html, name):
+    """The text of one card, from its class to the next card (or the end of the section)."""
+    start = html.index(f"erp-card--{name}")
+    ends = [html.find("erp-card erp-card--", start + 10), html.find("</section>", start)]
+    return html[start:min(e for e in ends if e != -1)]
 
 
 def tab_nav(html):
@@ -428,6 +458,200 @@ class HomeTabsTests(MarksFixture, TestCase):
             self.assertIn(rule, css)
 
 
+class AcademicsTabTests(MarksFixture, TestCase):
+    url = reverse("core:admin-overview") + "?tab=academics"
+    CARDS = ("results", "pass", "best", "subjects", "attention", "improvers")
+
+    def viewer(self, username, *codenames):
+        user = get_user_model().objects.create_user(username=username, password="pass-12345")
+        user.user_permissions.add(*Permission.objects.filter(codename__in=codenames))
+        client = self.client_class()
+        client.login(username=username, password="pass-12345")
+        return client
+
+    def page(self, client=None):
+        response = (client or self.administrator).get(self.url)
+        self.assertEqual(response.status_code, 200)
+        return response.content.decode()
+
+    def test_academics_cards_in_spec_order(self):
+        seed_academics(self)
+        html = self.page()
+        positions = [html.index(f"erp-card--{name}") for name in self.CARDS]
+        self.assertEqual(positions, sorted(positions))
+        self.assertEqual(len(set(positions)), 6)
+        self.assertNotIn("erp-analytics--no-", html)
+
+    def test_ready_draft_is_listed_with_open_link(self):
+        seed_academics(self)
+        card = card_html(self.page(), "results")
+        self.assertIn("Ready to finalize", card)
+        self.assertIn("Draft ready", card)
+        pk = Assessment.objects.get(name="Draft ready").pk
+        self.assertIn(reverse("core:assessment-detail", args=[pk]), card)
+
+    def test_stage_counts_and_labels(self):
+        seed_academics(self)
+        card = card_html(self.page(), "results")
+        self.assertIn("Results to finish, Term 2", card)
+        for label in ("Marking in progress", "Ready to finalize", "Finalized, not published"):
+            self.assertIn(label, card)
+        self.assertEqual(card.count('class="erp-stage"'), 3)
+        self.assertIn("status=DRAFT", card)
+
+    def test_unpublished_section_has_publish_link(self):
+        seed_academics(self)
+        card = card_html(self.page(), "results")
+        link = reverse("core:term-publication", args=[self.term_b.pk]) + f"?section={self.section.pk}"
+        self.assertIn(link, card)
+        self.assertIn(">Publish<", card.replace("Publish<span", "Publish<"))
+        self.assertIn("To publish", card)
+
+    def test_nothing_to_finish_says_so(self):
+        self.assessment({self.s1: 15, self.s2: 10}, name="Done")
+        self.assertIn("Finalized, not published", card_html(self.page(), "results"))
+        StudentResult.objects.all().delete()
+        Assessment.objects.all().delete()
+        self.assertIn("Nothing to finish for Term 2.", card_html(self.page(), "results"))
+
+    def test_without_publication_permission_no_publish_rows(self):
+        seed_academics(self)
+        link = reverse("core:term-publication", args=[self.term_b.pk])
+        self.assertIn(link, card_html(self.page(), "results"))
+        client = self.viewer("no-pub", "view_school", "view_assessment", "view_studentresult")
+        card = card_html(self.page(client), "results")
+        self.assertIn("Finalized, not published", card)
+        self.assertNotIn("To publish", card)
+        self.assertNotIn(link, card)
+
+    def test_without_assessment_permission_no_results_card(self):
+        seed_academics(self)
+        self.assertIn("erp-card--results", self.page())
+        client = self.viewer("no-assess", "view_school", "view_studentresult")
+        html = self.page(client)
+        self.assertNotIn("erp-card--results", html)
+        self.assertNotIn("Draft ready", html)
+        self.assertIn("erp-card--subjects", html)
+
+    def test_without_student_permission_no_names_and_no_name_cards(self):
+        seed_academics(self)
+        name = self.s1.student.full_name
+        full = self.page()
+        self.assertIn("erp-card--attention", full)
+        self.assertIn("erp-card--improvers", full)
+        self.assertIn(name, full)
+        client = self.viewer(
+            "no-students", "view_school", "view_assessment", "view_studentresult",
+            "view_attendanceentry", "view_classgrade",
+        )
+        html = self.page(client)
+        self.assertNotIn("erp-card--attention", html)
+        self.assertNotIn("erp-card--improvers", html)
+        self.assertNotIn(name, html)
+        self.assertNotIn(self.s2.student.full_name, html)
+        self.assertIn("erp-analytics--no-attention", html)
+        self.assertIn("erp-analytics--no-improvers", html)
+
+    def test_class_rows_link_only_with_classgrade_permission(self):
+        seed_academics(self)
+        link = reverse("core:class-grade-detail", args=[self.class_grade.pk])
+        full = self.page()
+        self.assertIn(link, card_html(full, "pass"))
+        self.assertIn(link, card_html(full, "best") + card_html(full, "pass"))
+        client = self.viewer("no-classes", "view_school", "view_studentresult")
+        html = self.page(client)
+        self.assertIn("Grade 1", card_html(html, "pass"))
+        self.assertNotIn(link, html)
+        self.assertNotIn("erp-class-link", html)
+
+    def test_class_rows_show_pass_rate_and_grades(self):
+        seed_academics(self)
+        Assessment.objects.filter(status=Assessment.Status.FINALIZED).update(
+            grading_snapshot={"scale": "S", "bands": [["80", "A"], ["50", "B"], ["0", "C"]]}
+        )
+        card = card_html(self.page(), "pass")
+        self.assertIn("Pass rate and grades by class, Term 2", card)
+        self.assertIn("Pass rate 100%", card)
+        self.assertIn("Pass rate 100% &middot; A 2 · B 2", card)
+
+    def test_no_pass_mark_says_so(self):
+        self.assessment({self.s1: 15, self.s2: 10})
+        card = card_html(self.page(), "pass")
+        self.assertIn("No pass mark set", card)
+        self.assertNotIn("Pass rate 0%", card)
+
+    def test_first_term_says_no_comparison_yet(self):
+        for n in (1, 2):
+            self.assessment({self.s1: 15, self.s2: 10}, name=f"Only {n}", pass_mark=10)
+        html = self.page()
+        self.assertIn("No comparison yet", card_html(html, "subjects"))
+        self.assertIn("No comparison yet", card_html(html, "improvers"))
+
+    def test_improver_row_and_subject_change_words(self):
+        seed_academics(self)
+        html = self.page()
+        improvers = card_html(html, "improvers")
+        self.assertIn(self.s1.student.full_name, improvers)
+        self.assertIn("Up 40 points (50% \u2192 90%)", improvers)
+        self.assertIn(reverse("core:student-detail", args=[self.s1.student_id]), improvers)
+        self.assertIn("Change since Term 1", card_html(html, "subjects"))
+
+    def test_marks_cards_name_the_reporting_term(self):
+        for n in (1, 2):
+            self.assessment({self.s1: 15, self.s2: 10}, name=f"Old {n}", term=self.term_a)
+        self.assessment({self.s1: 15}, name="Open draft", term=self.term_b, finalize=False)
+        html = self.page()
+        self.assertIn("Results to finish, Term 2", card_html(html, "results"))
+        self.assertIn("by class, Term 1", card_html(html, "pass"))
+        self.assertIn("Subjects, Term 1", card_html(html, "subjects"))
+
+    def test_falling_threshold_is_ten_points(self):
+        for term, a, b in ((self.term_a, 80, 80), (self.term_b, 70, 70.1)):
+            for n in (1, 2):
+                self.assessment({self.s1: a, self.s2: b}, name=f"Cut {n}", term=term, maximum="100")
+        context = self.administrator.get(self.url).context["academics_tab"]
+        names = [r["name"] for r in context["attention"]["rows"]]
+        self.assertIn(self.s1.student.full_name, names)  # exactly -10.0
+        self.assertNotIn(self.s2.student.full_name, names)  # -9.9
+        self.assertIn("Average down 10 points since Term 1", card_html(self.page(), "attention"))
+
+    def test_academics_query_count_does_not_grow(self):
+        seed_academics(self, extra_classes=3)
+        self.page()
+        with CaptureQueriesContext(connection) as before:
+            self.page()
+        for i in range(3, 5):
+            grade = ClassGrade.objects.create(name=f"Grade {i + 2}")
+            section = Section.objects.create(class_grade=grade, name="A")
+            student = self.enroll_student(f"Late Pupil {i}", grade, section)
+            for term in (self.term_a, self.term_b):
+                for n in (1, 2):
+                    self.assessment(
+                        {student: 12}, name=f"Quiz {n}", term=term, class_grade=grade,
+                        section=section, pass_mark=10,
+                    )
+        with CaptureQueriesContext(connection) as after:
+            self.page()
+        self.assertEqual(len(before), len(after))
+
+    def test_academics_css_is_pinned(self):
+        css = Path(settings.BASE_DIR, "static/css/erp.css").read_text(encoding="utf-8")
+        for rule in (
+            ".erp-home .erp-analytics > .erp-card--results { grid-column: span 12; }",
+            ".erp-home .erp-analytics > .erp-card--pass { grid-column: span 7; }",
+            ".erp-home .erp-analytics > .erp-card--best { grid-column: span 5; }",
+            ".erp-home .erp-analytics > .erp-card--subjects { grid-column: span 12; }",
+            ".erp-home .erp-analytics > .erp-card--attention { grid-column: span 7; align-self: start; }",
+            ".erp-home .erp-analytics > .erp-card--improvers { grid-column: span 5; align-self: start; }",
+            ".erp-home .erp-analytics--no-best > .erp-card--pass { grid-column: span 12; }",
+            ".erp-home .erp-analytics--no-attention > .erp-card--improvers { grid-column: span 12; }",
+            ".erp-home .erp-analytics--no-improvers > .erp-card--attention { grid-column: span 12; }",
+            ".erp-stage-list {",
+            ".erp-class-note {",
+        ):
+            self.assertIn(rule, css)
+
+
 class OverviewNoBootstrapTests(MarksFixture, TestCase):
     BANNED = ('class="btn', " btn-", "visually-hidden", "text-muted", '"progress"', "progress-bar", "mt-auto", "align-self-start")
 
@@ -449,6 +673,7 @@ class OverviewNoBootstrapTests(MarksFixture, TestCase):
         saw_attention = False
         for d in (1, 2, 3, 6, 7, 8):
             self.day(datetime.date(2026, 7, d), {self.s1: P, self.s2: A})
+        seed_academics(self)
         pages = [(tab, {}) for tab in TAB_KEYS] + [("attendance", {"absent": "term"})]
         for tab, extra in pages:
             response = self.administrator.get(URL, {"tab": tab, **extra})

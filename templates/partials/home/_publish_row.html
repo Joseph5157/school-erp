@@ -1,0 +1,5 @@
+{# One section with finalized results not yet published. `r` has class_name, section_name, students and url. #}
+<li class="erp-home-row">
+    <span class="erp-home-main">{{ r.class_name }} {{ r.section_name }}<span class="erp-home-meta">{{ r.students }} student{{ r.students|pluralize }}</span></span>
+    <a class="erp-home-open" href="{{ r.url }}">Publish<span class="erp-sr-only"> {{ r.class_name }} {{ r.section_name }}</span></a>
+</li>

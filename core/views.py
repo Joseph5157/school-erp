@@ -27,6 +27,7 @@ from core import (
     duplicate_checks,
     guardian_access,
     guardian_accounts,
+    home_academics,
     home_today,
     marks_analytics,
     notification_producers,
@@ -1071,11 +1072,15 @@ def admin_overview(request):
             class_links=can["classes"],
         )
     elif tab == "academics":
-        context["academics_tab"] = analytics.academics_tab_context(
+        context["academics_tab"] = home_academics.academics_tab_context(
             today,
+            include_progress=user.has_perm("core.view_assessment"),
+            publish_rows=can["publications"],
             include_marks=can_see_results,
             # Names, marks and absent-day counts together.
             include_attention=can_see_students and can_see_results and can_see_attendance,
+            include_improvers=can_see_students and can_see_results,
+            class_links=can["classes"],
         )
     elif tab == "parents":
         context["parents_tab"] = _parents_tab(user, today)

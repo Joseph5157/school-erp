@@ -1,0 +1,5 @@
+{# One improving student. `r` is from home_academics.top_improvers. #}
+<li class="erp-home-row">
+    <span class="erp-home-main">{{ r.name }}{% if r.class_name %} &middot; {{ r.class_name }}{% endif %}<span class="erp-home-meta">{{ r.display }}</span></span>
+    <a class="erp-home-open" href="{% url 'core:student-detail' r.student_id %}">Open<span class="erp-sr-only"> {{ r.name }}</span></a>
+</li>
