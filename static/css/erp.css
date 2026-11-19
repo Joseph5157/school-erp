@@ -1480,13 +1480,11 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
 .erp-heat-cell--outside { visibility: hidden; }
 .erp-heat-legend { display: flex; flex-wrap: wrap; align-items: center; gap: var(--erp-space-2); margin: var(--erp-space-3) 0 0; font-size: var(--erp-text-xs); color: var(--erp-ink-soft); }
 .erp-heat-legend .erp-heat-cell { width: 1rem; min-height: 1rem; }
-.erp-absentee-list { list-style: none; margin: var(--erp-space-3) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--erp-space-2); }
-/* One compact row per student: name with the class under it on the left, a red "N days absent" pill on the right. */
-.erp-absentee { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0 var(--erp-space-3); padding: var(--erp-space-2) var(--erp-space-3); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius-sm); color: var(--erp-ink); text-decoration: none; min-height: 2.75rem; }
-.erp-absentee:hover, .erp-absentee:focus-visible { border-color: var(--erp-action); color: var(--erp-ink); }
-.erp-absentee-name { grid-column: 1; grid-row: 1; font-weight: 600; overflow-wrap: anywhere; }
-.erp-absentee-days { grid-column: 2; grid-row: 1 / 3; padding: .15rem .6rem; border-radius: 999px; background: var(--erp-bad-wash); color: var(--erp-bad); font-size: var(--erp-text-xs); font-weight: 700; white-space: nowrap; }
-.erp-absentee-class { grid-column: 1; grid-row: 2; font-size: var(--erp-text-xs); color: var(--erp-ink-soft); }
+.erp-trend-figure { margin: var(--erp-space-2) 0 0; font-size: var(--erp-text-title); font-weight: 700; line-height: 1.1; }
+.erp-seg { display: flex; gap: var(--erp-space-1); margin: var(--erp-space-3) 0 0; padding: var(--erp-space-1); border: 1px solid var(--erp-rule); border-radius: 999px; }
+.erp-seg-link { flex: 1; display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 var(--erp-space-3); border-radius: 999px; color: var(--erp-ink-soft); font-size: var(--erp-text-sm); font-weight: 600; text-align: center; text-decoration: none; }
+.erp-seg-link:hover, .erp-seg-link:focus-visible { color: var(--erp-ink); }
+.erp-seg-link[aria-current="page"] { background: var(--erp-action-wash); color: var(--erp-action-strong); }
 /* Students needing attention: one tappable row per student (44px+ on phones). */
 .erp-attention-list { list-style: none; margin: var(--erp-space-3) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--erp-space-2); }
 .erp-attention-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 var(--erp-space-3); align-items: baseline; padding: var(--erp-space-2) var(--erp-space-3); min-height: 2.75rem; border: 1px solid var(--erp-rule); border-radius: var(--erp-radius-sm); color: var(--erp-ink); text-decoration: none; }
@@ -1640,6 +1638,13 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
   .erp-analytics > .erp-card--absent { grid-column: span 5; align-self: start; }
   .erp-analytics--no-absent > .erp-card--attention,
   .erp-analytics--no-attention > .erp-card--absent { grid-column: span 12; }
+  /* Attendance tab: trend (4) beside heatmap (8), day of week (6) beside best/worst classes (6), absentees on a full row. */
+  .erp-home .erp-analytics > .erp-card--trend { grid-column: span 4; }
+  .erp-home .erp-analytics > .erp-card--heat { grid-column: span 8; }
+  .erp-home .erp-analytics > .erp-card--weekday { grid-column: span 6; }
+  .erp-home .erp-analytics > .erp-card--classes { grid-column: span 6; }
+  .erp-home .erp-analytics > .erp-card--absent { grid-column: span 12; align-self: start; }
+  .erp-home .erp-analytics--no-classes > .erp-card--weekday { grid-column: span 12; }
   /* By class gets a full row so every class column fits. Then Daily attendance (8) beside the heatmap (4),
      and marks by subject (7) beside score bands (5). */
   .erp-analytics > .erp-card--subjects { grid-column: span 7; }
@@ -1647,8 +1652,6 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
   .erp-analytics-top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--erp-space-3); }
   .erp-analytics-top .erp-section-title { margin: 0; }
 
-  .erp-absentee-list { gap: var(--erp-space-1); }
-  .erp-absentee { padding: var(--erp-space-2) var(--erp-space-3); min-height: 0; }
 }
 .erp-all-clear { margin: 0 0 var(--erp-space-4); padding: var(--erp-space-3) var(--erp-space-4); border-radius: var(--erp-radius); background: var(--erp-ok-wash); color: var(--erp-ok-strong); font-size: var(--erp-text-sm); font-weight: 600; }
 @media (max-width: 767.98px) {

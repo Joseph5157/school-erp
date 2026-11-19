@@ -1,0 +1,5 @@
+{# One absentee. `r` has student_id, name, class_name and either absent_days (this month) or percentage (this term). #}
+<li class="erp-home-row">
+    <span class="erp-home-main">{{ r.name }} &middot; {{ r.class_name }}<span class="erp-home-meta">{% if r.absent_days is not None %}{{ r.absent_days }} day{{ r.absent_days|pluralize }} absent{% else %}{{ r.percentage|floatformat:1 }}%{% endif %}</span></span>
+    <a class="erp-home-open" href="{% url 'core:student-detail' r.student_id %}">Open<span class="erp-sr-only"> {{ r.name }}</span></a>
+</li>

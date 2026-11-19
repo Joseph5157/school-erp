@@ -293,7 +293,7 @@ class OverviewAnalyticsViewTests(AnalyticsFixture, TestCase):
     def test_absentee_cards_link_to_the_student(self):
         self.make_frequent_absentee()
         response = self.administrator.get(self.attendance_url)
-        self.assertContains(response, "Frequent absentees")
+        self.assertContains(response, "Absentees")
         self.assertContains(response, "Meena Das")
         self.assertContains(
             response, reverse("core:student-detail", args=[self.s2.student_id])
@@ -302,7 +302,7 @@ class OverviewAnalyticsViewTests(AnalyticsFixture, TestCase):
 
     def test_absentee_empty_state_names_the_threshold(self):
         response = self.administrator.get(self.attendance_url)
-        self.assertContains(response, "Frequent absentees")
+        self.assertContains(response, "Absentees")
         self.assertContains(response, "Absent 3 or more days, this month.")
         self.assertContains(response, "No student was absent 3 or more days this month.")
 
@@ -317,7 +317,7 @@ class OverviewAnalyticsViewTests(AnalyticsFixture, TestCase):
         client.login(username="overview-only", password="pass-12345")
         response = client.get(self.attendance_url)
         self.assertEqual(response.status_code, 200)
-        self.assertNotContains(response, "Frequent absentees")
+        self.assertNotContains(response, "Absentees")
         self.assertNotContains(response, "Meena Das")
 
     def test_heatmap_renders_with_a_text_alternative(self):

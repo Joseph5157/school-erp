@@ -1065,7 +1065,10 @@ def admin_overview(request):
     context = {"tabs": _home_tabs(tab), "tab": tab, "can": can}
     if tab == "attendance":
         context["attendance_tab"] = analytics.attendance_tab_context(
-            today, include_absentees=can_see_students and can_see_attendance
+            today,
+            include_absentees=can_see_students and can_see_attendance,
+            absent_view=request.GET.get("absent", "month"),
+            class_links=can["classes"],
         )
     elif tab == "academics":
         context["academics_tab"] = analytics.academics_tab_context(
