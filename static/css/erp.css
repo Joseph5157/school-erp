@@ -1375,6 +1375,8 @@ a.erp-glance-tile:hover, a.erp-glance-tile:focus-visible { border-color: var(--e
   .erp-stat-grid--glance > :last-child:nth-child(odd) { grid-column: 1 / -1; }
 }
 /* Admin home tabs (?tab=): plain links in one row that scrolls sideways on a narrow phone; 44px targets. */
+/* Overview only: the tab bar's underline is the one divider, so the page header drops its own rule and bottom space. */
+.erp-page-header:has(+ .erp-home-tabs) { margin-bottom: var(--erp-space-2); padding-bottom: 0; border-bottom: 0; }
 .erp-home-tabs { display: flex; gap: var(--erp-space-1); margin: 0 0 var(--erp-space-4); overflow-x: auto; border-bottom: 1px solid var(--erp-rule); scrollbar-width: none; }
 .erp-home-tab { display: inline-flex; align-items: center; flex: none; min-height: 2.75rem; padding: 0 var(--erp-space-3); color: var(--erp-ink-soft); font-weight: 600; text-decoration: none; white-space: nowrap; box-shadow: inset 0 -3px 0 transparent; }
 .erp-home-tab:hover { color: var(--erp-ink); }
