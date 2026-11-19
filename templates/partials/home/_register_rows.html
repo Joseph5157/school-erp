@@ -1,0 +1,12 @@
+{# Register rows (class section, teacher, Open); `rows` is the list. The first five show, the rest fold. #}
+<ul class="erp-home-list">
+    {% for r in rows|slice:":5" %}{% include "partials/home/_register_row.html" with r=r only %}{% endfor %}
+</ul>
+{% if rows|length > 5 %}
+<details class="erp-class-more erp-attention-more">
+    <summary>Show all {{ rows|length }} classes</summary>
+    <ul class="erp-home-list">
+        {% for r in rows|slice:"5:" %}{% include "partials/home/_register_row.html" with r=r only %}{% endfor %}
+    </ul>
+</details>
+{% endif %}

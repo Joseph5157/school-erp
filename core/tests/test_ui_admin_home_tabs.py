@@ -244,3 +244,32 @@ class HomeTabsTests(AnalyticsFixture, TestCase):
         self.assertIn('.erp-home-tab[aria-current="page"]', css)
         self.assertIn(".erp-home-grid {", css)
         self.assertRegex(css, r"@media \(min-width: 992px\) \{ \.erp-home-grid \{ grid-template-columns: repeat\(2")
+
+    def _add_sections(self, count):
+        from core.models import ClassGrade, Section
+
+        for i in range(count):
+            grade = ClassGrade.objects.create(name=f"Grade {20 + i}")
+            section = Section.objects.create(class_grade=grade, name="A")
+            self.enroll_student(f"Fold Pupil {i}", grade, section)
+
+    def test_not_taken_list_folds_after_five(self):
+        self._add_sections(6)  # plus Grade 1 = 7 sections, none submitted
+        html = self.get().content.decode()
+        card = html.split('id="att-today-title"', 1)[1].split('id="compliance-title"', 1)[0]
+        self.assertEqual(card.count('class="erp-home-row"'), 7)
+        self.assertEqual(card.count("<details"), 1)
+        self.assertIn("Show all 7 classes", card)
+        visible = card.split("<details", 1)[0]
+        self.assertEqual(visible.count('class="erp-home-row"'), 5)
+
+    def test_not_taken_list_does_not_fold_at_five_or_fewer(self):
+        self._add_sections(4)  # 5 sections in all
+        card = self.get().content.decode().split('id="att-today-title"', 1)[1].split('id="compliance-title"', 1)[0]
+        self.assertEqual(card.count('class="erp-home-row"'), 5)
+        self.assertNotIn("<details", card)
+
+    def test_overdue_marks_hidden_without_view_assessment(self):
+        response = self.get(self.viewer("regs-only", "view_school", "view_attendanceregister"))
+        self.assertContains(response, "Teacher compliance")
+        self.assertNotContains(response, "Marks overdue")

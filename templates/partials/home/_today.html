@@ -38,12 +38,7 @@
     {% if a.not_taken is not None and a.school_day %}
     <h3 class="erp-home-sub">Not taken yet</h3>
     {% if a.not_taken %}
-    <ul class="erp-home-list">
-        {% for r in a.not_taken %}<li class="erp-home-row">
-            <span class="erp-home-main">{{ r.class_name }} {{ r.section_name }}{% if r.teacher_name %} &middot; {{ r.teacher_name }}{% endif %}</span>
-            {% if r.url %}<a class="erp-home-open" href="{{ r.url }}">Open<span class="visually-hidden"> {{ r.class_name }} {{ r.section_name }}</span></a>{% endif %}
-        </li>{% endfor %}
-    </ul>
+    {% include "partials/home/_register_rows.html" with rows=a.not_taken only %}
     {% else %}<p class="erp-home-empty">All registers are in.</p>{% endif %}
     {% endif %}
 </section>
@@ -64,12 +59,7 @@
     <p class="erp-home-empty">Registers are due by {{ t.register_cutoff|time:"H:i" }}.</p>
     {% elif c.missing %}
     <h3 class="erp-home-sub">Not submitted yet</h3>
-    <ul class="erp-home-list">
-        {% for r in c.missing %}<li class="erp-home-row">
-            <span class="erp-home-main">{{ r.class_name }} {{ r.section_name }}{% if r.teacher_name %} &middot; {{ r.teacher_name }}{% endif %}</span>
-            {% if r.url %}<a class="erp-home-open" href="{{ r.url }}">Open<span class="visually-hidden"> {{ r.class_name }} {{ r.section_name }}</span></a>{% endif %}
-        </li>{% endfor %}
-    </ul>
+    {% include "partials/home/_register_rows.html" with rows=c.missing only %}
     {% endif %}
     {% endif %}
     {% if t.overdue_marks %}
