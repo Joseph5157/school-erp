@@ -1,7 +1,19 @@
 """Admin home Today tab data. Read-only; no HTTP here."""
 import datetime
+from collections import defaultdict
 
-from core.models import School
+from django.urls import reverse
+from django.utils import timezone
+
+from core import analytics, charts, reports
+from core.charts import natural_key
+from core.models import (
+    Assessment,
+    AssessmentTeacherAssignment,
+    AttendanceRegister,
+    School,
+    SectionClassTeacher,
+)
 
 DEFAULT_REGISTER_CUTOFF = datetime.time(10, 0)
 
@@ -10,3 +22,131 @@ def register_cutoff():
     """The school's register cut-off time, or 10:00 when no School row exists."""
     school = School.objects.first()
     return school.register_cutoff if school else DEFAULT_REGISTER_CUTOFF
+
+
+def _user_name(user):
+    return (user.get_full_name() or user.username) if user else ""
+
+
+def _class_teachers(today):
+    """{section_id: display name of the class teacher effective today}, in one query."""
+    rows = SectionClassTeacher.objects.effective_on(today).select_related("teacher")
+    return {row.section_id: _user_name(row.teacher) for row in rows}
+
+
+def _section_order(section):
+    grade = section.class_grade
+    return (grade.display_order, natural_key(grade.name), natural_key(section.name))
+
+
+def _register_url(register, can_open):
+    if not can_open:
+        return None
+    if register is not None:
+        return reverse("core:attendance-register-detail", args=[register.pk])
+    return reverse("core:attendance-register-create")
+
+
+def _row(section, register, state, teachers, can_open):
+    return {
+        "class_name": section.class_grade.name,
+        "section_name": section.name,
+        "teacher_name": teachers.get(section.pk, ""),
+        "state": state,
+        "url": _register_url(register, can_open),
+    }
+
+
+def _unsubmitted_rows(today, teachers, can_open):
+    items = sorted(
+        reports.missing_attendance(today, today), key=lambda item: _section_order(item["section"])
+    )
+    return [
+        _row(item["section"], item["register"], item["state"], teachers, can_open)
+        for item in items
+    ]
+
+
+def attendance_today(today, *, can_open_registers):
+    """Today's present/absent split and the registers still not submitted."""
+    school_day = bool(reports.expected_registers(today, today))
+    strip = analytics.today_strip(today)
+    rows = []
+    if school_day:
+        rows = _unsubmitted_rows(today, _class_teachers(today), can_open_registers)
+    return {
+        "school_day": school_day,
+        "donut": charts.donut([("Present", strip["present"]), ("Absent", strip["absent"])]),
+        "present": strip["present"],
+        "absent": strip["absent"],
+        "not_taken": rows,
+    }
+
+
+def register_compliance(today, now, cutoff, *, can_open_registers=False):
+    """Registers submitted after the cut-off today, and ones still missing once it has passed."""
+    local_now = timezone.localtime(now)
+    before_cutoff = local_now.time() <= cutoff
+    result = {"late": [], "missing": [], "before_cutoff": before_cutoff}
+    if not reports.expected_registers(today, today):
+        return result
+    teachers = _class_teachers(today)
+    submitted = (
+        AttendanceRegister.objects.filter(
+            date=today, status=AttendanceRegister.Status.SUBMITTED, submitted_at__isnull=False
+        )
+        .select_related("section__class_grade")
+    )
+    late = []
+    for register in submitted:
+        stamp = timezone.localtime(register.submitted_at)
+        if stamp.time() > cutoff:
+            row = _row(
+                register.section, register, AttendanceRegister.Status.SUBMITTED,
+                teachers, can_open_registers,
+            )
+            row["submitted_at"] = stamp
+            late.append((_section_order(register.section), row))
+    result["late"] = [row for _, row in sorted(late, key=lambda pair: pair[0])]
+    if not before_cutoff:
+        result["missing"] = _unsubmitted_rows(today, teachers, can_open_registers)
+    return result
+
+
+def overdue_marks(today, days=15):
+    """DRAFT assessments left open for more than `days` days, oldest first."""
+    cutoff = today - datetime.timedelta(days=days)
+    assessments = list(
+        Assessment.objects.filter(status=Assessment.Status.DRAFT, assessment_date__lt=cutoff)
+        .select_related("section__class_grade", "offering__subject", "offering__academic_year")
+        .order_by("assessment_date", "pk")
+    )
+    if not assessments:
+        return []
+    assignments = defaultdict(list)
+    for item in AssessmentTeacherAssignment.objects.filter(
+        offering_id__in={a.offering_id for a in assessments},
+        section_id__in={a.section_id for a in assessments},
+    ).select_related("teacher"):
+        assignments[(item.offering_id, item.section_id)].append(item)
+    rows = []
+    for assessment in assessments:
+        on = assessment.assessment_date
+        year_end = assessment.offering.academic_year.end_date
+        teacher = None
+        for item in assignments[(assessment.offering_id, assessment.section_id)]:
+            ends = item.end_date or year_end
+            if item.start_date <= on <= ends:
+                teacher = item.teacher
+        rows.append(
+            {
+                "name": assessment.name,
+                "class_name": assessment.section.class_grade.name,
+                "section_name": assessment.section.name,
+                "subject": assessment.offering.subject.name,
+                "teacher_name": _user_name(teacher),
+                "days_late": (today - on).days - days,
+                "url": reverse("core:assessment-detail", args=[assessment.pk]),
+            }
+        )
+    return rows
