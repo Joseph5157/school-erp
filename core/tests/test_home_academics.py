@@ -5,7 +5,14 @@ from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
 
 from core import home_academics
-from core.models import Assessment, TermPublication
+from core.models import (
+    AcademicEnrollment,
+    Assessment,
+    ClassGrade,
+    Section,
+    Student,
+    TermPublication,
+)
 from core.tests.test_admin_overview_analytics import TODAY, MarksFixture
 
 
@@ -83,3 +90,77 @@ class ResultsToFinishTests(MarksFixture, TestCase):
         with CaptureQueriesContext(connection) as second:
             home_academics.results_to_finish(TODAY, publish_rows=True)
         self.assertEqual(len(first), len(second))
+
+    def test_non_active_student_is_not_unpublished(self):
+        self.assessment({self.s1: 10, self.s2: 12})
+        Student.objects.filter(pk=self.s2.student_id).update(status=Student.Status.INACTIVE)
+        r = home_academics.results_to_finish(TODAY, publish_rows=True)
+        self.assertEqual(r["unpublished_students"], 1)
+        self.assertEqual(r["unpublished_sections"][0]["students"], 1)
+
+    def test_enrollment_ended_before_the_date_does_not_block_ready(self):
+        self.assessment({self.s1: 10, self.s2: 12}, name="Marked", finalize=False)
+        late = self.enroll_student("Left Early", self.class_grade, self.section)
+        AcademicEnrollment.objects.filter(pk=late.pk).update(
+            status=AcademicEnrollment.Status.COMPLETED, end_date=datetime.date(2026, 6, 15)
+        )
+        r = home_academics.results_to_finish(TODAY, publish_rows=True)
+        self.assertEqual(([x["name"] for x in r["ready"]], r["in_progress"]), (["Marked"], 0))
+
+    def test_enrollment_starting_after_the_date_does_not_block_ready(self):
+        self.assessment({self.s1: 10, self.s2: 12}, name="Marked", finalize=False)
+        later = self.enroll_student("Joins Later", self.class_grade, self.section)
+        AcademicEnrollment.objects.filter(pk=later.pk).update(start_date=datetime.date(2026, 8, 1))
+        r = home_academics.results_to_finish(TODAY, publish_rows=True)
+        self.assertEqual(([x["name"] for x in r["ready"]], r["in_progress"]), (["Marked"], 0))
+
+    def test_enrollment_effective_on_the_date_without_a_result_blocks_ready(self):
+        self.assessment({self.s1: 10, self.s2: 12}, name="Marked", finalize=False)
+        self.enroll_student("Unmarked", self.class_grade, self.section)
+        r = home_academics.results_to_finish(TODAY, publish_rows=True)
+        self.assertEqual((r["ready"], r["in_progress"]), ([], 1))
+
+    def test_student_with_results_in_two_sections_is_counted_once(self):
+        section_b = Section.objects.create(class_grade=self.class_grade, name="B")
+        AcademicEnrollment.objects.filter(pk=self.s1.pk).update(
+            status=AcademicEnrollment.Status.COMPLETED, end_date=datetime.date(2026, 6, 30)
+        )
+        moved = AcademicEnrollment.objects.create(
+            student=self.s1.student, academic_year=self.year, class_grade=self.class_grade,
+            section=section_b, start_date=datetime.date(2026, 7, 1),
+        )
+        self.assessment({self.s1: 10}, name="Before")
+        self.assessment({moved: 12}, name="After", section=section_b)
+        r = home_academics.results_to_finish(TODAY, publish_rows=True)
+        self.assertEqual(r["unpublished_students"], 1)
+        self.assertEqual(sum(row["students"] for row in r["unpublished_sections"]), 1)
+
+    def test_superseded_and_withdrawn_publications_do_not_count_as_published(self):
+        self.assessment({self.s1: 10, self.s2: 12})
+        self.publish(self.s1, "SUPERSEDED")
+        self.publish(self.s2, "WITHDRAWN")
+        r = home_academics.results_to_finish(TODAY, publish_rows=True)
+        self.assertEqual(r["unpublished_students"], 2)
+
+    def test_ready_is_oldest_date_first(self):
+        zed = self.assessment({self.s1: 10, self.s2: 12}, name="Zed", finalize=False)
+        alpha = self.assessment({self.s1: 10, self.s2: 12}, name="Alpha", finalize=False)
+        Assessment.objects.filter(pk=zed.pk).update(assessment_date=datetime.date(2026, 7, 2))
+        Assessment.objects.filter(pk=alpha.pk).update(assessment_date=datetime.date(2026, 7, 10))
+        r = home_academics.results_to_finish(TODAY, publish_rows=True)
+        self.assertEqual([x["name"] for x in r["ready"]], ["Zed", "Alpha"])
+
+    def test_unpublished_sections_follow_class_order_then_section_name(self):
+        grade2, section2, enrollment2 = self.second_class()
+        ClassGrade.objects.filter(pk=self.class_grade.pk).update(display_order=5)
+        ClassGrade.objects.filter(pk=grade2.pk).update(display_order=1)
+        section_b = Section.objects.create(class_grade=self.class_grade, name="B")
+        enrollment_b = self.enroll_student("In B", self.class_grade, section_b)
+        self.assessment({self.s1: 10}, name="G1A")
+        self.assessment({enrollment_b: 10}, name="G1B", section=section_b)
+        self.assessment({enrollment2: 10}, name="G2A", class_grade=grade2, section=section2)
+        r = home_academics.results_to_finish(TODAY, publish_rows=True)
+        self.assertEqual(
+            [(x["class_name"], x["section_name"]) for x in r["unpublished_sections"]],
+            [("Grade 2", "A"), ("Grade 1", "A"), ("Grade 1", "B")],
+        )
