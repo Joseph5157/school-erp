@@ -111,7 +111,7 @@ class OverviewCardTests(AuthorizationClientsMixin, AttendanceFixtureMixin, TestC
         self.assertContains(response, "Needs attention")
         self.assertContains(response, "erp-stat-card--attention", count=1)
         content = response.content.decode()
-        self.assertEqual(content.count("btn btn-primary btn-sm mt-auto"), 1)
+        self.assertEqual(content.count('class="erp-btn erp-btn--primary"'), 1)
 
     def test_page_says_all_clear_when_every_card_is_zero(self):
         self.pin_today_before_year()
@@ -186,7 +186,7 @@ class OverviewSetupStateTests(AuthorizationClientsMixin, TestCase):
         open_html = content[content.index('class="erp-setup-list"'):content.index('class="erp-setup-done"')]
         self.assertIn("School profile", done_html)
         self.assertNotIn("School profile", open_html)
-        self.assertEqual(open_html.count("btn-primary"), 1)  # only the next step is filled
+        self.assertEqual(open_html.count("erp-btn--primary"), 1)  # only the next step is filled
 
 
 class BreadcrumbMapTests(TestCase):

@@ -71,12 +71,12 @@ class PhoneStylesheetTests(TestCase):
         phone = phone_block(CSS)
         # Count at the right end of the row, beside the title and sentence.
         self.assertIn(".erp-stat-grid--attention .erp-stat-value { grid-column: 2; grid-row: 1 / span 2; font-size: 1.5rem; }", phone)
-        # The card's own Open link covers the whole card (explicit size beats Bootstrap's align-self-start)...
+        # The card's own Open link covers the whole card (explicit size beats the stat card button's align-self)...
         self.assertIn("{ position: absolute; inset: 0; width: 100%; height: 100%; margin: 0;", phone)
         # ...is drawn as the same chevron on every card, so no card's link looks more important...
-        self.assertIn('.erp-stat-grid--attention .erp-stat-card > .btn::after { content: "\\203A";', phone)
+        self.assertIn('.erp-stat-grid--attention .erp-stat-card > .erp-btn::after { content: "\\203A";', phone)
         # ...and keeps a visible keyboard focus ring.
-        self.assertIn(".erp-stat-grid--attention .erp-stat-card > .btn:focus-visible { outline: 3px solid var(--erp-focus-color);", phone)
+        self.assertIn(".erp-stat-grid--attention .erp-stat-card > .erp-btn:focus-visible { outline: 3px solid var(--erp-focus-color);", phone)
         # Desktop keeps the cards and their Open buttons: none of this is outside the phone block.
-        rule = ".erp-stat-grid--attention .erp-stat-card > .btn"
+        rule = ".erp-stat-grid--attention .erp-stat-card > .erp-btn"
         self.assertEqual(CSS.count(rule), phone.count(rule))

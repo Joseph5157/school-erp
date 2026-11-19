@@ -1394,6 +1394,20 @@ a.erp-glance-tile:hover, a.erp-glance-tile:focus-visible { border-color: var(--e
 .erp-home-open { flex: none; display: inline-flex; align-items: center; min-height: 2.75rem; padding: 0 var(--erp-space-2); color: var(--erp-action); font-weight: 600; text-decoration: none; }
 .erp-home-open:hover, .erp-home-open:focus-visible { text-decoration: underline; }
 .erp-home-empty { margin: 0; color: var(--erp-ink-soft); font-size: var(--erp-text-sm); }
+/* Overview-owned replacements for Bootstrap classes (buttons, visually-hidden, muted text), same look as before. */
+.erp-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 2.75rem; padding: .25rem .5rem; border: 1px solid transparent; border-radius: var(--erp-btn-radius-sm); font-size: .875rem; font-weight: 600; line-height: 1.5; text-align: center; text-decoration: none; vertical-align: middle; cursor: pointer; transition: color .15s ease-in-out, background-color .15s ease-in-out, border-color .15s ease-in-out; }
+@media (min-width: 768px) { .erp-btn { min-height: var(--erp-btn-height-sm); } }
+.erp-btn:focus-visible { outline: 2px solid var(--erp-focus-color); outline-offset: 2px; }
+.erp-btn--primary { color: #fff; background-color: var(--erp-action); border-color: var(--erp-action); }
+.erp-btn--primary:hover, .erp-btn--primary:active { color: #fff; background-color: var(--erp-action-strong); border-color: var(--erp-action-strong); }
+.erp-btn--tonal { color: var(--erp-action-strong); background-color: var(--erp-action-wash); border-color: var(--erp-action-wash); }
+.erp-btn--tonal:hover { color: var(--erp-action-strong); background-color: var(--erp-action-wash-strong); border-color: var(--erp-action-wash-strong); }
+.erp-btn--tonal:active { color: #fff; background-color: var(--erp-action-strong); border-color: var(--erp-action-strong); }
+.erp-btn--soft { color: var(--erp-ink); background-color: var(--erp-btn-soft); border-color: var(--erp-btn-soft-border); }
+.erp-btn--soft:hover, .erp-btn--soft:active { color: var(--erp-ink); background-color: var(--erp-btn-soft-hover); border-color: var(--erp-ink-soft); }
+.erp-stat-card .erp-btn { margin-top: auto; align-self: flex-start; }
+.erp-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.erp-note { color: var(--erp-ink-soft); }
 /* Overview attendance analytics (Gate A): phone-first, server-rendered SVG, no chart library.
    Sections are spaced by the next section title's top margin, so no bottom margins stack up. */
 .erp-analytics { margin: 0; }
@@ -1649,11 +1663,11 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
   .erp-stat-grid--attention .erp-stat-label { grid-column: 1; grid-row: 1; font-size: var(--erp-text-sm); letter-spacing: 0; text-transform: none; color: var(--erp-ink); }
   .erp-stat-grid--attention .erp-stat-summary { grid-column: 1; grid-row: 2; }
   .erp-stat-grid--attention .erp-stat-value { grid-column: 2; grid-row: 1 / span 2; font-size: 1.5rem; }
-  .erp-stat-grid--attention .erp-stat-card > .btn,
-  .erp-stat-grid--attention .erp-stat-card > .btn:hover,
-  .erp-stat-grid--attention .erp-stat-card > .btn:active { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; border-radius: inherit; background: transparent; box-shadow: none; color: transparent; font-size: 0; }
-  .erp-stat-grid--attention .erp-stat-card > .btn:focus-visible { outline: 3px solid var(--erp-focus-color); outline-offset: 2px; }
-  .erp-stat-grid--attention .erp-stat-card > .btn::after { content: "\203A"; position: absolute; top: 50%; right: var(--erp-space-3); transform: translateY(-50%); font-size: 1.5rem; line-height: 1; color: var(--erp-ink-soft); }
+  .erp-stat-grid--attention .erp-stat-card > .erp-btn,
+  .erp-stat-grid--attention .erp-stat-card > .erp-btn:hover,
+  .erp-stat-grid--attention .erp-stat-card > .erp-btn:active { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; border-radius: inherit; background: transparent; box-shadow: none; color: transparent; font-size: 0; }
+  .erp-stat-grid--attention .erp-stat-card > .erp-btn:focus-visible { outline: 3px solid var(--erp-focus-color); outline-offset: 2px; }
+  .erp-stat-grid--attention .erp-stat-card > .erp-btn::after { content: "\203A"; position: absolute; top: 50%; right: var(--erp-space-3); transform: translateY(-50%); font-size: 1.5rem; line-height: 1; color: var(--erp-ink-soft); }
   .erp-stat-grid--attention .erp-stat-card:has(> .btn:hover) { border-color: var(--erp-action); }
 }
 .erp-setup { background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius); padding: var(--erp-space-4); margin-bottom: var(--erp-space-4); }
@@ -1661,8 +1675,8 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
 .erp-setup-title { font-size: 1rem; margin: 0 0 var(--erp-space-1); }
 .erp-setup-summary { margin: 0; color: var(--erp-ink-soft); font-size: var(--erp-text-sm); }
 .erp-setup-progress { margin: 0; color: var(--erp-ink-soft); font-size: var(--erp-text-sm); font-weight: 600; white-space: nowrap; }
-.erp-setup-bar { height: .5rem; margin-bottom: var(--erp-space-4); }
-.erp-setup-bar .progress-bar { background-color: var(--erp-action); }
+.erp-setup-bar { height: .5rem; margin-bottom: var(--erp-space-4); background-color: #e9ecef; border-radius: .375rem; overflow: hidden; }
+.erp-setup-bar-fill { height: 100%; background-color: var(--erp-action); border-radius: inherit; }
 .erp-setup-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .erp-setup-step { display: flex; align-items: center; gap: var(--erp-space-3); padding: var(--erp-space-3) 0; border-bottom: 1px solid var(--erp-rule); flex-wrap: wrap; }
 .erp-setup-step:last-child { border-bottom: 0; padding-bottom: 0; }

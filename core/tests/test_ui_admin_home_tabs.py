@@ -319,3 +319,23 @@ class HomeTabsTests(MarksFixture, TestCase):
         response = self.get(self.viewer("regs-only", "view_school", "view_attendanceregister"))
         self.assertContains(response, "Teacher compliance")
         self.assertNotContains(response, "Marks overdue")
+
+
+class OverviewNoBootstrapTests(MarksFixture, TestCase):
+    BANNED = ('class="btn', " btn-", "visually-hidden", "text-muted", '"progress"', "progress-bar", "mt-auto", "align-self-start")
+
+    def test_overview_uses_no_bootstrap_classes(self):
+        saw_setup = False
+        saw_attention = False
+        for tab in TAB_KEYS:
+            response = self.administrator.get(URL, {"tab": tab})
+            self.assertEqual(response.status_code, 200)
+            html = response.content.decode()
+            saw_setup = saw_setup or "Set up your school" in html
+            saw_attention = saw_attention or "erp-stat-card--attention" in html
+            # Page header to the end of main: the base shell (sidebar, top bar) may still use Bootstrap.
+            body = html[html.index('class="erp-page-header'):html.index("</main>")]
+            for banned in self.BANNED:
+                with self.subTest(tab=tab, banned=banned):
+                    self.assertNotIn(banned, body)
+        self.assertTrue(saw_setup, "fixture should show the setup card")

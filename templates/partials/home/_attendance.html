@@ -1,7 +1,7 @@
 {# Admin home, Attendance tab (interim: PR 2 adds trend, day-of-week and class cards). School-wide, submitted registers only; see core/analytics.py. #}
 {% with a=attendance_tab %}
 <section class="erp-analytics{% if a.absentees is None %} erp-analytics--no-absent{% endif %}" aria-labelledby="analytics-title">
-    <h2 class="visually-hidden" id="analytics-title">Attendance</h2>
+    <h2 class="erp-sr-only" id="analytics-title">Attendance</h2>
     {% if a.has_data %}
     <article class="erp-analytics-card erp-analytics-card--heat">
         <h3 class="erp-analytics-title">Attendance heatmap</h3>
@@ -18,7 +18,7 @@
         <details class="erp-chart-data">
             <summary>View heatmap figures</summary>
             <table class="erp-chart-table erp-keep">
-                <caption class="visually-hidden">Attendance heatmap, last 4 weeks</caption>
+                <caption class="erp-sr-only">Attendance heatmap, last 4 weeks</caption>
                 <thead><tr><th scope="col">Date</th><th scope="col">Attendance</th></tr></thead>
                 <tbody>{% for week in a.heatmap %}{% for cell in week %}{% if cell.state == "data" %}<tr><th scope="row">{{ cell.date|date:"D j M" }}</th><td>{{ cell.percentage|floatformat:1 }}%</td></tr>{% elif cell.state == "no_data" %}<tr><th scope="row">{{ cell.date|date:"D j M" }}</th><td>Not submitted</td></tr>{% endif %}{% endfor %}{% endfor %}</tbody>
             </table>

@@ -1,7 +1,7 @@
 {# Admin home, Academics tab (interim: PR 3 adds results to finish, class and improver cards). Marks are from the reporting term, absences from this month. #}
 {% with a=academics_tab %}
 <section class="erp-analytics{% if a.attention is None %} erp-analytics--no-attention{% endif %}" aria-labelledby="analytics-title">
-    <h2 class="visually-hidden" id="analytics-title">Academics</h2>
+    <h2 class="erp-sr-only" id="analytics-title">Academics</h2>
     {% if a.attention is not None %}
     <article class="erp-analytics-card erp-analytics-card--attention">
         <h3 class="erp-analytics-title">Students needing attention</h3>

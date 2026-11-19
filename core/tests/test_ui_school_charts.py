@@ -6,7 +6,7 @@ from django.test import SimpleTestCase
 
 from core import charts
 
-HIDDEN = "visually-hidden erp-visually-hidden-data"
+HIDDEN = "erp-sr-only erp-visually-hidden-data"
 
 
 def _css():

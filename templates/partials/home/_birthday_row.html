@@ -1,4 +1,4 @@
 <li class="erp-home-row">
     <span class="erp-home-main">{{ r.name }} &middot; {{ r.class_name }} &middot; turns {{ r.age }}<span class="erp-home-meta">{{ r.date|date:"D j M" }}</span></span>
-    {% if r.url %}<a class="erp-home-open" href="{{ r.url }}">Open<span class="visually-hidden"> {{ r.name }}</span></a>{% endif %}
+    {% if r.url %}<a class="erp-home-open" href="{{ r.url }}">Open<span class="erp-sr-only"> {{ r.name }}</span></a>{% endif %}
 </li>
