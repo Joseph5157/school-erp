@@ -43,7 +43,7 @@ Status: **Ready** = Bootstrap-free and used; **Partial** = ours, but still sits 
 | Card | `erp-card` (the shared card: block, used by teacher pages and the School page) + `erp-card--<name>` hooks; inside `.erp-home` (the Overview) it lays out as a flex column | `card` | Ready (Overview). `erp-chart-card` / `erp-analytics-card` remain only on the student progress page; `erp-panel` converts area by area |
 | Stat / glance tiles | `erp-stat-card`, `erp-stat-grid`, `erp-glance-*` | none | Ready |
 | List rows (tappable) | `erp-home-row` (+ `-main`, `-meta`, `-open`), `erp-attention-list` | `list-group` | Ready |
-| Stage counts | `erp-stage-list`, `erp-stage`, `erp-stage-count`, `erp-stage-label` | none | Ready (Academics) |
+| Stage counts | `erp-stage-list` (`--two` for a two-up row), `erp-stage`, `erp-stage-count`, `erp-stage-label`, `erp-stage-meta` (small soft line under a count) | none | Ready (Academics) |
 | Fold ("Show all N") | `templates/partials/home/_fold_rows.html`, `erp-class-more` | `collapse` | Ready |
 | Empty state | `erp-card-empty` (a message inside a card; `--block` for a standalone dashed box), `erp-empty` (the page-level block) | none | Ready |
 | Charts | `erp-donut-*`, `erp-heat*`, `erp-class-bar*`, `erp-cols` | none | Ready |

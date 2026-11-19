@@ -645,6 +645,15 @@ class HomeTabsTests(MarksFixture, TestCase):
                      ".erp-home .erp-analytics--no-absent > .erp-card--classes { grid-column: span 12; }"):
             self.assertIn(rule, css)
 
+    def test_parents_css(self):
+        css = Path(settings.BASE_DIR, "static", "css", "erp.css").read_text(encoding="utf-8")
+        self.assertIn(".erp-stage-list--two { grid-template-columns: repeat(2, minmax(0, 1fr)); }", css)
+        self.assertRegex(css, r"\.erp-stage-meta \{[^}]*font-size: var\(--erp-text-sm\)")
+        self.assertIn(".erp-home .erp-analytics > .erp-card--notice { grid-column: span 7; }", css)
+        self.assertIn(".erp-home .erp-analytics > .erp-card--engagement { grid-column: span 5; align-self: start; }", css)
+        self.assertIn(".erp-home .erp-analytics > .erp-card--access { grid-column: span 12; }", css)
+        self.assertIn(".erp-home .erp-analytics--no-notice > .erp-card--engagement { grid-column: span 12; }", css)
+
 
 class AcademicsTabTests(MarksFixture, TestCase):
     url = reverse("core:admin-overview") + "?tab=academics"
