@@ -3,6 +3,7 @@ import datetime
 from django.db import connection
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
+from django.urls import reverse
 
 from core import analytics, home_academics, marks_analytics
 from core.models import (
@@ -135,6 +136,59 @@ class ResultsToFinishTests(MarksFixture, TestCase):
         r = home_academics.results_to_finish(TODAY, publish_rows=True)
         self.assertEqual(r["unpublished_students"], 1)
         self.assertEqual(sum(row["students"] for row in r["unpublished_sections"]), 1)
+
+    def test_student_is_counted_under_their_latest_placement(self):
+        section_b = Section.objects.create(class_grade=self.class_grade, name="B")  # higher pk than A
+        AcademicEnrollment.objects.filter(pk=self.s1.pk).update(
+            status=AcademicEnrollment.Status.COMPLETED, end_date=datetime.date(2026, 7, 5)
+        )
+        moved = AcademicEnrollment.objects.create(
+            student=self.s1.student, academic_year=self.year, class_grade=self.class_grade,
+            section=section_b, start_date=datetime.date(2026, 7, 6),
+        )
+        self.assessment({self.s1: 10}, name="In A")
+        self.assessment({moved: 12}, name="In B", section=section_b)
+        r = home_academics.results_to_finish(TODAY, publish_rows=True)
+        self.assertEqual(r["unpublished_students"], 1)
+        rows = r["unpublished_sections"]
+        self.assertEqual([(x["section_name"], x["students"]) for x in rows], [("B", 1)])
+        self.assertIn(f"?section={section_b.pk}", rows[0]["url"])
+
+    def test_previous_term_unpublished_still_shows_with_its_own_term(self):
+        self.assessment({self.s1: 10}, name="Old", term=self.term_a)
+        r = home_academics.results_to_finish(TODAY, publish_rows=True)
+        self.assertEqual(r["unpublished_students"], 1)
+        row = r["unpublished_sections"][0]
+        self.assertEqual(row["term_name"], "Term 1")
+        self.assertTrue(row["url"].startswith(reverse("core:term-publication", args=[self.term_a.pk])))
+        self.assertIn(f"?section={self.section.pk}", row["url"])
+
+    def test_work_term_rows_come_before_previous_term_rows(self):
+        self.assessment({self.s1: 10}, name="Old", term=self.term_a)
+        self.assessment({self.s2: 10}, name="New")
+        r = home_academics.results_to_finish(TODAY, publish_rows=True)
+        self.assertEqual(r["unpublished_students"], 2)
+        self.assertEqual([x["term_name"] for x in r["unpublished_sections"]], ["Term 2", "Term 1"])
+
+    def test_previous_term_publication_is_checked_against_that_term(self):
+        self.assessment({self.s1: 10}, name="Old", term=self.term_a)
+        TermPublication.objects.create(
+            student=self.s1.student, term=self.term_a, placement=self.s1, version=1,
+            status="PUBLISHED", term_label="Term 1", academic_year_label="x", class_grade_label="x",
+            section_label="x", fingerprint="x", published_by=self.admin_user,
+        )
+        r = home_academics.results_to_finish(TODAY, publish_rows=True)
+        self.assertEqual((r["unpublished_students"], r["unpublished_sections"]), (0, []))
+
+    def test_previous_term_publish_rows_false_keeps_counts_but_no_rows(self):
+        self.assessment({self.s1: 10}, name="Old", term=self.term_a)
+        r = home_academics.results_to_finish(TODAY, publish_rows=False)
+        self.assertEqual((r["unpublished_students"], r["unpublished_sections"]), (1, []))
+
+    def test_previous_term_drafts_are_not_counted(self):
+        self.assessment({self.s1: 10}, name="Old draft", term=self.term_a, finalize=False)
+        r = home_academics.results_to_finish(TODAY, publish_rows=True)
+        self.assertEqual((r["in_progress"], r["ready"]), (0, []))
 
     def test_superseded_and_withdrawn_publications_do_not_count_as_published(self):
         self.assessment({self.s1: 10, self.s2: 12})

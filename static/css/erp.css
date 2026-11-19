@@ -1639,8 +1639,8 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
   .erp-analytics .erp-chart-card { margin: 0; }
   .erp-home .erp-analytics > .erp-card { grid-column: span 4; margin: 0; }
   /* Cards are never reordered here: desktop shows them in the page (phone) order, so keyboard and
-     screen-reader order match the layout. Students needing attention (Academics tab) takes its own row,
-     as tall as its list (no hollow card). */
+     screen-reader order match the layout. At-risk students (Academics tab) is 7 wide, top-aligned so it is
+     only as tall as its list (no hollow card). */
   .erp-home .erp-analytics > .erp-card--attention { grid-column: span 7; align-self: start; }
   /* Attendance tab: trend on a short full row; heatmap (7) beside day of week (5); best/worst classes (6) beside
      absentees (6). Without the classes card, absentees take the row. */
@@ -1651,10 +1651,8 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
   .erp-home .erp-analytics > .erp-card--absent { grid-column: span 6; align-self: start; }
   .erp-home .erp-analytics--no-classes > .erp-card--absent { grid-column: span 12; }
   .erp-home .erp-analytics--no-absent > .erp-card--classes { grid-column: span 12; }
-  /* By class gets a full row so every class column fits. Then Daily attendance (8) beside the heatmap (4),
-     and marks by subject (7) beside score bands (5). */
   /* Academics tab: results to finish on a full row; pass rate by class (7) beside best and worst (5); subjects on a
-     full row; at-risk (7) beside top improvers (5). A hidden card lets its neighbour take the row. */
+     full row; at-risk (7) beside top improvers (5). When a card is hidden, its surviving neighbour widens to 12. */
   .erp-home .erp-analytics > .erp-card--results { grid-column: span 12; }
   .erp-home .erp-analytics > .erp-card--pass { grid-column: span 7; }
   .erp-home .erp-analytics > .erp-card--best { grid-column: span 5; }

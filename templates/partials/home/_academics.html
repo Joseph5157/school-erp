@@ -8,7 +8,7 @@
         <h3 class="erp-analytics-title">Results to finish, {{ p.term_name }}</h3>
         {% if p.in_progress or p.ready or p.unpublished_students %}
         <ul class="erp-stage-list">
-            <li class="erp-stage"><span class="erp-stage-count">{% if p.in_progress %}<a href="{{ p.in_progress_url }}">{{ p.in_progress }}</a>{% else %}{{ p.in_progress }}{% endif %}</span><span class="erp-stage-label">Marking in progress</span></li>
+            <li class="erp-stage"><span class="erp-stage-count">{% if p.in_progress %}<a href="{{ p.in_progress_url }}">{{ p.in_progress }}<span class="erp-sr-only"> assessments with marking in progress</span></a>{% else %}{{ p.in_progress }}{% endif %}</span><span class="erp-stage-label">Marking in progress</span></li>
             <li class="erp-stage"><span class="erp-stage-count">{{ p.ready|length }}</span><span class="erp-stage-label">Ready to finalize</span></li>
             <li class="erp-stage"><span class="erp-stage-count">{{ p.unpublished_students }}</span><span class="erp-stage-label">Finalized, not published</span></li>
         </ul>
@@ -80,7 +80,7 @@
         {% elif not a.term %}
         <p class="erp-card-empty">No finalized results yet.</p>
         {% elif not a.attention.has_pass_marks %}
-        <p class="erp-card-empty">No pass marks are set for {{ a.term_label }}, so nobody can be checked yet.</p>
+        <p class="erp-card-empty">No pass marks are set for {{ a.term_label }}{% if a.previous %}, and nobody's average is down 10+ points.{% else %}, so nobody can be checked yet.{% endif %}</p>
         {% else %}
         <p class="erp-card-empty">No students need attention right now.</p>
         {% endif %}

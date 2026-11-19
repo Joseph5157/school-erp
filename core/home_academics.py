@@ -64,8 +64,22 @@ def _drafts(term, today):
     )
 
 
+def previous_work_term(term):
+    """The term immediately before `term` (any academic year), or None."""
+    return (
+        AcademicTerm.objects.filter(start_date__lt=term.start_date)
+        .select_related("academic_year")
+        .order_by("-start_date", "-display_order")
+        .first()
+    )
+
+
 def _unpublished(term):
-    """(student count, {section_id: count}) for ACTIVE students with finalized results, unpublished."""
+    """(student count, {section_id: count}) for ACTIVE students with finalized results, unpublished.
+
+    A student is counted once, under their latest placement among the enrollments on those results
+    (latest start date, then highest pk), as `plan_publication` places them.
+    """
     pairs = (
         StudentResult.objects.filter(
             assessment__term=term,
@@ -81,21 +95,31 @@ def _unpublished(term):
                 )
             )
         )
-        .order_by("academic_enrollment__student_id", "academic_enrollment__section_id")
-        .values_list("academic_enrollment__student_id", "academic_enrollment__section_id")
+        .values_list(
+            "academic_enrollment__student_id",
+            "academic_enrollment__start_date",
+            "academic_enrollment_id",
+            "academic_enrollment__section_id",
+        )
         .distinct()
     )
-    section_of = {}
-    for student_id, section_id in pairs:
-        section_of.setdefault(student_id, section_id)
+    latest = {}
+    for student_id, start_date, enrollment_id, section_id in pairs:
+        key = (start_date, enrollment_id)
+        if student_id not in latest or key > latest[student_id][0]:
+            latest[student_id] = (key, section_id)
     counts = {}
-    for section_id in section_of.values():
+    for _key, section_id in latest.values():
         counts[section_id] = counts.get(section_id, 0) + 1
-    return len(section_of), counts
+    return len(latest), counts
 
 
 def results_to_finish(today, *, publish_rows):
-    """Marking in progress, ready to finalize, and finalized-but-unpublished, for the work term."""
+    """Marking in progress, ready to finalize, and finalized-but-unpublished, for the work term.
+
+    "Finalized, not published" also covers the term just before the work term, so its report
+    cards do not vanish when a new term starts. Drafts are the work term's only.
+    """
     term = work_term(today)
     if term is None:
         return None
@@ -113,21 +137,36 @@ def results_to_finish(today, *, publish_rows):
             )
         else:
             in_progress += 1
-    students, counts = _unpublished(term)
+    terms = [term]
+    earlier = previous_work_term(term)
+    if earlier is not None:
+        terms.append(earlier)
+    per_term = [(t, *_unpublished(t)) for t in terms]
+    students = sum(n for _t, n, _c in per_term)
     rows = []
-    if publish_rows and counts:
-        publish_url = reverse("core:term-publication", args=[term.pk])
-        sections = Section.objects.filter(pk__in=counts).select_related("class_grade")
-        for s in sorted(sections, key=lambda s: (s.class_grade.display_order, s.name, s.pk)):
-            rows.append(
-                {
-                    "section_id": s.pk,
-                    "class_name": s.class_grade.name,
-                    "section_name": s.name,
-                    "students": counts[s.pk],
-                    "url": f"{publish_url}?section={s.pk}",
-                }
+    if publish_rows and any(c for _t, _n, c in per_term):
+        wanted = {sid for _t, _n, c in per_term for sid in c}
+        sections = {
+            s.pk: s
+            for s in Section.objects.filter(pk__in=wanted).select_related("class_grade")
+        }
+        for t, _n, counts in per_term:
+            publish_url = reverse("core:term-publication", args=[t.pk])
+            ordered = sorted(
+                (sections[sid] for sid in counts),
+                key=lambda s: (s.class_grade.display_order, s.name, s.pk),
             )
+            for s in ordered:
+                rows.append(
+                    {
+                        "section_id": s.pk,
+                        "class_name": s.class_grade.name,
+                        "section_name": s.name,
+                        "term_name": t.name,
+                        "students": counts[s.pk],
+                        "url": f"{publish_url}?section={s.pk}",
+                    }
+                )
     in_progress_url = (
         reverse("core:academic-year-assessments", args=[term.academic_year_id])
         + f"?term={term.pk}&status=DRAFT"

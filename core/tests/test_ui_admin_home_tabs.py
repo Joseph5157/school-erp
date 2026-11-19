@@ -490,6 +490,19 @@ class AcademicsTabTests(MarksFixture, TestCase):
         pk = Assessment.objects.get(name="Draft ready").pk
         self.assertIn(reverse("core:assessment-detail", args=[pk]), card)
 
+    def test_in_progress_count_link_has_a_screen_reader_name(self):
+        seed_academics(self)
+        card = card_html(self.page(), "results")
+        self.assertIn("assessments with marking in progress</span></a>", card)
+
+    def test_at_risk_empty_text_with_a_previous_term_and_no_pass_marks(self):
+        self.assessment({self.s1: 15}, term=self.term_a)
+        self.assessment({self.s1: 15})
+        card = card_html(self.page(), "attention")
+        self.assertIn(
+            "No pass marks are set for Term 2, and nobody's average is down 10+ points.", card
+        )
+
     def test_stage_counts_and_labels(self):
         seed_academics(self)
         card = card_html(self.page(), "results")
@@ -557,7 +570,6 @@ class AcademicsTabTests(MarksFixture, TestCase):
         link = reverse("core:class-grade-detail", args=[self.class_grade.pk])
         full = self.page()
         self.assertIn(link, card_html(full, "pass"))
-        self.assertIn(link, card_html(full, "best") + card_html(full, "pass"))
         client = self.viewer("no-classes", "view_school", "view_studentresult")
         html = self.page(client)
         self.assertIn("Grade 1", card_html(html, "pass"))
