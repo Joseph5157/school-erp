@@ -363,6 +363,7 @@ class HomeTabsTests(MarksFixture, TestCase):
             response = self.get(client, tab="attendance", absent=view)
             self.assertNotContains(response, "Meena Das")
             self.assertNotContains(response, "erp-seg")
+            self.assertContains(response, "erp-analytics--no-absent")
 
     def test_class_links_need_view_classgrade(self):
         self.seed_attendance()
@@ -390,6 +391,31 @@ class HomeTabsTests(MarksFixture, TestCase):
             self.get(tab="attendance")
         self.assertEqual(len(before), len(after))
 
+    def test_capped_absentee_list_does_not_say_show_all(self):
+        extra = [self.enroll_student(f"Many Absent {i}", self.class_grade, self.section) for i in range(11)]
+        for d in (1, 2, 3):
+            self.day(datetime.date(2026, 7, d), {self.s1: P, self.s2: A, **{s: A for s in extra}})
+        html = self.get(tab="attendance").content.decode()
+        self.assertNotIn("Show all", html)
+        self.assertIn("Show 5 more students", html)
+        self.assertIn("Showing 10 of 12.", html)
+
+    def test_absentee_row_omits_class_when_empty(self):
+        from django.template.loader import render_to_string
+
+        row = {"student_id": 1, "name": "No Class", "class_name": "", "absent_days": 3}
+        html = render_to_string("partials/home/_absentee_row.html", {"r": row, "view": "month"})
+        self.assertIn("No Class", html)
+        self.assertNotIn("&middot;", html)
+
+    def test_min_days_comes_from_context(self):
+        from core import analytics
+
+        self.seed_attendance()
+        context = self.get(tab="attendance", absent="term").context["attendance_tab"]
+        self.assertEqual(context["low_min_days"], analytics.LOW_ATTENDANCE_MIN_DAYS)
+        self.assertContains(self.get(tab="attendance", absent="term"), f"({analytics.LOW_ATTENDANCE_MIN_DAYS} or more days marked)")
+
     def test_attendance_card_css_is_pinned(self):
         css = Path(settings.BASE_DIR, "static/css/erp.css").read_text(encoding="utf-8")
         for rule in ('.erp-seg-link[aria-current="page"]', ".erp-trend-figure",
@@ -397,7 +423,8 @@ class HomeTabsTests(MarksFixture, TestCase):
                      ".erp-home .erp-analytics > .erp-card--heat { grid-column: span 7; }",
                      ".erp-home .erp-analytics > .erp-card--weekday { grid-column: span 5; }",
                      ".erp-home .erp-analytics > .erp-card--absent { grid-column: span 6;",
-                     ".erp-home .erp-analytics--no-classes > .erp-card--absent { grid-column: span 12; }"):
+                     ".erp-home .erp-analytics--no-classes > .erp-card--absent { grid-column: span 12; }",
+                     ".erp-home .erp-analytics--no-absent > .erp-card--classes { grid-column: span 12; }"):
             self.assertIn(rule, css)
 
 

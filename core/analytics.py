@@ -461,6 +461,7 @@ def attendance_tab_context(today, *, include_absentees, absent_view="month", cla
         "absentees": absentees,
         "absentee_threshold": ABSENTEE_THRESHOLD_DAYS,
         "low_percent": LOW_ATTENDANCE_PERCENT,
+        "low_min_days": LOW_ATTENDANCE_MIN_DAYS,
         "label": TAB_PERIOD_LABEL,
     }
 
