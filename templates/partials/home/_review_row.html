@@ -1,0 +1,5 @@
+{# One pending guardian access review. `r` has student_name, guardian_name and url. #}
+<li class="erp-home-row">
+    <span class="erp-home-main">{{ r.student_name }}<span class="erp-home-meta">{{ r.guardian_name }}</span></span>
+    <a class="erp-home-open" href="{{ r.url }}">Review<span class="erp-sr-only"> {{ r.student_name }}</span></a>
+</li>

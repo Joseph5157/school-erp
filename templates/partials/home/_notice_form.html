@@ -1,0 +1,20 @@
+{# The fields of the Parents tab's New announcement form. Takes `form` (an unbound AnnouncementForm). The enclosing <form> and csrf token are in _parents.html; posting goes to the New notice page, which shows the preview. #}
+{% with field=form.title %}
+<div class="erp-field{% if field.errors %} is-invalid{% endif %}">
+    {{ field.label_tag }}{% if field.field.required %}<span class="erp-required-mark" aria-hidden="true"> *</span><span class="erp-sr-only"> (required)</span>{% endif %}
+    {{ field }}
+    {% include "partials/_char_counter.html" with field=field only %}
+</div>
+{% endwith %}
+{% with field=form.body %}
+<div class="erp-field{% if field.errors %} is-invalid{% endif %}">
+    {{ field.label_tag }}{% if field.field.required %}<span class="erp-required-mark" aria-hidden="true"> *</span><span class="erp-sr-only"> (required)</span>{% endif %}
+    {{ field }}
+    {% include "partials/_char_counter.html" with field=field only %}
+</div>
+{% endwith %}
+<div class="erp-field">{{ form.audience.as_field_group }}</div>
+<div data-erp-audience-field="CLASS"><div class="erp-field">{{ form.class_grade.label_tag }}{{ form.class_grade }}</div></div>
+<div data-erp-audience-field="SECTION"><div class="erp-field">{{ form.section.label_tag }}{{ form.section }}</div></div>
+<button type="submit" class="erp-btn erp-btn--primary">Preview notice</button>
+<p class="erp-field-help">You'll see a preview before anything is sent.</p>

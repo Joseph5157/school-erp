@@ -1,15 +1,62 @@
-{# Admin home, Parents tab (interim: PR 4 adds the announcement form, engagement and guardian access cards). #}
+{# Admin home, Parents tab: New announcement form and sent list, parent engagement, guardian access (missing portal parents and pending reviews). Takes `parents_tab` (core.home_parents.parents_tab_context). #}
 {% with p=parents_tab %}
-<section aria-labelledby="parents-title">
-    <h2 class="erp-section-title" id="parents-title">Parents at a glance</h2>
-    <div class="erp-stat-grid erp-stat-grid--glance">
-        {% include "partials/_glance_tile.html" with card=p.glance only %}
-    </div>
-    {% if p.access_review_card %}
-    <div class="erp-stat-grid">
-        {% include "partials/_stat_card.html" with card=p.access_review_card primary=p.access_review_card.count only %}
-    </div>
+<section class="erp-analytics{% if not p.form and p.sent is None %} erp-analytics--no-notice{% endif %}" aria-labelledby="parents-title">
+    <h2 class="erp-sr-only" id="parents-title">Parents</h2>
+    {% if p.form or p.sent is not None %}
+    <article class="erp-card erp-card--notice">
+        <h3 class="erp-analytics-title">New announcement</h3>
+        {% if p.form %}
+        <form method="post" action="{{ p.form_url }}" class="erp-form erp-notice-form" data-erp-audience-form>
+            {% csrf_token %}
+            {% include "partials/home/_notice_form.html" with form=p.form only %}
+        </form>
+        {% endif %}
+        {% if p.sent is not None %}
+        <h4 class="erp-home-sub">Sent</h4>
+        {% if p.sent %}
+        {% include "partials/home/_fold_rows.html" with rows=p.sent row_template="partials/home/_notice_row.html" noun="notices" %}
+        {% else %}
+        <p class="erp-card-empty">No notices sent yet.</p>
+        {% endif %}
+        <p><a href="{{ p.all_notices_url }}">All announcements</a></p>
+        {% endif %}
+    </article>
     {% endif %}
-    {% if p.announcements_url %}<p><a href="{{ p.announcements_url }}">Announcements</a></p>{% endif %}
+
+    {% with e=p.engagement %}
+    <article class="erp-card erp-card--engagement">
+        <h3 class="erp-analytics-title">Parent engagement</h3>
+        <ul class="erp-stage-list erp-stage-list--two">
+            <li class="erp-stage"><span class="erp-stage-count">{% if e.students_pct is None %}&ndash;{% else %}{{ e.students_pct }}%{% endif %}</span><span class="erp-stage-label">Students with a parent on the portal</span><span class="erp-stage-meta">{% if e.students_pct is None %}No students in a class yet{% else %}{{ e.students_on_portal }} of {{ e.students }}{% endif %}</span></li>
+            <li class="erp-stage"><span class="erp-stage-count">{% if e.parents_pct is None %}&ndash;{% else %}{{ e.parents_pct }}%{% endif %}</span><span class="erp-stage-label">Parents who signed in this month</span><span class="erp-stage-meta">{% if e.parents_pct is None %}No parents on the portal yet{% else %}{{ e.parents_active }} of {{ e.parents }}{% endif %}</span></li>
+        </ul>
+        <p class="erp-analytics-sub">Notice reads aren't tracked yet.</p>
+        {% if p.guardians_url %}<p><a href="{{ p.guardians_url }}">Guardians</a></p>{% endif %}
+    </article>
+
+    <article class="erp-card erp-card--access">
+        <h3 class="erp-analytics-title">Guardian access</h3>
+        <h4 class="erp-home-sub">Missing a parent on the portal</h4>
+        {% if p.missing %}
+        {% include "partials/home/_fold_rows.html" with rows=p.missing row_template="partials/home/_missing_row.html" noun="sections" %}
+        {% elif e.students == 0 %}
+        <p class="erp-card-empty">No students in a class yet.</p>
+        {% else %}
+        <p class="erp-card-empty">Every student in a class has a parent on the portal.</p>
+        {% endif %}
+        {% if p.reviews %}
+        <h4 class="erp-home-sub">Access reviews</h4>
+        {% if p.reviews.count == 0 %}
+        <p class="erp-card-empty">No access reviews waiting.</p>
+        {% elif p.reviews.rows is None %}
+        <ul class="erp-home-list">
+            <li class="erp-home-row"><span class="erp-home-main">{{ p.reviews.count }} waiting</span><a class="erp-home-open" href="{{ p.reviews.url }}">Review<span class="erp-sr-only"> access reviews</span></a></li>
+        </ul>
+        {% else %}
+        {% include "partials/home/_fold_rows.html" with rows=p.reviews.rows row_template="partials/home/_review_row.html" noun="reviews" %}
+        {% endif %}
+        {% endif %}
+    </article>
+    {% endwith %}
 </section>
 {% endwith %}

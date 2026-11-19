@@ -1026,21 +1026,6 @@ def _today_tab(user, today, *, can_see_names, can_view_registers):
     }
 
 
-def _parents_tab(user, today):
-    """The Parents tab (interim): guardian logins, pending access reviews, announcements link."""
-    return {
-        "glance": dashboard.parents_glance(user),
-        "access_review_card": (
-            dashboard._access_reviews(today, user)
-            if user.has_perm("core.view_guardianaccessreview")
-            else None
-        ),
-        "announcements_url": (
-            reverse("core:announcement-list") if user.has_perm("core.view_announcement") else None
-        ),
-    }
-
-
 @administrator_required("core.view_school")
 def admin_overview(request):
     """The admin home: four tabs by job, each its own URL (`?tab=`). Only the active tab is built.
@@ -1084,7 +1069,17 @@ def admin_overview(request):
             class_links=can["classes"],
         )
     elif tab == "parents":
-        context["parents_tab"] = _parents_tab(user, today)
+        names = can_see_students and user.has_perm(data_access.GUARDIAN)
+        context["parents_tab"] = home_parents.parents_tab_context(
+            today,
+            notice_form=user.has_perm("core.add_announcement"),
+            show_sent=user.has_perm("core.view_announcement"),
+            invite_links=names,
+            include_reviews=user.has_perm("core.view_guardianaccessreview"),
+            review_names=names,
+            decide_links=user.has_perm("core.add_guardianaccessreview"),
+            guardians_link=user.has_perm(data_access.GUARDIAN),
+        )
     else:
         context["today"] = _today_tab(
             user, today, can_see_names=can_see_students, can_view_registers=can["registers"]

@@ -1,0 +1,5 @@
+{# One section with students lacking a portal parent. `r` has class_name, section_name, missing, students and url (empty when the viewer may not open the students list). #}
+<li class="erp-home-row">
+    <span class="erp-home-main">{{ r.class_name }} {{ r.section_name }}<span class="erp-home-meta">{{ r.missing }} of {{ r.students }} students</span></span>
+    {% if r.url %}<a class="erp-home-open" href="{{ r.url }}">Invite<span class="erp-sr-only"> parents in {{ r.class_name }} {{ r.section_name }}</span></a>{% endif %}
+</li>

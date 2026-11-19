@@ -15,7 +15,6 @@ from core.models import (
     TEACHERS_GROUP_NAME,
     Applicant,
     ClassGrade,
-    GuardianAccount,
     Student,
 )
 
@@ -135,13 +134,3 @@ def glance_cards(user, today=None):
             reverse("core:academic-year-list"), user, "core.view_academicyear",
         ),
     ]
-
-
-def parents_glance(user):
-    """The Parents tab's headline figure: guardians who can sign in to the portal."""
-    return _glance_card(
-        "guardians", "Guardians with portal access",
-        GuardianAccount.objects.filter(revoked_at__isnull=True).count(),
-        "Guardians who can sign in to the portal.",
-        reverse("core:guardian-list"), user, "core.view_guardian",
-    )

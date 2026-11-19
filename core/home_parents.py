@@ -10,6 +10,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from core import guardian_access
+from core.forms import AnnouncementForm
 from core.models import AcademicEnrollment, Announcement, GuardianAccount
 from core.notification_producers import portal_grants_for_students
 
@@ -123,3 +124,23 @@ def sent_notices(limit=NOTICE_LIMIT):
         }
         for notice in notices
     ]
+
+
+def parents_tab_context(
+    today, *, notice_form, show_sent, invite_links, include_reviews, review_names, decide_links,
+    guardians_link,
+):
+    """Everything the Parents tab shows. Each flag is the viewer's permission for one part."""
+    return {
+        "form": AnnouncementForm() if notice_form else None,
+        "form_url": reverse("core:announcement-create"),
+        "sent": sent_notices() if show_sent else None,
+        "all_notices_url": reverse("core:announcement-list") if show_sent else None,
+        "engagement": engagement(today),
+        "guardians_url": reverse("core:guardian-list") if guardians_link else None,
+        "missing": missing_accounts(today, invite_links=invite_links),
+        "reviews": (
+            access_reviews(today, with_names=review_names, decide_links=decide_links)
+            if include_reviews else None
+        ),
+    }
