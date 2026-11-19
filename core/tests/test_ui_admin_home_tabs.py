@@ -351,6 +351,9 @@ class HomeTabsTests(MarksFixture, TestCase):
         term = self.get(tab="attendance", absent="term")
         self.assertEqual(term.context["attendance_tab"]["absent_view"], "term")
         self.assertContains(term, "Meena Das")
+        self.assertContains(term, '<span class="erp-home-meta">0.0%</span>')
+        self.assertNotContains(term, "days absent")
+        self.assertContains(self.get(tab="attendance"), '<span class="erp-home-meta">6 days absent</span>')
         self.assertEqual(self.get(tab="attendance", absent="x").context["attendance_tab"]["absent_view"], "month")
 
     def test_no_names_in_either_absentee_view_without_view_student(self):

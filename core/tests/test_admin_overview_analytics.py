@@ -911,9 +911,7 @@ class OverviewNoHoleLayoutTests(AnalyticsFixture, TestCase):
     def test_desktop_rows_four_and_five_and_the_absentee_fallback(self):
         block = self.css()
         for rule in (
-            ".erp-analytics > .erp-card--attention { grid-column: span 7; align-self: start; }",
-            ".erp-analytics > .erp-card--absent { grid-column: span 5; align-self: start; }",
-            ".erp-analytics--no-absent > .erp-card--attention,\n  .erp-analytics--no-attention > .erp-card--absent { grid-column: span 12; }",
+            ".erp-analytics > .erp-card--attention { grid-column: span 12; align-self: start; }",
             ".erp-analytics > .erp-card--subjects { grid-column: span 7; }",
         ):
             self.assertIn(rule, block)
