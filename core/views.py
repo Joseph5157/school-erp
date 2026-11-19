@@ -1079,6 +1079,7 @@ def admin_overview(request):
             review_names=names,
             decide_links=user.has_perm("core.add_guardianaccessreview"),
             guardians_link=user.has_perm(data_access.GUARDIAN),
+            show_missing=user.has_perm(data_access.GUARDIAN),
         )
     else:
         context["today"] = _today_tab(

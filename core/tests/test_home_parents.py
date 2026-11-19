@@ -1,4 +1,5 @@
 import datetime
+from unittest import mock
 
 from django.contrib.auth import get_user_model
 from django.db import connection
@@ -85,7 +86,7 @@ class HomeParentsDataTests(MarksFixture, TestCase):
         e = home_parents.engagement(TODAY)
         self.assertEqual((e["parents"], e["parents_active"], e["parents_pct"]), (2, 1, 50))
 
-    def test_signed_in_this_month_uses_local_midnight(self):
+    def test_logged_in_this_month_uses_local_midnight(self):
         a = self.portal_parent(self.s1)
         set_last_login(a, local(2026, 6, 30, 23, 59))
         self.assertEqual(home_parents.engagement(TODAY)["parents_active"], 0)
@@ -208,3 +209,22 @@ class HomeParentsDataTests(MarksFixture, TestCase):
             section = Section.objects.create(class_grade=grade, name="A")
             self.enroll_student(f"Extra Student {i}", grade, section)
         self.assertEqual(count(), before)
+
+    def test_context_without_show_missing_has_no_missing_rows(self):
+        self.portal_parent(self.s1)
+        kwargs = dict(
+            notice_form=False, show_sent=False, invite_links=False, include_reviews=False,
+            review_names=False, decide_links=False, guardians_link=False,
+        )
+        self.assertIsNone(home_parents.parents_tab_context(TODAY, show_missing=False, **kwargs)["missing"])
+        self.assertTrue(home_parents.parents_tab_context(TODAY, **kwargs)["missing"])
+
+    def test_context_computes_portal_state_once(self):
+        self.portal_parent(self.s1)
+        kwargs = dict(
+            notice_form=False, show_sent=False, invite_links=True, include_reviews=False,
+            review_names=False, decide_links=False, guardians_link=False,
+        )
+        with mock.patch.object(home_parents, "_placements", wraps=home_parents._placements) as spy:
+            home_parents.parents_tab_context(TODAY, **kwargs)
+        self.assertEqual(spy.call_count, 1)

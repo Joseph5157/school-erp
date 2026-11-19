@@ -308,7 +308,7 @@ class HomeTabsTests(MarksFixture, TestCase):
         self.assertIn("50%", html)
         self.assertIn("1 of 2", html)
         self.assertIn("Students with a parent on the portal", html)
-        self.assertIn("Parents who signed in this month", html)
+        self.assertIn("Parents who logged in this month", html)
         self.assertIn("Notice reads aren't tracked yet.", html.replace("&#x27;", "'"))
         self.assertIn(reverse("core:guardian-list"), html)
 
@@ -329,10 +329,40 @@ class HomeTabsTests(MarksFixture, TestCase):
         invite = f'{reverse("core:student-list")}?section={self.section.pk}&amp;chip=no_portal'
         self.assertIn(invite, html)
         self.assertIn("Invite", html)
-        client = self.viewer("no-invite", "view_school", "view_student")
-        html = card_html(self.parents_page(client), "access")
-        self.assertIn("1 of 2 students", html)
+        # Without view_guardian the per-section counts are hidden altogether.
+        client = self.viewer("no-invite", "view_school", "view_student", "view_guardianaccessreview")
+        response = self.get(client, tab="parents")
+        self.assertIsNone(response.context["parents_tab"]["missing"])
+        html = card_html(response.content.decode(), "access")
+        self.assertNotIn("Missing a parent on the portal", html)
+        self.assertNotIn("of 2 students", html)
         self.assertNotIn("Invite", html)
+
+    def test_missing_rows_need_view_guardian(self):
+        seed_parents(self)
+        plain = self.get(self.viewer("m-plain", "view_school", "view_student"), tab="parents")
+        html = plain.content.decode()
+        self.assertIsNone(plain.context["parents_tab"]["missing"])
+        self.assertNotIn("Missing a parent on the portal", html)
+        self.assertNotIn("of 2 students", html)
+        guardian = self.get(self.viewer("m-guard", "view_school", "view_guardian"), tab="parents")
+        self.assertIsNotNone(guardian.context["parents_tab"]["missing"])
+        html = guardian.content.decode()
+        self.assertIn("Missing a parent on the portal", html)
+        self.assertIn("1 of 2 students", html)
+
+    def test_access_card_hidden_without_guardian_or_review_permission(self):
+        seed_parents(self)
+        html = self.parents_page(self.viewer("a-plain", "view_school"))
+        self.assertNotIn("erp-card--access", html)
+        self.assertIn("erp-card--engagement", html)
+
+    def test_parents_tab_computes_placements_once(self):
+        from core import home_parents
+
+        with mock.patch.object(home_parents, "_placements", wraps=home_parents._placements) as spy:
+            self.parents_page()
+        self.assertEqual(spy.call_count, 1)
 
     def test_missing_empty_messages(self):
         with mock.patch("core.views.business_today", return_value=datetime.date(2030, 1, 1)):

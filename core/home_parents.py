@@ -51,10 +51,16 @@ def portal_student_ids(student_ids, today):
     }
 
 
-def engagement(today):
+def _portal_state(today):
+    """(placements, ids of students on the portal): computed once and shared by both cards."""
     placements = _placements(today)
+    return placements, portal_student_ids(placements, today)
+
+
+def engagement(today, *, state=None):
+    placements, on_portal_ids = state or _portal_state(today)
     students = len(placements)
-    on_portal = len(portal_student_ids(placements, today))
+    on_portal = len(on_portal_ids)
     month_start = timezone.make_aware(datetime.datetime.combine(today.replace(day=1), datetime.time.min))
     accounts = GuardianAccount.objects.filter(revoked_at__isnull=True, user__is_active=True)
     parents = accounts.values("guardian_id").distinct().count()
@@ -71,10 +77,9 @@ def engagement(today):
     }
 
 
-def missing_accounts(today, *, invite_links):
+def missing_accounts(today, *, invite_links, state=None):
     """Sections with students lacking a portal parent, most missing first."""
-    placements = _placements(today)
-    on_portal = portal_student_ids(placements, today)
+    placements, on_portal = state or _portal_state(today)
     sections = {}
     for student_id, (section_id, section, class_name, order) in placements.items():
         row = sections.setdefault(
@@ -128,17 +133,24 @@ def sent_notices(limit=NOTICE_LIMIT):
 
 def parents_tab_context(
     today, *, notice_form, show_sent, invite_links, include_reviews, review_names, decide_links,
-    guardians_link,
+    guardians_link, show_missing=True,
 ):
-    """Everything the Parents tab shows. Each flag is the viewer's permission for one part."""
+    """Everything the Parents tab shows. Each flag is the viewer's permission for one part.
+
+    `show_missing` is the guardian permission: per-section counts would reveal whether a given
+    child has a portal parent, so without it `missing` is None.
+    """
+    state = _portal_state(today)
     return {
         "form": AnnouncementForm() if notice_form else None,
         "form_url": reverse("core:announcement-create"),
         "sent": sent_notices() if show_sent else None,
         "all_notices_url": reverse("core:announcement-list") if show_sent else None,
-        "engagement": engagement(today),
+        "engagement": engagement(today, state=state),
         "guardians_url": reverse("core:guardian-list") if guardians_link else None,
-        "missing": missing_accounts(today, invite_links=invite_links),
+        "missing": (
+            missing_accounts(today, invite_links=invite_links, state=state) if show_missing else None
+        ),
         "reviews": (
             access_reviews(today, with_names=review_names, decide_links=decide_links)
             if include_reviews else None

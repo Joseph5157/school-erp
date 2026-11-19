@@ -28,14 +28,16 @@
         <h3 class="erp-analytics-title">Parent engagement</h3>
         <ul class="erp-stage-list erp-stage-list--two">
             <li class="erp-stage"><span class="erp-stage-count">{% if e.students_pct is None %}&ndash;{% else %}{{ e.students_pct }}%{% endif %}</span><span class="erp-stage-label">Students with a parent on the portal</span><span class="erp-stage-meta">{% if e.students_pct is None %}No students in a class yet{% else %}{{ e.students_on_portal }} of {{ e.students }}{% endif %}</span></li>
-            <li class="erp-stage"><span class="erp-stage-count">{% if e.parents_pct is None %}&ndash;{% else %}{{ e.parents_pct }}%{% endif %}</span><span class="erp-stage-label">Parents who signed in this month</span><span class="erp-stage-meta">{% if e.parents_pct is None %}No parents on the portal yet{% else %}{{ e.parents_active }} of {{ e.parents }}{% endif %}</span></li>
+            <li class="erp-stage"><span class="erp-stage-count">{% if e.parents_pct is None %}&ndash;{% else %}{{ e.parents_pct }}%{% endif %}</span><span class="erp-stage-label">Parents who logged in this month</span><span class="erp-stage-meta">{% if e.parents_pct is None %}No parents on the portal yet{% else %}{{ e.parents_active }} of {{ e.parents }}{% endif %}</span></li>
         </ul>
         <p class="erp-analytics-sub">Notice reads aren't tracked yet.</p>
         {% if p.guardians_url %}<p><a href="{{ p.guardians_url }}">Guardians</a></p>{% endif %}
     </article>
 
+    {% if p.missing is not None or p.reviews %}
     <article class="erp-card erp-card--access">
         <h3 class="erp-analytics-title">Guardian access</h3>
+        {% if p.missing is not None %}
         <h4 class="erp-home-sub">Missing a parent on the portal</h4>
         {% if p.missing %}
         {% include "partials/home/_fold_rows.html" with rows=p.missing row_template="partials/home/_missing_row.html" noun="sections" %}
@@ -43,6 +45,7 @@
         <p class="erp-card-empty">No students in a class yet.</p>
         {% else %}
         <p class="erp-card-empty">Every student in a class has a parent on the portal.</p>
+        {% endif %}
         {% endif %}
         {% if p.reviews %}
         <h4 class="erp-home-sub">Access reviews</h4>
@@ -57,6 +60,7 @@
         {% endif %}
         {% endif %}
     </article>
+    {% endif %}
     {% endwith %}
 </section>
 {% endwith %}
