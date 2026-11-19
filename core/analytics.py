@@ -269,21 +269,6 @@ def attendance_heatmap(today, days=HEATMAP_DAYS):
     return weeks
 
 
-def _subject_rows(term):
-    """Rows for the horizontal bars: each subject's average, lowest first. Never `low` (red is
-    only for attendance under target)."""
-    return [
-        {
-            "label": row["subject_name"],
-            "value": row["average"],
-            "display": f"{charts.percent_display(row['average'])}%",
-            "low": False,
-        }
-        for row in marks_analytics.subject_averages(term)
-    ]
-
-
-
 TAB_PERIOD_LABEL = "this month"
 
 
@@ -370,18 +355,27 @@ LOW_ATTENDANCE_MIN_DAYS = 5
 ABSENT_VIEWS = ("month", "term")
 
 
-def class_extremes(rows, *, with_links):
-    """The best and worst classes from `class_comparison` rows (lowest first), or None.
+def split_extremes(rows):
+    """Split rows sorted lowest first into (best highest first, worst lowest first), or None.
 
-    Under four classes there is nothing meaningful to split. Otherwise up to three each,
-    never overlapping: `best` highest first, `worst` lowest first.
+    Under four rows there is nothing meaningful to split. Otherwise `min(3, n // 2)` each, so no
+    row is on both sides.
     """
     if len(rows) < 4:
         return None
     k = min(3, len(rows) // 2)
+    return list(reversed(rows[-k:])), list(rows[:k])
+
+
+def class_extremes(rows, *, with_links):
+    """The best and worst classes from `class_comparison` rows (lowest first), or None."""
+    split = split_extremes(rows)
+    if split is None:
+        return None
+    best, worst = split
     return {
-        "best": [_class_row(r, with_links) for r in reversed(rows[-k:])],
-        "worst": [_class_row(r, with_links) for r in rows[:k]],
+        "best": [_class_row(r, with_links) for r in best],
+        "worst": [_class_row(r, with_links) for r in worst],
     }
 
 
@@ -466,6 +460,12 @@ def attendance_tab_context(today, *, include_absentees, absent_view="month", cla
     }
 
 
+def _subjects(term):
+    from core import home_academics  # local: home_academics imports this module
+
+    return home_academics.subject_changes(term, None)
+
+
 def academics_tab_context(today, *, include_marks, include_attention):
     """The admin home Academics tab: subject averages and students needing attention.
 
@@ -488,6 +488,6 @@ def academics_tab_context(today, *, include_marks, include_attention):
         "show_marks": include_marks,
         "term": term,
         "term_label": label,
-        "subjects": _subject_rows(term) if term and include_marks else [],
+        "subjects": _subjects(term) if term and include_marks else [],
         "attention": attention,
     }

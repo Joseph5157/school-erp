@@ -17,7 +17,7 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
-from core import analytics, marks_analytics
+from core import analytics, home_academics, marks_analytics
 from core.models import (
     AcademicSubjectOffering,
     AcademicTerm,
@@ -420,7 +420,7 @@ class SubjectAveragesTests(MarksFixture, TestCase):
 
     def subject_display(self):
         term = marks_analytics.reporting_term(TODAY)
-        return [(r["label"], r["display"]) for r in analytics._subject_rows(term)] if term else []
+        return [(r["label"], r["display"]) for r in home_academics.subject_changes(term, None)] if term else []
 
     def test_different_maximums_are_normalised(self):
         self.assessment({self.s1: 18}, maximum="30", name="Out of 30")  # 60%
@@ -486,7 +486,7 @@ class MarksSnapshotViewTests(MarksFixture, TestCase):
         science = Subject.objects.create(name="Science")
         self.assessment({self.s1: 18, self.s2: 16}, name="Maths test")  # 90%, 80%: 85
         self.assessment({self.s1: 8, self.s2: 12}, name="Sci test", subject=science)  # 50
-        rows = analytics._subject_rows(marks_analytics.reporting_term(TODAY))
+        rows = home_academics.subject_changes(marks_analytics.reporting_term(TODAY), None)
         self.assertEqual(
             [(r["label"], r["display"], r["low"]) for r in rows],
             [("Science", "50%", False), ("Mathematics", "85%", False)],

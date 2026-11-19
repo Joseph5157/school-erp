@@ -102,6 +102,23 @@ def reporting_term(today):
     )
 
 
+def previous_term(term):
+    """The latest earlier term that has counted results, or None."""
+    return (
+        AcademicTerm.objects.filter(start_date__lt=term.start_date)
+        .select_related("academic_year")
+        .filter(Exists(_counted_results(assessment__term=OuterRef("pk"))))
+        .order_by("-start_date", "-display_order")
+        .first()
+    )
+
+
+def points_text(change):
+    """A change's size in points, unsigned: "3 points", "1.5 points", "1 point"."""
+    number = f"{abs(round(change, 1)):g}"
+    return f"{number} point" if number == "1" else f"{number} points"
+
+
 def term_label(term, today):
     """The term's name, with its year added when it is not from the year running today.
 

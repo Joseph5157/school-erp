@@ -8,6 +8,7 @@ whose FINALIZED results (MARKED or ABSENT) have no current term publication.
 from django.db.models import Exists, OuterRef, Q
 from django.urls import reverse
 
+from core import analytics, charts, marks_analytics
 from core.models import (
     AcademicEnrollment,
     AcademicTerm,
@@ -16,6 +17,7 @@ from core.models import (
     Student,
     StudentResult,
     TermPublication,
+    grade_from_bands,
 )
 
 
@@ -135,3 +137,120 @@ def results_to_finish(today, *, publish_rows):
         "unpublished_students": students,
         "unpublished_sections": rows,
     }
+
+
+def change_words(change):
+    """A change in points, in words: "Up 3 points", "Down 1.5 points", "No change"."""
+    if round(change, 1) == 0:
+        return "No change"
+    return ("Up " if change > 0 else "Down ") + marks_analytics.points_text(change)
+
+
+def class_marks(term):
+    """Per class: average, pass rate and grade spread for the term's counted results.
+
+    Two queries: the results, then the frozen grading snapshots of their assessments.
+    """
+    results = list(
+        marks_analytics.marked_results(term)
+        .annotate(pass_percent=marks_analytics._PASS_PERCENT)
+        .values_list(
+            "percent",
+            "pass_percent",
+            "assessment_id",
+            "assessment__offering__class_grade_id",
+            "assessment__offering__class_grade__name",
+            "assessment__offering__class_grade__display_order",
+        )
+    )
+    snapshots = dict(
+        Assessment.objects.filter(pk__in={r[2] for r in results}).values_list(
+            "pk", "grading_snapshot"
+        )
+    )
+    classes = {}
+    for percent, pass_percent, assessment_id, grade_id, name, order in results:
+        c = classes.setdefault(
+            grade_id,
+            {"name": name, "order": order, "percents": [], "judged": 0, "passed": 0,
+             "minimums": {}, "counts": {}},
+        )
+        c["percents"].append(float(percent))
+        if pass_percent is not None:
+            c["judged"] += 1
+            c["passed"] += percent >= pass_percent
+        bands = (snapshots.get(assessment_id) or {}).get("bands")
+        if bands:
+            for minimum, label in bands:
+                minimum = float(minimum)
+                if label not in c["minimums"] or minimum > c["minimums"][label]:
+                    c["minimums"][label] = minimum
+            label = grade_from_bands(bands, percent)
+            if label is not None:
+                c["counts"][label] = c["counts"].get(label, 0) + 1
+    rows = []
+    ordered_classes = sorted(classes.items(), key=lambda kv: (kv[1]["order"], kv[1]["name"], kv[0]))
+    for grade_id, c in ordered_classes:
+        ordered = sorted(c["counts"], key=lambda label: -c["minimums"][label])
+        grades = [{"label": label, "count": c["counts"][label]} for label in ordered]
+        rows.append(
+            {
+                "class_grade_id": grade_id,
+                "class_name": c["name"],
+                "average": round(sum(c["percents"]) / len(c["percents"]), 1),
+                "pass_rate": round(c["passed"] * 100 / c["judged"], 1) if c["judged"] else None,
+                "grades": grades,
+                "grades_display": " · ".join(f"{g['label']} {g['count']}" for g in grades),
+            }
+        )
+    return rows
+
+
+def class_mark_extremes(rows, *, with_links):
+    """The best and worst classes by average mark, or None under four classes."""
+    split = analytics.split_extremes(sorted(rows, key=lambda r: (r["average"], r["class_name"])))
+    if split is None:
+        return None
+
+    def bar(r):
+        return {
+            "label": r["class_name"],
+            "value": r["average"],
+            "display": f"{charts.percent_display(r['average'])}%",
+            "low": False,
+            "url": (
+                reverse("core:class-grade-detail", args=[r["class_grade_id"]])
+                if with_links
+                else None
+            ),
+        }
+
+    best, worst = split
+    return {"best": [bar(r) for r in best], "worst": [bar(r) for r in worst]}
+
+
+def subject_changes(term, previous):
+    """Subject bars, lowest average first, each with its change in points since `previous`."""
+    before = (
+        {r["subject_name"]: r["average"] for r in marks_analytics.subject_averages(previous)}
+        if previous is not None
+        else {}
+    )
+    rows = []
+    for r in marks_analytics.subject_averages(term):
+        change = (
+            round(r["average"] - before[r["subject_name"]], 1)
+            if r["subject_name"] in before
+            else None
+        )
+        rows.append(
+            {
+                "label": r["subject_name"],
+                "value": r["average"],
+                "display": f"{charts.percent_display(r['average'])}%",
+                "low": False,
+                "change": change,
+                "note": change_words(change) if change is not None else "",
+            }
+        )
+    return rows

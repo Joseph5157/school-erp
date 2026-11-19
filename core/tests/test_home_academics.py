@@ -4,13 +4,14 @@ from django.db import connection
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
 
-from core import home_academics
+from core import analytics, home_academics, marks_analytics
 from core.models import (
     AcademicEnrollment,
     Assessment,
     ClassGrade,
     Section,
     Student,
+    Subject,
     TermPublication,
 )
 from core.tests.test_admin_overview_analytics import TODAY, MarksFixture
@@ -163,4 +164,128 @@ class ResultsToFinishTests(MarksFixture, TestCase):
         self.assertEqual(
             [(x["class_name"], x["section_name"]) for x in r["unpublished_sections"]],
             [("Grade 2", "A"), ("Grade 1", "A"), ("Grade 1", "B")],
+        )
+
+
+class ClassMarksTests(MarksFixture, TestCase):
+    def test_previous_term_is_the_last_earlier_term_with_finalized_results(self):
+        self.assertIsNone(marks_analytics.previous_term(self.term_b))
+        self.assessment({self.s1: 10}, term=self.term_a, name="Draft only", finalize=False)
+        self.assertIsNone(marks_analytics.previous_term(self.term_b))
+        self.assessment({self.s1: 10}, term=self.term_a)
+        self.assertEqual(marks_analytics.previous_term(self.term_b), self.term_a)
+        self.assertIsNone(marks_analytics.previous_term(self.term_a))
+
+    def test_pass_rate_counts_ties_as_passes_and_ignores_absent(self):
+        self.assessment({self.s1: 10, self.s2: 9}, pass_mark=10)  # 1 of 2 pass
+        self.assessment({self.s1: None}, name="Absent", pass_mark=10)  # not judged
+        row = home_academics.class_marks(self.term_b)[0]
+        self.assertEqual((row["class_name"], row["pass_rate"]), ("Grade 1", 50.0))
+
+    def test_no_pass_mark_is_none_not_zero(self):
+        self.assessment({self.s1: 10})
+        self.assertIsNone(home_academics.class_marks(self.term_b)[0]["pass_rate"])
+
+    def test_grade_spread_uses_the_frozen_snapshot(self):
+        a = self.assessment({self.s1: 18, self.s2: 11})  # 90% A, 55% B
+        Assessment.objects.filter(pk=a.pk).update(
+            grading_snapshot={"scale": "S", "bands": [["80", "A"], ["50", "B"], ["0", "C"]]}
+        )
+        row = home_academics.class_marks(self.term_b)[0]
+        self.assertEqual(row["grades"], [{"label": "A", "count": 1}, {"label": "B", "count": 1}])
+        self.assertEqual(row["grades_display"], "A 1 · B 1")
+
+    def test_no_snapshot_means_no_grades(self):
+        self.assessment({self.s1: 18})
+        row = home_academics.class_marks(self.term_b)[0]
+        self.assertEqual((row["grades"], row["grades_display"]), ([], ""))
+
+    def test_average_and_class_order(self):
+        grade2, section2, enrollment2 = self.second_class()
+        ClassGrade.objects.filter(pk=self.class_grade.pk).update(display_order=5)
+        ClassGrade.objects.filter(pk=grade2.pk).update(display_order=1)
+        self.assessment({self.s1: 10, self.s2: 15})  # 50, 75 -> 62.5
+        self.assessment({enrollment2: 20}, name="G2", class_grade=grade2, section=section2)
+        rows = home_academics.class_marks(self.term_b)
+        self.assertEqual(
+            [(r["class_name"], r["average"]) for r in rows], [("Grade 2", 100.0), ("Grade 1", 62.5)]
+        )
+
+    def test_two_queries(self):
+        self.assessment({self.s1: 10, self.s2: 15}, pass_mark=10)
+        with CaptureQueriesContext(connection) as q:
+            home_academics.class_marks(self.term_b)
+        self.assertLessEqual(len(q), 2)
+
+    def test_extremes_hidden_under_four_classes_and_split_without_overlap(self):
+        def rows(*avgs):
+            return [
+                {"class_grade_id": 1, "class_name": f"C{i}", "average": a}
+                for i, a in enumerate(avgs)
+            ]
+
+        self.assertIsNone(home_academics.class_mark_extremes(rows(70, 80, 90), with_links=False))
+        # unsorted input; names order ties
+        e = home_academics.class_mark_extremes(rows(95, 70, 90, 80, 85), with_links=False)
+        self.assertEqual([r["value"] for r in e["best"]], [95, 90])
+        self.assertEqual([r["value"] for r in e["worst"]], [70, 80])
+        self.assertEqual(e["best"][0]["display"], "95%")
+        self.assertIsNone(e["best"][0]["url"])
+        linked = home_academics.class_mark_extremes(rows(60, 70, 80, 90), with_links=True)
+        self.assertTrue(linked["best"][0]["url"].startswith("/"))
+
+
+class SubjectChangeTests(MarksFixture, TestCase):
+    def test_subjects_change_against_previous_term(self):
+        self.assessment({self.s1: 10}, term=self.term_a)  # 50%
+        self.assessment({self.s1: 16})  # 80%
+        row = home_academics.subject_changes(self.term_b, self.term_a)[0]
+        self.assertEqual((row["display"], row["change"], row["note"]), ("80%", 30.0, "Up 30 points"))
+
+    def test_subject_new_this_term_has_no_change(self):
+        science = Subject.objects.create(name="Science")
+        self.assessment({self.s1: 10}, term=self.term_a)
+        self.assessment({self.s1: 8}, name="Sci", subject=science)
+        rows = {r["label"]: r for r in home_academics.subject_changes(self.term_b, self.term_a)}
+        self.assertEqual((rows["Science"]["change"], rows["Science"]["note"]), (None, ""))
+        self.assertEqual(rows["Science"]["low"], False)
+
+    def test_without_previous_term_and_lowest_first_ties_by_name(self):
+        zed = Subject.objects.create(name="Zed")
+        art = Subject.objects.create(name="Art")
+        self.assessment({self.s1: 10}, name="Z", subject=zed)
+        self.assessment({self.s1: 10}, name="A", subject=art)
+        self.assessment({self.s1: 20}, name="M")
+        rows = home_academics.subject_changes(self.term_b, None)
+        self.assertEqual([r["label"] for r in rows], ["Art", "Zed", "Mathematics"])
+        self.assertEqual([(r["change"], r["note"]) for r in rows], [(None, "")] * 3)
+
+    def test_unchanged(self):
+        self.assessment({self.s1: 16}, term=self.term_a)  # 80
+        self.assessment({self.s1: 16})
+        self.assertEqual(home_academics.subject_changes(self.term_b, self.term_a)[0]["note"], "No change")
+
+
+class ChangeWordsTests(TestCase):
+    def test_change_words(self):
+        self.assertEqual(home_academics.change_words(3.0), "Up 3 points")
+        self.assertEqual(home_academics.change_words(-1.5), "Down 1.5 points")
+        self.assertEqual(home_academics.change_words(1.0), "Up 1 point")
+        self.assertEqual(home_academics.change_words(-1.0), "Down 1 point")
+        self.assertEqual(home_academics.change_words(0.0), "No change")
+        self.assertEqual(home_academics.change_words(0.04), "No change")
+
+    def test_points_text(self):
+        self.assertEqual(marks_analytics.points_text(3.0), "3 points")
+        self.assertEqual(marks_analytics.points_text(-1.5), "1.5 points")
+        self.assertEqual(marks_analytics.points_text(-1.0), "1 point")
+        self.assertEqual(marks_analytics.points_text(0.96), "1 point")
+
+
+class SplitExtremesTests(TestCase):
+    def test_split(self):
+        self.assertIsNone(analytics.split_extremes([1, 2, 3]))
+        self.assertEqual(analytics.split_extremes([1, 2, 3, 4, 5]), ([5, 4], [1, 2]))
+        self.assertEqual(
+            analytics.split_extremes([1, 2, 3, 4, 5, 6, 7]), ([7, 6, 5], [1, 2, 3])
         )
