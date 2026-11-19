@@ -343,7 +343,7 @@ def weekday_pattern(today, days=WEEKDAY_WINDOW_DAYS):
             {
                 "label": _WEEKDAY_NAMES[weekday][:3],
                 "value": value,
-                "display": f"{value:g}%",
+                "display": f"{charts.percent_display(value, ATTENDANCE_TARGET_PERCENT)}%",
                 "low": value < ATTENDANCE_TARGET_PERCENT,
                 "url": None,
                 "weekday": weekday,
