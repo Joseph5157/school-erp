@@ -88,6 +88,11 @@ class School(models.Model):
         choices=NotificationMode.choices,
         default=NotificationMode.PORTAL_ONLY,
     )
+    register_cutoff = models.TimeField(
+        "Registers due by",
+        default=datetime.time(10, 0),
+        help_text="A register submitted after this time on a school day counts as late.",
+    )
     singleton_id = models.PositiveSmallIntegerField(
         default=SINGLETON_ID, unique=True, editable=False
     )
