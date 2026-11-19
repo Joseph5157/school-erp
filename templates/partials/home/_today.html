@@ -1,0 +1,25 @@
+{# Admin home, Today tab: work waiting first, then the school at a glance; setup leads only until the foundation exists. #}
+{% with t=today %}
+{% if t.setup_first %}{% include "partials/_setup_checklist_card.html" with setup_steps=t.setup_steps setup_complete=t.setup_complete setup_done=t.setup_done setup_total=t.setup_total only %}{% endif %}
+{% if t.cards %}
+{% if t.attention_cards %}
+<section aria-labelledby="attention-title">
+    <h2 class="erp-section-title" id="attention-title">Needs attention</h2>
+    <div class="erp-stat-grid erp-stat-grid--attention">
+        {% for card in t.attention_cards %}{% include "partials/_stat_card.html" with card=card primary=forloop.first only %}{% endfor %}
+    </div>
+</section>
+{% else %}
+<p class="erp-all-clear">Nothing needs attention today.</p>
+{% endif %}
+{% elif t.setup_complete %}
+<p class="text-muted">Nothing to show for your role.</p>
+{% endif %}
+<section aria-labelledby="glance-title">
+    <h2 class="erp-section-title" id="glance-title">School at a glance</h2>
+    <div class="erp-stat-grid erp-stat-grid--glance">
+        {% for card in t.glance_cards %}{% include "partials/_glance_tile.html" with card=card only %}{% endfor %}
+    </div>
+</section>
+{% if not t.setup_first %}{% include "partials/_setup_checklist_card.html" with setup_steps=t.setup_steps setup_complete=t.setup_complete setup_done=t.setup_done setup_total=t.setup_total only %}{% endif %}
+{% endwith %}

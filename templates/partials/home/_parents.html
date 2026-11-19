@@ -1,0 +1,15 @@
+{# Admin home, Parents tab (interim: PR 4 adds the announcement form, engagement and guardian access cards). #}
+{% with p=parents_tab %}
+<section aria-labelledby="parents-title">
+    <h2 class="erp-section-title" id="parents-title">Parents at a glance</h2>
+    <div class="erp-stat-grid erp-stat-grid--glance">
+        {% include "partials/_glance_tile.html" with card=p.glance only %}
+    </div>
+    {% if p.access_review_card %}
+    <div class="erp-stat-grid">
+        {% include "partials/_stat_card.html" with card=p.access_review_card primary=p.access_review_card.count only %}
+    </div>
+    {% endif %}
+    {% if p.announcements_url %}<p><a href="{{ p.announcements_url }}">Announcements</a></p>{% endif %}
+</section>
+{% endwith %}

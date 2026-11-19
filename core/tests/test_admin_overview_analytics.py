@@ -36,7 +36,7 @@ from core.tests.test_authorization import AttendanceFixtureMixin, AuthorizationC
 
 TODAY = datetime.date(2026, 7, 14)  # Tuesday
 P, A = AttendanceStatus.PRESENT, AttendanceStatus.ABSENT
-# The 14 days ending TODAY: 2026-07-01 .. 2026-07-14.
+# This month to TODAY, as the Attendance and Academics tabs use it: 2026-07-01 .. 2026-07-14.
 DEFAULT_PERIOD = analytics.Period(start=datetime.date(2026, 7, 1), end=TODAY)
 
 
@@ -47,7 +47,8 @@ class AnalyticsFixture(AuthorizationClientsMixin, AttendanceFixtureMixin):
         self.build_attendance_fixture(date="2026-06-01")
         self.s1 = self.enrollment
         self.s2 = self.enroll_student("Meena Das", self.class_grade, self.section)
-        for target in ("core.reports.business_today",):
+        # The view reads its own copy of today's date for every tab; pin both.
+        for target in ("core.reports.business_today", "core.views.business_today"):
             patcher = mock.patch(target, return_value=TODAY)
             patcher.start()
             self.addCleanup(patcher.stop)
@@ -254,6 +255,7 @@ class HeatmapTests(AnalyticsFixture, TestCase):
 
 class OverviewAnalyticsViewTests(AnalyticsFixture, TestCase):
     url = reverse("core:admin-overview")
+    attendance_url = reverse("core:admin-overview") + "?tab=attendance"
 
     def test_chart_has_a_text_alternative(self):
         self.day(datetime.date(2026, 7, 1), {self.s1: P, self.s2: P})
@@ -263,7 +265,7 @@ class OverviewAnalyticsViewTests(AnalyticsFixture, TestCase):
 
     def test_heatmap_intro_paragraph_is_closed_before_the_grid(self):
         self.day(datetime.date(2026, 7, 1), {self.s1: P, self.s2: P})
-        html = self.administrator.get(self.url).content.decode()
+        html = self.administrator.get(self.attendance_url).content.decode()
         self.assertRegex(html, r'red is under 80%\.</p>\s*<div class="erp-heat"')
 
     def test_there_is_no_late_status_anywhere(self):
@@ -275,13 +277,13 @@ class OverviewAnalyticsViewTests(AnalyticsFixture, TestCase):
         for d in (1, 2, 3):
             self.day(datetime.date(2026, 7, d), {self.s1: P, self.s2: A})
         with CaptureQueriesContext(connection) as ctx:
-            self.administrator.get(self.url)
+            self.administrator.get(self.attendance_url)
         before = len(ctx)
         # More days and more absentee rows must not add queries (no per-row loops).
         for d in (6, 7, 8):
             self.day(datetime.date(2026, 7, d), {self.s1: A, self.s2: A})
         with CaptureQueriesContext(connection) as ctx:
-            self.administrator.get(self.url)
+            self.administrator.get(self.attendance_url)
         self.assertEqual(len(ctx), before)
 
     def make_frequent_absentee(self):
@@ -290,7 +292,7 @@ class OverviewAnalyticsViewTests(AnalyticsFixture, TestCase):
 
     def test_absentee_cards_link_to_the_student(self):
         self.make_frequent_absentee()
-        response = self.administrator.get(self.url)
+        response = self.administrator.get(self.attendance_url)
         self.assertContains(response, "Frequent absentees")
         self.assertContains(response, "Meena Das")
         self.assertContains(
@@ -299,9 +301,10 @@ class OverviewAnalyticsViewTests(AnalyticsFixture, TestCase):
         self.assertContains(response, "3 days absent")
 
     def test_absentee_empty_state_names_the_threshold(self):
-        response = self.administrator.get(self.url)
+        response = self.administrator.get(self.attendance_url)
         self.assertContains(response, "Frequent absentees")
-        self.assertContains(response, "No student was absent 3 or more days")
+        self.assertContains(response, "Absent 3 or more days, this month.")
+        self.assertContains(response, "No student was absent 3 or more days this month.")
 
     def test_absentee_list_is_hidden_without_permission_to_view_students(self):
         from django.contrib.auth import get_user_model
@@ -312,14 +315,14 @@ class OverviewAnalyticsViewTests(AnalyticsFixture, TestCase):
         user.user_permissions.add(Permission.objects.get(codename="view_school"))
         client = self.client_class()
         client.login(username="overview-only", password="pass-12345")
-        response = client.get(self.url)
+        response = client.get(self.attendance_url)
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "Frequent absentees")
         self.assertNotContains(response, "Meena Das")
 
     def test_heatmap_renders_with_a_text_alternative(self):
         self.day(datetime.date(2026, 7, 1), {self.s1: P, self.s2: P})
-        response = self.administrator.get(self.url)
+        response = self.administrator.get(self.attendance_url)
         self.assertContains(response, "erp-heat")
         self.assertContains(response, "erp-heat-cell--t4")
         self.assertContains(response, "erp-heat-cell--not_school")
@@ -349,7 +352,7 @@ class OverviewAnalyticsViewTests(AnalyticsFixture, TestCase):
     def test_non_administrators_are_still_denied(self):
         response = self.non_admin.get(self.url)
         self.assertEqual(response.status_code, 403)
-        self.assertNotContains(response, "Attendance, last 14 days", status_code=403)
+        self.assertNotContains(response, "Attendance heatmap", status_code=403)
 
 
 # --- Marks by subject ------------------------------------------------------------------
@@ -450,9 +453,9 @@ class SubjectAveragesTests(MarksFixture, TestCase):
 
 
 class MarksSnapshotViewTests(MarksFixture, TestCase):
-    url = reverse("core:admin-overview")
+    url = reverse("core:admin-overview") + "?tab=academics"
 
-    def test_renders_term_subject_bars_and_bands(self):
+    def test_renders_term_subject_bars(self):
         self.assessment({self.s1: 15, self.s2: 10})
         response = self.administrator.get(self.url)
         self.assertContains(response, "Marks by subject")
@@ -541,13 +544,13 @@ class DesktopLayoutTests(AnalyticsFixture, TestCase):
 
     def test_cards_are_tagged_for_the_desktop_grid(self):
         self.with_data()
-        html = self.administrator.get(self.url).content.decode()
+        html = self.administrator.get(self.url, {"tab": "attendance"}).content.decode()
         for area in ("heat", "absent"):
             self.assertIn(f"erp-analytics-card--{area}", html)
 
     def test_heat_cells_name_their_value_on_hover(self):
         self.with_data()
-        html = self.administrator.get(self.url).content.decode()
+        html = self.administrator.get(self.url, {"tab": "attendance"}).content.decode()
         self.assertRegex(html, r'class="erp-heat-cell erp-heat-cell--t1" title="1 Jul: 50\.0%"')
 
     def test_marks_use_their_own_colour_not_the_attendance_one(self):
@@ -681,7 +684,7 @@ class AbsentDayCountsTests(AnalyticsFixture, TestCase):
 
 
 class StudentsNeedingAttentionViewTests(MarksFixture, TestCase):
-    url = reverse("core:admin-overview")
+    url = reverse("core:admin-overview") + "?tab=academics"
 
     def setUp(self):
         super().setUp()
@@ -715,6 +718,14 @@ class StudentsNeedingAttentionViewTests(MarksFixture, TestCase):
         self.assertIn(reverse("core:student-detail", args=[self.s1.student_id]), card)
         self.assertIn(self.s1.student.full_name, card)
         self.assertIn("Below pass in Mathematics and Science (Term 2)", card)
+
+    def test_absences_in_the_reason_are_counted_this_month(self):
+        self.fail_two(self.s1)
+        for d in (1, 2, 3):
+            self.day(datetime.date(2026, 7, d), {self.s1: A, self.s2: P})
+        self.day(datetime.date(2026, 6, 22), {self.s1: A, self.s2: P})  # last month: not counted
+        card = self.card(self.administrator.get(self.url))
+        self.assertIn("Below pass in Mathematics and Science (Term 2); absent 3 days (this month)", card)
 
     def test_attention_uses_the_same_threshold_as_frequent_absentees(self):
         self.fail_two(self.s1)
@@ -863,7 +874,7 @@ class StudentsNeedingAttentionViewTests(MarksFixture, TestCase):
 class OverviewNoHoleLayoutTests(AnalyticsFixture, TestCase):
     """Desktop rows must stay full whichever cards are missing; the section names what is missing."""
 
-    url = reverse("core:admin-overview")
+    url = reverse("core:admin-overview") + "?tab=academics"
 
     def modifiers(self, client):
         html = client.get(self.url).content.decode()

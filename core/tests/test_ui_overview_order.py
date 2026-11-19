@@ -28,8 +28,10 @@ class OverviewOrderTests(AnalyticsFixture, TestCase):
     def test_needs_attention_comes_before_status_and_analytics(self):
         html = overview_html(self.administrator)
         attention = html.index('id="attention-title"')
+        self.assertLess(html.index('class="erp-home-tabs"'), attention)
         self.assertLess(attention, html.index('id="glance-title"'))
-        self.assertLess(attention, html.index('id="analytics-title"'))
+        # The analytics live on their own tabs now, not under Today.
+        self.assertNotIn('id="analytics-title"', html)
 
 
 

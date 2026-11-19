@@ -282,3 +282,54 @@ def _subject_rows(term):
         for row in marks_analytics.subject_averages(term)
     ]
 
+
+
+TAB_PERIOD_LABEL = "this month"
+
+
+def month_to_date(today):
+    """The calendar month so far: the 1st to `today`."""
+    return Period(today.replace(day=1), today)
+
+
+def attendance_tab_context(today, *, include_absentees):
+    """The admin home Attendance tab: the 4-week heatmap and this month's frequent absentees.
+
+    Absentee names are student data plus attendance, so the caller decides (`include_absentees`);
+    without it `absentees` is None and no names are queried.
+    """
+    heatmap = attendance_heatmap(today)
+    return {
+        "heatmap": heatmap,
+        "has_data": any(cell["state"] == "data" for week in heatmap for cell in week),
+        "absentees": frequent_absentees(month_to_date(today)) if include_absentees else None,
+        "absentee_threshold": ABSENTEE_THRESHOLD_DAYS,
+        "label": TAB_PERIOD_LABEL,
+    }
+
+
+def academics_tab_context(today, *, include_marks, include_attention):
+    """The admin home Academics tab: subject averages and students needing attention.
+
+    Marks come from the reporting term, absences from this month. Results are never queried
+    unless the caller may see them (`include_marks`, or `include_attention`, which needs results,
+    students and attendance); `attention` is None without `include_attention`.
+    """
+    term = marks_analytics.reporting_term(today) if include_marks or include_attention else None
+    label = marks_analytics.term_label(term, today) if term else None
+    attention = None
+    if include_attention:
+        attention = marks_analytics.students_needing_attention(
+            term,
+            absent_day_counts(month_to_date(today)) if term else {},  # no term, nobody to check
+            threshold=ABSENTEE_THRESHOLD_DAYS,
+            period_label=TAB_PERIOD_LABEL,
+            term_label=label,
+        )
+    return {
+        "show_marks": include_marks,
+        "term": term,
+        "term_label": label,
+        "subjects": _subject_rows(term) if term and include_marks else [],
+        "attention": attention,
+    }

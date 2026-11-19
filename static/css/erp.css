@@ -1364,16 +1364,22 @@ body.has-tabbar .erp-messages {
 .erp-stat-grid.erp-stat-grid--attention { grid-template-columns: repeat(auto-fill, minmax(15rem, 22rem)); }
 .erp-stat-grid.erp-stat-grid--glance { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 0; }
 .erp-stat-grid--glance .erp-stat-value { font-size: 1.75rem; }
-@media (min-width: 62rem) { .erp-stat-grid.erp-stat-grid--glance { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+@media (min-width: 62rem) { .erp-stat-grid.erp-stat-grid--glance { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 /* Glance tiles: the whole tile is the link (a small chevron hints at it); no separate Open button. */
 .erp-glance-tile { position: relative; gap: var(--erp-space-1); color: var(--erp-ink); text-decoration: none; }
 a.erp-glance-tile:hover, a.erp-glance-tile:focus-visible { border-color: var(--erp-action); color: var(--erp-ink); }
 .erp-glance-tile .erp-stat-label { padding-right: var(--erp-space-4); }
 .erp-glance-go { position: absolute; top: var(--erp-space-3); right: var(--erp-space-3); font-size: 1.25rem; line-height: 1; color: var(--erp-ink-soft); }
 @media (max-width: 61.98rem) {
-  /* Two per row; an odd last tile (the fifth) takes the whole row instead of sitting alone. */
+  /* Two per row; an odd last tile takes the whole row instead of sitting alone. */
   .erp-stat-grid--glance > :last-child:nth-child(odd) { grid-column: 1 / -1; }
 }
+/* Admin home tabs (?tab=): plain links in one row that scrolls sideways on a narrow phone; 44px targets. */
+.erp-home-tabs { display: flex; gap: var(--erp-space-1); margin: 0 0 var(--erp-space-4); overflow-x: auto; border-bottom: 1px solid var(--erp-rule); scrollbar-width: none; }
+.erp-home-tab { display: inline-flex; align-items: center; flex: none; min-height: 2.75rem; padding: 0 var(--erp-space-3); color: var(--erp-ink-soft); font-weight: 600; text-decoration: none; white-space: nowrap; box-shadow: inset 0 -3px 0 transparent; }
+.erp-home-tab:hover { color: var(--erp-ink); }
+.erp-home-tab[aria-current="page"] { color: var(--erp-brand); box-shadow: inset 0 -3px 0 var(--erp-brand); }
+.erp-home-tab:focus-visible { outline: 2px solid var(--erp-focus-color); outline-offset: -2px; }
 /* Overview attendance analytics (Gate A): phone-first, server-rendered SVG, no chart library.
    Sections are spaced by the next section title's top margin, so no bottom margins stack up. */
 .erp-analytics { margin: 0; }
@@ -1565,6 +1571,10 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
 }
 @media (forced-colors: active) {
   .erp-class-flag { border: 1px solid CanvasText; }
+}
+/* The current home tab is marked by an inset shadow, which High Contrast drops; underline it instead. */
+@media (forced-colors: active) {
+  .erp-home-tab[aria-current="page"] { text-decoration: underline; text-decoration-thickness: 3px; }
 }
 
 /* Audit 16 CLR-04: the student progress charts (bullet and radar) take system colours in High Contrast.

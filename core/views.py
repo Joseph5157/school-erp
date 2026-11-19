@@ -22,10 +22,12 @@ from core import (
     assessment_reports,
     assignments,
     charts,
+    dashboard,
     data_access,
     duplicate_checks,
     guardian_access,
     guardian_accounts,
+    home_today,
     marks_analytics,
     notification_producers,
     one_time_forms,
@@ -33,6 +35,7 @@ from core import (
     publication,
     reports,
     school_logo,
+    setup_checklist,
     teacher_accounts,
     timetable,
 )
@@ -950,10 +953,124 @@ def choose_area(request):
     return render(request, "core/choose_area.html", {"areas": areas})
 
 
+HOME_TABS = (
+    ("today", "Today"),
+    ("attendance", "Attendance"),
+    ("academics", "Academics"),
+    ("parents", "Parents"),
+)
+
+
+def _home_tabs(active):
+    base = reverse("core:admin-overview")
+    return [
+        {
+            "key": key,
+            "label": label,
+            "url": base if key == "today" else f"{base}?tab={key}",
+            "current": key == active,
+        }
+        for key, label in HOME_TABS
+    ]
+
+
+def _today_tab(user, today, *, can_see_names, can_view_registers):
+    """The Today tab: work waiting, the school at a glance, setup, and today's/this week's lists."""
+    steps = setup_checklist.setup_steps()
+    done_count = sum(1 for step in steps if step["done"])
+    # The first incomplete step is the "next" one: only it gets the filled button.
+    next_key = next((step["key"] for step in steps if not step["done"]), None)
+    for step in steps:
+        step["is_next"] = step["key"] == next_key
+    cards = dashboard.overview_cards(user)
+    attention_cards, _ = dashboard.split_cards(cards)
+    can_open_registers = user.has_perm("core.add_attendanceregister")
+    can_view_assessments = user.has_perm("core.view_assessment")
+    return {
+        "cards": cards,
+        "attention_cards": attention_cards,
+        "glance_cards": dashboard.glance_cards(user, today=today),
+        "setup_steps": steps,
+        "setup_complete": setup_checklist.setup_complete(steps),
+        # Until the foundation exists there is nothing operational to show, so setup leads;
+        # after that the attention cards do.
+        "setup_first": setup_checklist.foundation_incomplete(steps),
+        "setup_done": done_count,
+        "setup_total": len(steps),
+        "attendance": home_today.attendance_today(today, can_open_registers=can_open_registers),
+        "compliance": (
+            home_today.register_compliance(
+                today, timezone.now(), home_today.register_cutoff(),
+                can_open_registers=can_open_registers,
+            )
+            if can_view_registers
+            else None
+        ),
+        "overdue_marks": (
+            home_today.overdue_marks(today, can_open=True) if can_view_assessments else None
+        ),
+        "assessments": home_today.week_assessments(today, can_open=can_view_assessments),
+        "birthdays": home_today.week_birthdays(today, can_see_names=can_see_names),
+    }
+
+
+def _parents_tab(user, today):
+    """The Parents tab (interim): guardian logins, pending access reviews, announcements link."""
+    return {
+        "glance": dashboard.parents_glance(user),
+        "access_review_card": (
+            dashboard._access_reviews(today, user)
+            if user.has_perm("core.view_guardianaccessreview")
+            else None
+        ),
+        "announcements_url": (
+            reverse("core:announcement-list") if user.has_perm("core.view_announcement") else None
+        ),
+    }
+
+
 @administrator_required("core.view_school")
 def admin_overview(request):
-    # Temporary stub while the Overview is rebuilt as tabs; renders the page header only.
-    return render(request, "core/admin_overview.html", {})
+    """The admin home: four tabs by job, each its own URL (`?tab=`). Only the active tab is built.
+
+    Unknown values (and old links such as `?period=`) show Today.
+    """
+    user = request.user
+    tab = request.GET.get("tab", "")
+    if tab not in dict(HOME_TABS):
+        tab = "today"
+    today = business_today()
+    # Security Gate 4B: the classes of data this page embeds, checked here so the pinned route
+    # inventory sees them. Named students need view_student; absences need view_attendanceentry;
+    # marks need view_studentresult. The registers, class and publication gates decide which
+    # register, class and results figures and links the tabs may show.
+    can_see_students = user.has_perm(data_access.STUDENT)
+    can_see_attendance = user.has_perm(data_access.ATTENDANCE_ENTRY)
+    can_see_results = user.has_perm(data_access.STUDENT_RESULT)
+    can = {
+        "registers": user.has_perm("core.view_attendanceregister"),
+        "classes": user.has_perm("core.view_classgrade"),
+        "publications": user.has_perm("core.view_termpublication"),
+    }
+    context = {"tabs": _home_tabs(tab), "tab": tab, "can": can}
+    if tab == "attendance":
+        context["attendance_tab"] = analytics.attendance_tab_context(
+            today, include_absentees=can_see_students and can_see_attendance
+        )
+    elif tab == "academics":
+        context["academics_tab"] = analytics.academics_tab_context(
+            today,
+            include_marks=can_see_results,
+            # Names, marks and absent-day counts together.
+            include_attention=can_see_students and can_see_results and can_see_attendance,
+        )
+    elif tab == "parents":
+        context["parents_tab"] = _parents_tab(user, today)
+    else:
+        context["today"] = _today_tab(
+            user, today, can_see_names=can_see_students, can_view_registers=can["registers"]
+        )
+    return render(request, "core/admin_overview.html", context)
 
 
 def _open_assessments_needing_marks(user, today):

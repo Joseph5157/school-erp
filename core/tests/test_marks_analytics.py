@@ -274,7 +274,7 @@ class StudentsNeedingAttentionTests(MarksAnalyticsFixture, TestCase):
 
     def attention(self, absent=None, **kwargs):
         return marks_analytics.students_needing_attention(
-            self.term_b, absent or {}, period_label="last 14 days", **kwargs
+            self.term_b, absent or {}, period_label="this month", **kwargs
         )
 
     def test_two_subjects_below_pass_is_listed(self):
@@ -328,7 +328,7 @@ class StudentsNeedingAttentionTests(MarksAnalyticsFixture, TestCase):
         self.assessment({self.s1: 20}, subject=self.maths, name="Great but no pass mark")
         self.below(self.s1, self.science)
         listed = marks_analytics.students_needing_attention(
-            self.term_b, {}, period_label="last 14 days"
+            self.term_b, {}, period_label="this month"
         )["rows"][0]
         page = {
             s.subject_name
@@ -455,11 +455,11 @@ class StudentsNeedingAttentionTests(MarksAnalyticsFixture, TestCase):
     def test_reason_names_term_and_period(self):
         self.below(self.s1, self.english, self.maths)
         row = marks_analytics.students_needing_attention(
-            self.term_b, {self.s1.student_id: 4}, period_label="last 14 days"
+            self.term_b, {self.s1.student_id: 4}, period_label="this month"
         )["rows"][0]
         self.assertEqual(
             row["reason"],
-            "Below pass in English and Mathematics (Term 2); absent 4 days (last 14 days)",
+            "Below pass in English and Mathematics (Term 2); absent 4 days (this month)",
         )
 
     def test_reason_wording_for_one_day_three_subjects_and_no_absence(self):
@@ -481,7 +481,7 @@ class StudentsNeedingAttentionTests(MarksAnalyticsFixture, TestCase):
         def count():
             with CaptureQueriesContext(connection) as ctx:
                 marks_analytics.students_needing_attention(
-                    self.term_b, {}, period_label="last 14 days"
+                    self.term_b, {}, period_label="this month"
                 )
             return len(ctx)
 
@@ -502,7 +502,7 @@ class StudentsNeedingAttentionTests(MarksAnalyticsFixture, TestCase):
                         finalize=False, name="Draft")
         self.assertFalse(
             marks_analytics.students_needing_attention(
-                self.term_a, {}, period_label="last 14 days"
+                self.term_a, {}, period_label="this month"
             )["has_pass_marks"]
         )
 

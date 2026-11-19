@@ -192,16 +192,6 @@
     });
   })();
 
-  // Overview period sheet: entering a date picks "Custom range", so the dates are not silently ignored.
-  // Without JS the person ticks Custom range themselves, as the sheet already shows.
-  document.querySelectorAll(".erp-period-sheet").forEach(function (sheet) {
-    var custom = sheet.querySelector('input[name="period"][value="custom"]');
-    if (!custom) return;
-    sheet.querySelectorAll('input[type="date"]').forEach(function (input) {
-      input.addEventListener("change", function () { if (input.value) custom.checked = true; });
-    });
-  });
-
   // Large-form counters are not live regions: they would speak on every tap or keystroke. A screen
   // reader hears only the change to "complete" (audit 12 A11Y-04); the state on page load is not spoken.
   function doneAnnouncer(container, message) {

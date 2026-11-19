@@ -33,7 +33,7 @@ class GlanceTileTests(AuthorizationClientsMixin, TestCase):
 
     def test_glance_figures_are_whole_tappable_tiles_without_open_buttons(self):
         glance = self.glance_html(self.administrator)
-        self.assertEqual(glance.count("erp-stat-card--glance"), 5)
+        self.assertEqual(glance.count("erp-stat-card--glance"), 4)
         self.assertRegex(
             glance, rf'<a class="erp-glance-tile erp-stat-card erp-stat-card--glance" href="{reverse("core:student-list")}"'
         )
@@ -47,7 +47,7 @@ class GlanceTileTests(AuthorizationClientsMixin, TestCase):
         client.login(username="glance-only", password="pass-12345")
         glance = self.glance_html(client)
         self.assertEqual(glance.count("<a "), 0)
-        self.assertEqual(glance.count('<div class="erp-glance-tile erp-stat-card erp-stat-card--glance"'), 5)
+        self.assertEqual(glance.count('<div class="erp-glance-tile erp-stat-card erp-stat-card--glance"'), 4)
 
 
 class PhoneStylesheetTests(TestCase):

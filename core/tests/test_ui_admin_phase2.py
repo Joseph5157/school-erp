@@ -13,10 +13,7 @@ from core.dashboard import overview_cards, split_cards
 from core.models import (
     TEACHERS_GROUP_NAME,
     Applicant,
-    AttendanceRegister,
-    AttendanceStatus,
     School,
-    SchoolCalendarDay,
     SectionClassTeacher,
     Subject,
 )
@@ -127,70 +124,13 @@ class OverviewCardTests(AuthorizationClientsMixin, AttendanceFixtureMixin, TestC
         self.assertEqual(data["count"], 0)
         self.assertEqual(data["tone"], "clear")
 
-    def _open_today(self):
-        """Make today an instructional day whatever the weekday."""
-        today = core_models.business_today()
-        if not self.year.default_is_instructional(today):
-            SchoolCalendarDay.objects.create(
-                academic_year=self.year, date=today, is_instructional=True
-            )
-
-    def _register_today(self, *, submit=False):
-        register = AttendanceRegister.objects.create(
-            academic_year=self.year, class_grade=self.class_grade,
-            section=self.section, date=core_models.business_today(),
-        )
-        if submit:
-            register.capture(
-                enrollment=self.enrollment, status=AttendanceStatus.PRESENT
-            )
-            submitter, _ = User.objects.get_or_create(username="today-submitter")
-            register.submit(actor=submitter)
-        return register
-
-    def _attendance(self):
-        return card(overview_cards(self.admin_user), "attendance")
-
-    def test_attendance_card_counts_section_with_no_register_today(self):
-        self._open_today()
-        data = self._attendance()
-        self.assertEqual(data["count"], 1)
-        today = core_models.business_today()
-        self.assertEqual(
-            data["url"],
-            reverse("core:report-missing-attendance")
-            + f"?start={today:%Y-%m-%d}&end={today:%Y-%m-%d}",
-        )
-
-    def test_attendance_card_link_lists_the_counted_section(self):
-        self._open_today()
-        url = self._attendance()["url"]
-        response = self.administrator.get(url)
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, str(self.section))
-
-    def test_attendance_card_zero_on_non_instructional_day(self):
-        today = core_models.business_today()
-        SchoolCalendarDay.objects.filter(academic_year=self.year, date=today).delete()
-        if self.year.default_is_instructional(today):
-            SchoolCalendarDay.objects.create(
-                academic_year=self.year, date=today, is_instructional=False
-            )
-        data = self._attendance()
-        self.assertEqual(data["count"], 0)
-        self.assertEqual(data["detail"], "No school day today.")
-
-    def test_attendance_card_counts_draft_register_as_missing(self):
-        self._open_today()
-        self._register_today(submit=False)
-        self.assertEqual(self._attendance()["count"], 1)
-
-    def test_attendance_card_does_not_count_submitted_register(self):
-        self._open_today()
-        self._register_today(submit=True)
-        self.assertEqual(self._attendance()["count"], 0)
+    def test_attendance_and_access_review_cards_left_the_today_cards(self):
+        # Today's attendance has its own card on the Today tab; access reviews moved to Parents.
+        keys = [c["key"] for c in overview_cards(self.superuser)]
+        self.assertEqual(keys, ["applicants", "publications", "notifications", "lockouts"])
 
     def test_page_shows_cards_and_empty_copy(self):
+        Applicant.objects.create(full_name="Pending One")  # zero cards are not shown on the page
         response = self.administrator.get(reverse("core:admin-overview"))
         self.assertContains(response, "Applicants awaiting decision")
 
@@ -225,10 +165,12 @@ class OverviewSetupStateTests(AuthorizationClientsMixin, TestCase):
         self.assertContains(response, reverse("core:academic-year-list"))
 
     def test_brand_new_school_shows_setup_before_cards(self):
+        Applicant.objects.create(full_name="Pending One")  # a card with work, so it is shown
         content = self.administrator.get(reverse("core:admin-overview")).content.decode()
         self.assertLess(content.index("Set up your school"), content.index("Applicants awaiting decision"))
 
     def test_cards_precede_checklist_once_the_foundation_exists(self):
+        Applicant.objects.create(full_name="Pending One")  # a card with work, so it is shown
         # foundation_incomplete has its own unit tests; here only the page order is under test.
         with mock.patch("core.views.setup_checklist.foundation_incomplete", return_value=False):
             content = self.administrator.get(reverse("core:admin-overview")).content.decode()

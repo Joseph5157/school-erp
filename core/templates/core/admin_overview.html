@@ -2,4 +2,9 @@
 {% block title %}Overview{% endblock %}
 {% block content %}
 {% include "partials/_page_header.html" with eyebrow="School administration" title="Overview" purpose="What needs attention today." only %}
+{% include "partials/home/_tabs.html" %}
+{% if tab == "attendance" %}{% include "partials/home/_attendance.html" %}
+{% elif tab == "academics" %}{% include "partials/home/_academics.html" %}
+{% elif tab == "parents" %}{% include "partials/home/_parents.html" %}
+{% else %}{% include "partials/home/_today.html" %}{% endif %}
 {% endblock %}
