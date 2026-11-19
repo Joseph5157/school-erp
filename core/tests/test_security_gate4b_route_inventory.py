@@ -33,7 +33,7 @@ DECLARED_DATA_PERMISSIONS = {
     "core:applicant-detail": {"core.view_guardian"},
     "core:guardian-list": {"core.view_student", "core.view_applicant"},
     "core:attendance-register-detail": {"core.view_attendanceentry"},
-    "core:admin-overview": {"core.view_attendanceentry", "core.view_student"},
+    "core:admin-overview": {"core.view_attendanceentry", "core.view_student", "core.view_guardian"},
     "core:assessment-detail": {"core.view_studentresult"},
     "core:term-publication": {"core.view_studentresult"},
     "core:publication-detail": {"core.view_studentresult"},

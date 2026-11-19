@@ -9,7 +9,7 @@ from django.contrib.auth import get_user_model
 from django.db.models import Min
 from django.urls import reverse
 
-from core import analytics, guardian_access, nav_badges
+from core import analytics, nav_badges
 from core import models as core_models
 from core.models import (
     TEACHERS_GROUP_NAME,
@@ -47,15 +47,6 @@ def _publications(today, user):
         "publications", "Results to publish", nav_badges.cached_count(user, "core:publications-stale"),
         "Published results that are out of date.",
         reverse("core:publications-stale"),
-    )
-
-
-def _access_reviews(today, user):
-    return _card(
-        "access_reviews", "Pending access reviews",
-        len(guardian_access.pending_reviews(today)),
-        "Guardian access that needs an explicit decision.",
-        reverse("core:guardian-access-reviews"),
     )
 
 
