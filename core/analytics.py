@@ -13,7 +13,7 @@ from django.db.models import Count, Q
 from django.db.models.functions import TruncMonth
 from django.urls import reverse
 
-from core import charts, marks_analytics, reports
+from core import charts, reports
 from core.models import (
     AcademicEnrollment,
     AcademicTerm,
@@ -269,21 +269,6 @@ def attendance_heatmap(today, days=HEATMAP_DAYS):
     return weeks
 
 
-def _subject_rows(term):
-    """Rows for the horizontal bars: each subject's average, lowest first. Never `low` (red is
-    only for attendance under target)."""
-    return [
-        {
-            "label": row["subject_name"],
-            "value": row["average"],
-            "display": f"{charts.percent_display(row['average'])}%",
-            "low": False,
-        }
-        for row in marks_analytics.subject_averages(term)
-    ]
-
-
-
 TAB_PERIOD_LABEL = "this month"
 
 
@@ -370,18 +355,27 @@ LOW_ATTENDANCE_MIN_DAYS = 5
 ABSENT_VIEWS = ("month", "term")
 
 
-def class_extremes(rows, *, with_links):
-    """The best and worst classes from `class_comparison` rows (lowest first), or None.
+def split_extremes(rows):
+    """Split rows sorted lowest first into (best highest first, worst lowest first), or None.
 
-    Under four classes there is nothing meaningful to split. Otherwise up to three each,
-    never overlapping: `best` highest first, `worst` lowest first.
+    Under four rows there is nothing meaningful to split. Otherwise `min(3, n // 2)` each, so no
+    row is on both sides.
     """
     if len(rows) < 4:
         return None
     k = min(3, len(rows) // 2)
+    return list(reversed(rows[-k:])), list(rows[:k])
+
+
+def class_extremes(rows, *, with_links):
+    """The best and worst classes from `class_comparison` rows (lowest first), or None."""
+    split = split_extremes(rows)
+    if split is None:
+        return None
+    best, worst = split
     return {
-        "best": [_class_row(r, with_links) for r in reversed(rows[-k:])],
-        "worst": [_class_row(r, with_links) for r in rows[:k]],
+        "best": [_class_row(r, with_links) for r in best],
+        "worst": [_class_row(r, with_links) for r in worst],
     }
 
 
@@ -463,31 +457,4 @@ def attendance_tab_context(today, *, include_absentees, absent_view="month", cla
         "low_percent": LOW_ATTENDANCE_PERCENT,
         "low_min_days": LOW_ATTENDANCE_MIN_DAYS,
         "label": TAB_PERIOD_LABEL,
-    }
-
-
-def academics_tab_context(today, *, include_marks, include_attention):
-    """The admin home Academics tab: subject averages and students needing attention.
-
-    Marks come from the reporting term, absences from this month. Results are never queried
-    unless the caller may see them (`include_marks`, or `include_attention`, which needs results,
-    students and attendance); `attention` is None without `include_attention`.
-    """
-    term = marks_analytics.reporting_term(today) if include_marks or include_attention else None
-    label = marks_analytics.term_label(term, today) if term else None
-    attention = None
-    if include_attention:
-        attention = marks_analytics.students_needing_attention(
-            term,
-            absent_day_counts(month_to_date(today)) if term else {},  # no term, nobody to check
-            threshold=ABSENTEE_THRESHOLD_DAYS,
-            period_label=TAB_PERIOD_LABEL,
-            term_label=label,
-        )
-    return {
-        "show_marks": include_marks,
-        "term": term,
-        "term_label": label,
-        "subjects": _subject_rows(term) if term and include_marks else [],
-        "attention": attention,
     }

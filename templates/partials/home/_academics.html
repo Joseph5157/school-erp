@@ -1,11 +1,70 @@
-{# Admin home, Academics tab (interim: PR 3 adds results to finish, class and improver cards). Marks are from the reporting term, absences from this month. #}
+{# Admin home, Academics tab: results to finish (work term), then class, subject, at-risk and improver cards from the reporting term. Absences are this month's. #}
 {% with a=academics_tab %}
-<section class="erp-analytics{% if a.attention is None %} erp-analytics--no-attention{% endif %}" aria-labelledby="analytics-title">
+<section class="erp-analytics{% if a.extremes is None %} erp-analytics--no-best{% endif %}{% if a.attention is None %} erp-analytics--no-attention{% endif %}{% if a.improvers is None %} erp-analytics--no-improvers{% endif %}" aria-labelledby="analytics-title">
     <h2 class="erp-sr-only" id="analytics-title">Academics</h2>
+    {% if a.progress %}
+    {% with p=a.progress %}
+    <article class="erp-card erp-card--results">
+        <h3 class="erp-analytics-title">Results to finish, {{ p.term_name }}</h3>
+        {% if p.in_progress or p.ready or p.unpublished_students %}
+        <ul class="erp-stage-list">
+            <li class="erp-stage"><span class="erp-stage-count">{% if p.in_progress %}<a href="{{ p.in_progress_url }}">{{ p.in_progress }}<span class="erp-sr-only"> assessments with marking in progress</span></a>{% else %}{{ p.in_progress }}{% endif %}</span><span class="erp-stage-label">Marking in progress</span></li>
+            <li class="erp-stage"><span class="erp-stage-count">{{ p.ready|length }}</span><span class="erp-stage-label">Ready to finalize</span></li>
+            <li class="erp-stage"><span class="erp-stage-count">{{ p.unpublished_students }}</span><span class="erp-stage-label">Finalized, not published</span></li>
+        </ul>
+        {% if p.ready %}
+        <h4 class="erp-home-sub">Ready to finalize</h4>
+        {% include "partials/home/_fold_rows.html" with rows=p.ready row_template="partials/home/_finalize_row.html" noun="assessments" %}
+        {% endif %}
+        {% if p.unpublished_sections %}
+        <h4 class="erp-home-sub">To publish</h4>
+        {% include "partials/home/_fold_rows.html" with rows=p.unpublished_sections row_template="partials/home/_publish_row.html" noun="sections" %}
+        {% endif %}
+        {% else %}
+        <p class="erp-card-empty">Nothing to finish for {{ p.term_name }}.</p>
+        {% endif %}
+    </article>
+    {% endwith %}
+    {% endif %}
+
+    {% if a.show_marks %}
+    <article class="erp-card erp-card--pass">
+        <h3 class="erp-analytics-title">Pass rate and grades by class{% if a.term %}, {{ a.term_label }}{% endif %}</h3>
+        {% if a.classes %}
+        {% include "partials/home/_fold_rows.html" with rows=a.classes row_template="partials/home/_class_marks_row.html" noun="classes" view=a.class_links %}
+        {% else %}
+        <p class="erp-card-empty">No finalized results yet.</p>
+        {% endif %}
+    </article>
+    {% endif %}
+
+    {% if a.extremes is not None %}
+    <article class="erp-card erp-card--best">
+        <h3 class="erp-analytics-title">Best and worst classes</h3>
+        <p class="erp-analytics-sub">Average mark, {{ a.term_label }}.</p>
+        <h4 class="erp-home-sub">Highest</h4>
+        {% include "partials/charts/_bars.html" with rows=a.extremes.best colour="marks" %}
+        <h4 class="erp-home-sub">Lowest</h4>
+        {% include "partials/charts/_bars.html" with rows=a.extremes.worst colour="marks" %}
+    </article>
+    {% endif %}
+
+    {% if a.show_marks %}
+    <article class="erp-card erp-card--subjects">
+        <h3 class="erp-analytics-title">Subjects{% if a.term %}, {{ a.term_label }}{% endif %}</h3>
+        {% if a.term %}
+        <p class="erp-analytics-sub">Average mark, lowest first. {% if a.previous %}Change since {{ a.previous_label }}.{% else %}No comparison yet.{% endif %}</p>
+        {% include "partials/charts/_bars.html" with rows=a.subjects colour="marks" %}
+        {% else %}
+        <p class="erp-card-empty">No finalized results yet.</p>
+        {% endif %}
+    </article>
+    {% endif %}
+
     {% if a.attention is not None %}
     <article class="erp-card erp-card--attention">
-        <h3 class="erp-analytics-title">Students needing attention</h3>
-        <p class="erp-analytics-sub">Below pass in two or more subjects, or in one subject and often absent. In class order, not ranked.</p>
+        <h3 class="erp-analytics-title">At-risk students</h3>
+        <p class="erp-analytics-sub">Below pass in two or more subjects, or in one subject and often absent, or average down 10+ points since last term. In class order, not ranked.</p>
         {% if a.attention.rows %}
         <ul class="erp-attention-list">
             {% for r in a.attention.rows %}{% include "partials/_attention_row.html" %}{% endfor %}
@@ -19,23 +78,27 @@
         </details>
         {% endif %}
         {% elif not a.term %}
-        <p class="erp-analytics-sub">No finalized results yet.</p>
+        <p class="erp-card-empty">No finalized results yet.</p>
         {% elif not a.attention.has_pass_marks %}
-        <p class="erp-analytics-sub">No pass marks are set for {{ a.term_label }}, so nobody can be checked yet.</p>
+        <p class="erp-card-empty">No pass marks are set for {{ a.term_label }}{% if a.previous %}, and nobody's average is down 10+ points.{% else %}, so nobody can be checked yet.{% endif %}</p>
         {% else %}
-        <p class="erp-analytics-sub">No students need attention right now.</p>
+        <p class="erp-card-empty">No students need attention right now.</p>
         {% endif %}
     </article>
     {% endif %}
 
-    {% if a.show_marks %}
-    <article class="erp-card erp-card--subjects">
-        <h3 class="erp-analytics-title">Marks by subject{% if a.term %}, {{ a.term_label }}{% endif %}</h3>
-        {% if a.term %}
-        <p class="erp-analytics-sub">Average score, lowest first.</p>
-        {% include "partials/charts/_bars.html" with rows=a.subjects colour="marks" %}
+    {% if a.improvers is not None %}
+    <article class="erp-card erp-card--improvers">
+        <h3 class="erp-analytics-title">Top improvers</h3>
+        {% if a.previous %}
+        <p class="erp-analytics-sub">Biggest rise in average mark since {{ a.previous_label }}.</p>
+        {% if a.improvers %}
+        {% include "partials/home/_fold_rows.html" with rows=a.improvers row_template="partials/home/_improver_row.html" noun="students" %}
         {% else %}
-        <p class="erp-analytics-sub">No finalized results yet.</p>
+        <p class="erp-card-empty">No student's average has risen yet.</p>
+        {% endif %}
+        {% else %}
+        <p class="erp-card-empty">No comparison yet.</p>
         {% endif %}
     </article>
     {% endif %}
