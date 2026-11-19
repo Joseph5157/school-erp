@@ -113,7 +113,7 @@ def register_compliance(today, now, cutoff, *, can_open_registers=False):
     return result
 
 
-def overdue_marks(today, days=15):
+def overdue_marks(today, days=15, *, can_open=False):
     """DRAFT assessments left open for more than `days` days, oldest first."""
     cutoff = today - datetime.timedelta(days=days)
     assessments = list(
@@ -146,7 +146,9 @@ def overdue_marks(today, days=15):
                 "subject": assessment.offering.subject.name,
                 "teacher_name": _user_name(teacher),
                 "days_late": (today - on).days - days,
-                "url": reverse("core:assessment-detail", args=[assessment.pk]),
+                "url": (
+                    reverse("core:assessment-detail", args=[assessment.pk]) if can_open else None
+                ),
             }
         )
     return rows

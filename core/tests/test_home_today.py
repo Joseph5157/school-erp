@@ -187,7 +187,6 @@ class RegisterComplianceTests(TodayDataFixture, TestCase):
         self.add_section("Grade 3")
         self.add_section("Grade 4")
         self.assertEqual(run(), first)
-        print(f"compliance+today queries: {first}")
 
 
 class OverdueMarksTests(TodayDataFixture, TestCase):
@@ -207,8 +206,18 @@ class OverdueMarksTests(TodayDataFixture, TestCase):
         self.assertEqual(rows[0]["days_late"], 1)
         self.assertEqual(rows[0]["subject"], "Mathematics")
         self.assertEqual((rows[0]["class_name"], rows[0]["section_name"]), ("Grade 1", "A"))
-        self.assertEqual(rows[0]["url"], f"/assessments/{late.pk}/")
+        self.assertEqual(rows[0]["url"], None)
+        linked = home_today.overdue_marks(TODAY, can_open=True)
+        self.assertEqual(linked[0]["url"], f"/assessments/{late.pk}/")
         self.assertEqual(rows[0]["teacher_name"], "")
+
+    def test_overdue_marks_link_only_with_permission(self):
+        late = self.draft(20)
+        self.assertIsNone(home_today.overdue_marks(TODAY)[0]["url"])
+        self.assertIsNone(home_today.overdue_marks(TODAY, can_open=False)[0]["url"])
+        self.assertEqual(
+            home_today.overdue_marks(TODAY, can_open=True)[0]["url"], f"/assessments/{late.pk}/"
+        )
 
     def test_oldest_first(self):
         self.draft(20, name="Newer")
@@ -244,4 +253,3 @@ class OverdueMarksTests(TodayDataFixture, TestCase):
         for i in range(3):
             self.draft(25 + i, name=f"More {i}")
         self.assertEqual(run(), first)
-        print(f"overdue queries: {first}")
