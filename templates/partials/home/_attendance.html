@@ -3,7 +3,7 @@
 <section class="erp-analytics{% if a.absentees is None %} erp-analytics--no-absent{% endif %}" aria-labelledby="analytics-title">
     <h2 class="erp-sr-only" id="analytics-title">Attendance</h2>
     {% if a.has_data %}
-    <article class="erp-analytics-card erp-analytics-card--heat">
+    <article class="erp-card erp-card--heat">
         <h3 class="erp-analytics-title">Attendance heatmap</h3>
         <p class="erp-analytics-sub">Last 4 weeks. Darker blue is higher; red is under 80%.</p>
         <div class="erp-heat" role="img" aria-label="Attendance heatmap for the last 4 weeks, Monday to Sunday. Darker blue is higher attendance; red is under 80 percent. Days with no submitted register are hatched; non-school days are blank.">
@@ -25,11 +25,11 @@
         </details>
     </article>
     {% else %}
-    <p class="erp-analytics-empty">No submitted attendance in the last 4 weeks yet.</p>
+    <p class="erp-card-empty erp-card-empty--block">No submitted attendance in the last 4 weeks yet.</p>
     {% endif %}
 
     {% if a.absentees is not None %}
-    <article class="erp-analytics-card erp-analytics-card--absent">
+    <article class="erp-card erp-card--absent">
         <h3 class="erp-analytics-title">Frequent absentees</h3>
         <p class="erp-analytics-sub">Absent {{ a.absentee_threshold }} or more days, {{ a.label }}.</p>
         {% if a.absentees.rows %}

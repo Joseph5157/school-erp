@@ -39,11 +39,11 @@ Status: **Ready** = Bootstrap-free and used; **Partial** = ours, but still sits 
 | Progress bar | `erp-setup-bar` + `erp-setup-bar-fill` | `progress` / `progress-bar` | Ready (setup card); generalise as `erp-bar` when a second use appears |
 | Page header | `erp-page-header` (+ `-copy`, `-actions`, eyebrow/title/purpose) | none | Partial (its action buttons and `mt-2` are Bootstrap) |
 | Tabs (page-level, link per tab) | `erp-home-tabs`, `erp-home-tab` with `aria-current="page"` | none | Ready |
-| Card | `erp-home-card`, `erp-chart-card`, `erp-analytics-card`, `erp-panel` | `card` | Partial: four card names for one idea; merge into `erp-card` |
+| Card | `erp-card` (+ `erp-card--<name>` hooks) | `card` | Ready (Overview). `erp-chart-card` / `erp-analytics-card` remain only on the student progress page; `erp-panel` converts area by area |
 | Stat / glance tiles | `erp-stat-card`, `erp-stat-grid`, `erp-glance-*` | none | Ready |
 | List rows (tappable) | `erp-home-row` (+ `-main`, `-meta`, `-open`), `erp-attention-list` | `list-group` | Ready |
 | Fold ("Show all N") | `templates/partials/home/_fold_rows.html`, `erp-class-more` | `collapse` | Ready |
-| Empty state | `erp-home-empty`, `erp-empty` | none | Partial: two names; merge |
+| Empty state | `erp-card-empty` (a message inside a card; `--block` for a standalone dashed box), `erp-empty` (the page-level block) | none | Ready |
 | Charts | `erp-donut-*`, `erp-heat*`, `erp-class-bar*`, `erp-cols` | none | Ready |
 | Form field | `erp-field` | `form-control`, `form-select`, `form-label`, `form-check` | To build |
 | Table | `erp-rc-table`, `erp-chart-table`, `erp-keep` | `table`, `table-*` | Partial |
@@ -55,7 +55,7 @@ Status: **Ready** = Bootstrap-free and used; **Partial** = ours, but still sits 
 ## Order of work
 
 1. **Admin home** (`feature/admin-home`): Overview done; PRs 2–4 (Attendance, Academics, Parents tabs) are built Bootstrap-free with the guard test extended to each tab.
-2. **Before PR 2:** merge the card names into `erp-card` and the empty states into `erp-empty`, since the new tabs will use both.
+2. ~~Before PR 2: merge the card names into `erp-card` and the empty states.~~ Done: `erp-card` and `erp-card-empty` on the Overview.
 3. **Then by area, alongside planned work:** forms (`erp-field`), tables, alerts (+ replace Alert JS), badges, layout utilities.
 4. **Shell last:** sidebar Offcanvas → `<dialog>`, top bar, Guardian Portal shell, server-error page.
 5. **Remove Bootstrap** only when a repo-wide guard test finds no Bootstrap class or `data-bs-` attribute, and after the checks listed in `BOOTSTRAP_REMOVAL_NOTE.md` (desktop, phone, print, keyboard, high contrast, no JS).

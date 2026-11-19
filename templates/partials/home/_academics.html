@@ -3,7 +3,7 @@
 <section class="erp-analytics{% if a.attention is None %} erp-analytics--no-attention{% endif %}" aria-labelledby="analytics-title">
     <h2 class="erp-sr-only" id="analytics-title">Academics</h2>
     {% if a.attention is not None %}
-    <article class="erp-analytics-card erp-analytics-card--attention">
+    <article class="erp-card erp-card--attention">
         <h3 class="erp-analytics-title">Students needing attention</h3>
         <p class="erp-analytics-sub">Below pass in two or more subjects, or in one subject and often absent. In class order, not ranked.</p>
         {% if a.attention.rows %}
@@ -29,7 +29,7 @@
     {% endif %}
 
     {% if a.show_marks %}
-    <article class="erp-analytics-card erp-analytics-card--subjects">
+    <article class="erp-card erp-card--subjects">
         <h3 class="erp-analytics-title">Marks by subject{% if a.term %}, {{ a.term_label }}{% endif %}</h3>
         {% if a.term %}
         <p class="erp-analytics-sub">Average score, lowest first.</p>

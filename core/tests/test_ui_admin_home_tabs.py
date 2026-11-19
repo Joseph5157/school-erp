@@ -324,6 +324,17 @@ class HomeTabsTests(MarksFixture, TestCase):
 class OverviewNoBootstrapTests(MarksFixture, TestCase):
     BANNED = ('class="btn', " btn-", "visually-hidden", "text-muted", '"progress"', "progress-bar", "mt-auto", "align-self-start")
 
+    OLD_CARD_NAMES = ("erp-home-card", "erp-chart-card", "erp-analytics-card", "erp-home-empty", "erp-analytics-empty")
+
+    def test_overview_cards_use_erp_card(self):
+        for tab in ("today", "attendance", "academics"):
+            html = self.administrator.get(URL, {"tab": tab}).content.decode()
+            body = html[html.index('class="erp-page-header'):html.index("</main>")]
+            with self.subTest(tab=tab):
+                self.assertIn("erp-card", body)
+                for old in self.OLD_CARD_NAMES:
+                    self.assertNotIn(old, body)
+
     def test_overview_uses_no_bootstrap_classes(self):
         saw_setup = False
         saw_attention = False

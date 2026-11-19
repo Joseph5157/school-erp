@@ -328,7 +328,7 @@ class OverviewAnalyticsViewTests(AnalyticsFixture, TestCase):
         self.assertContains(response, "erp-heat-cell--not_school")
         # AO-02: the exact values are a visible table, not only hover titles.
         html = response.content.decode()
-        heat = html[html.index("erp-analytics-card--heat"):]
+        heat = html[html.index("erp-card--heat"):]
         heat = heat[:heat.index("</article>")]
         self.assertIn("<summary>View heatmap figures</summary>", heat)
         self.assertIn('<th scope="row">Wed 1 Jul</th><td>100.0%</td>', heat)
@@ -492,7 +492,7 @@ class MarksSnapshotViewTests(MarksFixture, TestCase):
             [("Science", "50%", False), ("Mathematics", "85%", False)],
         )
         response = self.administrator.get(self.url)
-        self.assertContains(response, "erp-analytics-card--subjects")
+        self.assertContains(response, "erp-card--subjects")
         self.assertContains(response, "Marks by subject, Term 2")
         content = response.content.decode()
         self.assertLess(content.index(">Science<"), content.index(">Mathematics<"))
@@ -552,7 +552,7 @@ class DesktopLayoutTests(AnalyticsFixture, TestCase):
         self.with_data()
         html = self.administrator.get(self.url, {"tab": "attendance"}).content.decode()
         for area in ("heat", "absent"):
-            self.assertIn(f"erp-analytics-card--{area}", html)
+            self.assertIn(f"erp-card--{area}", html)
 
     def test_heat_cells_name_their_value_on_hover(self):
         self.with_data()
@@ -713,7 +713,7 @@ class StudentsNeedingAttentionViewTests(MarksFixture, TestCase):
 
     def card(self, response):
         html = response.content.decode()
-        start = html.index("erp-analytics-card--attention")
+        start = html.index("erp-card--attention")
         return html[start:html.index("</article>", start)]
 
     def test_rows_link_to_the_student_page_and_state_the_reason(self):
@@ -911,10 +911,10 @@ class OverviewNoHoleLayoutTests(AnalyticsFixture, TestCase):
     def test_desktop_rows_four_and_five_and_the_absentee_fallback(self):
         block = self.css()
         for rule in (
-            ".erp-analytics > .erp-analytics-card--attention { grid-column: span 7; align-self: start; }",
-            ".erp-analytics > .erp-analytics-card--absent { grid-column: span 5; align-self: start; }",
-            ".erp-analytics--no-absent > .erp-analytics-card--attention,\n  .erp-analytics--no-attention > .erp-analytics-card--absent { grid-column: span 12; }",
-            ".erp-analytics > .erp-analytics-card--subjects { grid-column: span 7; }",
+            ".erp-analytics > .erp-card--attention { grid-column: span 7; align-self: start; }",
+            ".erp-analytics > .erp-card--absent { grid-column: span 5; align-self: start; }",
+            ".erp-analytics--no-absent > .erp-card--attention,\n  .erp-analytics--no-attention > .erp-card--absent { grid-column: span 12; }",
+            ".erp-analytics > .erp-card--subjects { grid-column: span 7; }",
         ):
             self.assertIn(rule, block)
 
