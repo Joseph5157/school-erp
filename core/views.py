@@ -28,6 +28,7 @@ from core import (
     guardian_access,
     guardian_accounts,
     home_academics,
+    home_parents,
     home_today,
     marks_analytics,
     notification_producers,
@@ -4035,6 +4036,7 @@ STUDENT_CHIP_CHOICES = (
     ("new", "New this month"),
     ("unplaced", "Not in a class"),
     ("absent", "Absent 3+ days this year"),
+    ("no_portal", "No parent on the portal"),
 )
 
 
@@ -4053,7 +4055,7 @@ def _parse_id(request, name, valid_ids):
     return value if value in valid_ids else None
 
 
-def _student_chips(request, chip, include_absent=True, sort_param=""):
+def _student_chips(request, chip, include_absent=True, sort_param="", include_no_portal=True):
     """Chip links: each keeps the other filters and the chosen sort; only the active one is marked.
 
     ``sort_param`` is the table's whitelisted sort token, never the raw GET value (audit 13 SF-04).
@@ -4066,6 +4068,8 @@ def _student_chips(request, chip, include_absent=True, sort_param=""):
     chips = []
     for key, label in STUDENT_CHIP_CHOICES:
         if key == "absent" and not include_absent:
+            continue
+        if key == "no_portal" and not include_no_portal:
             continue
         data = dict(base)
         if key != "all":
@@ -4093,6 +4097,8 @@ def student_list(request):
     can_see_guardians = request.user.has_perm(data_access.GUARDIAN)
     can_see_absences = request.user.has_perm(data_access.ATTENDANCE_ENTRY)
     if chip == "absent" and not can_see_absences:
+        chip = None
+    if chip == "no_portal" and not can_see_guardians:
         chip = None
 
     students = Student.objects.all()
@@ -4174,6 +4180,12 @@ def student_list(request):
                 enrollments__academic_year=current_year,
             )
 
+    if chip == "no_portal":
+        ids = list(students.values_list("pk", flat=True))
+        students = students.exclude(
+            pk__in=home_parents.portal_student_ids(ids, business_today())
+        )
+
     columns = (
         STUDENT_COLUMNS
         if can_see_guardians
@@ -4199,7 +4211,11 @@ def student_list(request):
             "status_choices": Student.Status.choices,
             "chip": chip,
             "chips": _student_chips(
-                request, chip, include_absent=can_see_absences, sort_param=table.sort_param
+                request,
+                chip,
+                include_absent=can_see_absences,
+                sort_param=table.sort_param,
+                include_no_portal=can_see_guardians,
             ),
             "can_see_guardians": can_see_guardians,
             "class_filter": class_filter,
