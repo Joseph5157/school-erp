@@ -292,6 +292,79 @@ def month_to_date(today):
     return Period(today.replace(day=1), today)
 
 
+def month_trend(today):
+    """This month so far against the whole previous calendar month, in percentage points."""
+    this_month = month_to_date(today)
+    last_end = this_month.start - datetime.timedelta(days=1)
+    last_month = Period(last_end.replace(day=1), last_end)
+    this = reports.counts(_entries(this_month))["percentage"]
+    last = reports.counts(_entries(last_month))["percentage"]
+    change = direction = None
+    if this is not None and last is not None:
+        change = round(this - last, 1)
+        direction = "same" if change == 0 else ("up" if change > 0 else "down")
+    return {
+        "this": this,
+        "last": last,
+        "change": change,
+        "direction": direction,
+        "last_label": last_end.strftime("%B"),
+    }
+
+
+WEEKDAY_WINDOW_DAYS = 56
+WEEKDAY_MIN_DAYS = 2
+WEEKDAY_GAP_POINTS = 2
+_WEEKDAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+
+def weekday_pattern(today, days=WEEKDAY_WINDOW_DAYS):
+    """Attendance % by weekday over the last `days` days, plus the weekday that lags the rest.
+
+    A weekday with fewer than WEEKDAY_MIN_DAYS dates of data is left out. `lowest` is set only
+    when at least two weekdays remain and the worst one trails the overall figure by at least
+    WEEKDAY_GAP_POINTS.
+    """
+    period = Period(today - datetime.timedelta(days=days - 1), today)
+    totals = {}
+    for row in daily_trend(period):
+        weekday = row["date"].weekday()
+        bucket = totals.setdefault(weekday, {"dates": 0, "present": 0, "absent": 0})
+        bucket["dates"] += 1
+        bucket["present"] += row["present"]
+        bucket["absent"] += row["absent"]
+    kept = {d: b for d, b in sorted(totals.items()) if b["dates"] >= WEEKDAY_MIN_DAYS}
+    rows = []
+    for weekday, bucket in kept.items():
+        value = reports.percentage(bucket["present"], bucket["absent"])
+        if value is None:
+            continue
+        rows.append(
+            {
+                "label": _WEEKDAY_NAMES[weekday][:3],
+                "value": value,
+                "display": f"{value:g}%",
+                "low": value < ATTENDANCE_TARGET_PERCENT,
+                "url": None,
+                "weekday": weekday,
+            }
+        )
+    lowest = None
+    if len(rows) >= 2:
+        overall = reports.percentage(
+            sum(b["present"] for b in kept.values()), sum(b["absent"] for b in kept.values())
+        )
+        worst = min(rows, key=lambda r: r["value"])
+        if overall - worst["value"] >= WEEKDAY_GAP_POINTS:
+            lowest = {
+                "day": _WEEKDAY_NAMES[worst["weekday"]],
+                "gap": round(overall - worst["value"]),
+            }
+    for row in rows:
+        del row["weekday"]
+    return {"rows": rows, "lowest": lowest}
+
+
 def attendance_tab_context(today, *, include_absentees):
     """The admin home Attendance tab: the 4-week heatmap and this month's frequent absentees.
 
