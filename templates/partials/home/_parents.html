@@ -1,6 +1,6 @@
 {# Admin home, Parents tab: New announcement form and sent list, parent engagement, guardian access (missing portal parents and pending reviews). Takes `parents_tab` (core.home_parents.parents_tab_context). #}
 {% with p=parents_tab %}
-<section class="erp-analytics{% if not p.form and p.sent is None %} erp-analytics--no-notice{% endif %}" aria-labelledby="parents-title">
+<section class="erp-analytics erp-analytics--parents{% if not p.form and p.sent is None %} erp-analytics--no-notice{% endif %}" aria-labelledby="parents-title">
     <h2 class="erp-sr-only" id="parents-title">Parents</h2>
     {% if p.form or p.sent is not None %}
     <article class="erp-card erp-card--notice">
