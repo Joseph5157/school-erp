@@ -1481,7 +1481,7 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
 .erp-heat-legend { display: flex; flex-wrap: wrap; align-items: center; gap: var(--erp-space-2); margin: var(--erp-space-3) 0 0; font-size: var(--erp-text-xs); color: var(--erp-ink-soft); }
 .erp-heat-legend .erp-heat-cell { width: 1rem; min-height: 1rem; }
 .erp-trend-figure { margin: var(--erp-space-2) 0 0; font-size: var(--erp-text-title); font-weight: 700; line-height: 1.1; }
-.erp-seg { display: flex; gap: var(--erp-space-1); margin: var(--erp-space-3) 0 0; padding: var(--erp-space-1); border: 1px solid var(--erp-rule); border-radius: 999px; }
+.erp-seg { display: flex; gap: var(--erp-space-1); margin: var(--erp-space-3) 0 0; padding: var(--erp-space-1); border: 1px solid var(--erp-rule); border-radius: 999px; max-width: 28rem; }
 .erp-seg-link { flex: 1; display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 var(--erp-space-3); border-radius: 999px; color: var(--erp-ink-soft); font-size: var(--erp-text-sm); font-weight: 600; text-align: center; text-decoration: none; }
 .erp-seg-link:hover, .erp-seg-link:focus-visible { color: var(--erp-ink); }
 .erp-seg-link[aria-current="page"] { background: var(--erp-action-wash); color: var(--erp-action-strong); }
@@ -1635,13 +1635,14 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
      screen-reader order match the layout. Students needing attention (Academics tab) takes its own row,
      as tall as its list (no hollow card). */
   .erp-analytics > .erp-card--attention { grid-column: span 12; align-self: start; }
-  /* Attendance tab: trend (4) beside heatmap (8), day of week (6) beside best/worst classes (6), absentees on a full row. */
-  .erp-home .erp-analytics > .erp-card--trend { grid-column: span 4; }
-  .erp-home .erp-analytics > .erp-card--heat { grid-column: span 8; }
-  .erp-home .erp-analytics > .erp-card--weekday { grid-column: span 6; }
+  /* Attendance tab: trend on a short full row; heatmap (7) beside day of week (5); best/worst classes (6) beside
+     absentees (6). Without the classes card, absentees take the row. */
+  .erp-home .erp-analytics > .erp-card--trend { grid-column: span 12; }
+  .erp-home .erp-analytics > .erp-card--heat { grid-column: span 7; }
+  .erp-home .erp-analytics > .erp-card--weekday { grid-column: span 5; }
   .erp-home .erp-analytics > .erp-card--classes { grid-column: span 6; }
-  .erp-home .erp-analytics > .erp-card--absent { grid-column: span 12; align-self: start; }
-  .erp-home .erp-analytics--no-classes > .erp-card--weekday { grid-column: span 12; }
+  .erp-home .erp-analytics > .erp-card--absent { grid-column: span 6; align-self: start; }
+  .erp-home .erp-analytics--no-classes > .erp-card--absent { grid-column: span 12; }
   /* By class gets a full row so every class column fits. Then Daily attendance (8) beside the heatmap (4),
      and marks by subject (7) beside score bands (5). */
   .erp-analytics > .erp-card--subjects { grid-column: span 7; }

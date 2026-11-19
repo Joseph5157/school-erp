@@ -393,7 +393,11 @@ class HomeTabsTests(MarksFixture, TestCase):
     def test_attendance_card_css_is_pinned(self):
         css = Path(settings.BASE_DIR, "static/css/erp.css").read_text(encoding="utf-8")
         for rule in ('.erp-seg-link[aria-current="page"]', ".erp-trend-figure",
-                     ".erp-home .erp-analytics > .erp-card--absent { grid-column: span 12;"):
+                     ".erp-home .erp-analytics > .erp-card--trend { grid-column: span 12; }",
+                     ".erp-home .erp-analytics > .erp-card--heat { grid-column: span 7; }",
+                     ".erp-home .erp-analytics > .erp-card--weekday { grid-column: span 5; }",
+                     ".erp-home .erp-analytics > .erp-card--absent { grid-column: span 6;",
+                     ".erp-home .erp-analytics--no-classes > .erp-card--absent { grid-column: span 12; }"):
             self.assertIn(rule, css)
 
 
