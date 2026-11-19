@@ -98,14 +98,14 @@ class ClassExtremesTests(TestCase):
 
 class LowAttendanceTests(MarksFixture, TestCase):  # term_b = 2026-07-01..09-30
     def test_below_75_this_term_lowest_first(self):
-        for d, s2 in zip((1, 2, 3, 6, 7, 8), (A, A, A, A, P, P)):
+        for d, s2 in zip((1, 2, 3, 6, 7, 8), (A, A, A, A, P, P), strict=True):
             self.day(datetime.date(2026, 7, d), {self.s1: P, self.s2: s2})
         result = analytics.low_attendance_students(self.term_b, TODAY)
         self.assertEqual([(r["name"], r["percentage"]) for r in result["rows"]], [("Meena Das", 33.3)])
         self.assertEqual(result["total"], 1)
 
     def test_exactly_75_is_not_listed(self):
-        for d, s2 in zip((1, 2, 3, 6, 7, 8, 9, 10), (A, A, P, P, P, P, P, P)):
+        for d, s2 in zip((1, 2, 3, 6, 7, 8, 9, 10), (A, A, P, P, P, P, P, P), strict=True):
             self.day(datetime.date(2026, 7, d), {self.s1: P, self.s2: s2})
         self.assertEqual(analytics.low_attendance_students(self.term_b, TODAY)["rows"], [])
 
