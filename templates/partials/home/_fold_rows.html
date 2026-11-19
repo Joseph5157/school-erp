@@ -1,0 +1,12 @@
+{# Rows list: the first five show, the rest fold. Takes `rows`, `row_template` (one <li>, given `r`) and `noun` (plural, for the summary). #}
+<ul class="erp-home-list">
+    {% for r in rows|slice:":5" %}{% include row_template with r=r only %}{% endfor %}
+</ul>
+{% if rows|length > 5 %}
+<details class="erp-class-more erp-attention-more">
+    <summary>Show all {{ rows|length }} {{ noun }}</summary>
+    <ul class="erp-home-list">
+        {% for r in rows|slice:"5:" %}{% include row_template with r=r only %}{% endfor %}
+    </ul>
+</details>
+{% endif %}

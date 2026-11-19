@@ -101,8 +101,11 @@ def register_compliance(
     """Registers submitted after the cut-off today, and ones still missing once it has passed."""
     local_now = timezone.localtime(now)
     before_cutoff = local_now.time() <= cutoff
-    result = {"late": [], "missing": [], "before_cutoff": before_cutoff}
-    if not reports.expected_registers(today, today):
+    expected = reports.expected_registers(today, today)
+    result = {
+        "late": [], "missing": [], "before_cutoff": before_cutoff, "school_day": bool(expected),
+    }
+    if not expected:
         return result
     teachers = _class_teachers(today)
     can = (can_view_registers, can_create_registers)
@@ -132,7 +135,12 @@ def overdue_marks(today, days=15, *, can_open=False):
     """DRAFT assessments left open for more than `days` days, oldest first."""
     cutoff = today - datetime.timedelta(days=days)
     assessments = list(
-        Assessment.objects.filter(status=Assessment.Status.DRAFT, assessment_date__lt=cutoff)
+        Assessment.objects.filter(
+            status=Assessment.Status.DRAFT,
+            assessment_date__lt=cutoff,
+            term__academic_year__start_date__lte=today,
+            term__academic_year__end_date__gte=today,
+        )
         .select_related("section__class_grade", "offering__subject", "offering__academic_year")
         .order_by("assessment_date", "pk")
     )
@@ -219,7 +227,10 @@ def week_birthdays(today, *, can_see_names=False):
     ).annotate(
         class_name=Subquery(active.values("class_grade__name")[:1]),
         class_order=Subquery(active.values("class_grade__display_order")[:1]),
-    ).values("pk", "full_name", "date_of_birth", "class_name", "class_order")
+    ).values(
+        "pk", "date_of_birth", "class_name", "class_order",
+        *(("full_name",) if can_see_names else ()),
+    ).order_by("pk")  # sorted in Python below; the model's default order would read full_name
     found = []
     for student in students:
         on = _next_birthday(student["date_of_birth"], today)

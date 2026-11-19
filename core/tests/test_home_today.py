@@ -161,6 +161,12 @@ class AttendanceTodayTests(TodayDataFixture, TestCase):
 class RegisterComplianceTests(TodayDataFixture, TestCase):
     CUTOFF = datetime.time(10, 0)
 
+    def test_non_school_day_is_flagged_and_school_day_is_not(self):
+        sat = home_today.register_compliance(SATURDAY, at(9, 0, SATURDAY), self.CUTOFF)
+        self.assertFalse(sat["school_day"])
+        tue = home_today.register_compliance(TODAY, at(9, 0), self.CUTOFF)
+        self.assertTrue(tue["school_day"])
+
     def test_register_submitted_after_cutoff_is_late(self):
         register = self.day(TODAY, {self.s1: P, self.s2: A})
         self.submit_at(register, at(10, 20))
@@ -235,6 +241,24 @@ class OverdueMarksTests(TodayDataFixture, TestCase):
         linked = home_today.overdue_marks(TODAY, can_open=True)
         self.assertEqual(linked[0]["url"], f"/assessments/{late.pk}/")
         self.assertEqual(rows[0]["teacher_name"], "")
+
+    def test_only_the_current_academic_year_is_listed(self):
+        from core.models import AcademicTerm, AcademicYear
+
+        old_year = AcademicYear.objects.create(
+            name="2025-2026", start_date=datetime.date(2025, 6, 1),
+            end_date=datetime.date(2026, 4, 30),
+        )
+        old_term = AcademicTerm.objects.create(
+            academic_year=old_year, name="Old Term", start_date=datetime.date(2025, 6, 1),
+            end_date=datetime.date(2025, 9, 30), display_order=1,
+        )
+        old = self.assessment({}, name="Old year", term=old_term, finalize=False)
+        Assessment.objects.filter(pk=old.pk).update(
+            assessment_date=TODAY - datetime.timedelta(days=30)
+        )
+        self.draft(30, name="This year")
+        self.assertEqual([r["name"] for r in home_today.overdue_marks(TODAY)], ["This year"])
 
     def test_overdue_marks_link_only_with_permission(self):
         late = self.draft(20)
@@ -360,6 +384,12 @@ class WeekBirthdaysTests(TodayDataFixture, TestCase):
         )
         result = home_today.week_birthdays(TODAY, can_see_names=True)
         self.assertEqual((result["today"], result["later"], result["count"]), ([], [], 0))
+
+    def test_names_are_not_selected_without_permission(self):
+        self.set_dob(self.s1, datetime.date(2015, 7, 14))
+        with CaptureQueriesContext(connection) as queries:
+            home_today.week_birthdays(TODAY, can_see_names=False)
+        self.assertNotIn("full_name", " ".join(q["sql"] for q in queries))
 
     def test_without_name_permission_only_the_count_is_given(self):
         self.set_dob(self.s1, datetime.date(2015, 7, 14))

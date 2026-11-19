@@ -11,7 +11,7 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from core.models import Student
-from core.tests.test_admin_overview_analytics import TODAY, A, AnalyticsFixture, P
+from core.tests.test_admin_overview_analytics import TODAY, A, MarksFixture, P
 
 URL = reverse("core:admin-overview")
 TAB_KEYS = ("today", "attendance", "academics", "parents")
@@ -33,7 +33,7 @@ def tab_links(html):
     ]
 
 
-class HomeTabsTests(AnalyticsFixture, TestCase):
+class HomeTabsTests(MarksFixture, TestCase):
     def get(self, client=None, **params):
         response = (client or self.administrator).get(URL, params)
         self.assertEqual(response.status_code, 200)
@@ -229,6 +229,24 @@ class HomeTabsTests(AnalyticsFixture, TestCase):
         self.assertContains(response, "Registers are due by 10:00.")
         self.assertNotContains(response, "Not submitted yet")
 
+    def test_non_school_day_has_no_due_by_line(self):
+        from unittest import mock
+
+        from django.utils import timezone
+
+        saturday = datetime.date(2026, 7, 18)
+        early = timezone.make_aware(datetime.datetime.combine(saturday, datetime.time(9, 0)))
+        with (
+            mock.patch("django.utils.timezone.now", return_value=early),
+            mock.patch("core.views.business_today", return_value=saturday),
+            mock.patch("core.reports.business_today", return_value=saturday),
+        ):
+            response = self.get()
+        self.assertContains(response, "No school day today.")
+        self.assertNotContains(response, "Registers are due by")
+        self.assertNotContains(response, "Everyone is on time.")
+        self.assertContains(response, "Nothing to check today.")
+
     def test_compliance_hidden_without_register_permission(self):
         response = self.get(self.viewer("no-reg", "view_school"))
         self.assertNotContains(response, "Teacher compliance")
@@ -268,6 +286,34 @@ class HomeTabsTests(AnalyticsFixture, TestCase):
         card = self.get().content.decode().split('id="att-today-title"', 1)[1].split('id="compliance-title"', 1)[0]
         self.assertEqual(card.count('class="erp-home-row"'), 5)
         self.assertNotIn("<details", card)
+
+    def _week_assessments(self, count):
+        from core.models import Assessment
+
+        for i in range(count):
+            a = self.assessment({}, name=f"Quiz {i}", finalize=False)
+            Assessment.objects.filter(pk=a.pk).update(assessment_date=TODAY)
+
+    def test_assessments_fold_after_five(self):
+        self._week_assessments(7)
+        html = self.get().content.decode()
+        card = html.split('id="assess-title"', 1)[1].split('id="bday-title"', 1)[0]
+        self.assertEqual(card.count('class="erp-home-row"'), 7)
+        self.assertEqual(card.count("<details"), 1)
+        self.assertIn("Show all 7 assessments", card)
+        self.assertEqual(card.split("<details", 1)[0].count('class="erp-home-row"'), 5)
+
+    def test_birthdays_fold_after_five(self):
+        Student.objects.filter(pk=self.s1.student_id).update(date_of_birth=datetime.date(2015, 7, 14))
+        for i in range(6):
+            self.enroll_student(f"Born Pupil {i}", self.class_grade, self.section)
+        Student.objects.update(date_of_birth=datetime.date(2015, 7, 14))
+        html = self.get().content.decode()
+        card = html.split('id="bday-title"', 1)[1]
+        self.assertGreaterEqual(card.count('class="erp-home-row"'), 6)
+        self.assertEqual(card.count("<details"), 1)
+        self.assertRegex(card, r"Show all \d+ birthdays")
+        self.assertEqual(card.split("<details", 1)[0].count('class="erp-home-row"'), 5)
 
     def test_overdue_marks_hidden_without_view_assessment(self):
         response = self.get(self.viewer("regs-only", "view_school", "view_attendanceregister"))

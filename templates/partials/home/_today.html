@@ -38,7 +38,7 @@
     {% if a.not_taken is not None and a.school_day %}
     <h3 class="erp-home-sub">Not taken yet</h3>
     {% if a.not_taken %}
-    {% include "partials/home/_register_rows.html" with rows=a.not_taken only %}
+    {% include "partials/home/_fold_rows.html" with rows=a.not_taken row_template="partials/home/_register_row.html" noun="classes" only %}
     {% else %}<p class="erp-home-empty">All registers are in.</p>{% endif %}
     {% endif %}
 </section>
@@ -48,30 +48,22 @@
     {% if c is not None %}
     {% if c.late %}
     <h3 class="erp-home-sub">Submitted after {{ t.register_cutoff|time:"H:i" }}</h3>
-    <ul class="erp-home-list">
-        {% for r in c.late %}<li class="erp-home-row">
-            <span class="erp-home-main">{{ r.class_name }} {{ r.section_name }}{% if r.teacher_name %} &middot; {{ r.teacher_name }}{% endif %}<span class="erp-home-meta">at {{ r.submitted_at|time:"H:i" }}</span></span>
-            {% if r.url %}<a class="erp-home-open" href="{{ r.url }}">Open<span class="visually-hidden"> {{ r.class_name }} {{ r.section_name }}</span></a>{% endif %}
-        </li>{% endfor %}
-    </ul>
+    {% include "partials/home/_fold_rows.html" with rows=c.late row_template="partials/home/_late_row.html" noun="registers" only %}
     {% endif %}
-    {% if c.before_cutoff %}
+    {% if c.school_day and c.before_cutoff %}
     <p class="erp-home-empty">Registers are due by {{ t.register_cutoff|time:"H:i" }}.</p>
     {% elif c.missing %}
     <h3 class="erp-home-sub">Not submitted yet</h3>
-    {% include "partials/home/_register_rows.html" with rows=c.missing only %}
+    {% include "partials/home/_fold_rows.html" with rows=c.missing row_template="partials/home/_register_row.html" noun="classes" only %}
     {% endif %}
     {% endif %}
     {% if t.overdue_marks %}
     <h3 class="erp-home-sub">Marks overdue (15+ days)</h3>
-    <ul class="erp-home-list">
-        {% for r in t.overdue_marks %}<li class="erp-home-row">
-            <span class="erp-home-main">{{ r.name }} &middot; {{ r.class_name }} {{ r.section_name }}<span class="erp-home-meta">{{ r.subject }}{% if r.teacher_name %} &middot; {{ r.teacher_name }}{% endif %} &middot; {{ r.days_late }} day{{ r.days_late|pluralize }} over</span></span>
-            {% if r.url %}<a class="erp-home-open" href="{{ r.url }}">Open<span class="visually-hidden"> {{ r.name }}</span></a>{% endif %}
-        </li>{% endfor %}
-    </ul>
+    {% include "partials/home/_fold_rows.html" with rows=t.overdue_marks row_template="partials/home/_overdue_row.html" noun="overdue marks" only %}
     {% endif %}
-    {% if not c.late and not c.missing and not t.overdue_marks and not c.before_cutoff %}<p class="erp-home-empty">Everyone is on time.</p>{% endif %}
+    {% if c is not None and c.school_day and not c.before_cutoff and not c.late and not c.missing and not t.overdue_marks %}<p class="erp-home-empty">Everyone is on time.</p>
+    {% elif c is not None and not c.school_day and not c.late and not t.overdue_marks %}<p class="erp-home-empty">Nothing to check today.</p>
+    {% elif c is None and not t.overdue_marks %}<p class="erp-home-empty">No marks are overdue.</p>{% endif %}
 </section>
 {% endif %}
 {% with w=t.assessments %}
@@ -79,9 +71,9 @@
     <h2 class="erp-section-title" id="assess-title">Assessments</h2>
     {% if w.today or w.later %}
     {% if w.today %}<h3 class="erp-home-sub">Today</h3>
-    <ul class="erp-home-list">{% for r in w.today %}{% include "partials/home/_assessment_row.html" with r=r only %}{% endfor %}</ul>{% endif %}
+    {% include "partials/home/_fold_rows.html" with rows=w.today row_template="partials/home/_assessment_row.html" noun="assessments" only %}{% endif %}
     {% if w.later %}<h3 class="erp-home-sub">Later this week</h3>
-    <ul class="erp-home-list">{% for r in w.later %}{% include "partials/home/_assessment_row.html" with r=r only %}{% endfor %}</ul>{% endif %}
+    {% include "partials/home/_fold_rows.html" with rows=w.later row_template="partials/home/_assessment_row.html" noun="assessments" only %}{% endif %}
     {% else %}<p class="erp-home-empty">No assessments this week.</p>{% endif %}
 </section>
 {% endwith %}
@@ -90,9 +82,9 @@
     <h2 class="erp-section-title" id="bday-title">Birthdays</h2>
     {% if b.today or b.later %}
     {% if b.today %}<h3 class="erp-home-sub">Today</h3>
-    <ul class="erp-home-list">{% for r in b.today %}{% include "partials/home/_birthday_row.html" with r=r only %}{% endfor %}</ul>{% endif %}
+    {% include "partials/home/_fold_rows.html" with rows=b.today row_template="partials/home/_birthday_row.html" noun="birthdays" only %}{% endif %}
     {% if b.later %}<h3 class="erp-home-sub">Later this week</h3>
-    <ul class="erp-home-list">{% for r in b.later %}{% include "partials/home/_birthday_row.html" with r=r only %}{% endfor %}</ul>{% endif %}
+    {% include "partials/home/_fold_rows.html" with rows=b.later row_template="partials/home/_birthday_row.html" noun="birthdays" only %}{% endif %}
     {% elif b.count %}<p class="erp-home-empty">{{ b.count }} birthday{{ b.count|pluralize }} this week.</p>
     {% else %}<p class="erp-home-empty">No birthdays this week.</p>{% endif %}
 </section>
