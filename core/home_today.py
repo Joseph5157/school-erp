@@ -2,17 +2,20 @@
 import datetime
 from collections import defaultdict
 
+from django.db.models import OuterRef, Subquery
 from django.urls import reverse
 from django.utils import timezone
 
 from core import analytics, charts, reports
 from core.charts import natural_key
 from core.models import (
+    AcademicEnrollment,
     Assessment,
     AssessmentTeacherAssignment,
     AttendanceRegister,
     School,
     SectionClassTeacher,
+    Student,
 )
 
 DEFAULT_REGISTER_CUTOFF = datetime.time(10, 0)
@@ -152,3 +155,82 @@ def overdue_marks(today, days=15, *, can_open=False):
             }
         )
     return rows
+
+
+def week_range(today):
+    """(today, the Sunday on or after today)."""
+    return today, today + datetime.timedelta(days=6 - today.weekday())
+
+
+def week_assessments(today, *, can_open=False):
+    """All assessments dated today (`today`) or tomorrow through Sunday (`later`)."""
+    _, sunday = week_range(today)
+    items = list(
+        Assessment.objects.filter(assessment_date__range=(today, sunday))
+        .select_related("section__class_grade", "offering__subject")
+    )
+    items.sort(key=lambda a: (a.assessment_date, _section_order(a.section), a.name, a.pk))
+    result = {"today": [], "later": []}
+    for assessment in items:
+        row = {
+            "name": assessment.name,
+            "subject": assessment.offering.subject.name,
+            "class_name": assessment.section.class_grade.name,
+            "section_name": assessment.section.name,
+            "date": assessment.assessment_date,
+            "url": reverse("core:assessment-detail", args=[assessment.pk]) if can_open else None,
+        }
+        result["today" if assessment.assessment_date == today else "later"].append(row)
+    return result
+
+
+def _birthday_in_year(dob, year):
+    try:
+        return dob.replace(year=year)
+    except ValueError:  # 29 Feb in a non-leap year
+        return datetime.date(year, 2, 28)
+
+
+def _next_birthday(dob, today):
+    on = _birthday_in_year(dob, today.year)
+    return on if on >= today else _birthday_in_year(dob, today.year + 1)
+
+
+def week_birthdays(today, *, can_see_names=False):
+    """Active students whose birthday falls from today to Sunday."""
+    _, sunday = week_range(today)
+    active = AcademicEnrollment.objects.filter(
+        student_id=OuterRef("pk"), status=AcademicEnrollment.Status.ACTIVE
+    )
+    students = Student.objects.filter(
+        status=Student.Status.ACTIVE, date_of_birth__isnull=False
+    ).annotate(
+        class_name=Subquery(active.values("class_grade__name")[:1]),
+        class_order=Subquery(active.values("class_grade__display_order")[:1]),
+    ).values("pk", "full_name", "date_of_birth", "class_name", "class_order")
+    found = []
+    for student in students:
+        on = _next_birthday(student["date_of_birth"], today)
+        if on <= sunday:
+            found.append((student, on))
+    result = {"today": [], "later": [], "count": len(found)}
+    if not can_see_names:
+        return result
+    found.sort(
+        key=lambda pair: (
+            pair[1],
+            pair[0]["class_order"] if pair[0]["class_order"] is not None else 0,
+            natural_key(pair[0]["class_name"] or ""),
+            pair[0]["full_name"],
+        )
+    )
+    for student, on in found:
+        row = {
+            "name": student["full_name"],
+            "class_name": student["class_name"] or "",
+            "date": on,
+            "age": on.year - student["date_of_birth"].year,
+            "url": reverse("core:student-detail", args=[student["pk"]]),
+        }
+        result["today" if on == today else "later"].append(row)
+    return result

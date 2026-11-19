@@ -253,3 +253,109 @@ class OverdueMarksTests(TodayDataFixture, TestCase):
         for i in range(3):
             self.draft(25 + i, name=f"More {i}")
         self.assertEqual(run(), first)
+
+
+class WeekRangeAndAssessmentsTests(TodayDataFixture, TestCase):
+    def dated(self, on, name):
+        assessment = self.assessment({}, name=name, finalize=False)
+        Assessment.objects.filter(pk=assessment.pk).update(assessment_date=on)
+        return assessment
+
+    def test_week_runs_from_today_to_sunday(self):
+        self.assertEqual(home_today.week_range(TODAY), (TODAY, datetime.date(2026, 7, 19)))
+        sunday = datetime.date(2026, 7, 19)
+        self.assertEqual(home_today.week_range(sunday), (sunday, sunday))
+
+    def test_assessments_split_today_and_later_this_week(self):
+        self.dated(TODAY, "Now")
+        later = self.dated(datetime.date(2026, 7, 16), "Thursday")
+        self.dated(datetime.date(2026, 7, 20), "Next week")
+        self.dated(datetime.date(2026, 7, 13), "Yesterday")
+        week = home_today.week_assessments(TODAY, can_open=False)
+        self.assertEqual([r["name"] for r in week["today"]], ["Now"])
+        self.assertEqual([r["name"] for r in week["later"]], ["Thursday"])
+        row = week["later"][0]
+        self.assertEqual(row["subject"], "Mathematics")
+        self.assertEqual((row["class_name"], row["section_name"]), ("Grade 1", "A"))
+        self.assertEqual(row["date"], datetime.date(2026, 7, 16))
+        self.assertIsNone(row["url"])
+        linked = home_today.week_assessments(TODAY, can_open=True)
+        self.assertEqual(linked["later"][0]["url"], f"/assessments/{later.pk}/")
+
+    def test_later_is_ordered_by_date_then_class(self):
+        self.dated(datetime.date(2026, 7, 17), "Fri")
+        self.dated(datetime.date(2026, 7, 15), "Wed")
+        names = [r["name"] for r in home_today.week_assessments(TODAY, can_open=False)["later"]]
+        self.assertEqual(names, ["Wed", "Fri"])
+
+
+class WeekBirthdaysTests(TodayDataFixture, TestCase):
+    def set_dob(self, enrollment, dob):
+        type(enrollment.student).objects.filter(pk=enrollment.student_id).update(
+            date_of_birth=dob
+        )
+
+    def test_birthday_today_and_later_this_week(self):
+        third = self.enroll_student("Third Kid", self.class_grade, self.section)
+        self.set_dob(self.s1, datetime.date(2015, 7, 14))
+        self.set_dob(self.s2, datetime.date(2016, 7, 17))
+        self.set_dob(third, datetime.date(2016, 7, 21))
+        result = home_today.week_birthdays(TODAY, can_see_names=True)
+        self.assertEqual(result["count"], 2)
+        self.assertEqual(len(result["today"]), 1)
+        today_row = result["today"][0]
+        self.assertEqual(today_row["age"], 11)
+        self.assertEqual(today_row["date"], TODAY)
+        self.assertEqual(today_row["class_name"], "Grade 1")
+        self.assertEqual(today_row["url"], f"/students/{self.s1.student_id}/")
+        self.assertEqual(len(result["later"]), 1)
+        self.assertEqual(result["later"][0]["age"], 10)
+        self.assertEqual(result["later"][0]["date"], datetime.date(2026, 7, 17))
+
+    def test_29_feb_birthday_shows_on_28_feb_in_a_non_leap_year(self):
+        self.set_dob(self.s1, datetime.date(2016, 2, 29))
+        today = datetime.date(2027, 2, 28)
+        result = home_today.week_birthdays(today, can_see_names=True)
+        self.assertEqual(len(result["today"]), 1)
+        self.assertEqual(result["today"][0]["date"], today)
+        self.assertEqual(result["today"][0]["age"], 11)
+
+    def test_week_crossing_new_year_finds_january_birthdays(self):
+        self.set_dob(self.s1, datetime.date(2017, 1, 2))
+        result = home_today.week_birthdays(datetime.date(2026, 12, 30), can_see_names=True)
+        self.assertEqual(result["today"], [])
+        self.assertEqual(len(result["later"]), 1)
+        self.assertEqual(result["later"][0]["date"], datetime.date(2027, 1, 2))
+        self.assertEqual(result["later"][0]["age"], 10)
+
+    def test_inactive_students_and_missing_dob_are_left_out(self):
+        self.set_dob(self.s1, datetime.date(2015, 7, 14))
+        type(self.s1.student).objects.filter(pk=self.s1.student_id).update(
+            status=type(self.s1.student).Status.INACTIVE
+        )
+        result = home_today.week_birthdays(TODAY, can_see_names=True)
+        self.assertEqual((result["today"], result["later"], result["count"]), ([], [], 0))
+
+    def test_without_name_permission_only_the_count_is_given(self):
+        self.set_dob(self.s1, datetime.date(2015, 7, 14))
+        self.set_dob(self.s2, datetime.date(2016, 7, 17))
+        result = home_today.week_birthdays(TODAY, can_see_names=False)
+        self.assertEqual((result["today"], result["later"], result["count"]), ([], [], 2))
+
+    def test_birthdays_query_count_is_constant(self):
+        self.set_dob(self.s1, datetime.date(2015, 7, 14))
+        self.set_dob(self.s2, datetime.date(2016, 7, 15))
+
+        def run():
+            with CaptureQueriesContext(connection) as ctx:
+                result = home_today.week_birthdays(TODAY, can_see_names=True)
+            return len(ctx), result["count"]
+
+        first, count = run()
+        self.assertEqual(count, 2)
+        for i in range(3):
+            extra = self.enroll_student(f"Extra {i}", self.class_grade, self.section)
+            self.set_dob(extra, datetime.date(2016, 7, 16))
+        second, count = run()
+        self.assertEqual(count, 5)
+        self.assertEqual(second, first)
