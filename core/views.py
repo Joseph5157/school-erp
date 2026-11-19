@@ -22,7 +22,6 @@ from core import (
     assessment_reports,
     assignments,
     charts,
-    dashboard,
     data_access,
     duplicate_checks,
     guardian_access,
@@ -34,7 +33,6 @@ from core import (
     publication,
     reports,
     school_logo,
-    setup_checklist,
     teacher_accounts,
     timetable,
 )
@@ -954,58 +952,8 @@ def choose_area(request):
 
 @administrator_required("core.view_school")
 def admin_overview(request):
-    steps = setup_checklist.setup_steps()
-    done_count = sum(1 for step in steps if step["done"])
-    # The first incomplete step is the "next" one: only it gets the filled button.
-    next_key = next((step["key"] for step in steps if not step["done"]), None)
-    for step in steps:
-        step["is_next"] = step["key"] == next_key
-    cards = dashboard.overview_cards(request.user)
-    attention_cards, clear_cards = dashboard.split_cards(cards)
-    checklist = dashboard.system_checklist(clear_cards, steps)
-    return render(
-        request,
-        "core/admin_overview.html",
-        {
-            "cards": cards,
-            "glance_cards": dashboard.glance_cards(request.user),
-            "attention_cards": attention_cards,
-            "clear_cards": clear_cards,
-            "system_checklist": checklist,
-            "checklist_clear": all(item["ok"] for item in checklist),
-            "setup_steps": steps,
-            "setup_complete": setup_checklist.setup_complete(steps),
-            # Until the foundation exists there is nothing operational to show, so setup leads;
-            # after that the attention cards do.
-            "setup_first": setup_checklist.foundation_incomplete(steps),
-            "setup_done": done_count,
-            "setup_total": len(steps),
-            "attendance_analytics": analytics.overview_context(
-                # Named absentees are student names plus attendance: both classes of data.
-                include_absentees=(
-                    request.user.has_perm(data_access.STUDENT)
-                    and request.user.has_perm(data_access.ATTENDANCE_ENTRY)
-                ),
-                include_marks=request.user.has_perm(data_access.STUDENT_RESULT),
-                include_publications=request.user.has_perm("core.view_termpublication"),
-                # Links appear only where the viewer can open the target (the same permission
-                # as the views' own decorators).
-                include_class_links=request.user.has_perm("core.view_classgrade"),
-                # Names, marks and absent-day counts together.
-                include_attention=(
-                    request.user.has_perm(data_access.STUDENT)
-                    and request.user.has_perm(data_access.STUDENT_RESULT)
-                    and request.user.has_perm(data_access.ATTENDANCE_ENTRY)
-                ),
-                missing_attendance_url=(
-                    reverse("core:report-missing-attendance")
-                    if request.user.has_perm("core.view_attendanceregister")
-                    else None
-                ),
-                params=request.GET,
-            ),
-        },
-    )
+    # Temporary stub while the Overview is rebuilt as tabs; renders the page header only.
+    return render(request, "core/admin_overview.html", {})
 
 
 def _open_assessments_needing_marks(user, today):

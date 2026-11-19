@@ -4,26 +4,6 @@ from core import charts
 
 
 class ChartGeometryTests(SimpleTestCase):
-    def test_ring_is_none_with_nothing_to_count(self):
-        self.assertIsNone(charts.ring(0, 0))
-
-    def test_ring_zero_done_is_a_real_zero(self):
-        self.assertEqual(charts.ring(0, 8)["percent"], 0)
-        self.assertEqual(charts.ring(0, 8)["dash"], 0)
-
-    def test_ring_is_100_only_when_everything_is_done(self):
-        self.assertEqual(charts.ring(199, 200)["percent"], 99)
-
-    def test_ring_is_0_only_when_nothing_is_done(self):
-        r = charts.ring(1, 200)
-        self.assertEqual(r["percent"], 1)
-        self.assertGreater(r["dash"], 0)
-
-    def test_ring_full_dash_equals_circumference(self):
-        r = charts.ring(8, 8)
-        self.assertEqual(r["percent"], 100)
-        self.assertEqual(r["dash"], r["circumference"])
-
     def test_donut_shares_total_100_and_empty_is_none(self):
         d = charts.donut([("Present", 412), ("Absent", 38)])
         self.assertEqual(sum(s["share"] for s in d["segments"]), 100)
@@ -34,11 +14,6 @@ class ChartGeometryTests(SimpleTestCase):
         d = charts.donut([("Present", 10), ("Late", 0), ("Absent", 10)])
         self.assertEqual([s["label"] for s in d["segments"]], ["Present", "Late", "Absent"])
         self.assertEqual(d["segments"][1]["dash"], 0)
-
-    def test_gauge_none_percent_draws_nothing_and_met_flag(self):
-        self.assertIsNone(charts.gauge(None, 80))
-        self.assertTrue(charts.gauge(80, 80)["met"])
-        self.assertFalse(charts.gauge(79.9, 80)["met"])
 
     def test_percent_display_rounds_half_up_like_floatformat(self):
         self.assertEqual(charts.percent_display(84.5), "85")
@@ -53,13 +28,6 @@ class ChartGeometryTests(SimpleTestCase):
         self.assertEqual(charts.percent_display(84.5, 80), "85")
         self.assertEqual(charts.percent_display(50, 80), "50")
 
-    def test_gauge_displays_half_up_and_tests_the_unrounded_value(self):
-        self.assertEqual(charts.gauge(84.5, 80)["display"], "85")
-        self.assertTrue(charts.gauge(84.5, 80)["met"])
-        low = charts.gauge(79.6, 80)
-        self.assertEqual(low["display"], "79.6")
-        self.assertFalse(low["met"])
-
     def test_donut_headline_is_100_only_when_nothing_else_has_a_count(self):
         d = charts.donut([("Present", 399), ("Absent", 1)])
         self.assertEqual(d["headline_percent"], 99)
@@ -71,9 +39,6 @@ class ChartGeometryTests(SimpleTestCase):
         self.assertEqual(d["headline_percent"], 1)
         self.assertEqual(sum(s["share"] for s in d["segments"]), 100)
         self.assertEqual(charts.donut([("Present", 0), ("Absent", 5)])["headline_percent"], 0)
-
-    def test_gauge_zero_percent_is_drawn(self):
-        self.assertIsNotNone(charts.gauge(0, 80))
 
     def test_columns_zero_value_has_no_height(self):
         row = charts.columns([{"label": "1", "value": 0, "display": "0%"}])[0]

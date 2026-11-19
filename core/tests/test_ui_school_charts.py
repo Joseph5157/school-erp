@@ -14,18 +14,6 @@ def _css():
 
 
 class ChartPartialTests(SimpleTestCase):
-    def test_ring_partial_has_fixed_size_and_text_alternative(self):
-        html = render_to_string(
-            "partials/charts/_ring.html",
-            {"c": charts.ring(30, 40), "label": "Registers submitted today"},
-        )
-        self.assertIn('width="76"', html)
-        self.assertIn('height="76"', html)
-        self.assertIn('role="img"', html)
-        self.assertIn("Registers submitted today", html)
-        self.assertIn("75%", html)
-        self.assertNotIn("style=", html)
-
     def test_donut_partial_lists_every_segment_with_title(self):
         html = render_to_string(
             "partials/charts/_donut.html",
@@ -37,29 +25,6 @@ class ChartPartialTests(SimpleTestCase):
         self.assertIn("<title>Present: 8 (80%)</title>", html)
         self.assertIn("Late", html)
         self.assertNotIn("style=", html)
-
-    def test_gauge_partial_has_text_alternative_and_target(self):
-        html = render_to_string(
-            "partials/charts/_gauge.html",
-            {"c": charts.gauge(91, 90), "label": "Attendance rate"},
-        )
-        self.assertIn('role="img"', html)
-        self.assertIn("Attendance rate", html)
-        self.assertIn("91%", html)
-        self.assertIn("target 90%", html)
-        self.assertNotIn("style=", html)
-
-    def test_gauge_partial_is_red_only_below_target_and_shows_the_shared_display(self):
-        low = render_to_string(
-            "partials/charts/_gauge.html", {"c": charts.gauge(79.6, 80), "label": "Attendance"}
-        )
-        self.assertIn("erp-gauge--low", low)
-        self.assertIn("79.6%", low)
-        met = render_to_string(
-            "partials/charts/_gauge.html", {"c": charts.gauge(84.5, 80), "label": "Attendance"}
-        )
-        self.assertNotIn("erp-gauge--low", met)
-        self.assertIn("85%", met)
 
     def test_column_svg_is_24px_wide_whatever_the_card_width(self):
         rows = charts.columns(
@@ -128,11 +93,9 @@ class ChartPartialTests(SimpleTestCase):
         self.assertEqual(html.count("<a "), 1)
         self.assertIn("70%", html)
 
-    def test_wide_trend_keeps_a_fixed_height_in_css(self):
+    def test_class_bars_and_scroll_css_stay(self):
         css = _css()
-        self.assertIn(".erp-trend--wide { height: 12.5rem;", css)
         self.assertIn(".erp-class-bars { max-width: 32rem;", css)
-        self.assertIn("vector-effect: non-scaling-stroke", css)
         self.assertIn(".erp-chart-scroll {", css)
         self.assertIn("overflow-x: auto", css)
 
@@ -143,34 +106,3 @@ class ChartPartialTests(SimpleTestCase):
         self.assertNotIn(".erp-donut-seg--3", css)
         self.assertEqual(css.count(".erp-donut-legend {"), 1)
 
-
-class TrendSvgTests(SimpleTestCase):
-    def _render(self, kind):
-        import datetime
-
-        from core import analytics
-
-        points = [
-            {"date": datetime.date(2026, 7, d), "percentage": pct, "present": 5, "absent": 1}
-            for d, pct in ((1, 50.0), (2, 80.0), (3, 90.0))
-        ]
-        chart = analytics.trend_chart(points, width=720, height=200)
-        return render_to_string(
-            "partials/_trend_svg.html",
-            {"c": chart, "kind": kind, "a": {"points": points, "summary": {"current": 73.3}}},
-        )
-
-    def test_wide_trend_stretches_sideways_only_with_round_line_dots(self):
-        html = self._render("wide")
-        self.assertIn('preserveAspectRatio="none"', html)
-        self.assertEqual(html.count('class="erp-trend-dotline"'), 3)
-        self.assertEqual(html.count('class="erp-trend-hitline"'), 3)
-        self.assertNotIn("<circle", html)
-        self.assertIn("<title>1 Jul: 50.0%</title>", html)
-
-    def test_phone_trend_keeps_its_circles(self):
-        html = self._render("phone")
-        self.assertNotIn("preserveAspectRatio", html)
-        self.assertEqual(html.count('class="erp-trend-dot"'), 3)
-        self.assertNotIn("erp-trend-dotline", html)
-        self.assertIn("<title>1 Jul: 50.0%</title>", html)

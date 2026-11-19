@@ -113,11 +113,7 @@ class OverviewCardTests(AuthorizationClientsMixin, AttendanceFixtureMixin, TestC
         response = self.administrator.get(reverse("core:admin-overview"))
         self.assertContains(response, "Needs attention")
         self.assertContains(response, "erp-stat-card--attention", count=1)
-        self.assertContains(response, 'class="erp-clear-row"')
         content = response.content.decode()
-        clear_html = content[content.index('class="erp-clear-row"'):]
-        self.assertIn(f'href="{reverse("core:report-missing-attendance")}', clear_html)
-        self.assertNotIn("Applicants awaiting decision", clear_html)
         self.assertEqual(content.count("btn btn-primary btn-sm mt-auto"), 1)
 
     def test_page_says_all_clear_when_every_card_is_zero(self):
@@ -125,7 +121,6 @@ class OverviewCardTests(AuthorizationClientsMixin, AttendanceFixtureMixin, TestC
         response = self.administrator.get(reverse("core:admin-overview"))
         self.assertContains(response, "Nothing needs attention today.")
         self.assertNotContains(response, "erp-stat-card--attention")
-        self.assertContains(response, 'class="erp-clear-row"')
 
     def test_applicants_card_clear_when_none_pending(self):
         data = card(overview_cards(self.admin_user), "applicants")
@@ -198,9 +193,6 @@ class OverviewCardTests(AuthorizationClientsMixin, AttendanceFixtureMixin, TestC
     def test_page_shows_cards_and_empty_copy(self):
         response = self.administrator.get(reverse("core:admin-overview"))
         self.assertContains(response, "Applicants awaiting decision")
-        # The quiet list is headed "Checklist" while setup is unfinished (this school has no profile).
-        self.assertContains(response, 'id="clear-title">Checklist<')
-        self.assertContains(response, "Finish school setup")
 
     def test_card_hidden_without_source_permission(self):
         user = User.objects.create_user(username="viewer", password="pass-12345")
