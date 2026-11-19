@@ -20,6 +20,10 @@ from core.models import (
     grade_from_bands,
 )
 
+# A drop in a student's average of this many points since the previous term puts them at risk.
+FALLING_POINTS = 10
+IMPROVER_LIMIT = 5
+
 
 def work_term(today):
     """The term being worked on: the running one, else the latest one that has started."""
@@ -254,3 +258,38 @@ def subject_changes(term, previous):
             }
         )
     return rows
+
+
+def top_improvers(changes, limit=IMPROVER_LIMIT):
+    """The students whose average rose most, from `marks_analytics.student_average_changes`.
+
+    Only a rise counts. Active students with an active enrollment, shown in the class of that
+    enrollment; largest rise first, then name. One query for names and classes.
+    """
+    risers = {sid: c for sid, c in changes.items() if c["change"] > 0}
+    current = {
+        e.student_id: e
+        for e in AcademicEnrollment.objects.filter(
+            student_id__in=risers,
+            status=AcademicEnrollment.Status.ACTIVE,
+            student__status=Student.Status.ACTIVE,
+        )
+        .select_related("student", "class_grade")
+        .order_by("start_date", "pk")
+    }
+    rows = [
+        {
+            "student_id": sid,
+            "name": e.student.full_name,
+            "class_name": e.class_grade.name,
+            "change": risers[sid]["change"],
+            "display": (
+                f"{change_words(risers[sid]['change'])} "
+                f"({charts.percent_display(risers[sid]['last'])}% \u2192 "
+                f"{charts.percent_display(risers[sid]['this'])}%)"
+            ),
+        }
+        for sid, e in current.items()
+    ]
+    rows.sort(key=lambda r: (-r["change"], r["name"].lower(), r["student_id"]))
+    return rows[:limit]

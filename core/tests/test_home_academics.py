@@ -289,3 +289,163 @@ class SplitExtremesTests(TestCase):
         self.assertEqual(
             analytics.split_extremes([1, 2, 3, 4, 5, 6, 7]), ([7, 6, 5], [1, 2, 3])
         )
+
+
+class TwoTermFixture(MarksFixture):
+    def two_terms(self, a_scores, b_scores):
+        """Two assessments per term per student: `{enrollment: (score, score)}` out of 20."""
+        for term, scores in ((self.term_a, a_scores), (self.term_b, b_scores)):
+            for i in range(2):
+                self.assessment({e: s[i] for e, s in scores.items()}, term=term, name=f"T{i}")
+
+
+class AverageChangeTests(TwoTermFixture, TestCase):
+    def test_change_needs_two_marked_results_in_each_term(self):
+        self.two_terms(
+            {self.s1: (10, 10), self.s2: (10, 10)}, {self.s1: (16, 16), self.s2: (16, None)}
+        )
+        changes = marks_analytics.student_average_changes(self.term_b, self.term_a)
+        self.assertEqual(changes[self.s1.student_id], {"this": 80.0, "last": 50.0, "change": 30.0})
+        self.assertNotIn(self.s2.student_id, changes)  # one marked result in term_b
+
+    def test_no_previous_term_gives_no_changes(self):
+        self.assertEqual(marks_analytics.student_average_changes(self.term_b, None), {})
+
+    def test_draft_results_do_not_count(self):
+        self.two_terms({self.s1: (10, 10)}, {self.s1: (16, 16)})
+        self.assessment({self.s1: 0}, term=self.term_b, name="Draft", finalize=False)
+        changes = marks_analytics.student_average_changes(self.term_b, self.term_a)
+        self.assertEqual(changes[self.s1.student_id]["this"], 80.0)
+
+    def test_two_queries(self):
+        self.two_terms({self.s1: (10, 10)}, {self.s1: (16, 16)})
+        with CaptureQueriesContext(connection) as ctx:
+            marks_analytics.student_average_changes(self.term_b, self.term_a)
+        self.assertEqual(len(ctx), 2)
+
+
+class AtRiskTests(TwoTermFixture, TestCase):
+    def test_falling_student_is_at_risk_without_any_below_pass_subject(self):
+        self.assessment({self.s1: 15})  # term_b has results, no pass mark
+        result = marks_analytics.students_needing_attention(
+            self.term_b, {}, falling={self.s1.student_id: -12.0}, falling_label="Term 1",
+            period_label="this month",
+        )
+        self.assertEqual(result["rows"][0]["reason"], "Average down 12 points since Term 1")
+        self.assertEqual(result["total"], 1)
+
+    def test_falling_is_added_to_a_below_pass_reason(self):
+        science = Subject.objects.create(name="Science")
+        self.assessment({self.s1: 5}, pass_mark=10)
+        self.assessment({self.s1: 5}, pass_mark=10, subject=science, name="Sci")
+        result = marks_analytics.students_needing_attention(
+            self.term_b, {}, falling={self.s1.student_id: -12.0}, falling_label="Term 1",
+            period_label="this month",
+        )
+        self.assertEqual(
+            result["rows"][0]["reason"],
+            "Below pass in Mathematics and Science (Term 2); average down 12 points since Term 1",
+        )
+
+    def test_falling_with_one_below_pass_subject_and_absence_joins_all_parts(self):
+        self.assessment({self.s1: 5}, pass_mark=10)
+        result = marks_analytics.students_needing_attention(
+            self.term_b, {self.s1.student_id: 3}, falling={self.s1.student_id: -1.0},
+            falling_label="Term 1", period_label="this month",
+        )
+        self.assertEqual(
+            result["rows"][0]["reason"],
+            "Below pass in Mathematics (Term 2); absent 3 days (this month); "
+            "average down 1 point since Term 1",
+        )
+
+    def test_absence_adds_no_absent_part_for_a_falling_only_student(self):
+        self.assessment({self.s1: 15})
+        result = marks_analytics.students_needing_attention(
+            self.term_b, {self.s1.student_id: 5}, falling={self.s1.student_id: -10.0},
+            falling_label="Term 1", period_label="this month",
+        )
+        self.assertEqual(result["rows"][0]["reason"], "Average down 10 points since Term 1")
+
+    def test_defaults_are_unchanged(self):
+        self.assessment({self.s1: 5, self.s2: 15}, pass_mark=10)
+        result = marks_analytics.students_needing_attention(
+            self.term_b, {self.s1.student_id: 3}, period_label="this month"
+        )
+        self.assertEqual(
+            [r["reason"] for r in result["rows"]],
+            ["Below pass in Mathematics (Term 2); absent 3 days (this month)"],
+        )
+
+    def test_inactive_falling_student_is_not_listed(self):
+        self.assessment({self.s1: 15, self.s2: 15})
+        Student.objects.filter(pk=self.s2.student_id).update(status=Student.Status.INACTIVE)
+        result = marks_analytics.students_needing_attention(
+            self.term_b, {},
+            falling={self.s1.student_id: -15.0, self.s2.student_id: -20.0},
+            falling_label="Term 1", period_label="this month",
+        )
+        self.assertEqual([r["student_id"] for r in result["rows"]], [self.s1.student_id])
+
+    def test_falling_students_keep_class_then_name_order(self):
+        grade, section, ravi = self.second_class()
+        self.assessment({self.s1: 15, self.s2: 15})
+        self.assessment({ravi: 15}, class_grade=grade, section=section, name="G2")
+        result = marks_analytics.students_needing_attention(
+            self.term_b, {},
+            falling={ravi.student_id: -30.0, self.s1.student_id: -10.0, self.s2.student_id: -11.0},
+            falling_label="Term 1", period_label="this month",
+        )
+        self.assertEqual(
+            [r["class_name"] for r in result["rows"]], ["Grade 1", "Grade 1", "Grade 2"]
+        )
+        names = [r["name"] for r in result["rows"][:2]]
+        self.assertEqual(names, sorted(names, key=str.lower))
+
+
+class ImproverTests(TwoTermFixture, TestCase):
+    def test_top_improvers_largest_rise_first_and_only_rises(self):
+        changes = {
+            self.s1.student_id: {"this": 73.0, "last": 61.0, "change": 12.0},
+            self.s2.student_id: {"this": 50.0, "last": 55.0, "change": -5.0},
+        }
+        rows = home_academics.top_improvers(changes)
+        self.assertEqual([r["student_id"] for r in rows], [self.s1.student_id])
+        self.assertEqual(rows[0]["display"], "Up 12 points (61% \u2192 73%)")
+        self.assertEqual(rows[0]["class_name"], "Grade 1")
+
+    def test_zero_change_is_not_an_improver(self):
+        changes = {self.s1.student_id: {"this": 50.0, "last": 50.0, "change": 0.0}}
+        self.assertEqual(home_academics.top_improvers(changes), [])
+
+    def test_order_is_by_rise_then_name_not_creation(self):
+        zed = self.enroll_student("Zed Zane", self.class_grade, self.section)
+        amy = self.enroll_student("Amy Ames", self.class_grade, self.section)
+        changes = {
+            self.s1.student_id: {"this": 60.0, "last": 50.0, "change": 10.0},
+            zed.student_id: {"this": 70.0, "last": 50.0, "change": 20.0},
+            amy.student_id: {"this": 70.0, "last": 50.0, "change": 20.0},
+        }
+        rows = home_academics.top_improvers(changes)
+        self.assertEqual(
+            [r["student_id"] for r in rows], [amy.student_id, zed.student_id, self.s1.student_id]
+        )
+
+    def test_improvers_are_capped_at_five_and_skip_inactive_students(self):
+        changes = {}
+        for i in range(7):
+            e = self.enroll_student(f"Student {i}", self.class_grade, self.section)
+            changes[e.student_id] = {"this": 60.0 + i, "last": 50.0, "change": 10.0 + i}
+        inactive = self.enroll_student("Gone Away", self.class_grade, self.section)
+        Student.objects.filter(pk=inactive.student_id).update(status=Student.Status.INACTIVE)
+        changes[inactive.student_id] = {"this": 99.0, "last": 50.0, "change": 49.0}
+        rows = home_academics.top_improvers(changes)
+        self.assertEqual(len(rows), 5)
+        self.assertNotIn(inactive.student_id, [r["student_id"] for r in rows])
+        self.assertEqual([r["change"] for r in rows], [16.0, 15.0, 14.0, 13.0, 12.0])
+
+    def test_one_query(self):
+        changes = {self.s1.student_id: {"this": 60.0, "last": 50.0, "change": 10.0}}
+        with CaptureQueriesContext(connection) as ctx:
+            home_academics.top_improvers(changes)
+        self.assertEqual(len(ctx), 1)

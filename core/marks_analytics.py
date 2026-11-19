@@ -36,6 +36,9 @@ from core.models import (
 # reveal one student's marks.
 MIN_COMPARISON_STUDENTS = 5
 
+# A student's term average needs this many marked results before it is compared with another term.
+MIN_TERM_RESULTS = 2
+
 _PERCENT = ExpressionWrapper(
     F("score") * 100 / F("assessment__maximum_marks"),
     output_field=DecimalField(max_digits=9, decimal_places=4),
@@ -338,6 +341,40 @@ def student_progress_context(student, term_id, scope=None, include_comparison=Tr
     return context
 
 
+def student_average_changes(term, previous, min_results=MIN_TERM_RESULTS):
+    """Each student's average percent in `term` and `previous`, and the change in points.
+
+    `{student_id: {"this", "last", "change"}}` for students with at least `min_results` marked
+    results in both terms; `{}` when there is no previous term. Two grouped queries.
+    """
+    if previous is None:
+        return {}
+
+    def averages(t):
+        rows = (
+            marked_results(t)
+            .order_by()
+            .values("academic_enrollment__student_id")
+            .annotate(average=Avg("percent"), results=Count("id"))
+        )
+        return {
+            r["academic_enrollment__student_id"]: round(float(r["average"]), 1)
+            for r in rows
+            if r["results"] >= min_results
+        }
+
+    last = averages(previous)
+    changes = {}
+    for student_id, this in averages(term).items():
+        if student_id in last:
+            changes[student_id] = {
+                "this": this,
+                "last": last[student_id],
+                "change": round(this - last[student_id], 1),
+            }
+    return changes
+
+
 def _join_names(names):
     """"A", "A and B", "A, B and C"."""
     if len(names) < 2:
@@ -346,7 +383,8 @@ def _join_names(names):
 
 
 def students_needing_attention(
-    term, absent_days, threshold=3, limit=10, *, period_label, term_label=None
+    term, absent_days, threshold=3, limit=10, *, period_label, term_label=None,
+    falling=None, falling_label=None,
 ):
     """Active students below pass in 2+ subjects, or in 1 subject and absent `threshold`+ days.
 
@@ -356,6 +394,8 @@ def students_needing_attention(
     name, never by performance. `rows` is the first `limit` of them and `rest` the others, in the
     same order, so a long list can be folded without hiding the senior classes; `total` counts both.
     `term_label` names the term in each reason (default: its name).
+    `falling` ({student_id: change in points}, each -10 or worse) also flags a student, with or
+    without a below-pass subject, and adds "average down N points since `falling_label`".
     `has_pass_marks` says whether any finalized test in the term has a pass mark, so an empty
     list can be told apart from "nobody could be checked".
     """
@@ -373,11 +413,14 @@ def students_needing_attention(
     for row in grouped:
         if _is_below(float(row["sat"]), float(row["pass_percent"])):
             below.setdefault(row["academic_enrollment__student_id"], []).append(row["subject_name"])
+    falling = falling or {}
     flagged = {
         student_id: sorted(subjects)
         for student_id, subjects in below.items()
         if len(subjects) >= 2 or absent_days.get(student_id, 0) >= threshold
     }
+    for student_id in falling:
+        flagged.setdefault(student_id, sorted(below.get(student_id, [])))
 
     # The class shown is the student's current ACTIVE enrollment; no active enrollment, no row.
     current = {
@@ -395,10 +438,18 @@ def students_needing_attention(
         enrollment = current.get(student_id)
         if enrollment is None:
             continue
-        days = absent_days.get(student_id) or None
-        reason = f"Below pass in {_join_names(subjects)} ({term_label or term.name})"
-        if days:
-            reason += f"; absent {days} day{'' if days == 1 else 's'} ({period_label})"
+        days = (absent_days.get(student_id) or None) if subjects else None
+        parts = []
+        if subjects:
+            parts.append(f"Below pass in {_join_names(subjects)} ({term_label or term.name})")
+            if days:
+                parts.append(f"absent {days} day{'' if days == 1 else 's'} ({period_label})")
+        if student_id in falling:
+            parts.append(
+                f"average down {points_text(falling[student_id])} since {falling_label}"
+            )
+        reason = "; ".join(parts)
+        reason = reason[0].upper() + reason[1:]
         rows.append(
             {
                 "student_id": student_id,
