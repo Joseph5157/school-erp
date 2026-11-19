@@ -258,7 +258,7 @@ class OverviewAnalyticsViewTests(AnalyticsFixture, TestCase):
     attendance_url = reverse("core:admin-overview") + "?tab=attendance"
 
     def test_chart_has_a_text_alternative(self):
-        self.day(datetime.date(2026, 7, 1), {self.s1: P, self.s2: P})
+        self.day(TODAY, {self.s1: P, self.s2: P})
         response = self.administrator.get(self.url)
         self.assertContains(response, 'role="img"')
         self.assertContains(response, "erp-visually-hidden-data")
@@ -617,7 +617,7 @@ class OverviewChartCardsTests(AnalyticsFixture, TestCase):
 
     def test_no_school_day_message_replaces_the_donut(self):
         sunday = datetime.date(2026, 7, 12)
-        for target in ("core.reports.business_today",):
+        for target in ("core.reports.business_today", "core.views.business_today"):
             patcher = mock.patch(target, return_value=sunday)
             patcher.start()
             self.addCleanup(patcher.stop)

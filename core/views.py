@@ -987,6 +987,7 @@ def _today_tab(user, today, *, can_see_names, can_view_registers):
     # Row links go to the register page (view) or the create page (add): each needs its own.
     can_create_registers = user.has_perm("core.add_attendanceregister")
     can_view_assessments = user.has_perm("core.view_assessment")
+    cutoff = home_today.register_cutoff()
     return {
         "cards": cards,
         "attention_cards": attention_cards,
@@ -1006,9 +1007,10 @@ def _today_tab(user, today, *, can_see_names, can_view_registers):
             can_view_registers=can_view_registers,
             can_create_registers=can_create_registers,
         ),
+        "register_cutoff": cutoff,
         "compliance": (
             home_today.register_compliance(
-                today, timezone.now(), home_today.register_cutoff(),
+                today, timezone.now(), cutoff,
                 can_view_registers=True, can_create_registers=can_create_registers,
             )
             if can_view_registers

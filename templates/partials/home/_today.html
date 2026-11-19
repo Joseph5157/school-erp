@@ -1,4 +1,4 @@
-{# Admin home, Today tab: work waiting first, then the school at a glance; setup leads only until the foundation exists. #}
+{# Admin home, Today tab: work waiting first, then the school at a glance, then today's and this week's lists; setup leads only until the foundation exists. #}
 {% with t=today %}
 {% if t.setup_first %}{% include "partials/_setup_checklist_card.html" with setup_steps=t.setup_steps setup_complete=t.setup_complete setup_done=t.setup_done setup_total=t.setup_total only %}{% endif %}
 {% if t.cards %}
@@ -21,5 +21,93 @@
         {% for card in t.glance_cards %}{% include "partials/_glance_tile.html" with card=card only %}{% endfor %}
     </div>
 </section>
+{% with a=t.attendance c=t.compliance %}
+<div class="erp-home-grid">
+<section class="erp-chart-card erp-home-card" aria-labelledby="att-today-title">
+    <h2 class="erp-section-title" id="att-today-title">Attendance today</h2>
+    {% if a.donut %}
+    {% include "partials/charts/_donut.html" with c=a.donut label="Attendance today" %}
+    <ul class="erp-donut-legend" aria-hidden="true">
+        {% for s in a.donut.segments %}<li><span class="erp-donut-key erp-donut-key--{{ s.index }}"></span>{{ s.label }} {{ s.count }}</li>{% endfor %}
+    </ul>
+    {% elif a.school_day %}
+    <p class="erp-today-none">No attendance yet.</p>
+    {% else %}
+    <p class="erp-today-none">No school day today.</p>
+    {% endif %}
+    {% if a.not_taken is not None and a.school_day %}
+    <h3 class="erp-home-sub">Not taken yet</h3>
+    {% if a.not_taken %}
+    <ul class="erp-home-list">
+        {% for r in a.not_taken %}<li class="erp-home-row">
+            <span class="erp-home-main">{{ r.class_name }} {{ r.section_name }}{% if r.teacher_name %} &middot; {{ r.teacher_name }}{% endif %}</span>
+            {% if r.url %}<a class="erp-home-open" href="{{ r.url }}">Open<span class="visually-hidden"> {{ r.class_name }} {{ r.section_name }}</span></a>{% endif %}
+        </li>{% endfor %}
+    </ul>
+    {% else %}<p class="erp-home-empty">All registers are in.</p>{% endif %}
+    {% endif %}
+</section>
+{% if c is not None or t.overdue_marks is not None %}
+<section class="erp-chart-card erp-home-card" aria-labelledby="compliance-title">
+    <h2 class="erp-section-title" id="compliance-title">Teacher compliance</h2>
+    {% if c is not None %}
+    {% if c.late %}
+    <h3 class="erp-home-sub">Submitted after {{ t.register_cutoff|time:"H:i" }}</h3>
+    <ul class="erp-home-list">
+        {% for r in c.late %}<li class="erp-home-row">
+            <span class="erp-home-main">{{ r.class_name }} {{ r.section_name }}{% if r.teacher_name %} &middot; {{ r.teacher_name }}{% endif %}<span class="erp-home-meta">at {{ r.submitted_at|time:"H:i" }}</span></span>
+            {% if r.url %}<a class="erp-home-open" href="{{ r.url }}">Open<span class="visually-hidden"> {{ r.class_name }} {{ r.section_name }}</span></a>{% endif %}
+        </li>{% endfor %}
+    </ul>
+    {% endif %}
+    {% if c.before_cutoff %}
+    <p class="erp-home-empty">Registers are due by {{ t.register_cutoff|time:"H:i" }}.</p>
+    {% elif c.missing %}
+    <h3 class="erp-home-sub">Not submitted yet</h3>
+    <ul class="erp-home-list">
+        {% for r in c.missing %}<li class="erp-home-row">
+            <span class="erp-home-main">{{ r.class_name }} {{ r.section_name }}{% if r.teacher_name %} &middot; {{ r.teacher_name }}{% endif %}</span>
+            {% if r.url %}<a class="erp-home-open" href="{{ r.url }}">Open<span class="visually-hidden"> {{ r.class_name }} {{ r.section_name }}</span></a>{% endif %}
+        </li>{% endfor %}
+    </ul>
+    {% endif %}
+    {% endif %}
+    {% if t.overdue_marks %}
+    <h3 class="erp-home-sub">Marks overdue (15+ days)</h3>
+    <ul class="erp-home-list">
+        {% for r in t.overdue_marks %}<li class="erp-home-row">
+            <span class="erp-home-main">{{ r.name }} &middot; {{ r.class_name }} {{ r.section_name }}<span class="erp-home-meta">{{ r.subject }}{% if r.teacher_name %} &middot; {{ r.teacher_name }}{% endif %} &middot; {{ r.days_late }} day{{ r.days_late|pluralize }} over</span></span>
+            {% if r.url %}<a class="erp-home-open" href="{{ r.url }}">Open<span class="visually-hidden"> {{ r.name }}</span></a>{% endif %}
+        </li>{% endfor %}
+    </ul>
+    {% endif %}
+    {% if not c.late and not c.missing and not t.overdue_marks and not c.before_cutoff %}<p class="erp-home-empty">Everyone is on time.</p>{% endif %}
+</section>
+{% endif %}
+{% with w=t.assessments %}
+<section class="erp-chart-card erp-home-card" aria-labelledby="assess-title">
+    <h2 class="erp-section-title" id="assess-title">Assessments</h2>
+    {% if w.today or w.later %}
+    {% if w.today %}<h3 class="erp-home-sub">Today</h3>
+    <ul class="erp-home-list">{% for r in w.today %}{% include "partials/home/_assessment_row.html" with r=r only %}{% endfor %}</ul>{% endif %}
+    {% if w.later %}<h3 class="erp-home-sub">Later this week</h3>
+    <ul class="erp-home-list">{% for r in w.later %}{% include "partials/home/_assessment_row.html" with r=r only %}{% endfor %}</ul>{% endif %}
+    {% else %}<p class="erp-home-empty">No assessments this week.</p>{% endif %}
+</section>
+{% endwith %}
+{% with b=t.birthdays %}
+<section class="erp-chart-card erp-home-card" aria-labelledby="bday-title">
+    <h2 class="erp-section-title" id="bday-title">Birthdays</h2>
+    {% if b.today or b.later %}
+    {% if b.today %}<h3 class="erp-home-sub">Today</h3>
+    <ul class="erp-home-list">{% for r in b.today %}{% include "partials/home/_birthday_row.html" with r=r only %}{% endfor %}</ul>{% endif %}
+    {% if b.later %}<h3 class="erp-home-sub">Later this week</h3>
+    <ul class="erp-home-list">{% for r in b.later %}{% include "partials/home/_birthday_row.html" with r=r only %}{% endfor %}</ul>{% endif %}
+    {% elif b.count %}<p class="erp-home-empty">{{ b.count }} birthday{{ b.count|pluralize }} this week.</p>
+    {% else %}<p class="erp-home-empty">No birthdays this week.</p>{% endif %}
+</section>
+{% endwith %}
+</div>
+{% endwith %}
 {% if not t.setup_first %}{% include "partials/_setup_checklist_card.html" with setup_steps=t.setup_steps setup_complete=t.setup_complete setup_done=t.setup_done setup_total=t.setup_total only %}{% endif %}
 {% endwith %}

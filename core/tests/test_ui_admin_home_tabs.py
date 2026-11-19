@@ -195,3 +195,52 @@ class HomeTabsTests(AnalyticsFixture, TestCase):
         self.assertIn('<nav class="erp-home-tabs" aria-label="Overview sections">', html)
         css = Path(settings.BASE_DIR, "static", "css", "erp.css").read_text(encoding="utf-8")
         self.assertRegex(css, r"\.erp-home-tab \{[^}]*min-height: 2\.75rem")
+
+    def test_today_cards_in_order(self):
+        html = self.get().content.decode()
+        positions = [
+            html.index(f'id="{anchor}"')
+            for anchor in (
+                "glance-title", "att-today-title", "compliance-title", "assess-title", "bday-title",
+            )
+        ]
+        self.assertEqual(positions, sorted(positions))
+
+    def test_not_taken_row_shows_teacher_and_open_link(self):
+        self.day(TODAY, {self.s1: P, self.s2: A}, submit=False)
+        response = self.get()
+        self.assertContains(response, "Not taken yet")
+        row = response.context["today"]["attendance"]["not_taken"][0]
+        self.assertContains(response, f"{row['class_name']} {row['section_name']}")
+        self.assertContains(response, f'href="{row["url"]}">Open')
+
+    def test_all_registers_in_message(self):
+        self.day(TODAY, {self.s1: P, self.s2: A})
+        self.assertContains(self.get(), "All registers are in.")
+
+    def test_before_cutoff_shows_due_by_line(self):
+        from unittest import mock
+
+        from django.utils import timezone
+
+        early = timezone.make_aware(datetime.datetime.combine(TODAY, datetime.time(9, 0)))
+        with mock.patch("django.utils.timezone.now", return_value=early):
+            response = self.get()
+        self.assertContains(response, "Registers are due by 10:00.")
+        self.assertNotContains(response, "Not submitted yet")
+
+    def test_compliance_hidden_without_register_permission(self):
+        response = self.get(self.viewer("no-reg", "view_school"))
+        self.assertNotContains(response, "Teacher compliance")
+        self.assertNotContains(response, "Not taken yet")
+
+    def test_home_card_css_is_pinned(self):
+        from pathlib import Path
+
+        from django.conf import settings
+
+        css = Path(settings.BASE_DIR, "static", "css", "erp.css").read_text(encoding="utf-8")
+        self.assertIn(".erp-home-tabs {", css)
+        self.assertIn('.erp-home-tab[aria-current="page"]', css)
+        self.assertIn(".erp-home-grid {", css)
+        self.assertRegex(css, r"@media \(min-width: 992px\) \{ \.erp-home-grid \{ grid-template-columns: repeat\(2")
