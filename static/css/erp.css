@@ -1266,6 +1266,10 @@ body.has-tabbar .erp-messages {
   .erp-actionbar .btn { flex: 0 0 auto; }
 }
 
+.erp-card {
+  background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius);
+  padding: .9rem 1rem; margin-bottom: .6rem;
+}
 .erp-card-row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; justify-content: space-between; }
 .erp-card-title { font-weight: 600; margin: 0; }
 .erp-card-meta { color: var(--erp-ink-soft); font-size: .9rem; margin: 0; }
@@ -1381,7 +1385,7 @@ a.erp-glance-tile:hover, a.erp-glance-tile:focus-visible { border-color: var(--e
 /* Admin home Today cards: one column on phones, two from 992px. Rows echo the attention-row look. */
 .erp-home-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--erp-space-4); margin-top: var(--erp-space-4); }
 @media (min-width: 992px) { .erp-home-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; } }
-.erp-card .erp-section-title { margin: 0 0 var(--erp-space-3); }
+.erp-home .erp-card .erp-section-title { margin: 0 0 var(--erp-space-3); }
 .erp-home-sub { margin: var(--erp-space-4) 0 var(--erp-space-2); font-size: var(--erp-text-sm); font-weight: 700; color: var(--erp-ink-soft); }
 .erp-home-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--erp-space-2); }
 .erp-home-row { display: flex; align-items: center; justify-content: space-between; gap: var(--erp-space-3); padding: var(--erp-space-2) var(--erp-space-3); min-height: 2.75rem; border: 1px solid var(--erp-rule); border-radius: var(--erp-radius-sm); }
@@ -1408,8 +1412,9 @@ a.erp-glance-tile:hover, a.erp-glance-tile:focus-visible { border-color: var(--e
 .erp-analytics { margin: 0; }
 .erp-today-none { margin: 0; padding: var(--erp-space-2) var(--erp-space-3); border: 1px dashed var(--erp-rule); border-radius: var(--erp-radius-sm); background: var(--erp-surface); color: var(--erp-ink-soft); font-size: var(--erp-text-sm); }
 /* One card for the whole Overview. Cards in the Today grid stack with a gap; cards inside .erp-analytics keep block flow and their own spacing. */
-.erp-card { display: flex; flex-direction: column; gap: var(--erp-space-2); min-width: 0; padding: var(--erp-space-4); background: var(--erp-surface); border: 1px solid var(--erp-rule); border-radius: var(--erp-radius); }
-.erp-analytics > .erp-card { display: block; margin-bottom: var(--erp-space-4); }
+/* Overview cards: the shared .erp-card laid out as a flex column; scoped to .erp-home so other pages keep the plain block card. */
+.erp-home .erp-card { display: flex; flex-direction: column; gap: var(--erp-space-2); min-width: 0; margin: 0; padding: var(--erp-space-4); }
+.erp-home .erp-analytics > .erp-card { display: block; margin-bottom: var(--erp-space-4); }
 .erp-analytics-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--erp-space-3); margin-bottom: var(--erp-space-3); }
 .erp-analytics-title { font-size: 1rem; font-weight: 600; margin: 0; }
 .erp-analytics-sub { margin: var(--erp-space-1) 0 0; color: var(--erp-ink-soft); font-size: var(--erp-text-sm); }
@@ -1627,7 +1632,7 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
   .erp-analytics { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--erp-space-4); margin-top: var(--erp-space-5); }
   .erp-analytics > * { grid-column: 1 / -1; margin: 0; }
   .erp-analytics .erp-chart-card { margin: 0; }
-  .erp-analytics > .erp-card { grid-column: span 4; margin: 0; }
+  .erp-home .erp-analytics > .erp-card { grid-column: span 4; margin: 0; }
   /* Cards are never reordered here: desktop shows them in the page (phone) order, so keyboard and
      screen-reader order match the layout. Row: Students needing attention (7) beside Frequent absentees (5),
      each as tall as its own list (no hollow card); either one alone takes the row. */

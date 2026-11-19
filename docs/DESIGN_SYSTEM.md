@@ -39,7 +39,7 @@ Status: **Ready** = Bootstrap-free and used; **Partial** = ours, but still sits 
 | Progress bar | `erp-setup-bar` + `erp-setup-bar-fill` | `progress` / `progress-bar` | Ready (setup card); generalise as `erp-bar` when a second use appears |
 | Page header | `erp-page-header` (+ `-copy`, `-actions`, eyebrow/title/purpose) | none | Partial (its action buttons and `mt-2` are Bootstrap) |
 | Tabs (page-level, link per tab) | `erp-home-tabs`, `erp-home-tab` with `aria-current="page"` | none | Ready |
-| Card | `erp-card` (+ `erp-card--<name>` hooks) | `card` | Ready (Overview). `erp-chart-card` / `erp-analytics-card` remain only on the student progress page; `erp-panel` converts area by area |
+| Card | `erp-card` (the shared card: block, used by teacher pages and the School page) + `erp-card--<name>` hooks; inside `.erp-home` (the Overview) it lays out as a flex column | `card` | Ready (Overview). `erp-chart-card` / `erp-analytics-card` remain only on the student progress page; `erp-panel` converts area by area |
 | Stat / glance tiles | `erp-stat-card`, `erp-stat-grid`, `erp-glance-*` | none | Ready |
 | List rows (tappable) | `erp-home-row` (+ `-main`, `-meta`, `-open`), `erp-attention-list` | `list-group` | Ready |
 | Fold ("Show all N") | `templates/partials/home/_fold_rows.html`, `erp-class-more` | `collapse` | Ready |
