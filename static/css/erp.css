@@ -1407,7 +1407,6 @@ a.erp-glance-tile:hover, a.erp-glance-tile:focus-visible { border-color: var(--e
 .erp-btn--soft:hover, .erp-btn--soft:active { color: var(--erp-ink); background-color: var(--erp-btn-soft-hover); border-color: var(--erp-ink-soft); }
 .erp-stat-card .erp-btn { margin-top: auto; align-self: flex-start; }
 .erp-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
-.erp-note { color: var(--erp-ink-soft); }
 /* Overview attendance analytics (Gate A): phone-first, server-rendered SVG, no chart library.
    Sections are spaced by the next section title's top margin, so no bottom margins stack up. */
 .erp-analytics { margin: 0; }
@@ -1675,7 +1674,7 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
 .erp-setup-title { font-size: 1rem; margin: 0 0 var(--erp-space-1); }
 .erp-setup-summary { margin: 0; color: var(--erp-ink-soft); font-size: var(--erp-text-sm); }
 .erp-setup-progress { margin: 0; color: var(--erp-ink-soft); font-size: var(--erp-text-sm); font-weight: 600; white-space: nowrap; }
-.erp-setup-bar { height: .5rem; margin-bottom: var(--erp-space-4); background-color: #e9ecef; border-radius: .375rem; overflow: hidden; }
+.erp-setup-bar { height: .5rem; margin-bottom: var(--erp-space-4); background-color: var(--erp-rule); border-radius: .375rem; overflow: hidden; }
 .erp-setup-bar-fill { height: 100%; background-color: var(--erp-action); border-radius: inherit; }
 .erp-setup-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .erp-setup-step { display: flex; align-items: center; gap: var(--erp-space-3); padding: var(--erp-space-3) 0; border-bottom: 1px solid var(--erp-rule); flex-wrap: wrap; }

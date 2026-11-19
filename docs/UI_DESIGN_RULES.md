@@ -3,7 +3,7 @@
 Status: **Proposed** (2026-10-18) with U3.1 Teacher Mobile Polish, Gate T0. It becomes adopted when Gate T0 is approved and merged.
 Applies to every screen. Tokens live in `static/css/erp.css` (`--erp-*`); domain behaviour rules stay in `docs/UI_REFERENCES.md` ("Rules the design must keep") and are restated in section 16.
 
-These rules refine the U1/U2/U3 decisions; they do not replace them: Django + Bootstrap 5.3.3, server-rendered, no build step, works with JS off.
+These rules refine the U1/U2/U3 decisions; they do not replace them: Django, server-rendered, no build step, works with JS off. Bootstrap 5.3.3 is being phased out (2026-11-19): new or rebuilt screens use the Everclass components in `docs/DESIGN_SYSTEM.md`.
 
 **How to read them.** Each bullet is a rule a reviewer or a test can check. "Must" is binding; "prefer" is a default that needs a stated reason to break. Rules that apply in several places are written once and referenced.
 
