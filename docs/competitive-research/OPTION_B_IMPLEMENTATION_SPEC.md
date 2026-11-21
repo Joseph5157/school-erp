@@ -36,16 +36,16 @@ Section 9 sets out how the evidence feeds later decisions on offline sync, push,
 | --- | --- | --- |
 | Only the teacher whose assignment for this offering and Section is effective **today** may enter DRAFT results. | ADR 0010 D6; `authorization.can_enter_results`, `core/authorization.py:100` | Every autosave request checks this again. A teacher reassigned while the page is open gets "can no longer enter marks", not a save. |
 | A subject teacher sees a finalized assessment only if assigned on its date. | ADR 0018 D7; `can_view_finalized_as_subject_teacher`, `core/authorization.py:89` | The autosave endpoint never serves finalized data. It refuses before reading any result. |
-| Results are entered only from the assessment date, only while DRAFT, and only for date-effective roster enrollments. | `Assessment.save_draft_result`, `core/models.py:3182`; `StudentResult.clean`, `core/models.py:3299` | Autosave calls `save_draft_result` unchanged, which locks the assessment row and re-reads its status (`_lock`). |
+| Results are entered only from the assessment date, only while DRAFT, and only for date-effective roster enrollments. | `Assessment.save_draft_result`, `core/models.py:3182`; `StudentResult.clean`, `core/models.py:3301` | Autosave calls `save_draft_result` unchanged, which locks the assessment row and re-reads its status (`_lock`). |
 | Results are MARKED (0 ≤ score ≤ max) or ABSENT (no score). A missing row means not entered, never ABSENT. | ADR 0009; `ResultStatus`, DB check `studentresult_status_matches_score` | A blank row sends nothing. Autosave never creates an ABSENT row on its own. |
 | A saved result cannot be cleared from the entry page. | `ResultEntryForm`, `core/forms.py:879-883` (no "Not entered" choice once saved) | Clearing the score of a saved MARKED row is a validation error shown on the row. It is not a delete (OD-B5). |
-| Editing a DRAFT result is a normal edit. Changing a FINALIZED one is an audited administrator correction. | ADR 0009 Gate 7; `StudentResult.correct`, `core/models.py:3339`; `ResultCorrection` | Autosave can only reach DRAFT results. It never writes `ResultCorrection` and never marks a publication STALE. |
+| Editing a DRAFT result is a normal edit. Changing a FINALIZED one is an audited administrator correction. | ADR 0009 Gate 7; `StudentResult.correct`, `core/models.py:3347`; `ResultCorrection` | Autosave can only reach DRAFT results. It never writes `ResultCorrection` and never marks a publication STALE. |
 | Finalization needs `core.finalize_assessment`, locks the assessment and freezes grading. | `Assessment.finalize`, `core/models.py:3132` | Finalizing, the whole-form Save draft and autosave all lock the assessment row **first**, then touch result rows (4.3). They run one after the other and cannot deadlock. A save that arrives after finalizing is refused with 409. |
 | Guardians see only published, non-stale publications. | ADR 0014; `core/publication.py` | Drafts are never visible to guardians, so autosave changes nothing guardians can see. |
 | Sessions: 30 minutes idle, 8 hours absolute, enforced on every request. An expired session is signed out and redirected with `expired=` and `unsaved=1` for non-GET requests. | ADR 0013 OD-5; `accounts/middleware.py:49-101` | Autosave counts as activity, as attendance autosave already does. A background request from an expired session gets 401 instead of the sign-in page (4.7). |
 | Crash reports carry the route pattern, never the concrete URL, values, usernames or messages. | Security Gate 4A; `config/error_reporting.py:1-12` | Measurement follows the same allow-list approach. |
 | Security events never store passwords, page contents or contact data. Routine events are kept 365 days. | `accounts/models.py:60-131` | Measurement data is kept apart from `SecurityEvent` and kept for less time (OD-B7). |
-| localStorage holds UI preferences only, with no school data. | Audit §7; `static/js/erp.js:138-186,984-997` | B1 and B3 add nothing to localStorage, sessionStorage, IndexedDB or cookies. |
+| localStorage holds UI preferences only, with no school data. | Audit §7; `static/js/erp.js:138-186,974-987` | B1 and B3 add nothing to localStorage, sessionStorage, IndexedDB or cookies. |
 | Gate 1 PWA is online-only. On network loss a save stays failed and unsaved, with no background retry or queued write. | `docs/PWA_GATE_1_PLAN.md:8`; PWA Gate 2 journey "Network loss during a save" | Retry is always a tap by the teacher. Autosave never retries on its own. |
 | Every route is in the route inventory with its guard. | `core/tests/route_permissions.json`; `test_security_gate4b_route_inventory` | B1 adds one route and B2 adds one route. Both are added to the inventory. |
 
@@ -67,7 +67,7 @@ Each row needs an explicit answer before its PR starts. The recommendation comes
 | OD-B2 | When does a row save? | **On `change`**: leaving the score box, pressing Next or Enter, or choosing a status. It never saves on each keystroke. | Save after a pause in typing (debounce). This risks saving "8" while the teacher is still typing "85". |
 | OD-B3 | Reply to a background request (HTMX or `fetch`) from a signed-out session | **401 with a small body**, for requests marked `HX-Request: true` or `X-Requested-With: XMLHttpRequest`. Normal page requests keep today's redirect. This also changes attendance autosave (4.7). | Keep the redirect. The browser then follows it to the sign-in page, and a 200 sign-in page can be read as a successful save (4.7, finding F-1). |
 | OD-B4 | The Save draft button once autosave works | **Hide it while saves succeed, and show it as a fallback when any row fails.** With JavaScript and HTMX, it re-sends only the failed rows through the autosave endpoint, each with its own base values, so conflict protection still applies. It never submits the whole form in that mode. Without JavaScript or HTMX, it stays the only action and submits the whole form as today. | Always visible. This is safer to discover but suggests two save paths. |
-| OD-B5 | The teacher clears the score of a row that is already saved | **The row shows "Enter a score or choose Absent" and stays Not saved.** No result is deleted. This matches the current rule. | Allow un-entering a draft result. That would be a new delete path and needs its own decision. |
+| OD-B5 | The teacher clears the score of a row that is already saved | **The row shows the local state "Enter a score", sends nothing and stays Not saved** (4.2 step 4). The server still answers a hand-crafted request with 422. No result is deleted. This matches the current rule. | Allow un-entering a draft result. That would be a new delete path and needs its own decision. |
 | OD-B6 | How measurement is stored | **Daily aggregate counters only.** No raw event rows and no per-request log of measurement events. | Identifier-free raw events kept for a short time. These allow richer analysis but carry timestamps that, in a small school, can point to one person. |
 | OD-B7 | Retention | **180 days**, then deleted by a daily cron job that runs whether or not measurement is switched on (5.4). That covers a term plus the review window. | 90 days, or 365 days to match routine security events. |
 | OD-B8 | Who can read the measurements | **Operators only, through a management command** (`usage_report`) run on the server. No in-app page in v1. | An in-app page behind a new permission `core.view_usagecounter` given to no group by default. |
@@ -97,7 +97,7 @@ Each row needs an explicit answer before its PR starts. The recommendation comes
 1. The teacher opens marks entry. The page-level line under the counts reads "Changes save automatically". The Save draft button is hidden (OD-B4).
 2. The teacher types `42` and presses **Next**. Focus moves to the next student (existing behaviour). The row that lost focus shows `Saving…`, and the page line shows `Saving…`.
 3. The server confirms. The row shows `✓ Saved` and the counts update from the server reply. When no row is in flight or failed, the page line shows `All changes saved`.
-4. Choosing **Absent** clears the score (existing behaviour) and saves at once. Choosing **Marked** with an empty score does not save. The row shows "Enter a score or choose Absent" when the teacher leaves it.
+4. Choosing **Absent** clears the score (existing behaviour) and saves at once. Choosing **Marked** with an empty score, or clearing the score of a Marked row, **sends nothing**. The client cancels that row's request (`htmx:confirm`) and shows the local state `Enter a score`. The row counts as not saved for the page line and the leave-page warning until the teacher enters a score or chooses Absent. The server's 422 (pre-check 6) remains only as defence in depth for a request that arrives anyway.
 5. When every student has a mark or Absent, the existing "All students have a mark or Absent." announcement is made, and the hint reads `0 not entered`.
 
 **Failure flow:**
@@ -116,7 +116,7 @@ Changes not saved (2)                                   [Save draft]
 - **Conflict (OD-B1)** offers two buttons. **Use `{mine}`** first replaces the row's hidden base inputs with the server value carried in the conflict reply, then re-sends the teacher's value, which is now compared against that server value. **Keep `{theirs}`** puts the server value in both the visible fields and the base inputs, and marks the row saved without a request. Neither choice is ever made automatically. If the value changes again on the other device in the meantime, "Use mine" gets a fresh 409.
 - **Leaving the page:** while any row is in flight or failed, `beforeunload` warns. When everything is saved, there is no warning.
 - **Fallback Save draft:**
-  - **With JavaScript and HTMX.** The button intercepts the form's `submit` and calls `preventDefault()`, so the whole form is never posted. It first waits for in-flight row saves, as attendance does (`static/js/erp.js:521-536`). Then it re-sends each row whose state is `Not saved` through the autosave endpoint, with that row's own hidden base inputs, by triggering the row's `change`.
+  - **With JavaScript and HTMX.** The button intercepts the form's `submit` and calls `preventDefault()`, so the whole form is never posted. It first waits for in-flight row saves, as attendance does (`static/js/erp.js:510-516`). Then it re-sends each row whose state is `Not saved` through the autosave endpoint, with that row's own hidden base inputs, by triggering the row's `change`.
     - Every re-sent row passes the same lock, recheck and base comparison (T1 to T8). A stale row therefore gets the 409 conflict prompt, never an overwrite.
     - Rows already showing a conflict are not re-sent, because they need the teacher's Use or Keep choice. Rows refused as invalid, finalized, no longer assigned or off the roster are also skipped, because a re-send would fail the same way. The page line then reads "{n} rows need your attention".
     - The button records `fallback_save_used` once per tap.
@@ -143,7 +143,8 @@ Request: `HX-Request: true`, the CSRF header, and the row's own form fields: `en
 | 1 | Not an HTMX request, or base fields missing | 400 "Autosave needs HTMX; use the Save draft button." (same as attendance) |
 | 2 | Assessment not found in `_assessments()` | 404 |
 | 3 | `can_enter_results(user, offering, section)` is false | 403 partial: "You can no longer enter marks for this assessment. Reload the page." No Retry. |
-| 4 | Assessment not DRAFT, or `is_open_for_entry` false | 409 "This assessment is finalized. Ask an administrator if a result needs correcting." No Retry. |
+| 4a | Assessment is no longer DRAFT | 409 "This assessment is finalized. Ask an administrator if a result needs correcting." No Retry. |
+| 4b | Assessment is DRAFT but dated after today (`is_open_for_entry` false) | 409 "Marks cannot be entered before the assessment date." No Retry. |
 | 5 | `enrollment` not on `assessment.roster()` | 404 "Not on this assessment's roster." (same pattern as attendance) |
 | 6 | Row fails `ResultEntryForm` validation, built from this row's two fields only, as attendance does with `AttendanceCaptureForm` | 422 with the first error |
 | 7 | Row status is blank and score is blank | 204 with nothing to save. The client treats the row as idle. |
@@ -154,7 +155,7 @@ Request: `HX-Request: true`, the CSRF header, and the row's own form fields: `en
 | --- | --- | --- |
 | T1 | Begin the transaction. | — |
 | T2 | Lock and re-read the assessment: `assessment._lock()` (`select_for_update` on the assessment row, `core/models.py:3092`). | — |
-| T3 | Recheck under the lock: status is DRAFT, `is_open_for_entry` is true, `can_enter_results` is true, and the enrollment is still on the roster. Pre-checks 3 to 5 may have passed before a concurrent change. | 409 finalized, or 403, or 404, as in pre-checks 3 to 5 |
+| T3 | Recheck under the lock: status is DRAFT, `is_open_for_entry` is true, `can_enter_results` is true, and the enrollment is still on the roster. Pre-checks 3 to 5 may have passed before a concurrent change. | The same reply as pre-check 3, 4a, 4b or 5 |
 | T4 | Lock the existing result row, if there is one: `assessment.results.select_for_update().filter(academic_enrollment=enrollment).first()`. | — |
 | T5 | Compare its `(status, score)` with the submitted base. No row is equal to an empty base (OD-B1). | 409 conflict partial carrying only this row's current server value and the two buttons |
 | T6 | If the new value equals the current saved value, write nothing. `updated_at` and `entered_by` stay unchanged, which makes the request idempotent. | 200 "Saved" |
@@ -168,7 +169,7 @@ Notes:
   - `finalize` locks the assessment, then reads and freezes results.
   - Autosave takes the assessment lock at T2, before T4 touches any result row.
 
-  This removes the known assessment/result lock-order inversion; the concurrency tests protect that order. Taking `_lock` again inside `save_draft_result` at T7 is harmless, because the lock is already held in the same transaction.
+  Autosave follows the existing assessment-then-result lock order. This avoids introducing the inversion present in Revision 1 of this specification; concurrency tests protect that order. Taking `_lock` again inside `save_draft_result` at T7 is harmless, because the lock is already held in the same transaction.
 - **The assessment lock serialises all saves for one assessment.** Autosave against autosave, autosave against the whole-form Save draft, and autosave against finalize all run one after the other. Each request holds the lock only for one row's read-compare-write, which takes milliseconds. Rosters are at most a few dozen rows, so serialising is acceptable.
 - **`IntegrityError` only inside a savepoint.** `save_draft_result` already wraps its insert in an inner `transaction.atomic()` savepoint and turns `IntegrityError` into `ValidationError` (`core/models.py:3207-3219`). The surrounding transaction therefore stays usable, and T7's failure path can still roll back cleanly. Under the assessment lock, two first saves for one enrollment can no longer race, because the second one reads the committed winner at T4 and gets the T5 conflict. The savepoint stays as a defence in depth. Rule for the implementation: **any `IntegrityError` the autosave view itself catches must come from a block wrapped in its own nested `transaction.atomic()`**. A bare `try/except IntegrityError` inside the outer transaction is not allowed, because PostgreSQL would leave the transaction aborted.
 - **Known asymmetry, unchanged by B1:** `save_draft_result` reads the existing result before it takes the lock (`core/models.py:3200`). In the whole-form path, a row that autosave inserted while the form waited for the lock can make the whole form fail with "This Student already has a result for this assessment.". Nothing is partly saved, and the typed values are kept, which is today's behaviour. The whole-form POST has no base check. After B1 it is reached only without JavaScript or HTMX (4.2), so with JavaScript every save, including the fallback, goes through the base comparison. The no-JavaScript path keeps today's last-write-wins rule (section 12).
@@ -182,9 +183,18 @@ Notes:
 - **Base submission (chosen design: hidden inputs).** Each row contains two hidden inputs, `base_status_{pk}` and `base_score_{pk}`, rendered from the saved result (empty when none). Because they sit inside the row's fieldset, `hx-include="this"` sends them with every autosave request, and no request hook is needed. They change **only** in three cases: (a) a 200 "Saved" reply, whose partial swaps them out of band with the confirmed value; (b) **Keep `{theirs}`**, which copies the server value from the conflict partial; (c) **Use `{mine}`**, which copies the server value from the conflict partial into the base, then triggers `change` to resend. A failed, refused or in-flight request never changes them. The whole-form Save draft also posts these inputs, and `ResultEntryForm` ignores fields it does not declare. A test pins that ignoring (10.1).
 - The per-row bookkeeping (`_seq`, `_sent`, `_dirty`) and the "wait for in-flight saves before the form submits" guard are reused. Recommendation: move them into one small shared helper used by both sheets, without changing attendance behaviour. If that refactor is judged too risky, copy them, and add a comment pointing at the attendance block.
 - `change` on a score box fires on blur, Next or Enter, not per keystroke (OD-B2). The existing "typing a score selects Marked" logic stays, but runs on `input` without triggering a save. Only `change` saves.
-- The Next or Enter handler (`static/js/erp.js:620-633`) still moves focus. The `change` event from the field being left starts that row's save. Moving on never waits for the save.
+- The Next or Enter handler (`static/js/erp.js:620-636`) still moves focus to the next student. The `change` event from the field being left starts that row's save, and moving on never waits for it.
+- **Final row:** today, Enter on the last row focuses the Save draft button (`static/js/erp.js:634-635`), which OD-B4 hides. With autosave wired, Enter on the last row instead starts that row's save, by triggering `change` on its score when the value differs from the last one sent, and **keeps focus in that row's score box**. It never moves focus to the hidden fallback button. When autosave is not wired (no HTMX), today's behaviour stays.
 - On a 401 (OD-B3), every in-flight row shows `Not saved: you have been signed out.` and the existing session box switches to its signed-out state ("Anything on this page that was not saved is lost."), with a sign-in link that keeps `next`. Typed values stay on screen so the teacher can copy them. Nothing is written to browser storage.
 - No automatic retry of any kind, on a timer or when the connection comes back. The `online` event is used only to update the reason text ("Connection is back. Tap Retry."), never to send.
+- **Marks-page response handler (scoped).** The marks sheet does **not** change `htmx.config.responseHandling`. That global setting is set only inside the attendance block (`static/js/erp.js:438-445`), and other pages keep HTMX's defaults. Instead, the marks block adds `htmx:beforeSwap`, `htmx:sendError` and `htmx:timeout` listeners on the marks sheet element itself, so they see only that sheet's requests:
+  - **2xx:** swap the row fragment; 204 swaps nothing.
+  - **403, 404, 409 and 422 carrying the response header `X-ERP-Row-Fragment: 1`:** swap the row fragment with `isError = true`, so the server's own message appears in the row, with no Retry. The autosave view sets that header on every fragment it returns.
+  - **403 without that header:** this is the CSRF failure page. Nothing is swapped. The row shows `Not saved: the page has expired. Reload the page.`, and `csrf` is recorded. A 404 without the header is treated the same way, with a generic message.
+  - **401:** nothing is swapped. The row shows `Not saved: you have been signed out.`, and the session box switches to its signed-out state.
+  - **Network errors (`htmx:sendError`), timeouts and 5xx:** nothing is swapped. The row shows `Not saved` with Retry, and `network` or `server` is recorded.
+  - **Anything else:** nothing is swapped, and a generic `Not saved` is shown.
+  - HTML from a reply that is not a marked row fragment is never inserted into the page.
 - **Every background request identifies itself.** HTMX requests carry `HX-Request: true`. Every `fetch` in `erp.js` must send `X-Requested-With: XMLHttpRequest`. The attendance bulk-present `fetch` (`static/js/erp.js:399-404`) and the session-status `fetch` (`static/js/erp.js:1117`) already do. The B3 usage flush must as well. A static test fails if any `fetch(` call in `erp.js` lacks the header (10.1), so a new background request cannot quietly reintroduce F-1.
 
 ### 4.5 Concurrency and failure handling
@@ -202,7 +212,7 @@ Notes:
 | Network lost | XHR status 0 or a timeout (15 s) shows `Not saved: no connection. [Retry]`. The page line shows `Changes not saved`. | Nothing is queued, so nothing is sent later without the teacher (PWA Gate 2 rule). |
 | Server error (5xx) | `Not saved. [Retry]`. The crash report follows Security Gate 4A. | Same as attendance. |
 | Session idle or absolute expiry | 401 (OD-B3). Signed-out state as in 4.4. Values stay on screen. | No false "Saved". The server signs out as before. |
-| CSRF failure (stale token after re-sign-in in another tab) | 403 from `CSRF_FAILURE_VIEW`. The row shows `Not saved: the page has expired. Reload the page.` No Retry. | A retry would fail the same way. |
+| CSRF failure (stale token after re-sign-in in another tab) | 403 from `CSRF_FAILURE_VIEW`, without the `X-ERP-Row-Fragment` header, so the scoped handler swaps nothing (4.4). The row shows `Not saved: the page has expired. Reload the page.` No Retry. | A retry would fail the same way. |
 | Absolute 8-hour limit near | The existing session warning appears ("Save your work now"). Autosave keeps saving until the limit. | Unchanged. |
 | Fallback Save draft pressed while rows are in flight (JavaScript mode) | The button waits for in-flight saves, then re-sends only the failed rows through autosave with their bases. A row changed elsewhere gets the conflict prompt. | No whole-form POST in JavaScript mode, so the fallback cannot bypass OD-B1. |
 | Duplicate request, for example a proxy replay | Step T6 makes an equal value a no-op. A different value with an old base hits the conflict check. | Idempotent. |
@@ -234,7 +244,7 @@ The session warning usually signs the page out first, which makes this rare. But
 
   A static test enforces the header on every `fetch` (4.4).
 - `session-status` already answers signed-out clients with 401 (`test_session_errors_audit18::test_signed_out_gets_401_and_answers_are_not_cached`), so the session script handles 401 already.
-- HTMX `responseHandling` treats `[45]..` as an error without a swap, so the attendance row shows "Not saved." with Retry. Both behaviours are correct.
+- On the attendance page, the existing global `responseHandling` (`static/js/erp.js:438-445`) swaps only `409|422`. Every other `[45]..` reply, including 401, is an error with no swap, so the attendance row shows "Not saved." with Retry and never the sign-in page. The marks page uses its own scoped handler (4.4) and leaves that global setting alone.
 - B1 adds one more line to attendance: on 401, call the session box's signed-out state, as marks entry does.
 - **Signed out without an expiry** (signed out in another tab, session deleted, cookie cleared). The request arrives anonymous, so the expiry branch never runs. `teacher_required` would then redirect to sign-in, and F-1 would return. **Change, part 2:** in the same middleware's response phase, a redirect to `LOGIN_URL` answering a background request (`HX-Request` or `X-Requested-With`) is replaced by the same 401 body, with `"expired": null`. That covers every guarded background endpoint without editing each decorator. Normal page requests are untouched.
 - The beacon does not rely on either path. It returns 401 itself for any request that is not authenticated (5.6).
@@ -245,10 +255,10 @@ The session warning usually signs the page out first, which makes this rare. But
 | --- | --- |
 | Score `0` | Saved as MARKED 0 (`test_zero_score_counts_as_marked` stays green). |
 | Score `50.005` with maximum 50 | 422 from the form's `decimal_places=2` or `max_value` check. The row shows the message. |
-| Score typed as `1e` (browser shows empty) | The browser number check stays on (`core/forms.py:903-909`), so no change fires with an empty value for a typo. If one does arrive, a blank score with Marked gives 422 "Enter a score or choose Absent". |
+| Score typed as `1e` (browser shows empty) | The browser number check stays on (`core/forms.py:903-909`), so no change fires with an empty value for a typo. A blank score with Marked shows the local `Enter a score` state and sends nothing. A request that arrives anyway gets 422 "Enter a score or choose Absent". |
 | Teacher selects Absent on a saved MARKED row | Saved as ABSENT with the score cleared. Draft edit, not a correction. |
-| Teacher clears the score of a saved MARKED row | 422 "Enter a score or choose Absent." Nothing deleted (OD-B5). |
-| Assessment dated tomorrow (page shows "opens on") | No form, so no autosave. A hand-crafted POST gets 409 from `save_draft_result` ("before the assessment date"). |
+| Teacher clears the score of a saved MARKED row | Local `Enter a score` state, nothing sent, saved result unchanged (OD-B5). A hand-crafted request gets 422 "Enter a score or choose Absent." Nothing is deleted. |
+| Assessment dated tomorrow (page shows "opens on") | No form, so no autosave. A hand-crafted POST gets 409 "Marks cannot be entered before the assessment date." at pre-check 4b, before `save_draft_result` is reached. "Finalized" is used only when the assessment is no longer DRAFT. |
 | Roster of 0 | Empty state as today. No autosave wiring. |
 | Teacher with admin rights who is not the assigned teacher | 403, as on the page (Teachers group plus assignment decide, not admin permissions). |
 | Guardian session | 403 from `teacher_required`. |
@@ -277,7 +287,7 @@ Every counter row has exactly the dimensions below. Each value comes from a fixe
 | `day` | Calendar date in school time | All | Server clock (`business_today`) |
 | `area` | `admin`, `teacher`, `guardian`, `multi`, `public`. **Page and workflow events always use the surface they happened on** (admin, teacher or guardian), even for a user with several areas. `multi` is used only for sign-in events where no single area applies: `sign_in/completed`, `sign_in/password_changed_first` and `session/relogin_after_expiry` for a user with more than one area. `public` means not signed in, which includes every failed sign-in. | All | Server only: from the route (`core/navigation.py`), or from `user_areas` at sign-in. A value reported by the client is accepted only if it is one of the signed-in user's own areas. |
 | `workflow` | Keys in section 6, plus `page`, `sign_in`, `session` | All | Allow-list |
-| `step` | `started`, `completed`, `attempt`, `saved`, `viewed`, `shown`, `installed`, `dismissed`, `failed`, `throttled`, `expired_idle`, `expired_limit`, `expired_unsaved`, `relogin_after_expiry`, `password_changed_first`, or a failure code below | All | Allow-list; the allowed steps per workflow are listed in section 6 |
+| `step` | `started`, `completed`, `attempt`, `saved`, `viewed`, `shown`, `installed`, `dismissed`, `failed`, `throttled`, `expired_idle`, `expired_limit`, `expired_unsaved`, `relogin_after_expiry`, `password_changed_first`, `retry_tapped`, `retry_succeeded`, `fallback_save_used`, and the failure codes `network`, `server`, `signed_out`, `forbidden`, `conflict`, `closed`, `invalid`, `csrf`. This list is the database check constraint, with nothing else allowed. | All | Allow-list; the allowed steps per workflow are listed in section 6 |
 | `page_route` | A curated allow-list (below), or `other` | `page` only; blank otherwise | The server renders it into the page, and the beacon re-checks it against the allow-list (5.6) |
 | `duration_bucket` | `<5s`, `5–15s`, `15–60s`, `1–3m`, `3–10m`, `10–30m`, `>30m` | `completed` steps of workflows with a timer (section 6); blank otherwise | Server-computed for session timers; client-computed for page-memory timers, then checked against the enum |
 | `size_bucket` | `1–20`, `21–40`, `41+` | `attendance_capture` and `marks_entry` only; blank otherwise | Server, from the roster size; never the exact number |
@@ -300,15 +310,15 @@ Every signed-in page outside the list is recorded as `other` for its area, so th
 **Failure codes** (closed list, used as `step`):
 
 - `network`: an **observed network failure**, meaning a save that ended with status 0 or a timeout. It is client-reported. While offline, the browser cannot report it, so it is kept in page memory and sent with the next successful flush (6). If the page closes first, it is lost.
-- `server`: 5xx. Client-reported.
-- `signed_out`: 401.
-- `forbidden`: 403.
-- `conflict`: 409, a conflict.
-- `closed`: 409, finalized or submitted.
-- `invalid`: 422.
-- `csrf`: 403 from the CSRF view.
+- `server`: 5xx. **Client-recorded**, through the beacon.
+- `signed_out`: 401 on an autosave route. **Server-recorded**, by `AccountSecurityMiddleware` when it answers 401 to a background request on `core:assessment-marks-autosave`, `core:my-attendance-autosave` or the bulk-present route. Both the expiry path and the anonymous redirect path count. The area is the route's, and the workflow is `marks_entry` or `attendance_capture`.
+- `forbidden`: 403 from the autosave view. **Server-recorded.**
+- `conflict`: 409 conflict. **Server-recorded.**
+- `closed`: 409 finalized, before the assessment date, or register submitted. **Server-recorded.**
+- `invalid`: 422. **Server-recorded.**
+- `csrf`: 403 from the CSRF failure view. **Client-recorded**, because the CSRF view runs before any autosave code. The client recognises it as a 403 without `X-ERP-Row-Fragment` (4.4).
 
-The save-handling steps `retry_tapped`, `retry_succeeded` and `fallback_save_used` are client-reported.
+The save-handling steps are all **client-recorded**: `retry_tapped` (each Retry tap), `retry_succeeded` (a Retry whose request then returns 200), and `fallback_save_used` (each tap of the fallback Save draft, 4.2). `attempt` is also client-recorded, once per autosave request sent.
 
 **Value:** `count`, a positive integer, incremented.
 
@@ -385,7 +395,7 @@ except DatabaseError:
 
 ### 5.5 Server-side signals
 
-These are recorded in the views that already handle these moments.
+These are recorded where these moments happen. `accounts/views.py` `LoginView` subclasses Django's `LoginView` and today overrides none of `get`, `form_valid` or `form_invalid`. **B2 adds those three overrides.** Each records its signal, then returns the result of `super()`. Authentication, throttling, redirects, `redirect_authenticated_user` and the existing `get_redirect_url` stay exactly as they are. If a measurement call fails, it is ignored, as `record()` already guarantees (5.4).
 
 | Signal | Where | Area | Workflow and step |
 | --- | --- | --- | --- |
@@ -397,6 +407,7 @@ These are recorded in the views that already handle these moments.
 | Forced password change completed | Password-change view | As above | `sign_in` / `password_changed_first` |
 | Session expired, idle or limit, with or without an unsaved POST | `accounts/middleware.expired_redirect` and the new 401 path | Area of the route requested | `session` / `expired_idle`, `expired_limit`, `expired_unsaved` |
 | Autosave outcomes the server sees | The two autosave views and bulk present | Route area | `attendance_capture` or `marks_entry` / `saved`, `invalid`, `conflict`, `closed`, `forbidden` |
+| Signed-out reply to an autosave request | `AccountSecurityMiddleware`, on both 401 paths (4.7) | Route area | `attendance_capture` or `marks_entry` / `signed_out` |
 
 The device dimensions for server-side signals come from one request header, which `erp.js` sets on its own XHR and HTMX requests: `X-ERP-Client: device=phone;display=installed;platform=android`. It is parsed strictly against the enums, and any other value is dropped. Signals from requests without it, such as the sign-in POST and plain form posts, record blank `device`, `display` and `platform`. **The header is never logged.**
 
@@ -447,13 +458,13 @@ Add `usage-beacon` to `route_permissions.json` with flags `require_POST` and `ne
 | `page` | Admin, teacher, guardian (beacon); `public` for the sign-in page (server) | `viewed` | Any HTML page | — | — | `page_route`. This is the G-04 phone inventory. |
 | `guardian_first_view` | Guardian | `started`, `completed` | Successful guardian sign-in | First GET of a portal child, attendance or report page | Server session key `_u_guardian` | — |
 | `guardian_report_pdf` | Guardian | `started`, `completed` | Report card page shown | PDF download response sent (server side) | Server only, no timer | — |
-| `notice_view` | Guardian | `viewed` | — | Notice detail shown | — | `age_bucket` (OD-B13) |
+| `notice_view` | Guardian | `viewed`, recorded when the notice detail is shown | — | — | — | `age_bucket` (OD-B13) |
 | `install` | All | `shown`, `installed`, `dismissed` | Install bar shown (`shown`) | The `appinstalled` event records `installed`. The install bar's dismiss button records `dismissed`. These are separate outcomes, and a dismissal never counts as an installation. | Page memory | — |
 
 **Save attempts.** Every autosave request the client sends records `attempt`, through the beacon:
 
-- **Client-reported:** `attempt`, `network`, `server`, `retry_tapped`, `retry_succeeded` and `fallback_save_used`.
-- **Server-reported (5.5):** `saved`, `invalid`, `conflict`, `closed`, `forbidden` and `signed_out`.
+- **Client-recorded:** `attempt`, `network`, `server`, `csrf`, `retry_tapped`, `retry_succeeded` and `fallback_save_used`.
+- **Server-recorded (5.5):** `saved`, `invalid`, `conflict`, `closed`, `forbidden` and `signed_out`.
 
 Client-reported counts are **lower bounds**: an event still queued in memory is lost if the page closes before a flush succeeds. This matters most for `network`. A browser cannot report a failure while it is offline, so observed network failures reach the server only when a later flush succeeds after the connection returns: after a successful Retry, a later save, or the next 30-second flush. A complete disconnect that lasts until the teacher closes the page is never counted. The report labels the figure "observed network failures (undercounts complete disconnects)".
 
@@ -642,7 +653,7 @@ Tests are written before code in each PR. CI runs the full suite on PostgreSQL 1
 - a teacher not assigned to the offering and Section gives 403; a guardian gives 403; anonymous is redirected (no HX header) or gets 401 (with HX header);
 - the assigned teacher whose assignment ended yesterday gives 403;
 - finalized assessment gives 409 and no write;
-- assessment dated tomorrow gives 409 and no write;
+- assessment dated tomorrow gives 409 "Marks cannot be entered before the assessment date." and no write; the reply never says "finalized";
 - an enrollment not on the date-effective roster gives 404 and no write;
 - a teacher with admin permissions but no assignment gives 403.
 
@@ -653,7 +664,8 @@ Tests are written before code in each PR. CI runs the full suite on PostgreSQL 1
 - score with blank status saves as MARKED (form rule);
 - score above the maximum gives 422 and no write; score 0 saves;
 - blank and blank gives 204 and no write;
-- clearing the score of a saved MARKED row gives 422 and the result is unchanged (OD-B5);
+- a request clearing the score of a saved MARKED row (defence in depth) gives 422 and the result is unchanged (OD-B5);
+- `erp.js` source check: the marks sheet cancels the request (`htmx:confirm`) when the status is Marked and the score is empty, and shows `Enter a score`;
 - equal value gives 200 and `updated_at` is unchanged (idempotent).
 
 **Concurrency (OD-B1):**
@@ -683,6 +695,9 @@ Tests are written before code in each PR. CI runs the full suite on PostgreSQL 1
 
 **Page (`test_ui_teacher_marks.py` additions):**
 
+- `erp.js` source check: the marks block never assigns `htmx.config.responseHandling`, and its `htmx:beforeSwap` listener is attached to the marks sheet, not to `document`; replies without `X-ERP-Row-Fragment` are never swapped; 401, network errors and 5xx swap nothing;
+- every autosave fragment reply (200, 403, 404, 409, 422) carries `X-ERP-Row-Fragment: 1`; the CSRF failure view's 403 does not;
+- `erp.js` source check: on the last row, the Enter handler triggers the row's save and focuses nothing outside the row when autosave is wired;
 - rows carry `hx-post` to the autosave route, `hx-sync="this:queue last"`, `hx-include="this"`, and hidden `base_status_{pk}` and `base_score_{pk}` inputs holding the saved value (empty for unsaved rows);
 - the 200 partial swaps the base inputs out of band; the 409 conflict partial carries the server value for Use and Keep;
 - HTMX script loads only when the form is shown;
@@ -760,7 +775,7 @@ Tests are written before code in each PR. CI runs the full suite on PostgreSQL 1
 5. Autosave never creates a `ResultCorrection`, never changes a finalized result and never changes a publication.
 6. A save based on an out-of-date value is refused with the current value shown and a choice for the teacher. No silent overwrite happens (OD-B1). With JavaScript, this covers the fallback Save draft too: it re-sends only failed rows through autosave with their bases, and never posts the whole form. The whole-form POST is used only without JavaScript or HTMX.
 7. An expired or signed-out session during any background request (marks autosave, attendance autosave, bulk present, beacon) gets 401. It shows signed-out text wherever a status is shown, and never `✓ Saved` (OD-B3, F-1). Every `fetch` in `erp.js` sends `X-Requested-With`.
-8. Autosave locks the assessment before any result row, matching the whole-form Save draft and `finalize`. This removes the known assessment/result lock-order inversion; the PostgreSQL concurrency tests against both paths protect that order, and no caught `IntegrityError` leaves a transaction aborted.
+8. Autosave locks the assessment before any result row, matching the whole-form Save draft and `finalize`. Autosave follows the existing assessment-then-result lock order. This avoids introducing the inversion present in Revision 1 of this specification; concurrency tests protect that order. The PostgreSQL concurrency tests run against both paths, and no caught `IntegrityError` leaves a transaction aborted.
 9. Leaving the page with unsaved or in-flight rows warns. Leaving with everything saved does not.
 10. With `USAGE_MEASUREMENT_ENABLED=False` (the default), no beacon is sent and no counter row is written. With GPC, from the header or the browser signal, nothing is sent or recorded. The operations documentation says switching on requires written school approval.
 11. When enabled, every stored row has only the dimensions in 5.4. Each comes from a fixed enum, the curated `page_route` list or the column-use rules, all enforced by database constraints. No row, log line or reply contains any item in 5.3. `UsageCounter` is not in Django admin.
@@ -780,7 +795,7 @@ Tests are written before code in each PR. CI runs the full suite on PostgreSQL 1
 | Conflict prompts confuse teachers | Conflicts need two devices or tabs on the same row, so they are rare. Wording is plain and names both values. The manual phone check covers it. |
 | The refactor to a shared autosave helper breaks attendance | Keep attendance tests unchanged and green. If the shared helper is risky, copy the code (4.4). |
 | Many small requests on slow networks | One request per changed row, only on change, queued per row. That is the same load pattern as attendance. |
-| Lock-order inversion between autosave, the whole-form Save draft and finalize | One lock order everywhere: assessment first, then result rows (4.3). This removes the known assessment/result lock-order inversion; the concurrency tests protect that order. PostgreSQL thread tests with `lock_timeout` cover autosave against both other paths, and a captured-SQL test pins the order. |
+| A lock-order inversion between autosave, the whole-form Save draft and finalize | One lock order everywhere: assessment first, then result rows (4.3). Autosave follows the existing assessment-then-result lock order. This avoids introducing the inversion present in Revision 1 of this specification; concurrency tests protect that order. PostgreSQL thread tests with `lock_timeout` cover autosave against both other paths, and a captured-SQL test pins the order. |
 | The assessment lock serialises all saves for one assessment | Each autosave holds the lock only for one row's read-compare-write, and rosters are small. If contention ever shows, revisit with measurements, never by changing the lock order. |
 | A stale page could overwrite newer marks through the fallback | In JavaScript mode the fallback re-sends failed rows through autosave with their bases, so OD-B1 holds for every save. Only the no-JavaScript whole-form POST keeps today's last-write-wins rule. That path is rare, unchanged from `a78734c`, and noted for a later decision. |
 | A caught `IntegrityError` leaves a PostgreSQL transaction aborted | Rule: catch it only around a nested `transaction.atomic()` (4.3, 5.4). Tests force the error, then run a query in the same transaction. |
