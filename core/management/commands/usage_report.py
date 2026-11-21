@@ -1,32 +1,26 @@
-"""Weekly usage counts for operators, run on the server (ADR 0027, Option B2 foundation).
+"""Weekly usage evidence for operators, run on the server (ADR 0027; spec sections 6.1 and 9).
 
 There is no web page, route or Django admin entry for usage counters: this command, run from a
-server shell, is the only way to read them (OD-B8). Counts are grouped by ISO week and any cell
-under 5 is printed as "<5" after every filter and grouping (OD-B12). Output goes to stdout only.
+server shell, is the only way to read them (OD-B8). Output goes to stdout only, as text or
+`--format csv`; no file is kept.
 
-B3 extends this report with the workflow sections, ratios and CSV output of spec section 6.1.
-This foundation deliberately prints no totals or subtotals, so no hidden cell can be recovered by
-subtraction. Any total added later must first apply complementary suppression (spec 6.1): hide a
-second contributing cell, or omit the total.
+Counts are events, not people, grouped by ISO week. Any cell from 1 to 4 prints as `<5` after every
+filter and grouping, and a second cell is hidden (`*`) wherever a printed total or split could
+otherwise reveal a hidden one (core.usage_evidence). Section 9 review triggers are printed only for
+an unfiltered report of at least 4 weeks; below its minimum denominator a figure is `n/a`, which is
+neither met nor missed. A trigger opens a design gate only; it never approves a build.
 """
 
-from collections import defaultdict
-from datetime import timedelta
+import csv
 
 from django.core.management.base import BaseCommand
 
-from core import usage
+from core import usage, usage_evidence
 from core.models import UsageCounter
-
-MIN_CELL = 5
-
-
-def cell(value):
-    return str(value) if value >= MIN_CELL else f"<{MIN_CELL}"
 
 
 class Command(BaseCommand):
-    help = "Print aggregate usage counts by ISO week, hiding any cell under 5."
+    help = "Print aggregate usage evidence by ISO week, hiding small cells."
 
     def add_arguments(self, parser):
         parser.add_argument("--weeks", type=int, default=4, choices=range(1, 27),
@@ -34,31 +28,47 @@ class Command(BaseCommand):
         parser.add_argument("--area", choices=usage.AREAS)
         parser.add_argument("--workflow", choices=usage.WORKFLOWS)
         parser.add_argument("--device", choices=usage.DEVICES)
+        parser.add_argument("--format", choices=("text", "csv"), default="text")
 
     def handle(self, *args, **options):
         today = usage.business_today()
-        if usage.stale_rows_exist(today):
+        rows = UsageCounter.objects.all()
+        filters = {f: options[f] for f in ("area", "workflow", "device") if options[f]}
+        if filters:
+            rows = rows.filter(**filters)
+        report = usage_evidence.build_report(rows, today=today, weeks=options["weeks"],
+                                             filtered=bool(filters))
+        lines = list(usage_evidence.render(report))
+        stale = usage.stale_rows_exist(today)
+        if options["format"] == "csv":
+            writer = csv.writer(self.stdout, lineterminator="\n")
+            writer.writerow(["section", "period", "item", "value"])
+            if stale:
+                writer.writerow(["warning", "", "rows older than the 180-day retention cutoff",
+                                 ""])
+            for section, period, item, value, _ in lines:
+                if section:
+                    writer.writerow([section, period, item, value])
+            return
+        if stale:
             self.stdout.write(
                 "Warning: some rows are older than the 180-day retention cutoff. Check that the "
                 "daily purge_usage_counters cron step exists and succeeds."
             )
-        monday = today - timedelta(days=today.weekday())
-        start = monday - timedelta(weeks=options["weeks"] - 1)
-        rows = UsageCounter.objects.filter(day__gte=start, day__lte=today)
-        for field in ("area", "workflow", "device"):
-            if options[field]:
-                rows = rows.filter(**{field: options[field]})
-
-        weeks = defaultdict(lambda: defaultdict(int))
-        for day, workflow, step, count in rows.values_list("day", "workflow", "step", "count"):
-            year, week, _ = day.isocalendar()
-            weeks[(year, week)][(workflow, step)] += count
-
-        self.stdout.write(f"Usage counts, ISO weeks from {start.isoformat()}. "
-                          f"Cells under {MIN_CELL} are shown as <{MIN_CELL}.")
-        if not weeks:
+        shown = ", ".join(f"{k} {v}" for k, v in filters.items()) or "none"
+        self.stdout.write(
+            f"Usage evidence, ISO weeks from {report.start.isoformat()} ({options['weeks']} "
+            f"weeks). Filters: {shown}. Counts are events, not people. Cells under "
+            f"{usage_evidence.MIN_CELL} are shown as <{usage_evidence.MIN_CELL}; * marks a cell "
+            "hidden so that a total cannot reveal a small one. Missing lines are zero."
+        )
+        if not report.weeks:
             self.stdout.write("No counts in this period.")
-        for (year, week) in sorted(weeks):
-            self.stdout.write(f"\n{year}-W{week:02d}")
-            for (workflow, step), count in sorted(weeks[(year, week)].items()):
-                self.stdout.write(f"  {workflow:<24} {step:<24} {cell(count)}")
+        for *_, text in lines:
+            if text is not None:
+                self.stdout.write(text)
+        if filters:
+            self.stdout.write("\nSection 9 review triggers are printed only for an unfiltered "
+                              "report.")
+        elif options["weeks"] < usage_evidence.WINDOW_WEEKS:
+            self.stdout.write("\nSection 9 review triggers: the window needs at least 4 weeks.")

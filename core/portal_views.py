@@ -4,9 +4,10 @@ from django.core.paginator import Paginator
 from django.http import Http404
 from django.shortcuts import render
 from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.http import require_safe
 
-from core import reports
+from core import reports, usage
 from core.announcements import visible_announcements
 from core.authorization import guardian_required
 from core.documents import report_card as report_card_documents
@@ -45,6 +46,14 @@ def _visible_grant_or_404(request, public_id):
         if item["grant"].public_id == public_id and item["visible"]:
             return item["grant"]
     raise Http404("No such student.")
+
+
+def _first_view(request):
+    """guardian_first_view completes at the first child, attendance or report page after a
+    guardian sign-in (ADR 0027, B3). Only after access was checked."""
+    match = getattr(request, "resolver_match", None)
+    if match is not None:
+        usage.complete_guardian_first_view(request, match.view_name)
 
 
 def _context(request, switch_route="portal:child", **extra):
@@ -91,6 +100,7 @@ def home(request):
 @guardian_required
 def child(request, public_id):
     grant = _visible_grant_or_404(request, public_id)
+    _first_view(request)
     student = grant.student_guardian.student
     context = _context(request, grant=grant, student=student, profile=student_profile(student))
     # Same batched, snapshot-based summary the Home cards use (never recomputed).
@@ -108,6 +118,7 @@ def child(request, public_id):
 def attendance(request, public_id):
     """Submitted attendance for one Academic Year (ADR 0014, P8)."""
     grant = _visible_grant_or_404(request, public_id)
+    _first_view(request)
     student = grant.student_guardian.student
     years = attendance_years(student)
     chosen = years[0] if years else None
@@ -134,6 +145,7 @@ def attendance(request, public_id):
 @guardian_required
 def report_cards(request, public_id):
     grant = _visible_grant_or_404(request, public_id)
+    _first_view(request)
     student = grant.student_guardian.student
     return render(
         request,
@@ -153,6 +165,9 @@ def report_card(request, public_id, publication_id):
                None)
     if pub is None:
         raise Http404("No such report card.")
+    _first_view(request)
+    # guardian_report_pdf starts when a report card is shown; the PDF download completes it.
+    usage.record(request, area="guardian", workflow="guardian_report_pdf", step="started")
     entries = list(pub.entries.all())  # frozen snapshot rows, in snapshot display_order
     return render(
         request,
@@ -174,7 +189,10 @@ def report_card_pdf(request, public_id, publication_id):
     document = report_card_documents.document_for(pub, actor=request.user) if pub else None
     if document is None:
         raise Http404("No such report card.")
-    return service.pdf_response(document, actor=request.user)
+    response = service.pdf_response(document, actor=request.user)
+    if response.status_code == 200:
+        usage.record(request, area="guardian", workflow="guardian_report_pdf", step="completed")
+    return response
 
 
 @require_safe
@@ -196,4 +214,8 @@ def notice(request, notice_id):
     ).first()
     if item is None:
         raise Http404("No such notice.")
+    # notice_view (OD-B13): only how old the notice was, as a bucket; never which notice or who.
+    published_on = timezone.localtime(item.published_at).date()
+    usage.record(request, area="guardian", workflow="notice_view", step="viewed",
+                 age_bucket=usage.age_bucket((usage.business_today() - published_on).days))
     return render(request, "portal/notice.html", _context(request, notice=item))

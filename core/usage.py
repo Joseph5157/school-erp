@@ -135,6 +135,10 @@ _ENUMS = {
     "device": DEVICES, "display": DISPLAYS, "platform": PLATFORMS,
 }
 
+# The browser may attach a size bucket only to these events (B3): marks entry runs its timer in
+# page memory, so its start and completion come from the page, with the bucket the server rendered.
+CLIENT_SIZED_EVENTS = frozenset({("marks_entry", "started"), ("marks_entry", "completed")})
+
 RETENTION_DAYS = 180
 EXPIRED_MARKER = "_u_expired_at"  # epoch seconds only, in the anonymous session after an expiry
 RELOGIN_WINDOW_SECONDS = 10 * 60
@@ -142,6 +146,23 @@ RATE_KEY = "_u_beacon_rate"  # [window start epoch seconds, events accepted]
 RATE_LIMIT = 200
 RATE_WINDOW_SECONDS = 3600
 CLIENT_HEADER = "X-ERP-Client"
+
+# Workflow timers in the server session (spec section 6): epoch seconds only, never a record ID.
+# Removed on completion; gone at sign-out with the rest of the session.
+ATTENDANCE_TIMER = "_u_attendance"
+FIND_TIMER = "_u_find_student"
+GUARDIAN_TIMER = "_u_guardian"
+FIND_WINDOW_SECONDS = 10 * 60
+
+# Autosave routes whose signed-out reply is counted (spec 5.2 `signed_out`). All are teacher routes.
+AUTOSAVE_ROUTES = {
+    "core:my-attendance-autosave": "attendance_capture",
+    "core:my-attendance-autosave-present": "attendance_capture",
+    "core:assessment-marks-autosave": "marks_entry",
+}
+# Portal pages whose first view after a guardian sign-in completes guardian_first_view.
+GUARDIAN_FIRST_VIEW_ROUTES = ("portal:child", "portal:attendance", "portal:report-cards",
+                              "portal:report-card")
 
 
 class InvalidEvent(ValueError):
@@ -152,6 +173,11 @@ def business_today():
     from core.models import business_today as today
 
     return today()
+
+
+def _now():
+    """Epoch seconds. One function, so tests can pin the workflow clock."""
+    return time.time()
 
 
 def enabled():
@@ -344,7 +370,7 @@ def area_of_route(user, path):
 def mark_expired(request, now=None):
     """After an expiry sign-out: remember when, as a bare integer, for the relogin signal."""
     if active(request):
-        request.session[EXPIRED_MARKER] = int(time.time() if now is None else now)
+        request.session[EXPIRED_MARKER] = int(_now() if now is None else now)
 
 
 def take_relogin(request, now=None):
@@ -352,5 +378,94 @@ def take_relogin(request, now=None):
     marker = request.session.pop(EXPIRED_MARKER, None)
     if type(marker) is not int:
         return False
-    now = time.time() if now is None else now
+    now = _now() if now is None else now
     return 0 <= now - marker <= RELOGIN_WINDOW_SECONDS
+
+
+# --- B3: buckets, workflow timers and page attributes ----------------------------------------------
+
+_DURATION_LIMITS = ((5, "<5s"), (15, "5-15s"), (60, "15-60s"), (180, "1-3m"), (600, "3-10m"),
+                    (1800, "10-30m"))
+
+
+def duration_bucket(seconds):
+    """The bucket for an elapsed time. Never the time itself."""
+    for limit, bucket in _DURATION_LIMITS:
+        if seconds < limit:
+            return bucket
+    return ">30m"
+
+
+def size_bucket(size):
+    """The bucket for a roster size, or "" for an empty roster. Never the exact number."""
+    if size <= 0:
+        return ""
+    return "1-20" if size <= 20 else "21-40" if size <= 40 else "41+"
+
+
+def age_bucket(days):
+    """A notice's age in whole days since its publication date (OD-B13)."""
+    if days <= 0:
+        return "same_day"
+    return "1-2d" if days <= 2 else "3-7d" if days <= 7 else "later"
+
+
+def start_timer(request, key):
+    """Start a session workflow timer: epoch seconds only. Nothing when measurement is off."""
+    if active(request):
+        request.session[key] = int(_now())
+
+
+def timer_age(request, key):
+    """Seconds since the timer started, or None when there is no usable timer."""
+    started = request.session.get(key)
+    if type(started) is not int:
+        return None
+    return max(0, _now() - started)
+
+
+def take_timer(request, key, max_age=None):
+    """Remove a session timer. Returns its age in seconds, or None if absent or too old."""
+    age = timer_age(request, key)
+    request.session.pop(key, None)
+    if age is None or (max_age is not None and age > max_age):
+        return None
+    return age
+
+
+def body_attributes(request, area):
+    """What a signed-in page's <body> carries for the browser's usage queue, or None.
+
+    `area` is the page's surface (core.navigation.current_area). Only when measurement is on and
+    the request has no `Sec-GPC: 1`. The route is an allow-listed route name or "other", never a
+    path; it is "other" too when it belongs to another area than the page's (a refused page).
+    """
+    from django.urls import reverse
+
+    if not active(request):
+        return None
+    user = getattr(request, "user", None)
+    if not (user and user.is_authenticated) or area not in SURFACES:
+        return None
+    match = getattr(request, "resolver_match", None)
+    name = match.view_name if match is not None else ""
+    route = page_route_for(name)
+    if route != OTHER_ROUTE and PAGE_ROUTE_AREAS[route] != area:
+        route = OTHER_ROUTE
+    return {"route": route, "area": area, "url": reverse("usage-beacon")}
+
+
+def complete_guardian_first_view(request, view_name):
+    """The first child, attendance or report page after a guardian sign-in (spec section 6)."""
+    if view_name in GUARDIAN_FIRST_VIEW_ROUTES and GUARDIAN_TIMER in request.session:
+        age = take_timer(request, GUARDIAN_TIMER)
+        if age is not None:
+            record(request, area="guardian", workflow="guardian_first_view", step="completed",
+                   duration_bucket=duration_bucket(age))
+
+
+def record_signed_out(request, view_name):
+    """A 401 to a background save on an autosave route (spec 5.2): counted for that route."""
+    workflow = AUTOSAVE_ROUTES.get(view_name)
+    if workflow:
+        record(request, area="teacher", workflow=workflow, step="signed_out")

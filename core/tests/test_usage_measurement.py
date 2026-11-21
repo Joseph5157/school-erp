@@ -335,12 +335,14 @@ class ReportTests(TestCase):
         UsageCounter.objects.create(day=monday, area="teacher", workflow="sign_in",
                                     step="completed", count=9)
         out = self.report("--weeks", "1")
-        self.assertNotRegex(out.lower(), r"total|sum|all steps")
+        # B3: the weekly sign-in table is by area and still prints no total or subtotal; totals
+        # B3 prints elsewhere pass complementary suppression (test_usage_workflows).
         data = [line.split() for line in out.splitlines() if line.startswith("  ")]
-        self.assertEqual(sorted(data), [["sign_in", "completed", "49"],
-                                        ["sign_in", "failed", "<5"],
-                                        ["sign_in", "throttled", "12"]])
-        printed = [int(c) for _, _, c in data if c.isdigit()]
+        self.assertEqual(sorted(data), [["sign_in", "completed", "admin", "40"],
+                                        ["sign_in", "completed", "teacher", "9"],
+                                        ["sign_in", "failed", "public", "<5"],
+                                        ["sign_in", "throttled", "public", "12"]])
+        printed = [int(row[3]) for row in data if row[3].isdigit()]
         self.assertNotIn(sum(printed) + 3, [int(n) for n in re.findall(r"\d+", out)])
 
     def test_small_cells_are_hidden_after_filtering_and_weekly_grouping(self):
@@ -354,10 +356,10 @@ class ReportTests(TestCase):
         UsageCounter.objects.create(day=monday, area="admin", workflow="sign_in",
                                     step="completed", count=2)
         out = self.report("--weeks", "1")
-        self.assertRegex(out, r"sign_in\s+failed\s+6")        # two daily 3s merge into one week
-        self.assertRegex(out, r"sign_in\s+completed\s+6")     # 4 + 2 across areas
+        self.assertRegex(out, r"sign_in\s+failed\s+admin\s+6")  # two daily 3s merge into a week
+        self.assertRegex(out, r"sign_in\s+completed\s+teacher\s+<5")  # by area since B3
         out = self.report("--weeks", "1", "--area", "teacher")
-        self.assertRegex(out, r"sign_in\s+completed\s+<5")    # 4 alone is hidden after filtering
+        self.assertRegex(out, r"sign_in\s+completed\s+teacher\s+<5")  # hidden after filtering
         self.assertNotRegex(out, r"\s4\s")
 
 
@@ -560,9 +562,10 @@ class SignInSignalTests(Users, TestCase):
             self.sign_in("teach1")
         self.assertEqual(rows(workflow="sign_in"), [("throttled", 1)])
 
-    def test_login_page_get_records_nothing_in_b2(self):
+    def test_login_page_get_is_one_public_page_view_since_b3(self):
         self.client.get(self.login_url)
-        self.assertFalse(UsageCounter.objects.exists())
+        self.assertEqual(list(UsageCounter.objects.values_list("area", "workflow", "page_route")),
+                         [("public", "page", "root:login")])
 
     def test_gpc_sign_in_records_nothing(self):
         self.client.post(self.login_url, {"username": "teach1", "password": self.password},

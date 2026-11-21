@@ -5,7 +5,8 @@ against the enums, the client-reportable events and the signed-in user's own are
 drops all of it. Accepted events become daily counter increments. Nothing from the body or the
 headers is logged, and the reply never has a body.
 
-No page sends beacons yet: the client side arrives with the workflow instrumentation (B3).
+Pages send beacons from the in-memory queue in static/js/erp.js (B3), only when the page carries
+`data-erp-usage` (measurement on, no Sec-GPC) and the browser's Global Privacy Control is off.
 """
 
 import json
@@ -22,7 +23,8 @@ from core.authorization import user_areas
 MAX_BODY_BYTES = 2048
 MAX_EVENTS = 20
 SHARED_KEYS = {"d", "x", "p", "r", "a", "e"}
-EVENT_KEYS = {"w", "s", "b"}
+# w workflow, s step, b duration bucket, z size bucket (marks start and completion only, B3).
+EVENT_KEYS = {"w", "s", "b", "z"}
 
 
 def _empty(status):
@@ -67,10 +69,13 @@ def _parse(request):
         workflow, step = _text(event.get("w")), _text(event.get("s"))
         if (workflow, step) not in usage.CLIENT_EVENTS:
             raise usage.InvalidEvent("not a client-reported event")
+        size = _text(event.get("z"))
+        if size and (workflow, step) not in usage.CLIENT_SIZED_EVENTS:
+            raise usage.InvalidEvent("size not allowed for this event")
         batch.append(usage.validate(
             area=area, workflow=workflow, step=step,
             page_route=route if workflow == "page" else "",
-            duration_bucket=_text(event.get("b")), **device,
+            duration_bucket=_text(event.get("b")), size_bucket=size, **device,
         ))
     return batch
 

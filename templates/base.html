@@ -11,7 +11,7 @@
     {% if office_nav %}{# Desktop sidebar: apply the remembered hidden state before first paint, so it never flashes open. #}
     <script>try { if (localStorage.getItem("erp.nav.collapsed") === "1") document.documentElement.classList.add("erp-nav-collapsed"); } catch (e) {}</script>{% endif %}
 </head>
-<body class="erp{% if office_nav %} has-sidebar{% endif %}{% if current_area == 'teacher' %} erp-teacher{% endif %}{% block tabbar_class %}{% if current_area == 'teacher' or guardian_shell %} has-tabbar{% endif %}{% endblock %}">
+<body class="erp{% if office_nav %} has-sidebar{% endif %}{% if current_area == 'teacher' %} erp-teacher{% endif %}{% block tabbar_class %}{% if current_area == 'teacher' or guardian_shell %} has-tabbar{% endif %}{% endblock %}"{% if usage_body %} data-erp-usage="1" data-erp-usage-url="{{ usage_body.url }}" data-erp-route="{{ usage_body.route }}" data-erp-area="{{ usage_body.area }}"{% endif %}>
     <a class="visually-hidden-focusable erp-skip" href="#main">Skip to content</a>
     <header class="erp-topbar">
         {% if office_nav %}
