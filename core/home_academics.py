@@ -5,10 +5,10 @@ in averages; ABSENT is never a zero and a score of exactly 0 is real. "Results t
 exception that looks at work not yet official: DRAFT assessments of the work term, and students
 whose FINALIZED results (MARKED or ABSENT) have no current term publication.
 """
-from django.db.models import Exists, OuterRef, Q
+from django.db.models import Exists, OuterRef
 from django.urls import reverse
 
-from core import analytics, charts, marks_analytics
+from core import analytics, assessment_progress, charts, marks_analytics
 from core.models import (
     AcademicEnrollment,
     AcademicTerm,
@@ -35,31 +35,11 @@ def work_term(today):
     )
 
 
-def _roster():
-    """Enrollments in an assessment's year, grade and section, effective on its date."""
-    return AcademicEnrollment.objects.filter(
-        academic_year_id=OuterRef("offering__academic_year_id"),
-        class_grade_id=OuterRef("offering__class_grade_id"),
-        section_id=OuterRef("section_id"),
-        start_date__lte=OuterRef("assessment_date"),
-    ).filter(Q(end_date__isnull=True) | Q(end_date__gte=OuterRef("assessment_date")))
-
-
-def _drafts(term, today):
-    """The term's counted DRAFT assessments, annotated with `has_roster` and `has_unmarked`."""
-    unmarked = _roster().exclude(
-        Exists(
-            StudentResult.objects.filter(
-                assessment_id=OuterRef(OuterRef("pk")), academic_enrollment_id=OuterRef("pk")
-            )
-        )
-    )
+def _drafts(term):
+    """The work term's assessments, for the shared progress rules (core.assessment_progress)."""
     return (
-        Assessment.objects.filter(
-            term=term, status=Assessment.Status.DRAFT, assessment_date__lte=today
-        )
+        Assessment.objects.filter(term=term)
         .select_related("offering__subject", "offering__class_grade", "section")
-        .annotate(has_roster=Exists(_roster()), has_unmarked=Exists(unmarked))
         .order_by("assessment_date", "name", "pk")
     )
 
@@ -123,20 +103,19 @@ def results_to_finish(today, *, publish_rows):
     term = work_term(today)
     if term is None:
         return None
-    ready, in_progress = [], 0
-    for a in _drafts(term, today):
-        if a.has_roster and not a.has_unmarked:
-            ready.append(
-                {
-                    "name": a.name,
-                    "class_name": a.offering.class_grade.name,
-                    "section_name": a.section.name,
-                    "subject": a.offering.subject.name,
-                    "url": reverse("core:assessment-detail", args=[a.pk]),
-                }
-            )
-        else:
-            in_progress += 1
+    # One source with the assessment list (Option A3): the count and its link's rows come from
+    # the same rules and the same `today`.
+    in_progress = assessment_progress.marking_in_progress(_drafts(term), today=today).count()
+    ready = [
+        {
+            "name": a.name,
+            "class_name": a.offering.class_grade.name,
+            "section_name": a.section.name,
+            "subject": a.offering.subject.name,
+            "url": reverse("core:assessment-detail", args=[a.pk]),
+        }
+        for a in assessment_progress.ready_to_finalize(_drafts(term), today=today)
+    ]
     terms = [term]
     earlier = previous_work_term(term)
     if earlier is not None:
@@ -169,7 +148,7 @@ def results_to_finish(today, *, publish_rows):
                 )
     in_progress_url = (
         reverse("core:academic-year-assessments", args=[term.academic_year_id])
-        + f"?term={term.pk}&status=DRAFT"
+        + f"?term={term.pk}&status=DRAFT&due=1&progress=marking"
     )
     return {
         "term": term,

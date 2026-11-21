@@ -19,6 +19,7 @@ from accounts.models import SecurityEvent
 from core import (
     analytics,
     archiving,
+    assessment_progress,
     assessment_reports,
     assignments,
     attendance_actions,
@@ -66,6 +67,8 @@ from core.authorization import (
     user_areas,
 )
 from core.forms import (
+    PROGRESS_MARKING,
+    PROGRESS_READY,
     AbsenceRunsForm,
     AcademicEnrollmentForm,
     AcademicTermForm,
@@ -651,15 +654,27 @@ ASSESSMENT_COLUMNS = (
 @administrator_required("core.view_assessment")
 def academic_year_assessments(request, pk):
     academic_year = get_object_or_404(AcademicYear, pk=pk)
+    # One business date per request, shared by the "due" and "progress" filters (Option A3), so
+    # this list matches the admin home "Results to finish" count it is linked from.
+    today = business_today()
     form = AssessmentFilterForm(request.GET or None, academic_year=academic_year)
     assessments = _assessments().filter(term__academic_year=academic_year)
+    filtered = False
     if form.is_valid():
-        if form.cleaned_data.get("term"):
-            assessments = assessments.filter(term=form.cleaned_data["term"])
-        if form.cleaned_data.get("section"):
-            assessments = assessments.filter(section=form.cleaned_data["section"])
-        if form.cleaned_data.get("status"):
-            assessments = assessments.filter(status=form.cleaned_data["status"])
+        data = form.cleaned_data
+        if data.get("term"):
+            assessments = assessments.filter(term=data["term"])
+        if data.get("section"):
+            assessments = assessments.filter(section=data["section"])
+        if data.get("status"):
+            assessments = assessments.filter(status=data["status"])
+        if data.get("due"):
+            assessments = assessments.filter(assessment_date__lte=today)
+        if data.get("progress") == PROGRESS_MARKING:
+            assessments = assessment_progress.marking_in_progress(assessments, today=today)
+        elif data.get("progress") == PROGRESS_READY:
+            assessments = assessment_progress.ready_to_finalize(assessments, today=today)
+        filtered = any(data.get(name) for name in ("term", "section", "status", "due", "progress"))
     table = build_table(
         request,
         assessments.annotate(subject_order=Assessment.subject_display_expression()),
@@ -674,6 +689,7 @@ def academic_year_assessments(request, pk):
             "assessments": table.page,
             "table": table,
             "form": form,
+            "filtered": filtered,
         },
     )
 
