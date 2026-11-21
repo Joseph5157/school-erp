@@ -205,12 +205,23 @@ def missing_attendance(start, end, section=None, academic_year=None):
     """Report 5: expected Section/dates whose register is missing or DRAFT.
 
     Non-instructional dates are never listed. Returns dicts sorted by date
-    then Section, each with `state` NOT_TAKEN or DRAFT and the register (or
-    None). With `academic_year` (an AcademicYear or its id), only that year's
-    expected dates and registers count (Security Gate 3A).
+    then Section, each with `state` NOT_TAKEN or DRAFT, the register (or
+    None), the row's `academic_year_id`, and `expected_academic_year_ids`:
+    every year in which the Section is expected that date. With
+    `academic_year` (an AcademicYear or its id), only that year's expected
+    dates and registers count (Security Gate 3A).
+
+    A register satisfies only the expected row of its own academic year, so
+    with overlapping years one year's register never hides the other year's
+    missing row (Option A1). `expected_academic_year_ids` comes from the
+    complete expected set, before submitted rows or the year filter remove
+    anything, so an overlap stays visible on the remaining row.
     """
     year_id = getattr(academic_year, "pk", academic_year)
     expected = expected_registers(start, end, section=section)
+    years_expected = defaultdict(set)
+    for on_date, section_id, expected_year_id in expected:
+        years_expected[(on_date, section_id)].add(expected_year_id)
     if year_id is not None:
         expected = {item for item in expected if item[2] == year_id}
     if not expected:
@@ -220,13 +231,16 @@ def missing_attendance(start, end, section=None, academic_year=None):
     )
     if year_id is not None:
         register_rows = register_rows.filter(academic_year_id=year_id)
-    registers = {(register.date, register.section_id): register for register in register_rows}
+    registers = {
+        (register.date, register.section_id, register.academic_year_id): register
+        for register in register_rows
+    }
     sections = Section.objects.select_related("class_grade").in_bulk(
         {section_id for _, section_id, _ in expected}
     )
     rows = []
-    for on_date, section_id, _year_id in expected:
-        register = registers.get((on_date, section_id))
+    for on_date, section_id, expected_year_id in expected:
+        register = registers.get((on_date, section_id, expected_year_id))
         if register is not None and register.is_submitted:
             continue
         state = (
@@ -240,9 +254,14 @@ def missing_attendance(start, end, section=None, academic_year=None):
                 "section": sections[section_id],
                 "state": state,
                 "register": register,
+                "academic_year_id": expected_year_id,
+                "expected_academic_year_ids": tuple(
+                    sorted(years_expected[(on_date, section_id)])
+                ),
             }
         )
-    rows.sort(key=lambda row: (row["date"], str(row["section"])))
+    # The academic year breaks the tie between overlapping-year rows of one date and Section.
+    rows.sort(key=lambda row: (row["date"], str(row["section"]), row["academic_year_id"]))
     return rows
 
 

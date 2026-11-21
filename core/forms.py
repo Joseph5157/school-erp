@@ -1184,10 +1184,34 @@ class AttendanceRegisterForm(forms.ModelForm):
             "section": ParentedSelect(parent_attr="class_grade_id", depends_on="id_class_grade"),
         }
 
+    PREFILL_FIELDS = ("academic_year", "class_grade", "section")
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["class_grade"].queryset = ClassGrade.objects.active()
         self.fields["section"].queryset = Section.objects.active()
+
+    @classmethod
+    def prefilled(cls, query):
+        """An unbound form pre-filled from a link's query string (Option A1 "Take register").
+
+        Only fills `initial`; nothing is validated or saved until the form is posted. A value
+        that does not parse, or names a record outside the field's choices (for example an
+        archived Section), is ignored without an error.
+        """
+        initial = {}
+        choices = cls().fields
+        for name in cls.PREFILL_FIELDS:
+            raw = query.get(name, "")
+            # isdigit() is also true for characters int() rejects, such as "²"; ASCII only.
+            if (raw.isascii() and raw.isdigit()
+                    and choices[name].queryset.filter(pk=int(raw)).exists()):
+                initial[name] = int(raw)
+        try:
+            initial["date"] = datetime.date.fromisoformat(query.get("date", ""))
+        except ValueError:
+            pass
+        return cls(initial=initial)
 
     def clean(self):
         cleaned_data = super().clean()

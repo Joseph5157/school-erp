@@ -456,7 +456,9 @@ class MissingAttendanceTests(AriaAssertions, FormValueAssertions, ReportsFixture
         self.assertIn("Wed", wed)
         self.assertIn("erp-status--neutral", wed)
         self.assertIn("Not taken", wed)
-        self.assertNotIn("<a", wed)  # an unopened register has nothing to open
+        # An unopened register has nothing to open; Option A1 offers to take it instead.
+        self.assertNotIn("Open register", wed)
+        self.assertIn("Take register", wed)
         self.assertNotIn("Absent", body)
         self.assertNotIn("Mon", body)  # the submitted day is not missing
 

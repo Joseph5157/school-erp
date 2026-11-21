@@ -21,6 +21,7 @@ from core import (
     archiving,
     assessment_reports,
     assignments,
+    attendance_actions,
     charts,
     dashboard,
     data_access,
@@ -4501,7 +4502,8 @@ def attendance_register_create(request):
                 messages.info(request, "A register already exists for this Section and date.")
                 return redirect("core:attendance-register-detail", pk=existing.pk)
     else:
-        form = AttendanceRegisterForm()
+        # A "Take register" link pre-fills the form; GET never creates a register (Option A1).
+        form = AttendanceRegisterForm.prefilled(request.GET)
     return render(request, "core/attendance_register_form.html", {"form": form})
 
 
@@ -4703,10 +4705,15 @@ def report_missing_attendance(request):
     form = MissingAttendanceForm(request.GET or None)
     rows = None
     if form.is_valid():
-        rows = reports.missing_attendance(
-            form.cleaned_data["start"],
-            form.cleaned_data["end"],
-            section=form.cleaned_data.get("section"),
+        # Each row says who acts and what the next step is (Option A1); the template shows a
+        # link only when the viewer holds the permission of the page it opens.
+        rows = attendance_actions.resolve_missing(
+            reports.missing_attendance(
+                form.cleaned_data["start"],
+                form.cleaned_data["end"],
+                section=form.cleaned_data.get("section"),
+            ),
+            business_today(),
         )
     return render(request, "core/report_missing_attendance.html", {"form": form, "rows": rows})
 
