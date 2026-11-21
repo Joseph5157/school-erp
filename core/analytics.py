@@ -424,10 +424,11 @@ def low_attendance_students(term, today, limit=ABSENTEE_LIST_LIMIT):
 
 
 def attendance_tab_context(today, *, include_absentees, absent_view="month", class_links=False):
-    """The admin home Attendance tab: trend, heatmap, weekday pattern, class extremes, absentees.
+    """The admin home Attendance tab: trend, heatmap, weekday pattern, class extremes,
+    absentees and "Absent in a row".
 
-    Absentee names are student data plus attendance, so the caller decides (`include_absentees`);
-    without it `absentees` and `runs` ("Absent in a row") are None and no names are queried. Only the chosen `absent_view`
+    Absentee names are student data plus attendance, so the caller decides
+    (`include_absentees`); without it `absentees` and `runs` are None and no names are queried. Only the chosen `absent_view`
     ("month" frequent absentees, or "term" below-75% list) is queried.
     """
     if absent_view not in ABSENT_VIEWS:

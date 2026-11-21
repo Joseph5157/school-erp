@@ -6,8 +6,8 @@ Spec: docs/competitive-research/OPTION_A_IMPLEMENTATION_SPEC.md, section 7.
   and a configuration problem is named. "Take register" is never offered where none may be
   taken (archived or overlapping-year sections).
 - Late rows name the class teacher of the register's own academic year (Security Gate 3A).
-- Attendance tab: an "Absent in a row" card from `attendance_insights.absence_runs`, the same
-  data as the report it links to.
+- Attendance tab: an "Absent in a row" card from `attendance_insights.school_absence_runs`, the
+  same helper the report it links to uses.
 
 All data here is synthetic and local.
 """
@@ -17,8 +17,11 @@ from urllib.parse import urlencode
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.html import escape
 
 from core import attendance_actions, home_today
@@ -99,6 +102,36 @@ class TodayRegisterRowTests(TodayDataFixture, TestCase):
             self.assertEqual(row["problem_label"], Problem.OVERLAPPING_YEARS.label)
             self.assertIsNone(row["url"])
 
+    def test_archived_section_never_offers_take_register(self):
+        self.make_teacher_valid()
+        from core.models import Section
+
+        Section.objects.filter(pk=self.section.pk).update(
+            archived_at=timezone.now(), archived_by=self.admin_user)
+        (row,) = rows(can_view_registers=True, can_create_registers=True)
+        self.assertEqual(row["problem_label"], Problem.ARCHIVED_SECTION.label)
+        self.assertIsNone(row["url"])
+
+    def test_draft_needs_view_registers_to_link(self):
+        self.make_teacher_valid()
+        self.day(TODAY, {self.s1: P}, submit=False)
+        (row,) = rows(can_create_registers=True)
+        self.assertIsNone(row["url"])
+
+    def test_rows_use_a_fixed_number_of_queries(self):
+        self.make_teacher_valid()
+
+        def count():
+            with CaptureQueriesContext(connection) as queries:
+                rows(can_view_registers=True, can_create_registers=True)
+            return len(queries)
+
+        self.add_section("Grade 2")
+        two = count()
+        for name in ("Grade 3", "Grade 4", "Grade 5", "Grade 6"):
+            self.add_section(name)
+        self.assertEqual(count(), two)
+
     def test_draft_register_still_opens_its_page(self):
         self.make_teacher_valid()
         register = self.day(TODAY, {self.s1: P}, submit=False)
@@ -160,6 +193,11 @@ class AttendanceTabAbsenceRunsTests(TodayDataFixture, TestCase):
 
     def test_card_needs_student_names_and_attendance(self):
         page, runs = self.runs(self.viewer("school", "view_school", "view_attendanceentry"))
+        self.assertIsNone(runs)
+        self.assertNotContains(page, "Absent in a row")
+
+    def test_card_needs_attendance_as_well_as_names(self):
+        page, runs = self.runs(self.viewer("names", "view_school", "view_student"))
         self.assertIsNone(runs)
         self.assertNotContains(page, "Absent in a row")
 

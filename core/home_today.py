@@ -46,22 +46,21 @@ def _section_order(section):
     return (grade.display_order, natural_key(grade.name), natural_key(section.name))
 
 
-def _register_url(register, can):
+def _register_url(register, can_view):
     """An existing register opens on its page, which needs view_attendanceregister."""
-    can_view, _ = can
     if register is not None and can_view:
         return reverse("core:attendance-register-detail", args=[register.pk])
     return None
 
 
-def _late_row(register, teachers, can):
+def _late_row(register, teachers, can_view):
     section = register.section
     return {
         "class_name": section.class_grade.name,
         "section_name": section.name,
         "teacher_name": teachers.get((section.pk, register.academic_year_id), ""),
         "state": AttendanceRegister.Status.SUBMITTED,
-        "url": _register_url(register, can),
+        "url": _register_url(register, can_view),
     }
 
 
@@ -73,13 +72,13 @@ def _unsubmitted_rows(today, can):
     (view_attendanceregister). A missing register opens the pre-filled create form
     (add_attendanceregister), but never for an archived or overlapping-year section.
     """
-    _, can_create = can
+    can_view, can_create = can
     resolved = attendance_actions.resolve_missing(reports.missing_attendance(today, today), today)
     result = []
     for item in sorted(resolved, key=lambda item: _section_order(item["section"])):
         section, register = item["section"], item["register"]
         if register is not None:
-            url = _register_url(register, can)
+            url = _register_url(register, can_view)
         else:
             url = item["take_url"] if item["can_take"] and can_create else None
         result.append({
@@ -143,7 +142,7 @@ def register_compliance(
     for register in submitted:
         stamp = timezone.localtime(register.submitted_at)
         if stamp.time() > cutoff:
-            row = _late_row(register, teachers, can)
+            row = _late_row(register, teachers, can_view_registers)
             row["submitted_at"] = stamp
             late.append((_section_order(register.section), row))
     result["late"] = [row for _, row in sorted(late, key=lambda pair: pair[0])]
