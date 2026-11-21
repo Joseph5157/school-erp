@@ -46,6 +46,27 @@
                     {% include "partials/_status_badge.html" with label=row.state.label tone="neutral" only %}
                     {% endif %}
                     </div>
+                    {% comment %}
+                    Option A1: who acts and the next step. Each link shows only when the viewer holds the
+                    permission of the page it opens; "Take register" never shows for an archived or
+                    overlapping-year row (row.can_take is false).
+                    {% endcomment %}
+                    {% firstof row.teacher.get_full_name row.teacher.username as teacher_name %}
+                    <p class="erp-note-text mb-0 mt-1">
+                        {% if row.problem %}
+                        <span aria-hidden="true">&#9888;</span> <strong>{% if row.problem == "TEACHER_CANNOT_TAKE" %}{{ teacher_name }} can't sign in as a teacher{% else %}{{ row.problem_label }}{% endif %}</strong>
+                        {% elif row.owner == "TEACHER" %}
+                        Waiting for {% if perms.accounts.manage_teacher_accounts %}<a href="{% url 'core:teacher-detail' row.teacher.pk %}">{{ teacher_name }}</a>{% else %}{{ teacher_name }}{% endif %}
+                        {% else %}
+                        Past day: office to take{% if row.teacher %} (class teacher: {% if perms.accounts.manage_teacher_accounts %}<a href="{% url 'core:teacher-detail' row.teacher.pk %}">{{ teacher_name }}</a>{% else %}{{ teacher_name }}{% endif %}){% endif %}
+                        {% endif %}
+                        {% if perms.core.view_sectionclassteacher %}{% for year in row.review_years %}
+                        &middot; <a class="text-nowrap" href="{% url 'core:academic-year-class-teachers' year.id %}">Review class teacher{% if year.name %} ({{ year.name }}){% endif %}<span class="visually-hidden"> for {{ row.section }} on {{ row.date|date:"j M Y" }}</span></a>
+                        {% endfor %}{% endif %}
+                        {% if not row.register and row.can_take and perms.core.add_attendanceregister %}
+                        &middot; <a class="text-nowrap" href="{{ row.take_url }}">Take register<span class="visually-hidden"> for {{ row.section }} on {{ row.date|date:"j M Y" }}</span></a>
+                        {% endif %}
+                    </p>
                 </td>
             </tr>
             {% empty %}
