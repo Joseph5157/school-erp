@@ -253,9 +253,12 @@ class ReportsIndexTests(ReportsFixture, TestCase):
         self.assertEqual(content.count("<h1"), 1)
         self.assertContains(response, "erp-page-header")
         self.assertContains(response, "Percentage = Present / (Present + Absent)")
-        for url_name in ("report-daily-absentees", "report-missing-attendance", "report-monthly-section"):
+        for url_name in (
+            "report-daily-absentees", "report-missing-attendance", "report-absence-runs",
+            "report-monthly-section",
+        ):
             self.assertContains(response, f'href="{reverse("core:" + url_name)}"')
-        self.assertEqual(content.count('class="erp-link-row"'), 3)
+        self.assertEqual(content.count('class="erp-link-row"'), 4)
         # The register list is a separate shortcut (page header), not a report card.
         self.assertContains(response, ">Attendance registers</a>")
 
@@ -264,7 +267,7 @@ class ReportsIndexTests(ReportsFixture, TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, f'href="{reverse("core:report-missing-attendance")}"')
         self.assertNotContains(response, f'href="{reverse("core:attendance-register-list")}"')
-        self.assertEqual(response.content.decode().count('class="erp-link-row"'), 2)
+        self.assertEqual(response.content.decode().count('class="erp-link-row"'), 3)
 
     def test_entry_and_register_viewer_sees_everything(self):
         response = self.client_with(ENTRY, REGISTER).get(self.index)
