@@ -160,29 +160,18 @@ class SignInPageTests(Phase4Fixture, TestCase):
     def setUp(self):
         self.build_phase4()
 
-    def test_each_view_of_the_sign_in_page_is_one_public_event(self):
-        Client().get(reverse("login"))
-        Client().get(reverse("login"))
-        row = one(workflow="page")
-        self.assertEqual((row.area, row.step, row.page_route, row.count),
-                         ("public", "viewed", "root:login", 2))
-        self.assertEqual((row.device, row.display, row.platform), ("", "", ""))
-
-    def test_the_client_header_is_ignored_on_the_sign_in_page(self):
-        Client().get(reverse("login"), **CLIENT)
-        self.assertEqual(one(workflow="page").device, "")
-
-    def test_gpc_and_off_record_nothing(self):
-        Client().get(reverse("login"), HTTP_SEC_GPC="1")
-        with override_settings(USAGE_MEASUREMENT_ENABLED=False):
-            Client().get(reverse("login"))
+    def test_sign_in_page_views_are_not_counted(self):
+        """Deferred by decision: public GETs can come from bots and would make a hot counter;
+        the sign-in attempt signals already feed the login triggers."""
+        for _ in range(3):
+            Client().get(reverse("login"), **CLIENT)
         self.assertFalse(UsageCounter.objects.exists())
 
-    def test_a_signed_in_redirect_or_failed_post_is_not_a_page_view(self):
-        client = Client()
-        client.force_login(self.rao)
-        client.get(reverse("login"))
+    def test_sign_in_attempts_are_still_counted(self):
         Client().post(reverse("login"), {"username": "rao", "password": "wrong"})
+        Client().post(reverse("login"), {"username": "rao", "password": "pass-12345"})
+        self.assertEqual(rows(workflow="sign_in"), [("sign_in", "completed", 1),
+                                                    ("sign_in", "failed", 1)])
         self.assertEqual(rows(workflow="page"), [])
 
 
@@ -386,6 +375,26 @@ class MarksWorkflowTests(AutosaveFixture, TestCase):
         with override_settings(USAGE_MEASUREMENT_ENABLED=False):
             page = self.teacher.get(self.entry_url(self.test1)).content.decode()
         self.assertNotIn("data-erp-usage-size", page)
+
+    def test_a_complete_sheet_does_not_start_marks_entry(self):
+        """Opening a sheet with nothing left to enter is a page view, not a new workflow: the
+        server renders no size bucket, and the page starts only with a bucket and an unmarked
+        row (static check below)."""
+        self.result(self.test1, self.asha, "MARKED", "12")
+        self.result(self.test1, self.bina, "ABSENT")
+        page = self.teacher.get(self.entry_url(self.test1)).content.decode()
+        self.assertIn('data-erp-usage-size="1-20"', page)  # Ravi is still not entered
+        self.result(self.test1, self.ravi, "MARKED", "9")
+        page = self.teacher.get(self.entry_url(self.test1)).content.decode()
+        self.assertIn("data-erp-marks", page)
+        self.assertNotIn("data-erp-usage-size", page)
+
+    def test_the_page_starts_only_with_work_left_and_completes_only_after_a_start(self):
+        block = ERP_JS[ERP_JS.index("var markSize"):ERP_JS.index("var form = sheet.closest")]
+        self.assertIn('if (markSize && rows.some(function (row) { return statusOf(row) === '
+                      '"unmarked"; }))', block)
+        self.assertIn("var marksStarted = null;", block)
+        self.assertIn('!marksDone && marksStarted !== null', ERP_JS)
 
     def test_signed_out_marks_autosave_is_counted(self):
         self.post_row(self.asha, "MARKED", "12", client=Client())
@@ -686,6 +695,14 @@ class BrowserCodeTests(TestCase):
             for extra in args[2:]:
                 self.assertIn(extra, allowed_extra, call)
 
+    def test_device_dimensions_are_taken_when_the_event_happens(self):
+        """A resize or rotation between an event and its send must not relabel it: each event
+        keeps its own device, display and platform, and one send carries one set of them."""
+        block = usage_block()
+        self.assertIn("queue.push({ e: event, d: device(), x: display(), p: platform() });", block)
+        self.assertIn("d: first.d, x: first.x, p: first.p", block)
+        self.assertNotIn("d: device(), x: display(), p: platform(), r:", block)
+
     def test_payload_carries_only_shared_dimensions_and_events(self):
         body = re.search(r"JSON\.stringify\(\{([^}]*)\}\)", usage_block()).group(1)
         self.assertEqual(sorted(re.findall(r"(\w+):", body)), ["a", "d", "e", "p", "r", "x"])
@@ -766,6 +783,13 @@ class ReportWorkflowTests(ReportFixture, TestCase):
         add(area="admin", workflow="find_student", step="started", count=12)
         add(area="admin", workflow="find_student", step="completed", count=10)
         self.assertRegex(self.report("--weeks", "1"), r"rate n/a")
+
+    def test_rate_minimum_is_exactly_20_starts(self):
+        started = add(area="admin", workflow="find_student", step="started", count=19)
+        add(area="admin", workflow="find_student", step="completed", count=10)
+        self.assertRegex(self.report("--weeks", "1"), r"started 19\s+completed 10\s+rate n/a")
+        UsageCounter.objects.filter(pk=started.pk).update(count=20)
+        self.assertRegex(self.report("--weeks", "1"), r"started 20\s+completed 10\s+rate 50\.0%")
 
     def test_duration_distribution_hides_a_second_cell_when_one_is_small(self):
         add(area="admin", workflow="find_student", step="started", count=40)
@@ -966,6 +990,35 @@ class ReportEvidenceTests(ReportFixture, TestCase):
         self.assertEqual(re.findall(r"marks_entry\s+retry_succeeded\s+(\S+)", out),
                          ["<5"] * 4)
         self.assertRegex(out, r"R, retry success rate .*: n/a \(hidden\)\s+\(\* of 40")
+
+    def admin_phone_views(self, per_week_list, other_per_week):
+        for week in range(4):
+            day = MONDAY_W47 - timedelta(weeks=week)
+            add(day=day, area="admin", workflow="page", step="viewed",
+                page_route="core:student-list", device="phone", count=per_week_list)
+            add(day=day, area="admin", workflow="page", step="viewed", page_route="other",
+                device="phone", count=other_per_week)
+
+    def test_other_share_needs_100_admin_phone_views(self):
+        self.admin_phone_views(19, 6)  # 4 x 25 = 100 views
+        out = self.report()
+        self.assertRegex(out, r"Share of other among admin phone views .*: 24\.0%")
+        UsageCounter.objects.filter(page_route="other", day=MONDAY_W47).update(count=5)
+        out = self.report()  # 99 views
+        self.assertRegex(out, r"Share of other among admin phone views .*: n/a\s+\(\S+ of 99; "
+                              r"below the minimum of 100")
+
+    def test_five_phone_views_a_week_route_rule_is_unchanged_below_100(self):
+        """The 100-view minimum applies to the other share only; a route averaging at least
+        five phone views a week is still flagged when the admin total is under 100."""
+        self.admin_phone_views(5, 6)  # 20 student-list views + 24 other = 44 total
+        out = self.report()
+        self.assertRegex(out, r"core:student-list\s+20\s+\(at least 5 a week")
+        self.assertRegex(out, r"Share of other among admin phone views .*: n/a")
+        UsageCounter.objects.filter(page_route="core:student-list", day=MONDAY_W47).update(count=6)
+        UsageCounter.objects.filter(page_route="core:student-list").exclude(
+            day=MONDAY_W47).update(count=4)  # 18 over 4 weeks: under 5 a week
+        self.assertNotRegex(self.report(), r"core:student-list\s+18\s+\(at least 5 a week")
 
     def test_unknown_platform_is_printed_so_no_residual_reveals_it(self):
         self.fill_four_weeks(attempts=150, network=6, taps=10, succeeded=5)  # platform unknown

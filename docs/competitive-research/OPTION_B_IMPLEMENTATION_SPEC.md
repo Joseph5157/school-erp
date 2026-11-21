@@ -2,6 +2,13 @@
 
 - **Status:** Approved implementation specification. All product-owner decisions OD-B1 to OD-B16 are approved (revision 3, after two product-owner reviews). The F-1 fix is part of B1.
 - **Revision 4 (B1, PR #282, product-owner approved):** the equality check now runs before the base check inside the lock (4.3 T5 and T6), so a save whose reply was lost, followed by Retry with the old base, is answered Saved with no write instead of a conflict with the teacher's own value. Refusals still come first, and a genuinely different stored value still gives the conflict.
+- **Revision 5 (B3, PR #284, product-owner decisions):**
+  - `marks_entry` starts only when the sheet has at least one row not yet entered. Opening a complete sheet is a page view, not a new workflow (section 6).
+  - Sign-in page views (public GETs of `root:login`) are **not recorded**. Bots can generate them, they would make one hot counter row, and the sign-in attempt signals (completed, failed, throttled) already feed every approved login trigger. `root:login` stays in the `page_route` allow-list and constraint, unused, so no migration is needed (5.2, 5.5).
+  - Approved as implemented:
+    - the beacon's optional `z` size bucket, only on `marks_entry` started and completed;
+    - a minimum of 20 starts for weekly completion rates;
+    - a minimum of 100 admin phone views for the 9.5 `other` share only. The rule that a route averaging at least five phone views a week gets a conversion task is unchanged.
 - **Baseline:** `main` at `a78734c` (Option A3 merged, PR #280). Option A (A1–A3) and ADR 0026 are in this baseline.
 - **Source:** `CURRENT_STATE_BENCHMARK_AUDIT.md` (approved planning baseline), Option B, gaps G-05 and G-04, and the research questions in §13 that feed MOB-04, MOB-06 to MOB-10 and G-06.
 - **Companion documents:** `CURRENT_STATE_EVIDENCE_INDEX.md`, `OPTION_A_IMPLEMENTATION_SPEC.md`, `docs/PWA_GATE_1_PLAN.md`, `docs/PWA_STARTER_PLAN.md` (Gate 2).
@@ -306,7 +313,7 @@ Every counter row has exactly the dimensions below. Each value comes from a fixe
 | Admin | `core:admin-overview`, `core:student-list`, `core:student-detail`, `core:student-attendance`, `core:attendance-register-list`, `core:attendance-register-detail`, `core:attendance-reports`, `core:report-missing-attendance`, `core:report-daily-absentees`, `core:announcement-list`, `core:announcement-detail`, `core:guardian-list`, `core:guardian-detail`, `core:teacher-list`, `core:teacher-detail`, `core:applicant-list`, `core:applicant-detail`, `core:timetable-index`, `core:notifications-to-send`, `core:publications-stale`, `core:import-list` |
 | Teacher | `core:my-home`, `core:my-attendance`, `core:my-attendance-history`, `core:my-assessments`, `core:assessment-marks-entry`, `core:my-students`, `core:my-student-detail`, `core:my-timetable`, `core:my-gradebook`, `core:my-results` |
 | Guardian | `portal:home`, `portal:child`, `portal:attendance`, `portal:notices`, `portal:notice`, `portal:report-cards`, `portal:report-card` |
-| Public | `root:login` (recorded server-side on the sign-in GET, with blank device fields, because signed-out browsers cannot use the beacon) |
+| Public | `root:login`. **Not recorded (revision 5):** sign-in page views are deferred, because bots can generate public GETs and the sign-in attempt signals suffice. The value stays allowed but unused. |
 
 Every signed-in page outside the list is recorded as `other` for its area, so the report shows how much of phone use the list does not cover.
 
@@ -402,7 +409,7 @@ These are recorded where these moments happen. `accounts/views.py` `LoginView` s
 
 | Signal | Where | Area | Workflow and step |
 | --- | --- | --- | --- |
-| Sign-in page shown | `LoginView` GET | `public` | `page` / `viewed`, `page_route = root:login` |
+| ~~Sign-in page shown~~ (deferred, revision 5) | Not recorded | — | — |
 | Sign-in failed | `accounts/views.LoginView.form_invalid` | `public`, always | `sign_in` / `failed` |
 | Sign-in throttled | Throttle path in `accounts/forms.py` (`security.is_throttled`) | `public`, always | `sign_in` / `throttled` |
 | Sign-in succeeded | `LoginView.form_valid` | From `user_areas`: `admin`, `teacher`, `guardian` or `multi` | `sign_in` / `completed` |
@@ -454,7 +461,7 @@ Add `usage-beacon` to `route_permissions.json` with flags `require_POST` and `ne
 | Key | Area | Steps recorded | Started when | Completed when | Timer kept in | Extra dimension |
 | --- | --- | --- | --- | --- | --- | --- |
 | `attendance_capture` | Teacher | `started`, `completed`, `attempt`, `saved`, failure codes | First GET of `my-attendance` for today's register in this session, with the register DRAFT or not yet open | POST to `my-attendance-submit` succeeds | Server session key `_u_attendance` (epoch seconds only) | `size_bucket` |
-| `marks_entry` | Teacher | Same as above | Marks-entry page shown with a form | Not-entered count reaches 0 in this page view (from server reply counts) | Page memory only | `size_bucket` |
+| `marks_entry` | Teacher | Same as above | Marks-entry page shown with a form and at least one row not yet entered (revision 5) | Not-entered count reaches 0 in this page view (from server reply counts) | Page memory only | `size_bucket` |
 | `teacher_home` | Teacher | `started`, `completed` | `my-home` requested | Page `load` event | Page memory only | — |
 | `find_student` | Admin | `started`, `completed` | GET of `student-list` with a non-empty `q` (measurement never reads the term) | GET of `student-detail` in the same session within 10 minutes | Server session key `_u_find_student` | — |
 | `missing_attendance_act` | Admin | `started`, `completed` | GET of the Missing attendance report | A "Take register" or "Review class teacher" link is followed (Option A1 links) | Page memory; sent on click | — |

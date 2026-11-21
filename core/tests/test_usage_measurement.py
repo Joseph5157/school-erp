@@ -562,10 +562,10 @@ class SignInSignalTests(Users, TestCase):
             self.sign_in("teach1")
         self.assertEqual(rows(workflow="sign_in"), [("throttled", 1)])
 
-    def test_login_page_get_is_one_public_page_view_since_b3(self):
+    def test_login_page_get_records_nothing(self):
+        # Sign-in page views stay uncounted (B3 decision: bots, hot counter; attempts suffice).
         self.client.get(self.login_url)
-        self.assertEqual(list(UsageCounter.objects.values_list("area", "workflow", "page_route")),
-                         [("public", "page", "root:login")])
+        self.assertFalse(UsageCounter.objects.exists())
 
     def test_gpc_sign_in_records_nothing(self):
         self.client.post(self.login_url, {"username": "teach1", "password": self.password},

@@ -25,14 +25,9 @@ class LoginView(auth_views.LoginView):
 
     redirect_authenticated_user = True
 
-    def get(self, request, *args, **kwargs):
-        response = super().get(request, *args, **kwargs)
-        if response.status_code == 200:
-            # The sign-in page itself (ADR 0027, B3): one public event per view. A signed-out
-            # browser cannot use the beacon, so the server counts it, with no device fields.
-            usage.record(request, area="public", workflow="page", step="viewed",
-                         page_route="root:login", device="", display="", platform="")
-        return response
+    # Sign-in page views (public GETs) are deliberately not counted (ADR 0027, B3 decision):
+    # bots can generate them, they would make one hot counter row, and the sign-in attempt
+    # signals below (completed, failed, throttled) already feed every approved login trigger.
 
     def form_valid(self, form):
         # The expiry marker survives login() (it only cycles an anonymous session's key) and is

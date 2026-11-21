@@ -51,12 +51,14 @@ var erpUsage = (function () {
     for (var i = 0; i < BUCKETS.length; i++) if (seconds < BUCKETS[i][0]) return BUCKETS[i][1];
     return ">30m";
   }
+  // Each event keeps the device dimensions of the moment it happened (a phone turned sideways, or a
+  // resized window, must not relabel events queued before), and one send carries one set of them.
   function add(workflow, step, duration, size) {
     if (!on()) return;
     var event = { w: workflow, s: step };
     if (duration) event.b = duration;
     if (size) event.z = size;
-    queue.push(event);
+    queue.push({ e: event, d: device(), x: display(), p: platform() });
     while (queue.length > MAX_EVENTS) queue.shift();
   }
   function requeue(batch) {
@@ -70,19 +72,21 @@ var erpUsage = (function () {
   function flush() {
     if (!enabled || sending || !queue.length) return;
     if (gpc()) { queue = []; return; }
-    var batch = queue;
-    queue = [];
+    var first = queue[0];
+    var batch = queue.filter(function (item) { return item.d === first.d && item.x === first.x && item.p === first.p; });
+    queue = queue.filter(function (item) { return batch.indexOf(item) === -1; });
     sending = true;
     fetch(page.getAttribute("data-erp-usage-url"), {
       method: "POST",
       credentials: "same-origin",
       keepalive: true,
       headers: { "Content-Type": "application/json", "X-CSRFToken": token(), "X-Requested-With": "XMLHttpRequest" },
-      body: JSON.stringify({ d: device(), x: display(), p: platform(), r: route(), a: page.getAttribute("data-erp-area"), e: batch }),
+      body: JSON.stringify({ d: first.d, x: first.x, p: first.p, r: route(), a: page.getAttribute("data-erp-area"), e: batch.map(function (item) { return item.e; }) }),
     }).then(function (response) {
       sending = false;
       // 204 is accepted. A refused batch (400, 401, 403) would be refused again, so it is dropped.
       if (response.status >= 500) requeue(batch);
+      else if (queue.length) flush(); // events from another device state go in their own send
     }, function () {
       sending = false;
       requeue(batch); // offline: kept in memory until the next flush moment
@@ -825,12 +829,16 @@ function usageHeaders(headers) {
     // The per-row bookkeeping (_seq, _sent, _dirty, swapping) is copied from the attendance
     // roster block above, so attendance stays exactly as it was (spec §4.4 allows the copy).
     if (!(window.htmx && sheet.querySelector("[hx-post]"))) return;
-    // Usage (ADR 0027, B3): marks_entry starts when the sheet is shown with a form and completes the
-    // first time a server reply says nothing is left to enter. Timer and size stay in page memory.
+    // Usage (ADR 0027, B3): marks_entry starts only when the sheet still has rows to enter (the
+    // server renders the size bucket only then); opening a complete sheet is just a page view. It
+    // completes the first time a server reply says nothing is left. Timer and size stay in memory.
     var markSize = sheet.getAttribute("data-erp-usage-size") || "";
-    var marksStarted = window.performance.now();
+    var marksStarted = null;
     var marksDone = false;
-    erpUsage.add("marks_entry", "started", null, markSize);
+    if (markSize && rows.some(function (row) { return statusOf(row) === "unmarked"; })) {
+      marksStarted = window.performance.now();
+      erpUsage.add("marks_entry", "started", null, markSize);
+    }
     var form = sheet.closest("form");
     var fallback = sheet.querySelector("[data-erp-save-fallback]");
     var pageState = sheet.querySelector("[data-erp-autosave-state]");
@@ -1012,7 +1020,7 @@ function usageHeaders(headers) {
       if (fragment && code >= 200 && code < 300) {
         if (why === "retry") erpUsage.add("marks_entry", "retry_succeeded");
         var left = /id="erp-count-unmarked"[^>]*>(\d+)</.exec(xhr.responseText || "");
-        if (left && left[1] === "0" && !marksDone) {
+        if (left && left[1] === "0" && !marksDone && marksStarted !== null) {
           marksDone = true;
           var took = erpUsage.since(marksStarted);
           erpUsage.add("marks_entry", "completed", took, markSize);

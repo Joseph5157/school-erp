@@ -2262,9 +2262,10 @@ def assessment_marks_entry(request, pk):
     context["form"] = form
     if form is not None:
         context["autosave_url"] = reverse("core:assessment-marks-autosave", args=[assessment.pk])
-        if usage.active(request):
+        if usage.active(request) and form.counts()["unmarked"] > 0:
             # marks_entry runs its timer in page memory; the page reports its start and
-            # completion with this bucket, never the roster size (ADR 0027, B3).
+            # completion with this bucket, never the roster size (ADR 0027, B3). Only a sheet
+            # with work left starts the workflow: opening a complete sheet is a page view.
             context["usage_size"] = usage.size_bucket(len(form.enrollments))
     return render(request, "core/assessment_marks_entry.html", context)
 
