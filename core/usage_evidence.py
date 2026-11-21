@@ -103,70 +103,133 @@ class Cells:
         return found
 
     @staticmethod
-    def _known(relations, printed):
-        known = {id(c) for c in printed if not c.hidden}
+    def _bounds(relations, cells):
+        """What a reader can infer about every cell from the printed figures.
+
+        A visible cell is exact; `<5` is 1 to 4; `*` may be any value, at least 1 (the legend says
+        so, and a printed line is never 0); an implied total is at least 0. Each relation total = sum(parts) then narrows the
+        bounds of its members, repeated until nothing changes. This catches subtraction (one
+        unknown part) and range arguments too: 8 split into two `<5` cells forces both to be 4.
+        """
+        inf = math.inf
+        low, high = {}, {}
+        for c in cells:
+            if not c.printed:
+                low[id(c)], high[id(c)] = 0, inf
+            elif not c.hidden:
+                low[id(c)] = high[id(c)] = c.value
+            elif c.secondary:
+                low[id(c)], high[id(c)] = 1, inf  # `*`: any value; a printed line is never 0
+            else:
+                low[id(c)], high[id(c)] = 1, MIN_CELL - 1
         changed = True
         while changed:
             changed = False
             for total, parts in relations:
-                unknown = [m for m in (total, *parts) if id(m) not in known]
-                if len(unknown) == 1:
-                    known.add(id(unknown[0]))
-                    changed = True
-        return known
+                t = id(total)
+                sum_low = sum(low[id(p)] for p in parts)
+                sum_high = sum(high[id(p)] for p in parts)
+                if sum_low > low[t]:
+                    low[t], changed = sum_low, True
+                if sum_high < high[t]:
+                    high[t], changed = sum_high, True
+                for p in parts:
+                    others_low = sum(low[id(q)] for q in parts if q is not p)
+                    others_high = sum(high[id(q)] for q in parts if q is not p)
+                    new_low = low[t] - others_high
+                    new_high = high[t] - others_low
+                    if new_low > low[id(p)]:
+                        low[id(p)], changed = new_low, True
+                    if new_high < high[id(p)]:
+                        high[id(p)], changed = new_high, True
+        return low, high
 
-    def _hide_one(self, cell, relations, known, seen):
-        """Hide one more visible cell so that `cell` is no longer recoverable through a relation."""
-        usable = []
-        for total, parts in relations:
-            members = [total, *parts]
-            if any(m is cell for m in members) and all(
-                    id(m) in known for m in members if m is not cell):
-                usable.append(members)
-        for members in usable:
-            visible = [m for m in members if m is not cell and m.printed and not m.hidden]
+    @staticmethod
+    def _leaks(cells, low, high):
+        """Primary hidden cells a reader can narrow below the full range 1 to 4."""
+        return [c for c in cells if c.printed and c.hidden and not c.secondary
+                and (low[id(c)] > 1 or high[id(c)] < MIN_CELL - 1)]
+
+    @staticmethod
+    def _hide_near(cell, relations):
+        """Hide the smallest visible printed cell that shares a relation with `cell`, looking
+        through implied totals when the cell's own relations have no visible member left."""
+        frontier, seen = [cell], {id(cell)}
+        while frontier:
+            visible, implied, small = [], [], []
+            for current in frontier:
+                for total, parts in relations:
+                    members = [total, *parts]
+                    if not any(m is current for m in members):
+                        continue
+                    for m in members:
+                        if id(m) in seen:
+                            continue
+                        if m.printed and not m.hidden:
+                            visible.append(m)
+                        elif not m.printed:
+                            implied.append(m)
+                        elif not m.secondary:
+                            # A `<5` neighbour; a total first, as hiding it frees all its parts.
+                            small.insert(0, m) if m is total else small.append(m)
             if visible:
                 smallest = min(visible, key=lambda m: m.value)
                 smallest.hidden = smallest.secondary = True
                 return True
-        for members in usable:
-            for m in members:
-                if m is not cell and not m.printed and id(m) not in seen:
-                    seen.add(id(m))
-                    if self._hide_one(m, relations, known, seen):
-                        return True
+            if small:
+                # Nothing visible is left to hide: widen a `<5` neighbour to `*` (any value), for
+                # example a `<5` window total over four weekly lines, which would make each 1.
+                small[0].secondary = True
+                return True
+            for m in implied:
+                seen.add(id(m))
+            frontier = implied
         return False
 
     def protect(self):
-        printed = [c for layer in self.layers.values() for c in layer]
+        cells = [c for layer in self.layers.values() for c in layer] + self.implied
         relations = self._relations()
         while True:
-            known = self._known(relations, printed)
-            leak = next((c for c in printed if c.hidden and id(c) in known), None)
-            if leak is None:
+            low, high = self._bounds(relations, cells)
+            leaks = self._leaks(cells, low, high)
+            if not leaks:
                 return
-            if not self._hide_one(leak, relations, known, set()):
-                raise RuntimeError("usage report: a hidden cell could not be protected")
+            if not self._hide_near(leaks[0], relations):
+                raise ProtectionError("a hidden cell could not be protected")
+
+
+class ProtectionError(RuntimeError):
+    """The report cannot be printed without revealing a small cell; nothing is printed."""
 
 
 # --- ratios and triggers -------------------------------------------------------------------------
 
 
 class Ratio:
+    """Read only after suppression: its text and interval follow the cells' final state."""
+
     def __init__(self, num, den, minimum):
         self.num, self.den, self.minimum = num, den, minimum
-        if den.hidden or den.value < minimum:
-            self.text, self.interval = "n/a", None
-        elif num.hidden:
+
+    def _resolve(self):
+        num, den = self.num, self.den
+        if den.hidden or den.value < self.minimum:
+            return "n/a", None
+        if num.hidden:
             if num.secondary:
-                self.text, self.interval = "n/a (hidden)", None
-            else:
-                bound = math.ceil(1000 * MIN_CELL / den.value) / 10
-                self.text = f"<{bound:.1f}%"
-                self.interval = (1 / den.value, (MIN_CELL - 1) / den.value)
-        else:
-            value = num.value / den.value
-            self.text, self.interval = f"{100 * value:.1f}%", (value, value)
+                return "n/a (hidden)", None
+            bound = math.ceil(1000 * MIN_CELL / den.value) / 10
+            return f"<{bound:.1f}%", (1 / den.value, (MIN_CELL - 1) / den.value)
+        value = num.value / den.value
+        return f"{100 * value:.1f}%", (value, value)
+
+    @property
+    def text(self):
+        return self._resolve()[0]
+
+    @property
+    def interval(self):
+        return self._resolve()[1]
 
     def at_least(self, threshold):
         if self.interval is None:
@@ -346,8 +409,9 @@ class Report:
         ratio("F, fallback rate (supporting)", "fallback_save_used / attempt",
               ev(**saves, step="fallback_save_used"), ev(**saves, step="attempt"), 500,
               "attempts")
+        # Triggers and verdict notes are callables: they read the cells after suppression.
         out.append(("trigger", "9.1 offline write and sync",
-                    all_of(N.at_least(0.02), R.below(0.80))))
+                    lambda: all_of(N.at_least(0.02), R.below(0.80))))
 
         out.append(("heading", "9.2 Push notifications (MOB-06). These count events, not people "
                                "or notices; S describes only notices that were viewed and cannot "
@@ -364,7 +428,9 @@ class Report:
                     "(supporting)", "iOS installed / iOS",
                     ev(**pages, platform="ios", display="installed"), ev(**pages, platform="ios"),
                     50, "iOS page-view events", subset=True)
-        push = all_of(S.below(0.50), P.at_least(0.70))
+        def push():
+            return all_of(S.below(0.50), P.at_least(0.70))
+
         out.append(("trigger", "9.2 push notifications", push))
 
         out.append(("heading", "9.3 Login convenience (MOB-04, G-06). E and L cover all devices; "
@@ -384,31 +450,44 @@ class Report:
                   subset=True)
         ratio("T, throttle share (supporting)", "throttled / failed",
               ev(workflow="sign_in", step="throttled"), failed, 50, "failures")
-        out.append(("trigger", "9.3 login convenience", any_of(E.above(0.05), L.above(0.30))))
-        out.append(("note", f"Guardian recovery: G part {verdict(G.at_least(0.20))}; it also "
-                            "needs the office to confirm that guardian password resets are a "
-                            "recurring burden."))
+        out.append(("trigger", "9.3 login convenience",
+                    lambda: any_of(E.above(0.05), L.above(0.30))))
+        out.append(("note", lambda: f"Guardian recovery: G part {verdict(G.at_least(0.20))}; it "
+                                    "also needs the office to confirm that guardian password "
+                                    "resets are a recurring burden."))
 
         out.append(("heading", "9.4 Native apps (MOB-10), a meta-trigger per platform."))
         per_platform = {}
-        for platform in usage.PLATFORMS:
+        # Every platform value is printed, including unknown (server-seen saves can come without
+        # the device header), so the 9.1 totals minus the platform cells leave no hidden residual.
+        for platform in usage.PLATFORMS + ("",):
             phone = {**saves, "platform": platform}
-            n_x = ratio(f"N on {platform}", "network / attempt", ev(**phone, step="network"),
+            name = label(platform)
+            n_x = ratio(f"N on {name}", "network / attempt", ev(**phone, step="network"),
                         ev(**phone, step="attempt"), 500, "attempts")
-            r_x = ratio(f"R on {platform}", "retry_succeeded / retry_tapped",
+            r_x = ratio(f"R on {name}", "retry_succeeded / retry_tapped",
                         ev(**phone, step="retry_succeeded"), ev(**phone, step="retry_tapped"),
                         20, "retry taps")
-            per_platform[platform] = all_of(n_x.at_least(0.02), r_x.below(0.80))
-        met_on = [p for p, met in per_platform.items() if met is True]
-        if len(met_on) == 1:
-            condition_a = True
-        elif met_on:
-            condition_a = False  # met on several platforms: not a one-platform shortfall
-        else:
-            condition_a = False if all(v is False for v in per_platform.values()) else None
-        out.append(("note", f"A, offline on one platform: {verdict(condition_a)}"
-                            + (f" ({met_on[0]})" if condition_a else "")))
-        out.append(("note", "B, iOS push reach: " + verdict(all_of(push, ios.below(0.20)))))
+            if platform:  # unknown is printed but is not a platform for condition A
+                per_platform[platform] = (n_x, r_x)
+
+        def condition_a():
+            met = {p: all_of(n.at_least(0.02), r.below(0.80)) for p, (n, r) in per_platform.items()}
+            met_on = [p for p, value in met.items() if value is True]
+            if len(met_on) == 1:
+                return True, met_on[0]
+            if met_on:
+                return False, ""  # met on several platforms: not a one-platform shortfall
+            return (False if all(v is False for v in met.values()) else None), ""
+
+        def a_note():
+            value, platform = condition_a()
+            return f"A, offline on one platform: {verdict(value)}" + (
+                f" ({platform})" if value else "")
+
+        out.append(("note", a_note))
+        out.append(("note", lambda: "B, iOS push reach: "
+                                    + verdict(all_of(push(), ios.below(0.20)))))
         out.append(("note", "The rule also needs documented PWA capability testing on real "
                             "devices of that platform, so the counters alone never meet it."))
 
@@ -462,6 +541,10 @@ def _rate(started, completed):
         return "n/a"
     if not completed:
         return "0.0%"
+    if not completed.hidden and completed.value > started.value:
+        # Starts and completions are never joined: work started last week, or two Sections
+        # sharing one attendance timer, can complete more than started this week.
+        return "n/a (more completions than starts)"
     return Ratio(completed, started, RATE_MINIMUM).text
 
 
@@ -577,7 +660,8 @@ def _render_evidence(period, out):
         if kind == "heading":
             yield _line(period, "\n" + entry[1])
         elif kind == "note":
-            yield _line(period, "  " + entry[1])
+            text = entry[1]() if callable(entry[1]) else entry[1]
+            yield _line(period, "  " + text)
         elif kind == "ratio":
             _, name, definition, r, unit = entry
             yield ("evidence", period, f"{name} numerator", r.num.text(), None)
@@ -591,7 +675,8 @@ def _render_evidence(period, out):
             _, name, cell = entry
             yield ("evidence", period, name, cell.text(), f"  {name}: {cell.text()}")
         elif kind == "trigger":
-            _, name, value = entry
+            _, name, rule = entry
+            value = rule()
             yield ("trigger", period, name, verdict(value), f"  {name}: {verdict(value)}")
         elif kind == "routes":
             _, routes, needed = entry
@@ -602,6 +687,9 @@ def _render_evidence(period, out):
                        f"  {route:<34} {cell.text()}{flag}")
         elif kind == "took":
             _, size, done, took = entry
+            if done.hidden:  # hidden by suppression after the minimum check: print nothing more
+                yield _line(period, f"  marks completions, size {size}: n/a (hidden)")
+                continue
             yield ("evidence", period, f"marks completions size {size}", done.text(),
                    f"  marks completions, size {size}: {done.text()}")
             for bucket, cell in took:

@@ -883,6 +883,10 @@ class ReportEvidenceTests(ReportFixture, TestCase):
 
     def test_stays_online_only_when_network_is_low(self):
         self.fill_four_weeks(attempts=150, network=1, taps=10, succeeded=5)
+        # One small weekly cell only: four lines of 1 under a <5 total would pin each one, and
+        # the report then widens the total to * (test_a_small_window_total_..._is_widened).
+        UsageCounter.objects.filter(step="network").exclude(day=MONDAY_W47).delete()
+        UsageCounter.objects.filter(step="network").update(count=4)
         out = self.report()
         # 4 of 600 is hidden; the bound 5/600 is rounded up, so it never understates.
         self.assertRegex(out, r"N, observed network failure rate .*: <0\.9%")
@@ -945,6 +949,65 @@ class ReportEvidenceTests(ReportFixture, TestCase):
         self.assertEqual(values[("workflows", "find_student completed <5s")], "<5")
         self.assertEqual(values[("workflows", "find_student completed 15-60s")], "*")
         self.assertNotIn("9", [r[3] for r in data[1:]])
+
+    def test_two_small_cells_under_a_visible_total_cannot_be_pinned(self):
+        """Started 8 split into two size cells of 4: both print <5, but 8 = 4 + 4 would pin them.
+        The engine must hide the total too (or otherwise keep each cell anywhere in 1 to 4)."""
+        for size in ("1-20", "21-40"):
+            add(area="teacher", workflow="marks_entry", step="started", count=4, size_bucket=size)
+        out = self.report("--weeks", "1")
+        self.assertNotRegex(out, r"marks_entry\s+started 8")
+        self.assertRegex(out, r"marks_entry\s+started \*")
+
+    def test_a_small_window_total_over_small_weekly_lines_is_widened(self):
+        """Four weekly lines of 1 under a <5 window total would make each exactly 1."""
+        self.fill_four_weeks(attempts=150, network=6, taps=10, succeeded=1)
+        out = self.report()
+        self.assertEqual(re.findall(r"marks_entry\s+retry_succeeded\s+(\S+)", out),
+                         ["<5"] * 4)
+        self.assertRegex(out, r"R, retry success rate .*: n/a \(hidden\)\s+\(\* of 40")
+
+    def test_unknown_platform_is_printed_so_no_residual_reveals_it(self):
+        self.fill_four_weeks(attempts=150, network=6, taps=10, succeeded=5)  # platform unknown
+        out = self.report()
+        self.assertRegex(out, r"N on unknown \(network / attempt\): 4\.0%")
+
+    def test_brute_force_attacker_cannot_narrow_any_hidden_duration_cell(self):
+        """Independent of the engine: from the printed text alone, enumerate every value the
+        hidden duration cells could take (<5 is 1..4, * is any value from 1) given the printed
+        completed total, and require each <5 cell to stay free across the whole range 1..4."""
+        import itertools
+        import random
+
+        rng = random.Random(20261121)
+        buckets = ["<5s", "5-15s", "15-60s", "1-3m"]
+        for _ in range(60):
+            UsageCounter.objects.all().delete()
+            counts = [rng.choice([0, 1, 2, 3, 4, 4, 5, 6, 9]) for _ in buckets]
+            if not any(counts):
+                continue
+            add(area="admin", workflow="find_student", step="started", count=40)
+            for bucket, count in zip(buckets, counts, strict=True):
+                if count:
+                    add(area="admin", workflow="find_student", step="completed", count=count,
+                        duration_bucket=bucket)
+            out = self.report("--weeks", "1")
+            total = re.search(r"find_student\s+started 40\s+completed (\S+)", out).group(1)
+            printed = dict(re.findall(r"took (\S+)\s+(\S+)", out))
+            hidden = [b for b, v in printed.items() if not v.isdigit()]
+            ranges = {b: range(1, 5) if printed[b] == "<5" else range(1, 41) for b in hidden}
+            known = sum(int(v) for v in printed.values() if v.isdigit())
+            seen = {b: set() for b in hidden if printed[b] == "<5"}
+            for values in itertools.product(*(ranges[b] for b in hidden)):
+                if total.isdigit() and known + sum(values) != int(total):
+                    continue
+                if total == "<5" and not 1 <= known + sum(values) <= 4:
+                    continue
+                for bucket, value in zip(hidden, values, strict=True):
+                    if bucket in seen:
+                        seen[bucket].add(value)
+            for possible in seen.values():
+                self.assertEqual(possible, {1, 2, 3, 4}, (counts, out))
 
     def test_two_visible_buckets_and_one_small_one_hide_exactly_one_more(self):
         add(area="admin", workflow="find_student", step="started", count=40)

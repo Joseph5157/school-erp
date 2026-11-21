@@ -347,16 +347,16 @@ class ReportTests(TestCase):
 
     def test_small_cells_are_hidden_after_filtering_and_weekly_grouping(self):
         monday = TODAY - timedelta(days=TODAY.weekday())
-        UsageCounter.objects.create(day=monday, area="admin", workflow="sign_in", step="failed",
+        UsageCounter.objects.create(day=monday, area="public", workflow="sign_in", step="failed",
                                     count=3)
-        UsageCounter.objects.create(day=monday + timedelta(days=1), area="admin",
+        UsageCounter.objects.create(day=monday + timedelta(days=1), area="public",
                                     workflow="sign_in", step="failed", count=3)
         UsageCounter.objects.create(day=monday, area="teacher", workflow="sign_in",
                                     step="completed", count=4)
         UsageCounter.objects.create(day=monday, area="admin", workflow="sign_in",
                                     step="completed", count=2)
         out = self.report("--weeks", "1")
-        self.assertRegex(out, r"sign_in\s+failed\s+admin\s+6")  # two daily 3s merge into a week
+        self.assertRegex(out, r"sign_in\s+failed\s+public\s+6")  # two daily 3s merge into a week
         self.assertRegex(out, r"sign_in\s+completed\s+teacher\s+<5")  # by area since B3
         out = self.report("--weeks", "1", "--area", "teacher")
         self.assertRegex(out, r"sign_in\s+completed\s+teacher\s+<5")  # hidden after filtering

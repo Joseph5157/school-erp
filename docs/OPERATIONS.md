@@ -346,8 +346,8 @@ sizes as buckets; save attempts and failures; sign-in and session counts by area
 route and device; notice views by notice age; install shown, installed and dismissed; display mode
 and platform. Page and notice figures are **events, not people**. `network` means **observed
 network failures**, which miss complete disconnects. Any cell under 5 shows as `<5` after the
-filters and weekly grouping, and a second cell shows as `*` wherever a printed total or split
-could otherwise reveal it. CSV output follows the same rules. Keep no copy on the server.
+filters and weekly grouping, and another cell shows as `*` (any value) wherever a printed total
+or split could otherwise reveal or narrow it. CSV output follows the same rules. Keep no copy on the server.
 
 An unfiltered report of at least 4 weeks ends with the section 9 review triggers of the Option B
 spec (offline write, push, login convenience, native apps, admin phone coverage, marks entry),

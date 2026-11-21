@@ -36,8 +36,14 @@ class Command(BaseCommand):
         filters = {f: options[f] for f in ("area", "workflow", "device") if options[f]}
         if filters:
             rows = rows.filter(**filters)
-        report = usage_evidence.build_report(rows, today=today, weeks=options["weeks"],
-                                             filtered=bool(filters))
+        try:
+            report = usage_evidence.build_report(rows, today=today, weeks=options["weeks"],
+                                                 filtered=bool(filters))
+        except usage_evidence.ProtectionError:
+            # Fails closed: print nothing rather than a figure that could reveal a small cell.
+            self.stderr.write("The report could not be printed without revealing a cell under "
+                              f"{usage_evidence.MIN_CELL}. Try more weeks or fewer filters.")
+            return
         lines = list(usage_evidence.render(report))
         stale = usage.stale_rows_exist(today)
         if options["format"] == "csv":
@@ -60,7 +66,8 @@ class Command(BaseCommand):
             f"Usage evidence, ISO weeks from {report.start.isoformat()} ({options['weeks']} "
             f"weeks). Filters: {shown}. Counts are events, not people. Cells under "
             f"{usage_evidence.MIN_CELL} are shown as <{usage_evidence.MIN_CELL}; * marks a cell "
-            "hidden so that a total cannot reveal a small one. Missing lines are zero."
+            "hidden so that a total cannot reveal a small one, and may be any value. Missing "
+            "lines are zero."
         )
         if not report.weeks:
             self.stdout.write("No counts in this period.")
