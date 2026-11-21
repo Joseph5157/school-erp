@@ -1203,7 +1203,9 @@ class AttendanceRegisterForm(forms.ModelForm):
         choices = cls().fields
         for name in cls.PREFILL_FIELDS:
             raw = query.get(name, "")
-            if raw.isdigit() and choices[name].queryset.filter(pk=int(raw)).exists():
+            # isdigit() is also true for characters int() rejects, such as "²"; ASCII only.
+            if (raw.isascii() and raw.isdigit()
+                    and choices[name].queryset.filter(pk=int(raw)).exists()):
                 initial[name] = int(raw)
         try:
             initial["date"] = datetime.date.fromisoformat(query.get("date", ""))

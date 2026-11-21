@@ -30,10 +30,11 @@ from urllib.parse import urlencode
 
 from django.contrib.auth import get_user_model
 from django.db import models
-from django.db.models import Q
+from django.db.models import Exists, OuterRef, Q
 from django.urls import reverse
 
 from core.models import TEACHERS_GROUP_NAME, AcademicYear, SectionClassTeacher
+from core.teacher_accounts import _manageable_teachers
 
 
 class Owner(models.TextChoices):
@@ -78,13 +79,32 @@ def _assignments(rows):
     return by_section
 
 
-def _valid_teacher_ids(teacher_ids):
-    """Active logins in the Teachers group, from one query (no per-user lookups)."""
-    return set(
-        get_user_model()
-        .objects.filter(pk__in=teacher_ids, is_active=True, groups__name=TEACHERS_GROUP_NAME)
-        .values_list("pk", flat=True)
+def _teacher_flags(teacher_ids):
+    """(ids that may take attendance, ids whose teacher page opens), from one query.
+
+    May take attendance: an active login in the Teachers group (ADR 0011 D14). Teacher page: the
+    `teacher_accounts._manageable_teachers` predicate that `core:teacher-detail` uses, so a name
+    is never linked to a page that would 404 (for example a login removed from the group).
+    """
+    user_model = get_user_model()
+    in_teachers = user_model.groups.through.objects.filter(
+        user_id=OuterRef("pk"), group__name=TEACHERS_GROUP_NAME
     )
+    rows = (
+        user_model.objects.filter(pk__in=teacher_ids)
+        .annotate(
+            in_teachers=Exists(in_teachers),
+            manageable=Exists(_manageable_teachers(user_model.objects.filter(pk=OuterRef("pk")))),
+        )
+        .values_list("pk", "is_active", "in_teachers", "manageable")
+    )
+    can_take, linkable = set(), set()
+    for pk, is_active, is_in_teachers, is_manageable in rows:
+        if is_active and is_in_teachers:
+            can_take.add(pk)
+        if is_manageable:
+            linkable.add(pk)
+    return can_take, linkable
 
 
 def _take_url(row):
@@ -118,7 +138,8 @@ def _decide(row, effective, own, valid_ids, today):
 
 def resolve_missing(rows, today):
     """Add `owner`, `teacher`, `problem`, `problem_label`, `can_take`, `take_url` and
-    `review_years` to each `reports.missing_attendance` row, and return the rows.
+    `review_years` to each `reports.missing_attendance` row, and return the rows. `teacher_linkable`
+    says whether the teacher page (`core:teacher-detail`) would open for that teacher.
 
     `review_years` is a list of `{"id", "name"}` for the "Review class teacher" links; `name` is
     filled only for an overlap, where the links must say which year each one opens.
@@ -126,7 +147,7 @@ def resolve_missing(rows, today):
     if not rows:
         return rows
     by_section = _assignments(rows)
-    valid_ids = _valid_teacher_ids(
+    valid_ids, linkable_ids = _teacher_flags(
         {a.teacher_id for assignments in by_section.values() for a in assignments}
     )
     overlapping = []
@@ -136,6 +157,7 @@ def resolve_missing(rows, today):
         problem, owner, can_take, year_ids = _decide(row, effective, own, valid_ids, today)
         row.update(
             teacher=own.teacher if own else None,
+            teacher_linkable=own is not None and own.teacher_id in linkable_ids,
             problem=problem,
             problem_label=problem.label if problem else "",
             owner=owner,

@@ -260,7 +260,8 @@ def missing_attendance(start, end, section=None, academic_year=None):
                 ),
             }
         )
-    rows.sort(key=lambda row: (row["date"], str(row["section"])))
+    # The academic year breaks the tie between overlapping-year rows of one date and Section.
+    rows.sort(key=lambda row: (row["date"], str(row["section"]), row["academic_year_id"]))
     return rows
 
 

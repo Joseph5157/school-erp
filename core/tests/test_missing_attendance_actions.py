@@ -9,6 +9,7 @@ overlapping-year rows.
 All data here is synthetic and local.
 """
 
+import re
 from datetime import date
 from unittest import mock
 
@@ -17,7 +18,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from core import attendance_actions, reports
+from core import attendance_actions, dashboard, reports
 from core.models import (
     AcademicYear,
     Applicant,
@@ -396,3 +397,107 @@ class RegisterPrefillTests(A1Fixture, TestCase):
             response, reverse("core:attendance-register-detail", args=[existing.pk]),
             fetch_redirect_response=False,
         )
+
+
+class ReviewFollowUpTests(A1Fixture, TestCase):
+    """PR #277 review: Unicode digits, rendered DRAFT rows, dashboard counts, teacher links on
+    TEACHER_CANNOT_TAKE, and deterministic order of overlapping-year rows."""
+
+    URL = reverse("core:report-missing-attendance")
+
+    def page(self, user, on=TODAY):
+        self.client.force_login(user)
+        response = self.client.get(self.URL, {"start": on.isoformat(), "end": on.isoformat()})
+        self.assertEqual(response.status_code, 200)
+        return response.content.decode()
+
+    def row_html(self, html, section_label):
+        rows = [row for row in re.findall(r"<tr>(.*?)</tr>", html, re.S) if section_label in row]
+        self.assertEqual(len(rows), 1, rows)
+        return rows[0]
+
+    def attendance_card_count(self):
+        cards = {card["key"]: card for card in dashboard.overview_cards(self.admin)}
+        return cards["attendance"]["count"]
+
+    # 1. Unicode digits are ignored, not a 500.
+    def test_unicode_digits_in_prefill_are_ignored(self):
+        self.client.force_login(self.admin)
+        response = self.client.get(reverse("core:attendance-register-create"), {
+            "section": "²", "class_grade": "٣", "academic_year": "¹",
+        })
+        self.assertEqual(response.status_code, 200)
+        initial = response.context["form"].initial
+        for name in ("section", "class_grade", "academic_year"):
+            self.assertNotIn(name, initial)
+
+    # 2. A rendered DRAFT row.
+    def test_a_draft_row_offers_open_register_and_names_the_owner_but_not_take(self):
+        self.take(TODAY, submit=False)
+        html = self.page(self.perm_user(
+            "drafter", "core.view_attendanceregister", "core.add_attendanceregister"))
+        draft = self.row_html(html, "Grade 6 - A")
+        self.assertIn("Draft", draft)
+        self.assertIn("Open register", draft)
+        self.assertIn("Waiting for rao", draft)
+        self.assertNotIn("Take register", draft)
+
+    def test_a_past_draft_row_names_the_office(self):
+        self.take(FRIDAY, submit=False)
+        html = self.page(self.perm_user("drafter2", "core.view_attendanceregister",
+                                        "core.add_attendanceregister"), on=FRIDAY)
+        draft = self.row_html(html, "Grade 6 - A")
+        self.assertIn("Open register", draft)
+        self.assertIn("Past day: office to take", draft)
+        self.assertNotIn("Take register", draft)
+
+    # 3. Dashboard "Attendance today" card.
+    def test_dashboard_count_is_unchanged_for_single_year_data(self):
+        self.assertEqual(self.attendance_card_count(), 2)  # 6A and 6B not submitted
+        self.take(TODAY)
+        self.assertEqual(self.attendance_card_count(), 1)  # 6B only, as before year matching
+
+    def test_dashboard_counts_the_overlapping_section_whose_other_year_is_missing(self):
+        self.make_year2()
+        self.take(TODAY, year=self.year)  # 6A submitted for 2026-27 only
+        # Before year-aware matching this register hid the overlapping year's row and the card
+        # said 1 (6B). Now 6A still has a missing row for the other year, flagged
+        # OVERLAPPING_YEARS, so the card counts it, as the approved spec intends.
+        self.assertEqual(self.attendance_card_count(), 2)
+        six_a = [r for r in self.rows() if r["section"] == self.six_a]
+        self.assertEqual([r["problem"] for r in six_a], [Problem.OVERLAPPING_YEARS])
+
+    # 4. TEACHER_CANNOT_TAKE links the teacher only with manage_teacher_accounts.
+    def test_teacher_who_cannot_take_is_linked_for_a_teacher_manager(self):
+        self.rao.is_active = False
+        self.rao.save(update_fields=["is_active"])
+        html = self.page(self.perm_user(
+            "manager2", "core.view_attendanceregister", "accounts.manage_teacher_accounts"))
+        row = self.row_html(html, "Grade 6 - A")
+        detail = reverse("core:teacher-detail", args=[self.rao.pk])
+        self.assertIn(f'<a href="{detail}">rao</a> can\'t sign in as a teacher', row)
+        self.client.force_login(self.perm_user("manager3", "accounts.manage_teacher_accounts"))
+        self.assertEqual(self.client.get(detail).status_code, 200)
+
+    def test_teacher_who_cannot_take_is_plain_text_without_the_permission(self):
+        self.rao.is_active = False
+        self.rao.save(update_fields=["is_active"])
+        row = self.row_html(self.page(self.perm_user("viewer3", "core.view_attendanceregister")),
+                            "Grade 6 - A")
+        self.assertIn("rao can't sign in as a teacher", row)
+        self.assertNotIn(reverse("core:teacher-detail", args=[self.rao.pk]), row)
+
+    def test_teacher_outside_the_group_is_never_linked_to_a_page_that_would_404(self):
+        self.rao.groups.remove(self.teachers)
+        row = self.row_html(self.page(self.perm_user(
+            "manager4", "core.view_attendanceregister", "accounts.manage_teacher_accounts")),
+            "Grade 6 - A")
+        self.assertIn("rao can't sign in as a teacher", row)
+        self.assertNotIn(reverse("core:teacher-detail", args=[self.rao.pk]), row)
+
+    # 5. Deterministic order of overlapping-year rows.
+    def test_overlapping_year_rows_are_ordered_by_academic_year(self):
+        self.make_year2()
+        rows = reports.missing_attendance(TODAY, TODAY, section=self.six_a)
+        self.assertEqual([r["academic_year_id"] for r in rows],
+                         sorted([self.year.pk, self.year2.pk]))

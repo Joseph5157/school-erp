@@ -54,11 +54,11 @@
                     {% firstof row.teacher.get_full_name row.teacher.username as teacher_name %}
                     <p class="erp-note-text mb-0 mt-1">
                         {% if row.problem %}
-                        <span aria-hidden="true">&#9888;</span> <strong>{% if row.problem == "TEACHER_CANNOT_TAKE" %}{{ teacher_name }} can't sign in as a teacher{% else %}{{ row.problem_label }}{% endif %}</strong>
+                        <span aria-hidden="true">&#9888;</span> <strong>{% if row.problem == "TEACHER_CANNOT_TAKE" %}{% if perms.accounts.manage_teacher_accounts and row.teacher_linkable %}<a href="{% url 'core:teacher-detail' row.teacher.pk %}">{{ teacher_name }}</a>{% else %}{{ teacher_name }}{% endif %} can't sign in as a teacher{% else %}{{ row.problem_label }}{% endif %}</strong>
                         {% elif row.owner == "TEACHER" %}
-                        Waiting for {% if perms.accounts.manage_teacher_accounts %}<a href="{% url 'core:teacher-detail' row.teacher.pk %}">{{ teacher_name }}</a>{% else %}{{ teacher_name }}{% endif %}
+                        Waiting for {% if perms.accounts.manage_teacher_accounts and row.teacher_linkable %}<a href="{% url 'core:teacher-detail' row.teacher.pk %}">{{ teacher_name }}</a>{% else %}{{ teacher_name }}{% endif %}
                         {% else %}
-                        Past day: office to take{% if row.teacher %} (class teacher: {% if perms.accounts.manage_teacher_accounts %}<a href="{% url 'core:teacher-detail' row.teacher.pk %}">{{ teacher_name }}</a>{% else %}{{ teacher_name }}{% endif %}){% endif %}
+                        Past day: office to take{% if row.teacher %} (class teacher: {% if perms.accounts.manage_teacher_accounts and row.teacher_linkable %}<a href="{% url 'core:teacher-detail' row.teacher.pk %}">{{ teacher_name }}</a>{% else %}{{ teacher_name }}{% endif %}){% endif %}
                         {% endif %}
                         {% if perms.core.view_sectionclassteacher %}{% for year in row.review_years %}
                         &middot; <a class="text-nowrap" href="{% url 'core:academic-year-class-teachers' year.id %}">Review class teacher{% if year.name %} ({{ year.name }}){% endif %}<span class="visually-hidden"> for {{ row.section }} on {{ row.date|date:"j M Y" }}</span></a>
