@@ -35,7 +35,8 @@ the limits below ever apply to anyone.
 | The uploaded file's original name (it can hold a student's name) | `core.run_import` | The import list and the import page; others see "Not shown" |
 | Students (for choosing one) | `core.view_student` | The student choosers for certificates and report cards; certificates |
 
-The Overview's absentee list also needs `core.view_student`, because it names students, and its
+The Overview's absentee list and the admin home Attendance tab's "Absent in a row" card also
+need `core.view_student`, because they name students. The Overview's
 attention list needs students, marks and attendance together.
 
 The class-teacher "Absent in a row" card on My Home needs no permission: it uses the teacher's

@@ -7,6 +7,7 @@ withheld from the page context, and the permission is honoured directly or throu
 """
 
 from datetime import date
+from unittest import mock
 
 from django.test import TestCase
 from django.urls import reverse
@@ -50,18 +51,22 @@ class RegisterDetailTests(AlertFixture, TestCase):
 
 
 class OverviewTests(AlertFixture, TestCase):
+    def setUp(self):
+        super().setUp()
+        # The tabs count "this month" to the view's own copy of today's date; pin it to the end
+        # of October, which holds the three absences, so "shown" and "not shown" both mean something.
+        patcher = mock.patch("core.views.business_today", return_value=date(2026, 10, 30))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def three_absences_for_asha(self):
         for day in (date(2026, 10, 7), date(2026, 10, 8), date(2026, 10, 9)):
             self.register(day)
 
-    # The analytics use their own copy of today's date, so ask for the October window that
-    # holds the three absences; that makes "shown" and "not shown" both meaningful.
-    WINDOW = {"period": "custom", "from": "2026-10-01", "to": "2026-10-31"}
-
-    def analytics(self, client):
-        page = client.get(OVERVIEW, self.WINDOW)
+    def analytics(self, client, tab="attendance"):
+        page = client.get(OVERVIEW, {"tab": tab})
         self.assertEqual(page.status_code, 200)
-        return page, page.context["attendance_analytics"]
+        return page, page.context[f"{tab}_tab"]
 
     def test_absentee_list_needs_view_attendanceentry_as_well_as_view_student(self):
         self.three_absences_for_asha()
@@ -86,9 +91,9 @@ class OverviewTests(AlertFixture, TestCase):
         base = ("core.view_school", "core.view_student", "core.view_studentresult")
         for how, client in holders(self.client_class, *base):
             with self.subTest(how=how):
-                _, data = self.analytics(client)
+                _, data = self.analytics(client, "academics")
                 self.assertIsNone(data["attention"])
         for how, client in holders(self.client_class, *base, VIEW_ENTRY):
             with self.subTest(how=how, holds="all"):
-                _, data = self.analytics(client)
+                _, data = self.analytics(client, "academics")
                 self.assertIsNotNone(data["attention"])

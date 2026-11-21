@@ -18,7 +18,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from core import attendance_actions, dashboard, reports
+from core import attendance_actions, home_today, reports
 from core.models import (
     AcademicYear,
     Applicant,
@@ -417,8 +417,10 @@ class ReviewFollowUpTests(A1Fixture, TestCase):
         return rows[0]
 
     def attendance_card_count(self):
-        cards = {card["key"]: card for card in dashboard.overview_cards(self.admin)}
-        return cards["attendance"]["count"]
+        """Rows in the admin home Today tab's "Not taken yet" list, which replaced the old
+        dashboard "Attendance today" card when the admin home merged."""
+        return len(home_today.attendance_today(
+            TODAY, include_rows=True, can_view_registers=True)["not_taken"])
 
     # 1. Unicode digits are ignored, not a 500.
     def test_unicode_digits_in_prefill_are_ignored(self):
@@ -451,7 +453,7 @@ class ReviewFollowUpTests(A1Fixture, TestCase):
         self.assertIn("Past day: office to take", draft)
         self.assertNotIn("Take register", draft)
 
-    # 3. Dashboard "Attendance today" card.
+    # 3. The "Attendance today" count (now the Today tab's "Not taken yet" list).
     def test_dashboard_count_is_unchanged_for_single_year_data(self):
         self.assertEqual(self.attendance_card_count(), 2)  # 6A and 6B not submitted
         self.take(TODAY)

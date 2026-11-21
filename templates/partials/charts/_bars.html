@@ -1,10 +1,11 @@
-{# Horizontal bars. `rows` have label, value, display, low and optional url; `colour` is "attendance" or "marks"; `target` (attendance) names a below-target (red) bar in words. Width is capped by .erp-class-bars. #}
+{# Horizontal bars. `rows` have label, value, display, low and optional url and note (a short line under the bar); `colour` is "attendance" or "marks"; `target` (attendance) names a below-target (red) bar in words. Width is capped by .erp-class-bars. #}
 <ul class="erp-class-bars">
     {% for r in rows %}
     <li class="erp-class-row">
         <span class="erp-class-name">{% if r.url %}<a class="erp-class-link" href="{{ r.url }}">{{ r.label }}</a>{% else %}{{ r.label }}{% endif %}</span>
         <progress class="erp-class-bar{% if colour == 'marks' %} erp-class-bar--marks{% endif %}{% if r.low %} erp-class-bar--low{% endif %}" max="100" value="{{ r.value|stringformat:'.1f' }}" aria-label="{{ r.label }}{% if r.low and target %}, below the {{ target }}% attendance target{% endif %}">{{ r.display }}</progress>
         <span class="erp-class-pct">{{ r.display }}</span>
+        {% if r.note %}<span class="erp-class-note">{{ r.note }}</span>{% endif %}
         {% if r.low and target %}<span class="erp-class-flag" aria-hidden="true">Below {{ target }}%</span>{% endif %}
     </li>
     {% endfor %}

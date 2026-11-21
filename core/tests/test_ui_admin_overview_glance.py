@@ -1,3 +1,5 @@
+from datetime import date
+
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
 from django.test import TestCase
@@ -8,12 +10,10 @@ from core import models as core_models
 from core.dashboard import glance_cards
 from core.models import (
     TEACHERS_GROUP_NAME,
+    AcademicTerm,
     Applicant,
-    AttendanceRegister,
-    AttendanceStatus,
     ClassGrade,
     Guardian,
-    SchoolCalendarDay,
 )
 from core.tests.test_authorization import AttendanceFixtureMixin, AuthorizationClientsMixin
 
@@ -25,20 +25,21 @@ def by_key(cards):
 
 
 class GlanceEmptySchoolTests(AuthorizationClientsMixin, TestCase):
-    def test_empty_school_shows_zeros_and_dash_for_attendance(self):
+    def test_empty_school_shows_zeros_and_dash_for_the_term(self):
         cards = by_key(glance_cards(self.superuser))
         self.assertEqual(
             [c["key"] for c in glance_cards(self.superuser)],
-            ["students", "teachers", "classes", "guardians", "attendance"],
+            ["students", "teachers", "classes", "term"],
         )
-        for key in ("students", "teachers", "classes", "guardians"):
+        for key in ("students", "teachers", "classes"):
             self.assertEqual(cards[key]["count"], 0)
-        self.assertEqual(cards["attendance"]["count"], "-")
+        self.assertEqual(cards["term"]["count"], "-")
+        self.assertEqual(cards["term"]["summary"], "No term is running today.")
 
     def test_overview_renders_glance_section_on_empty_school(self):
         response = self.administrator.get(reverse("core:admin-overview"))
         self.assertContains(response, "School at a glance")
-        self.assertContains(response, "erp-stat-card--glance", count=5)
+        self.assertContains(response, "erp-stat-card--glance", count=4)
 
 
 class GlanceCountTests(AuthorizationClientsMixin, AttendanceFixtureMixin, TestCase):
@@ -77,39 +78,21 @@ class GlanceCountTests(AuthorizationClientsMixin, AttendanceFixtureMixin, TestCa
         self.assertEqual(cards["students"]["count"], 1)
         self.assertEqual(cards["teachers"]["count"], 1)
         self.assertEqual(cards["classes"]["count"], 2)
-        self.assertEqual(cards["guardians"]["count"], 1)
 
-    def test_attendance_percentage_uses_only_submitted_registers_today(self):
-        today = core_models.business_today()
-        if not self.year.default_is_instructional(today):
-            SchoolCalendarDay.objects.create(
-                academic_year=self.year, date=today, is_instructional=True
-            )
-        second = Applicant.objects.create(full_name="Second Child")
-        second.record_admission_decision(Applicant.AdmissionStatus.ACCEPTED)
-        second_enrollment = second.progress_to_student().enroll(
-            academic_year=self.year, class_grade=self.class_grade, section=self.section,
-            start_date="2026-06-01",
+    def test_term_card_names_the_term_running_today(self):
+        AcademicTerm.objects.create(
+            academic_year=self.year, name="Term 1", start_date=date(2026, 6, 1),
+            end_date=date(2026, 9, 30), display_order=1,
         )
-        register = AttendanceRegister.objects.create(
-            academic_year=self.year, class_grade=self.class_grade,
-            section=self.section, date=today,
-        )
-        register.capture(enrollment=self.enrollment, status=AttendanceStatus.PRESENT)
-        register.capture(enrollment=second_enrollment, status=AttendanceStatus.ABSENT)
-        # A DRAFT register is not official yet.
-        self.assertEqual(by_key(glance_cards(self.superuser))["attendance"]["count"], "-")
-
-        register.submit(actor=self.admin_user)
-
-        data = by_key(glance_cards(self.superuser))["attendance"]
-        self.assertEqual(data["count"], "50%")
-        self.assertIn("present", data["summary"])
+        card = by_key(glance_cards(self.superuser, today=date(2026, 7, 14)))["term"]
+        self.assertEqual((card["count"], card["summary"]), ("Term 1", "Running today."))
+        between = by_key(glance_cards(self.superuser, today=date(2026, 10, 5)))["term"]
+        self.assertEqual((between["count"], between["summary"]), ("-", "No term is running today."))
 
     def test_page_shows_counts(self):
         response = self.administrator.get(reverse("core:admin-overview"))
         self.assertContains(response, "School at a glance")
-        self.assertContains(response, "erp-stat-card--glance", count=5)
+        self.assertContains(response, "erp-stat-card--glance", count=4)
 
 
 class GlanceLinkPermissionTests(AuthorizationClientsMixin, TestCase):
@@ -118,13 +101,12 @@ class GlanceLinkPermissionTests(AuthorizationClientsMixin, TestCase):
         self.assertEqual(cards["students"]["url"], reverse("core:student-list"))
         self.assertEqual(cards["teachers"]["url"], reverse("core:teacher-list"))
         self.assertEqual(cards["classes"]["url"], reverse("core:class-grade-list"))
-        self.assertEqual(cards["guardians"]["url"], reverse("core:guardian-list"))
-        self.assertEqual(cards["attendance"]["url"], reverse("core:attendance-register-list"))
+        self.assertEqual(cards["term"]["url"], reverse("core:academic-year-list"))
 
     def test_only_permitted_links_are_given(self):
         user = User.objects.create_user(username="limited", password="x")
         user.user_permissions.add(Permission.objects.get(codename="view_student"))
         cards = by_key(glance_cards(user))
         self.assertEqual(cards["students"]["url"], reverse("core:student-list"))
-        for key in ("teachers", "classes", "guardians", "attendance"):
+        for key in ("teachers", "classes", "term"):
             self.assertEqual(cards[key]["url"], "")

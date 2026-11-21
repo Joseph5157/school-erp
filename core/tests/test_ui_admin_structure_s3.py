@@ -123,7 +123,8 @@ class SidebarPageTests(AuthorizationClientsMixin, TestCase):
     def test_sidebar_has_no_year_links_before_a_year_exists(self):
         AcademicYear.objects.all().delete()
         page = self.administrator.get(reverse("core:admin-overview")).content.decode()
-        self.assertNotIn(">Assessments<", page)
+        # The sidebar link ends "Assessments</a>"; the Today card heading is "Assessments</h2>".
+        self.assertNotIn("Assessments</a>", page)
         self.assertIn("Stale publications", page)
 
     def test_teacher_and_guardian_shells_have_no_office_groups(self):

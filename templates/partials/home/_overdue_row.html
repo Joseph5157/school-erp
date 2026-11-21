@@ -1,0 +1,4 @@
+<li class="erp-home-row">
+    <span class="erp-home-main">{{ r.name }} &middot; {{ r.class_name }} {{ r.section_name }}<span class="erp-home-meta">{{ r.subject }}{% if r.teacher_name %} &middot; {{ r.teacher_name }}{% endif %} &middot; {{ r.days_late }} day{{ r.days_late|pluralize }} over</span></span>
+    {% if r.url %}<a class="erp-home-open" href="{{ r.url }}">Open<span class="erp-sr-only"> {{ r.name }}</span></a>{% endif %}
+</li>

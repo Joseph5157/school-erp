@@ -33,6 +33,7 @@ from core.models import (
     AttendanceEntry,
     AttendanceStatus,
     SectionClassTeacher,
+    Student,
 )
 
 DEFAULT_THRESHOLD = 3  # OD-2, the same as dashboard.ABSENTEE_THRESHOLD_DAYS
@@ -206,6 +207,18 @@ def _count_run(chain, calendar, statuses, today, *, lookback, scope_from):
         "at_least": stopped_by in AT_LEAST_REASONS,
         "unknown_date": unknown_date,
     }
+
+
+def school_absence_runs(today, *, threshold=DEFAULT_THRESHOLD, section=None):
+    """The administrator scope: ACTIVE students' enrollments effective today, optionally in one
+    Section. The "Absent in a row" report and the admin home Attendance card both use this, so
+    the card's rows and count always match the report."""
+    enrollments = AcademicEnrollment.objects.effective_on(today).filter(
+        student__status=Student.Status.ACTIVE
+    )
+    if section is not None:
+        enrollments = enrollments.filter(section=section)
+    return absence_runs(enrollments, today, threshold=threshold)
 
 
 def class_teacher_absence_runs(user, today, *, threshold=DEFAULT_THRESHOLD):

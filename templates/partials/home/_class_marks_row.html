@@ -1,0 +1,5 @@
+{# One class: pass rate and grade spread. `r` is from home_academics.class_marks; `view` is true to link the class. #}
+<li class="erp-home-row">
+    <span class="erp-home-main">{{ r.class_name }}<span class="erp-home-meta">{% if r.pass_rate is None %}No pass mark set{% else %}Pass rate {{ r.pass_rate|floatformat:"-1" }}%{% endif %}{% if r.grades_display %} &middot; {{ r.grades_display }}{% endif %}</span></span>
+    {% if view %}<a class="erp-home-open" href="{% url 'core:class-grade-detail' r.class_grade_id %}">Open<span class="erp-sr-only"> {{ r.class_name }}</span></a>{% endif %}
+</li>

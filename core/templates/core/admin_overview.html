@@ -2,37 +2,11 @@
 {% block title %}Overview{% endblock %}
 {% block content %}
 {% include "partials/_page_header.html" with eyebrow="School administration" title="Overview" purpose="What needs attention today." only %}
-{% if setup_first %}{% include "partials/_setup_checklist_card.html" %}{% endif %}
-{% if cards %}
-{% if attention_cards %}
-<section aria-labelledby="attention-title">
-    <h2 class="erp-section-title" id="attention-title">Needs attention</h2>
-    <div class="erp-stat-grid erp-stat-grid--attention">
-        {% for card in attention_cards %}{% include "partials/_stat_card.html" with card=card primary=forloop.first only %}{% endfor %}
-    </div>
-</section>
-{% else %}
-<p class="erp-all-clear">Nothing needs attention today.</p>
-{% endif %}
-{% elif setup_complete %}
-<p class="text-muted">Nothing to show for your role.</p>
-{% endif %}
-{% if system_checklist %}
-<section class="erp-clear-row" aria-labelledby="clear-title">
-    <h2 class="erp-clear-title" id="clear-title">{% if checklist_clear %}Nothing waiting{% else %}Checklist{% endif %}</h2>
-    <ul class="erp-clear-list">
-        {% for item in system_checklist %}
-        <li>{% if item.url %}<a href="{{ item.url }}">{{ item.label }}</a>{% else %}<span class="erp-clear-done"><span aria-hidden="true">&#10003; </span>{{ item.label }}</span>{% endif %}</li>
-        {% endfor %}
-    </ul>
-</section>
-{% endif %}
-<section aria-labelledby="glance-title">
-    <h2 class="erp-section-title" id="glance-title">School at a glance</h2>
-    <div class="erp-stat-grid erp-stat-grid--glance">
-        {% for card in glance_cards %}{% include "partials/_glance_tile.html" with card=card only %}{% endfor %}
-    </div>
-</section>
-{% include "partials/_attendance_analytics.html" %}
-{% if not setup_first %}{% include "partials/_setup_checklist_card.html" %}{% endif %}
+{% include "partials/home/_tabs.html" %}
+<div class="erp-home">
+{% if tab == "attendance" %}{% include "partials/home/_attendance.html" %}
+{% elif tab == "academics" %}{% include "partials/home/_academics.html" %}
+{% elif tab == "parents" %}{% include "partials/home/_parents.html" %}
+{% else %}{% include "partials/home/_today.html" %}{% endif %}
+</div>
 {% endblock %}
