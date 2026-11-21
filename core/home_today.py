@@ -6,7 +6,7 @@ from django.db.models import OuterRef, Subquery
 from django.urls import reverse
 from django.utils import timezone
 
-from core import analytics, charts, reports
+from core import analytics, attendance_actions, charts, reports
 from core.charts import natural_key
 from core.models import (
     AcademicEnrollment,
@@ -32,9 +32,13 @@ def _user_name(user):
 
 
 def _class_teachers(today):
-    """{section_id: display name of the class teacher effective today}, in one query."""
+    """{(section_id, academic_year_id): class teacher name} effective today, in one query.
+
+    Keyed by year as well as Section: academic years may overlap and share a Section, so a
+    Section alone would show another year's teacher (Security Gate 3A).
+    """
     rows = SectionClassTeacher.objects.effective_on(today).select_related("teacher")
-    return {row.section_id: _user_name(row.teacher) for row in rows}
+    return {(row.section_id, row.academic_year_id): _user_name(row.teacher) for row in rows}
 
 
 def _section_order(section):
@@ -43,29 +47,51 @@ def _section_order(section):
 
 
 def _register_url(register, can):
-    """An existing register opens on its page (view_attendanceregister); a missing one on the
-    create page (add_attendanceregister). Without the target's permission there is no link."""
-    can_view, can_create = can
-    if register is not None:
-        return reverse("core:attendance-register-detail", args=[register.pk]) if can_view else None
-    return reverse("core:attendance-register-create") if can_create else None
+    """An existing register opens on its page, which needs view_attendanceregister."""
+    can_view, _ = can
+    if register is not None and can_view:
+        return reverse("core:attendance-register-detail", args=[register.pk])
+    return None
 
 
-def _row(section, register, state, teachers, can):
+def _late_row(register, teachers, can):
+    section = register.section
     return {
         "class_name": section.class_grade.name,
         "section_name": section.name,
-        "teacher_name": teachers.get(section.pk, ""),
-        "state": state,
+        "teacher_name": teachers.get((section.pk, register.academic_year_id), ""),
+        "state": AttendanceRegister.Status.SUBMITTED,
         "url": _register_url(register, can),
     }
 
 
-def _unsubmitted_rows(today, teachers, can):
-    items = sorted(
-        reports.missing_attendance(today, today), key=lambda item: _section_order(item["section"])
-    )
-    return [_row(item["section"], item["register"], item["state"], teachers, can) for item in items]
+def _unsubmitted_rows(today, can):
+    """Registers still missing or DRAFT today, resolved by Option A1 (`resolve_missing`).
+
+    Each row names the class teacher of its own academic year, or the configuration problem
+    that stops the register being taken. A DRAFT opens on its register page
+    (view_attendanceregister). A missing register opens the pre-filled create form
+    (add_attendanceregister), but never for an archived or overlapping-year section.
+    """
+    _, can_create = can
+    resolved = attendance_actions.resolve_missing(reports.missing_attendance(today, today), today)
+    result = []
+    for item in sorted(resolved, key=lambda item: _section_order(item["section"])):
+        section, register = item["section"], item["register"]
+        if register is not None:
+            url = _register_url(register, can)
+        else:
+            url = item["take_url"] if item["can_take"] and can_create else None
+        result.append({
+            "class_name": section.class_grade.name,
+            "section_name": section.name,
+            "teacher_name": _user_name(item["teacher"]),
+            "problem_label": item["problem_label"],
+            "state": item["state"],
+            "url": url,
+            "is_take": register is None,
+        })
+    return result
 
 
 def attendance_today(
@@ -83,9 +109,7 @@ def attendance_today(
     if include_rows:
         rows = []
         if school_day:
-            rows = _unsubmitted_rows(
-                today, _class_teachers(today), (can_view_registers, can_create_registers)
-            )
+            rows = _unsubmitted_rows(today, (can_view_registers, can_create_registers))
     return {
         "school_day": school_day,
         "donut": charts.donut([("Present", strip["present"]), ("Absent", strip["absent"])]),
@@ -119,15 +143,12 @@ def register_compliance(
     for register in submitted:
         stamp = timezone.localtime(register.submitted_at)
         if stamp.time() > cutoff:
-            row = _row(
-                register.section, register, AttendanceRegister.Status.SUBMITTED,
-                teachers, can,
-            )
+            row = _late_row(register, teachers, can)
             row["submitted_at"] = stamp
             late.append((_section_order(register.section), row))
     result["late"] = [row for _, row in sorted(late, key=lambda pair: pair[0])]
     if not before_cutoff:
-        result["missing"] = _unsubmitted_rows(today, teachers, can)
+        result["missing"] = _unsubmitted_rows(today, can)
     return result
 
 

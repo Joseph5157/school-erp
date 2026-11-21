@@ -4817,12 +4817,9 @@ def report_absence_runs(request):
         if form.is_bound:
             threshold = form.cleaned_data["threshold"]
             section = form.cleaned_data.get("section")
-        enrollments = AcademicEnrollment.objects.effective_on(today).filter(
-            student__status=Student.Status.ACTIVE
+        rows = attendance_insights.school_absence_runs(
+            today, threshold=threshold, section=section
         )
-        if section is not None:
-            enrollments = enrollments.filter(section=section)
-        rows = attendance_insights.absence_runs(enrollments, today, threshold=threshold)
     return render(
         request,
         "core/report_absence_runs.html",

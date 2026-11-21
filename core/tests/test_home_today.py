@@ -103,8 +103,13 @@ class AttendanceTodayTests(TodayDataFixture, TestCase):
 
     def test_not_taken_rows_link_only_with_permission(self):
         register = self.day(TODAY, {self.s1: P}, submit=False)
-        self.add_section("Grade 2")
-        detail, create = f"/attendance/{register.pk}/", "/attendance/create/"
+        grade2, section2, _ = self.add_section("Grade 2")
+        # A missing register opens the create form pre-filled for its row (Option A1).
+        detail = f"/attendance/{register.pk}/"
+        create = (
+            f"/attendance/create/?academic_year={self.year.pk}&class_grade={grade2.pk}"
+            f"&section={section2.pk}&date={TODAY.isoformat()}"
+        )
 
         def urls(**can):
             rows = home_today.attendance_today(TODAY, include_rows=True, **can)["not_taken"]

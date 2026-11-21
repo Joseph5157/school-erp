@@ -13,7 +13,7 @@ from django.db.models import Count, Q
 from django.db.models.functions import TruncMonth
 from django.urls import reverse
 
-from core import charts, reports
+from core import attendance_insights, charts, reports
 from core.models import (
     AcademicEnrollment,
     AcademicTerm,
@@ -427,7 +427,7 @@ def attendance_tab_context(today, *, include_absentees, absent_view="month", cla
     """The admin home Attendance tab: trend, heatmap, weekday pattern, class extremes, absentees.
 
     Absentee names are student data plus attendance, so the caller decides (`include_absentees`);
-    without it `absentees` is None and no names are queried. Only the chosen `absent_view`
+    without it `absentees` and `runs` ("Absent in a row") are None and no names are queried. Only the chosen `absent_view`
     ("month" frequent absentees, or "term" below-75% list) is queried.
     """
     if absent_view not in ABSENT_VIEWS:
@@ -445,7 +445,17 @@ def attendance_tab_context(today, *, include_absentees, absent_view="month", cla
                 if term
                 else {"rows": [], "total": 0, "no_term": True}
             )
+    runs = None
+    if include_absentees:
+        # Option A2: the same rows as the "Absent in a row" report (school_absence_runs).
+        found = attendance_insights.school_absence_runs(today)
+        runs = {
+            "rows": found[:ABSENTEE_LIST_LIMIT],
+            "total": len(found),
+            "threshold": attendance_insights.DEFAULT_THRESHOLD,
+        }
     return {
+        "runs": runs,
         "trend": month_trend(today),
         "heatmap": heatmap,
         "has_data": any(cell["state"] == "data" for week in heatmap for cell in week),

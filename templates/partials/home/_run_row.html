@@ -1,0 +1,5 @@
+{# One "Absent in a row" student (Option A2, attendance_insights.absence_runs). The history page needs view_attendanceentry, which the card itself requires. #}
+<li class="erp-home-row">
+    <span class="erp-home-main">{{ r.name }} &middot; {{ r.class_name }} {{ r.section_name }}<span class="erp-home-meta">{% if r.stopped_by == "LOOKBACK_LIMIT" %}{{ r.days }}+ school days{% elif r.at_least %}at least {{ r.days }} school days{% else %}{{ r.days }} school days{% endif %}</span></span>
+    <a class="erp-home-open" href="{% url 'core:student-attendance' r.student_id %}">Open<span class="erp-sr-only"> {{ r.name }} attendance history</span></a>
+</li>

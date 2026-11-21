@@ -79,5 +79,17 @@
         {% endif %}
     </article>
     {% endif %}
+    {% if a.runs is not None %}
+    <article class="erp-card erp-card--runs">
+        <h3 class="erp-analytics-title">Absent in a row</h3>
+        <p class="erp-analytics-sub">Absent {{ a.runs.threshold }} or more school days in a row, up to today. Weekends and holidays are skipped.</p>
+        {% if a.runs.rows %}
+        {% include "partials/home/_fold_rows.html" with rows=a.runs.rows row_template="partials/home/_run_row.html" noun="students" total=a.runs.total %}
+        {% else %}
+        <p class="erp-card-empty">No student has been absent {{ a.runs.threshold }} or more school days in a row.</p>
+        {% endif %}
+        <p class="erp-note-text"><a href="{% url 'core:report-absence-runs' %}">{% if a.runs.total > a.runs.rows|length %}See all {{ a.runs.total }} in the Absent in a row report{% else %}Open the Absent in a row report{% endif %}</a></p>
+    </article>
+    {% endif %}
 </section>
 {% endwith %}

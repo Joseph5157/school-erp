@@ -1,4 +1,5 @@
+{# One register still to submit today (Option A1 via home_today._unsubmitted_rows): class teacher of the row's own year, or the configuration problem; "Take register" opens the pre-filled create form, "Open" a draft. #}
 <li class="erp-home-row">
-    <span class="erp-home-main">{{ r.class_name }} {{ r.section_name }}{% if r.teacher_name %} &middot; {{ r.teacher_name }}{% endif %}</span>
-    {% if r.url %}<a class="erp-home-open" href="{{ r.url }}">Open<span class="erp-sr-only"> {{ r.class_name }} {{ r.section_name }}</span></a>{% endif %}
+    <span class="erp-home-main">{{ r.class_name }} {{ r.section_name }}{% if r.teacher_name %} &middot; {{ r.teacher_name }}{% endif %}{% if r.problem_label %}<span class="erp-home-meta"><span aria-hidden="true">&#9888;</span> {{ r.problem_label }}</span>{% endif %}</span>
+    {% if r.url %}<a class="erp-home-open" href="{{ r.url }}">{% if r.is_take %}Take register{% else %}Open{% endif %}<span class="erp-sr-only"> {{ r.class_name }} {{ r.section_name }}</span></a>{% endif %}
 </li>
