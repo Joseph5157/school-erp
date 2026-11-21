@@ -798,6 +798,10 @@ class FilterLabelsMixin:
         super().__init__(*args, **kwargs)
 
 
+PROGRESS_MARKING = "marking"
+PROGRESS_READY = "ready"
+
+
 class AssessmentFilterForm(FilterLabelsMixin, forms.Form):
     term = forms.ModelChoiceField(
         queryset=AcademicTerm.objects.none(), required=False, empty_label="All terms"
@@ -809,11 +813,40 @@ class AssessmentFilterForm(FilterLabelsMixin, forms.Form):
         queryset=Section.objects.select_related("class_grade"), required=False,
         empty_label="All sections",
     )
+    # Option A3: "due by today" and the marking progress of a due DRAFT. Both use the single
+    # business date the view works out per request (core.assessment_progress).
+    due = forms.BooleanField(required=False, label="Due by today")
+    progress = forms.ChoiceField(
+        choices=[
+            ("", "Any progress"),
+            (PROGRESS_MARKING, "Marking in progress"),
+            (PROGRESS_READY, "Ready to finalize"),
+        ],
+        required=False,
+    )
+
+    # A checkbox turns any text into True; only these raw values are accepted, so an invalid
+    # value makes the form invalid and no filter is applied.
+    DUE_VALUES = {"", "1", "0", "true", "false", "on"}
 
     def __init__(self, *args, academic_year=None, **kwargs):
         super().__init__(*args, **kwargs)
         if academic_year is not None:
             self.fields["term"].queryset = academic_year.terms.all()
+
+    def clean_due(self):
+        raw = self.data.get(self.add_prefix("due"), "") if self.is_bound else ""
+        if str(raw).strip().lower() not in self.DUE_VALUES:
+            raise ValidationError("Tick the box, or leave it empty.")
+        return self.cleaned_data["due"]
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if cleaned_data.get("progress") and cleaned_data.get("status") == Assessment.Status.FINALIZED:
+            self.add_error(
+                "progress", "Marking progress applies only to draft assessments, not finalized ones."
+            )
+        return cleaned_data
 
 
 def _plain_score(score):

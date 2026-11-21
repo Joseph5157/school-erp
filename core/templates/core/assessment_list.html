@@ -14,10 +14,12 @@
     {% include "partials/_form_field.html" with field=form.term only %}
     {% include "partials/_form_field.html" with field=form.section only %}
     {% include "partials/_form_field.html" with field=form.status only %}
+    {% include "partials/_form_field.html" with field=form.progress only %}
+    {% include "partials/_form_field.html" with field=form.due only %}
     <div class="erp-form-actions"><button type="submit" class="btn btn-outline-secondary">Filter</button></div>
 </form>
 </search>
-{% if form.is_bound and not form.errors and form.cleaned_data.term or form.is_bound and not form.errors and form.cleaned_data.section or form.is_bound and not form.errors and form.cleaned_data.status %}
+{% if filtered %}
 <p class="erp-note-text">Showing assessments that match the filters. <a href="{% url 'core:academic-year-assessments' academic_year.pk %}">Clear filters</a></p>
 {% endif %}
 <div class="erp-panel">
@@ -37,7 +39,7 @@
             <td class="erp-num">{{ assessment.pass_mark|default:"&mdash;" }}</td>
         </tr>
         {% empty %}
-        <tr><td colspan="8">{% if form.is_bound and not form.errors and form.cleaned_data.term or form.is_bound and not form.errors and form.cleaned_data.section or form.is_bound and not form.errors and form.cleaned_data.status %}{% include "partials/_empty.html" with icon="assessments" title="No assessments match these filters." inline=True only %}{% else %}{% include "partials/_empty.html" with icon="assessments" title="No assessments have been planned for this Academic Year yet." inline=True only %}{% endif %}</td></tr>
+        <tr><td colspan="8">{% if filtered %}{% include "partials/_empty.html" with icon="assessments" title="No assessments match these filters." inline=True only %}{% else %}{% include "partials/_empty.html" with icon="assessments" title="No assessments have been planned for this Academic Year yet." inline=True only %}{% endif %}</td></tr>
         {% endfor %}
     </tbody>
 </table>
