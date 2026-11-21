@@ -101,9 +101,15 @@
   "core:admin-overview": {
     "flags": [],
     "inner": [
+      "core.add_announcement",
+      "core.add_guardianaccessreview",
+      "core.view_announcement",
+      "core.view_assessment",
       "core.view_attendanceentry",
       "core.view_attendanceregister",
       "core.view_classgrade",
+      "core.view_guardian",
+      "core.view_guardianaccessreview",
       "core.view_student",
       "core.view_studentresult",
       "core.view_termpublication"

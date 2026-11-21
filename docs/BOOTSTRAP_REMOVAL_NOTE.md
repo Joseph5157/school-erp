@@ -2,6 +2,8 @@
 
 **Planned start:** 18 November 2026
 
+**Component list and status:** `docs/DESIGN_SYSTEM.md` (owner decision 2026-11-19: keep our own design system, phase Bootstrap out area by area; the 2026-11-19 count is 216 templates, see that file).
+
 ## Current position
 
 Bootstrap 5.3.3 is locally hosted and remains a shared frontend dependency. The ERP design layer changes most of its appearance, but Bootstrap still supplies foundational styles and a small amount of interaction behavior.

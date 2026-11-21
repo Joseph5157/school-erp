@@ -157,29 +157,29 @@ class SetupChecklistRenderingTests(Phase4Fixture, TestCase):
         )
         self.assertContains(response, "Assign")
 
-    def test_checklist_collapses_to_a_single_line_when_done(self):
+    def test_done_checklist_leaves_no_card_behind(self):
+        # The quiet "School setup complete" line lived in the removed checklist row.
         self.complete_setup()
         response = self.client.get(reverse("core:admin-overview"))
-        self.assertContains(response, "School setup complete")
         self.assertNotContains(response, "Set up your school")
         self.assertNotContains(response, 'class="erp-setup-list"')
-        self.assertNotContains(response, 'class="progress erp-setup-bar"')
+        self.assertNotContains(response, 'class="erp-setup-bar"')
 
     def test_progress_bar_and_only_the_next_step_gets_a_filled_button(self):
         response = self.client.get(reverse("core:admin-overview"))
-        self.assertContains(response, 'class="progress erp-setup-bar"')
+        self.assertContains(response, 'class="erp-setup-bar"')
         self.assertContains(response, "of 8 done")
         # The first incomplete step is the class-teacher step; only it is filled.
         class_url = reverse("core:academic-year-class-teachers", args=[self.year.pk])
         self.assertContains(
             response,
-            f'class="btn btn-primary btn-sm erp-setup-action" href="{class_url}"',
+            f'class="erp-btn erp-btn--primary erp-setup-action" href="{class_url}"',
         )
         # The following incomplete step (subject teachers) stays outline only.
         subject_url = reverse("core:academic-year-teacher-assignments", args=[self.year.pk])
         self.assertContains(
             response,
-            f'class="btn btn-outline-secondary btn-sm erp-setup-action" href="{subject_url}"',
+            f'class="erp-btn erp-btn--soft erp-setup-action" href="{subject_url}"',
         )
         self.assertContains(response, "A subject teacher for every subject")
 

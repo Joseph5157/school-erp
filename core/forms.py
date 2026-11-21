@@ -86,14 +86,17 @@ class SchoolForm(forms.ModelForm):
     class Meta:
         model = School
         fields = ["name", "address", "affiliation_number", "principal_name",
-                  "notification_channel"]
+                  "register_cutoff", "notification_channel"]
         widgets = {
             "notification_channel": forms.RadioSelect,
             "address": forms.Textarea(attrs={"rows": 3}),
+            "register_cutoff": forms.TimeInput(attrs={"type": "time"}, format="%H:%M"),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # A blank cut-off keeps the default (see clean_register_cutoff).
+        self.fields["register_cutoff"].required = False
         # Labels and help are wording only; the stored values (PORTAL_ONLY, ASSIST) are unchanged.
         self.fields["notification_channel"].choices = [
             (value, self.CHANNEL_LABELS.get(value, label))
@@ -101,6 +104,12 @@ class SchoolForm(forms.ModelForm):
             if value in self.SELECTABLE_MODES
         ]
         self.fields["notification_channel"].help_text = self.CHANNEL_HELP
+
+    def clean_register_cutoff(self):
+        value = self.cleaned_data.get("register_cutoff")
+        if value is None:
+            return self.instance.register_cutoff or School._meta.get_field("register_cutoff").default
+        return value
 
     def clean_notification_channel(self):
         mode = self.cleaned_data["notification_channel"]
@@ -1623,7 +1632,7 @@ class BonafideForm(forms.Form):
 class AnnouncementForm(forms.Form):
     title = forms.CharField(max_length=120)
     body = forms.CharField(max_length=2000, widget=forms.Textarea(attrs={"rows": 6}),
-                           help_text="Plain text. Line breaks are kept.")
+                           label="Message", help_text="Plain text. Line breaks are kept.")
     audience = forms.ChoiceField(choices=Announcement.Audience.choices,
                                  widget=forms.RadioSelect, initial=Announcement.Audience.ALL)
     class_grade = forms.ModelChoiceField(ClassGrade.objects.active(), required=False,

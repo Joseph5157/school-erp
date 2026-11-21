@@ -6,20 +6,15 @@ lacks the permission the destination page requires.
 """
 
 from django.contrib.auth import get_user_model
-from django.db.models import Count, Min, Q
+from django.db.models import Min
 from django.urls import reverse
 
-from core import guardian_access, nav_badges, reports
+from core import analytics, nav_badges
 from core import models as core_models
 from core.models import (
     TEACHERS_GROUP_NAME,
-    AcademicEnrollment,
     Applicant,
-    AttendanceEntry,
-    AttendanceRegister,
-    AttendanceStatus,
     ClassGrade,
-    GuardianAccount,
     Student,
 )
 
@@ -34,27 +29,6 @@ def _card(key, title, count, summary, url, detail=""):
         "detail": detail,
         "tone": "attention" if count else "clear",
     }
-
-
-def _attendance(today, user):
-    """Same authority as the Missing attendance report, for today only.
-
-    Skips non-instructional dates and treats a DRAFT register as still missing.
-    """
-    missing = reports.missing_attendance(today, today)
-    sections = {row["section"].pk for row in missing}
-    detail = ""
-    if not missing and not reports.expected_registers(today, today) and (
-        AcademicEnrollment.objects.effective_on(today).exists()
-    ):
-        detail = "No school day today."
-    return _card(
-        "attendance", "Attendance today", len(sections),
-        "Sections whose register is not yet submitted today.",
-        reverse("core:report-missing-attendance")
-        + f"?start={today:%Y-%m-%d}&end={today:%Y-%m-%d}",
-        detail,
-    )
 
 
 def _applicants(today, user):
@@ -73,15 +47,6 @@ def _publications(today, user):
         "publications", "Results to publish", nav_badges.cached_count(user, "core:publications-stale"),
         "Published results that are out of date.",
         reverse("core:publications-stale"),
-    )
-
-
-def _access_reviews(today, user):
-    return _card(
-        "access_reviews", "Pending access reviews",
-        len(guardian_access.pending_reviews(today)),
-        "Guardian access that needs an explicit decision.",
-        reverse("core:guardian-access-reviews"),
     )
 
 
@@ -104,10 +69,8 @@ def _lockouts(today, user):
 
 # (builder, permission required by the destination page)
 _CARDS = (
-    (_attendance, "core.view_attendanceregister"),
     (_applicants, "core.view_applicant"),
     (_publications, "core.view_termpublication"),
-    (_access_reviews, "core.view_guardianaccessreview"),
     (_notifications, "core.send_notification"),
     (_lockouts, "accounts.clear_login_lockout"),
 )
@@ -119,21 +82,6 @@ def split_cards(cards):
     Each group keeps the order of `_CARDS`.
     """
     return [c for c in cards if c["count"]], [c for c in cards if not c["count"]]
-
-
-def system_checklist(clear_cards, steps):
-    """Quiet checklist: each clear card, then one setup item. Items are {"label", "ok", "url"}.
-
-    A clear card is always ok. The setup item is ok when every setup step is done; otherwise it
-    links to the first step still to do, so the item that has work points at the work.
-    """
-    items = [{"label": c["title"], "ok": True, "url": c["url"]} for c in clear_cards]
-    todo = next((step for step in steps if not step["done"]), None)
-    if todo is None:
-        items.append({"label": "School setup complete", "ok": True, "url": ""})
-    else:
-        items.append({"label": "Finish school setup", "ok": False, "url": todo["url"]})
-    return items
 
 
 def overview_cards(user):
@@ -149,18 +97,13 @@ def _glance_card(key, title, count, summary, url, user, perm):
     }
 
 
-def glance_cards(user):
+def glance_cards(user, today=None):
     """School-at-a-glance headline figures (read-only; a handful of aggregate queries)."""
-    today = core_models.business_today()
+    today = core_models.business_today() if today is None else today
     teachers = (
         get_user_model().objects.filter(groups__name=TEACHERS_GROUP_NAME, is_active=True).count()
     )
-    taken = AttendanceEntry.objects.filter(
-        register__date=today, register__status=AttendanceRegister.Status.SUBMITTED
-    ).aggregate(
-        total=Count("pk"), present=Count("pk", filter=Q(status=AttendanceStatus.PRESENT)),
-    )
-    attendance = f"{round(100 * taken['present'] / taken['total'])}%" if taken["total"] else "-"
+    term = analytics.current_term(today)
     return [
         _glance_card(
             "students", "Active students",
@@ -177,15 +120,8 @@ def glance_cards(user):
             reverse("core:class-grade-list"), user, "core.view_classgrade",
         ),
         _glance_card(
-            "guardians", "Guardians with portal access",
-            GuardianAccount.objects.filter(revoked_at__isnull=True).count(),
-            "Guardians who can sign in to the portal.",
-            reverse("core:guardian-list"), user, "core.view_guardian",
-        ),
-        _glance_card(
-            "attendance", "Attendance today", attendance,
-            "present across registers submitted today." if taken["total"]
-            else "No register submitted today.",
-            reverse("core:attendance-register-list"), user, "core.view_attendanceregister",
+            "term", "Current term", term.name if term else "-",
+            "Running today." if term else "No term is running today.",
+            reverse("core:academic-year-list"), user, "core.view_academicyear",
         ),
     ]

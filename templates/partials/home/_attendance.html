@@ -1,0 +1,83 @@
+{# Admin home, Attendance tab: trend, heatmap, day of the week, best/worst classes, absentees. School-wide, submitted registers only; see core/analytics.py. #}
+{% with a=attendance_tab %}
+<section class="erp-analytics{% if a.classes is None %} erp-analytics--no-classes{% endif %}{% if a.absentees is None %} erp-analytics--no-absent{% endif %}" aria-labelledby="analytics-title">
+    <h2 class="erp-sr-only" id="analytics-title">Attendance</h2>
+    <article class="erp-card erp-card--trend">
+        <h3 class="erp-analytics-title">Attendance this month</h3>
+        {% if a.trend.this is None %}
+        <p class="erp-card-empty">No submitted attendance this month yet.</p>
+        {% else %}
+        <p class="erp-trend-figure">{{ a.trend.this }}%</p>
+        <p class="erp-analytics-sub">{% if a.trend.direction == "up" %}<span aria-hidden="true">&#9650;</span> Up {{ a.trend.change }} points from {{ a.trend.last }}% in {{ a.trend.last_label }}.{% elif a.trend.direction == "down" %}<span aria-hidden="true">&#9660;</span> Down {{ a.trend.change|cut:"-" }} points from {{ a.trend.last }}% in {{ a.trend.last_label }}.{% elif a.trend.direction == "same" %}Same as {{ a.trend.last_label }} ({{ a.trend.last }}%).{% else %}No comparison yet.{% endif %}</p>
+        {% endif %}
+    </article>
+
+    {% if a.has_data %}
+    <article class="erp-card erp-card--heat">
+        <h3 class="erp-analytics-title">Attendance heatmap</h3>
+        <p class="erp-analytics-sub">Last 4 weeks. Darker blue is higher; red is under 80%.</p>
+        <div class="erp-heat" role="img" aria-label="Attendance heatmap for the last 4 weeks, Monday to Sunday. Darker blue is higher attendance; red is under 80 percent. Days with no submitted register are hatched; non-school days are blank.">
+            <div class="erp-heat-week erp-heat-head" aria-hidden="true"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
+            {% for week in a.heatmap %}
+            <div class="erp-heat-week" aria-hidden="true">
+                {% for cell in week %}<span class="erp-heat-cell erp-heat-cell--{% if cell.state == 'data' %}{{ cell.tier }}" title="{{ cell.date|date:'j M' }}: {{ cell.percentage|floatformat:1 }}%{% elif cell.state == 'no_data' %}{{ cell.state }}" title="{{ cell.date|date:'j M' }}: not submitted{% else %}{{ cell.state }}{% endif %}">{% if cell.state != 'outside' %}{{ cell.date|date:"j" }}{% endif %}</span>{% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+        <p class="erp-heat-legend" aria-hidden="true"><span class="erp-heat-cell erp-heat-cell--t1"></span> under 80% <span class="erp-heat-cell erp-heat-cell--t4"></span> 95%+ <span class="erp-heat-cell erp-heat-cell--no_data"></span> not submitted</p>
+        <details class="erp-chart-data">
+            <summary>View heatmap figures</summary>
+            <table class="erp-chart-table erp-keep">
+                <caption class="erp-sr-only">Attendance heatmap, last 4 weeks</caption>
+                <thead><tr><th scope="col">Date</th><th scope="col">Attendance</th></tr></thead>
+                <tbody>{% for week in a.heatmap %}{% for cell in week %}{% if cell.state == "data" %}<tr><th scope="row">{{ cell.date|date:"D j M" }}</th><td>{{ cell.percentage|floatformat:1 }}%</td></tr>{% elif cell.state == "no_data" %}<tr><th scope="row">{{ cell.date|date:"D j M" }}</th><td>Not submitted</td></tr>{% endif %}{% endfor %}{% endfor %}</tbody>
+            </table>
+        </details>
+    </article>
+    {% else %}
+    <article class="erp-card erp-card--heat">
+        <h3 class="erp-analytics-title">Attendance heatmap</h3>
+        <p class="erp-card-empty">No submitted attendance in the last 4 weeks yet.</p>
+    </article>
+    {% endif %}
+
+    <article class="erp-card erp-card--weekday">
+        <h3 class="erp-analytics-title">Day of the week</h3>
+        <p class="erp-analytics-sub">Last 8 weeks.</p>
+        {% if a.weekday.rows %}
+        {% include "partials/charts/_bars.html" with rows=a.weekday.rows colour="attendance" target=80 %}
+        {% if a.weekday.lowest %}<p class="erp-analytics-sub">{{ a.weekday.lowest.day }}s are {{ a.weekday.lowest.gap }}% lower than average.</p>{% else %}<p class="erp-analytics-sub">No day of the week stands out.</p>{% endif %}
+        {% else %}
+        <p class="erp-card-empty">Not enough attendance yet to compare days.</p>
+        {% endif %}
+    </article>
+
+    {% if a.classes is not None %}
+    <article class="erp-card erp-card--classes">
+        <h3 class="erp-analytics-title">Best and worst classes</h3>
+        <p class="erp-analytics-sub">This month.</p>
+        <h4 class="erp-home-sub">Highest</h4>
+        {% include "partials/charts/_bars.html" with rows=a.classes.best colour="attendance" target=80 %}
+        <h4 class="erp-home-sub">Lowest</h4>
+        {% include "partials/charts/_bars.html" with rows=a.classes.worst colour="attendance" target=80 %}
+    </article>
+    {% endif %}
+
+    {% if a.absentees is not None %}
+    <article class="erp-card erp-card--absent">
+        <h3 class="erp-analytics-title">Absentees</h3>
+        <nav class="erp-seg" aria-label="Absentee view">
+            <a class="erp-seg-link" href="?tab=attendance"{% if a.absent_view == "month" %} aria-current="page"{% endif %}>This month</a>
+            <a class="erp-seg-link" href="?tab=attendance&amp;absent=term"{% if a.absent_view == "term" %} aria-current="page"{% endif %}>Below {{ a.low_percent }}% this term</a>
+        </nav>
+        <p class="erp-analytics-sub">{% if a.absent_view == "term" %}Under {{ a.low_percent }}% attendance this term ({{ a.low_min_days }} or more days marked).{% else %}Absent {{ a.absentee_threshold }} or more days, this month.{% endif %}</p>
+        {% if a.absentees.rows %}
+        {% include "partials/home/_fold_rows.html" with rows=a.absentees.rows row_template="partials/home/_absentee_row.html" noun="students" view=a.absent_view total=a.absentees.total %}
+        {% if a.absentees.total > a.absentees.rows|length %}<p class="erp-note-text">Showing {{ a.absentees.rows|length }} of {{ a.absentees.total }}.</p>{% endif %}
+        {% else %}
+        <p class="erp-card-empty">{% if a.absentees.no_term %}No term is running.{% elif a.absent_view == "term" %}No student is under {{ a.low_percent }}% this term.{% else %}No student was absent {{ a.absentee_threshold }} or more days this month.{% endif %}</p>
+        {% endif %}
+    </article>
+    {% endif %}
+</section>
+{% endwith %}

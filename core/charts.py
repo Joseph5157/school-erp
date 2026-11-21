@@ -61,28 +61,6 @@ def _clamp(value, low, high):
     return max(low, min(high, value))
 
 
-def ring(done, total, size=76, stroke=8):
-    """A single progress ring. `dash` is the filled length on the circle's circumference."""
-    if not total:
-        return None
-    done = _clamp(done, 0, total)
-    # Rounded, but 100 only when everything is done and 0 only when nothing is.
-    percent = _clamp(round(done * 100 / total), 1 if done > 0 else 0, 100 if done == total else 99)
-    radius = (size - stroke) / 2
-    circumference = _r(2 * math.pi * radius)
-    return {
-        "percent": percent,
-        "done": done,
-        "total": total,
-        "size": size,
-        "center": size / 2,
-        "radius": radius,
-        "stroke": stroke,
-        "circumference": circumference,
-        "dash": _r(circumference * done / total),
-    }
-
-
 def donut(parts, size=110, stroke=15):
     """A donut of (label, count) parts. Zero-count parts stay listed but draw nothing."""
     counts = [count for _, count in parts]
@@ -116,38 +94,6 @@ def donut(parts, size=110, stroke=15):
         "stroke": stroke,
         "headline_percent": part_shares[0],
         "segments": segments,
-    }
-
-
-_GAUGE_CX, _GAUGE_CY, _GAUGE_R = 100, 100, 80
-
-
-def _gauge_point(percent, radius):
-    angle = math.pi * (1 - _clamp(percent, 0, 100) / 100)
-    return (
-        _r(_GAUGE_CX + radius * math.cos(angle)),
-        _r(_GAUGE_CY - radius * math.sin(angle)),
-    )
-
-
-def gauge(percent, target):
-    """A semicircle gauge in a 200x122 viewBox with a tick at `target`."""
-    if percent is None:
-        return None
-    start_x, start_y = _gauge_point(0, _GAUGE_R)
-    end_x, end_y = _gauge_point(100, _GAUGE_R)
-    value_x, value_y = _gauge_point(percent, _GAUGE_R)
-    arc = f"A {_GAUGE_R} {_GAUGE_R} 0 0 1"
-    x1, y1 = _gauge_point(target, _GAUGE_R - 10)
-    x2, y2 = _gauge_point(target, _GAUGE_R + 6)
-    return {
-        "percent": percent,
-        "display": percent_display(percent, target),
-        "target": target,
-        "track_d": f"M {start_x:g} {start_y:g} {arc} {end_x:g} {end_y:g}",
-        "value_d": f"M {start_x:g} {start_y:g} {arc} {value_x:g} {value_y:g}",
-        "tick": {"x1": x1, "y1": y1, "x2": x2, "y2": y2},
-        "met": percent >= target,
     }
 
 

@@ -109,13 +109,6 @@ class BelowTargetBarTests(SimpleTestCase):
         self.assertNotIn("erp-class-flag", grade7)
         self.assertIn(".erp-class-flag", CSS)
 
-    def test_phone_branch_explains_red(self):
-        source = (
-            settings.BASE_DIR / "templates" / "partials" / "_attendance_analytics.html"
-        ).read_text(encoding="utf-8")
-        phone = source.split('<div class="erp-class-phone">')[1].split("</div>")[0]
-        self.assertIn("Red is under {{ a.attendance_target }}%", phone)
-        self.assertIn("target=a.attendance_target", phone)
 
 
 class StaticWarningRoleTests(SimpleTestCase):

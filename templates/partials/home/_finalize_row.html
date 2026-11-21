@@ -1,0 +1,5 @@
+{# One assessment ready to finalize. `r` has name, subject, class_name, section_name and url. #}
+<li class="erp-home-row">
+    <span class="erp-home-main">{{ r.name }} &middot; {{ r.subject }}<span class="erp-home-meta">{{ r.class_name }} {{ r.section_name }}</span></span>
+    <a class="erp-home-open" href="{{ r.url }}">Open<span class="erp-sr-only"> {{ r.name }}</span></a>
+</li>

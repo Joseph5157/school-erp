@@ -33,7 +33,7 @@ class GlanceTileTests(AuthorizationClientsMixin, TestCase):
 
     def test_glance_figures_are_whole_tappable_tiles_without_open_buttons(self):
         glance = self.glance_html(self.administrator)
-        self.assertEqual(glance.count("erp-stat-card--glance"), 5)
+        self.assertEqual(glance.count("erp-stat-card--glance"), 4)
         self.assertRegex(
             glance, rf'<a class="erp-glance-tile erp-stat-card erp-stat-card--glance" href="{reverse("core:student-list")}"'
         )
@@ -47,7 +47,7 @@ class GlanceTileTests(AuthorizationClientsMixin, TestCase):
         client.login(username="glance-only", password="pass-12345")
         glance = self.glance_html(client)
         self.assertEqual(glance.count("<a "), 0)
-        self.assertEqual(glance.count('<div class="erp-glance-tile erp-stat-card erp-stat-card--glance"'), 5)
+        self.assertEqual(glance.count('<div class="erp-glance-tile erp-stat-card erp-stat-card--glance"'), 4)
 
 
 class PhoneStylesheetTests(TestCase):
@@ -63,23 +63,16 @@ class PhoneStylesheetTests(TestCase):
     def test_glance_summaries_are_left_out_on_phones(self):
         self.assertIn(".erp-glance-tile .erp-stat-summary { display: none; }", phone_block(CSS))
 
-    def test_clear_links_are_44px_chips_on_phones(self):
-        self.assertIn(".erp-clear-list a { min-height: 2.75rem; }", phone_block(CSS))
-
-    def test_absentee_rows_put_the_class_under_the_name(self):
-        self.assertIn(".erp-absentee-class { grid-column: 1; grid-row: 2;", CSS)
-        self.assertIn(".erp-absentee-days { grid-column: 2; grid-row: 1 / 3;", CSS)
-
     def test_attention_cards_are_compact_rows_that_open_from_anywhere_on_phones(self):
         phone = phone_block(CSS)
         # Count at the right end of the row, beside the title and sentence.
         self.assertIn(".erp-stat-grid--attention .erp-stat-value { grid-column: 2; grid-row: 1 / span 2; font-size: 1.5rem; }", phone)
-        # The card's own Open link covers the whole card (explicit size beats Bootstrap's align-self-start)...
+        # The card's own Open link covers the whole card (explicit size beats the stat card button's align-self)...
         self.assertIn("{ position: absolute; inset: 0; width: 100%; height: 100%; margin: 0;", phone)
         # ...is drawn as the same chevron on every card, so no card's link looks more important...
-        self.assertIn('.erp-stat-grid--attention .erp-stat-card > .btn::after { content: "\\203A";', phone)
+        self.assertIn('.erp-stat-grid--attention .erp-stat-card > .erp-btn::after { content: "\\203A";', phone)
         # ...and keeps a visible keyboard focus ring.
-        self.assertIn(".erp-stat-grid--attention .erp-stat-card > .btn:focus-visible { outline: 3px solid var(--erp-focus-color);", phone)
+        self.assertIn(".erp-stat-grid--attention .erp-stat-card > .erp-btn:focus-visible { outline: 3px solid var(--erp-focus-color);", phone)
         # Desktop keeps the cards and their Open buttons: none of this is outside the phone block.
-        rule = ".erp-stat-grid--attention .erp-stat-card > .btn"
+        rule = ".erp-stat-grid--attention .erp-stat-card > .erp-btn"
         self.assertEqual(CSS.count(rule), phone.count(rule))

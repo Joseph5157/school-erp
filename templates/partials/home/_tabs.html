@@ -1,0 +1,2 @@
+{# Admin home tabs: plain links, each tab its own URL (?tab=), so they work without JavaScript. #}
+<nav class="erp-home-tabs" aria-label="Overview sections">{% for t in tabs %}<a class="erp-home-tab" href="{{ t.url }}"{% if t.current %} aria-current="page"{% endif %}>{{ t.label }}</a>{% endfor %}</nav>

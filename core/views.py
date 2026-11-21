@@ -29,6 +29,9 @@ from core import (
     duplicate_checks,
     guardian_access,
     guardian_accounts,
+    home_academics,
+    home_parents,
+    home_today,
     marks_analytics,
     notification_producers,
     one_time_forms,
@@ -955,60 +958,137 @@ def choose_area(request):
     return render(request, "core/choose_area.html", {"areas": areas})
 
 
-@administrator_required("core.view_school")
-def admin_overview(request):
+HOME_TABS = (
+    ("today", "Today"),
+    ("attendance", "Attendance"),
+    ("academics", "Academics"),
+    ("parents", "Parents"),
+)
+
+
+def _home_tabs(active):
+    base = reverse("core:admin-overview")
+    return [
+        {
+            "key": key,
+            "label": label,
+            "url": base if key == "today" else f"{base}?tab={key}",
+            "current": key == active,
+        }
+        for key, label in HOME_TABS
+    ]
+
+
+def _today_tab(user, today, *, can_see_names, can_view_registers):
+    """The Today tab: work waiting, the school at a glance, setup, and today's/this week's lists."""
     steps = setup_checklist.setup_steps()
     done_count = sum(1 for step in steps if step["done"])
     # The first incomplete step is the "next" one: only it gets the filled button.
     next_key = next((step["key"] for step in steps if not step["done"]), None)
     for step in steps:
         step["is_next"] = step["key"] == next_key
-    cards = dashboard.overview_cards(request.user)
-    attention_cards, clear_cards = dashboard.split_cards(cards)
-    checklist = dashboard.system_checklist(clear_cards, steps)
-    return render(
-        request,
-        "core/admin_overview.html",
-        {
-            "cards": cards,
-            "glance_cards": dashboard.glance_cards(request.user),
-            "attention_cards": attention_cards,
-            "clear_cards": clear_cards,
-            "system_checklist": checklist,
-            "checklist_clear": all(item["ok"] for item in checklist),
-            "setup_steps": steps,
-            "setup_complete": setup_checklist.setup_complete(steps),
-            # Until the foundation exists there is nothing operational to show, so setup leads;
-            # after that the attention cards do.
-            "setup_first": setup_checklist.foundation_incomplete(steps),
-            "setup_done": done_count,
-            "setup_total": len(steps),
-            "attendance_analytics": analytics.overview_context(
-                # Named absentees are student names plus attendance: both classes of data.
-                include_absentees=(
-                    request.user.has_perm(data_access.STUDENT)
-                    and request.user.has_perm(data_access.ATTENDANCE_ENTRY)
-                ),
-                include_marks=request.user.has_perm(data_access.STUDENT_RESULT),
-                include_publications=request.user.has_perm("core.view_termpublication"),
-                # Links appear only where the viewer can open the target (the same permission
-                # as the views' own decorators).
-                include_class_links=request.user.has_perm("core.view_classgrade"),
-                # Names, marks and absent-day counts together.
-                include_attention=(
-                    request.user.has_perm(data_access.STUDENT)
-                    and request.user.has_perm(data_access.STUDENT_RESULT)
-                    and request.user.has_perm(data_access.ATTENDANCE_ENTRY)
-                ),
-                missing_attendance_url=(
-                    reverse("core:report-missing-attendance")
-                    if request.user.has_perm("core.view_attendanceregister")
-                    else None
-                ),
-                params=request.GET,
-            ),
-        },
-    )
+    cards = dashboard.overview_cards(user)
+    attention_cards, _ = dashboard.split_cards(cards)
+    # Row links go to the register page (view) or the create page (add): each needs its own.
+    can_create_registers = user.has_perm("core.add_attendanceregister")
+    can_view_assessments = user.has_perm("core.view_assessment")
+    cutoff = home_today.register_cutoff()
+    return {
+        "cards": cards,
+        "attention_cards": attention_cards,
+        "glance_cards": dashboard.glance_cards(user, today=today),
+        "setup_steps": steps,
+        "setup_complete": setup_checklist.setup_complete(steps),
+        # Until the foundation exists there is nothing operational to show, so setup leads;
+        # after that the attention cards do.
+        "setup_first": setup_checklist.foundation_incomplete(steps),
+        "setup_done": done_count,
+        "setup_total": len(steps),
+        # Counts for every administrator; the sections still to submit (with their class teachers)
+        # are register data, as on the Missing attendance report.
+        "attendance": home_today.attendance_today(
+            today,
+            include_rows=can_view_registers,
+            can_view_registers=can_view_registers,
+            can_create_registers=can_create_registers,
+        ),
+        "register_cutoff": cutoff,
+        "compliance": (
+            home_today.register_compliance(
+                today, timezone.now(), cutoff,
+                can_view_registers=True, can_create_registers=can_create_registers,
+            )
+            if can_view_registers
+            else None
+        ),
+        "overdue_marks": (
+            home_today.overdue_marks(today, can_open=True) if can_view_assessments else None
+        ),
+        "assessments": home_today.week_assessments(today, can_open=can_view_assessments),
+        "birthdays": home_today.week_birthdays(today, can_see_names=can_see_names),
+    }
+
+
+@administrator_required("core.view_school")
+def admin_overview(request):
+    """The admin home: four tabs by job, each its own URL (`?tab=`). Only the active tab is built.
+
+    Unknown values (and old links such as `?period=`) show Today.
+    """
+    user = request.user
+    tab = request.GET.get("tab", "")
+    if tab not in dict(HOME_TABS):
+        tab = "today"
+    today = business_today()
+    # Security Gate 4B: the classes of data this page embeds, checked here so the pinned route
+    # inventory sees them. Named students need view_student; absences need view_attendanceentry;
+    # marks need view_studentresult. The registers, class and publication gates decide which
+    # register, class and results figures and links the tabs may show.
+    can_see_students = user.has_perm(data_access.STUDENT)
+    can_see_attendance = user.has_perm(data_access.ATTENDANCE_ENTRY)
+    can_see_results = user.has_perm(data_access.STUDENT_RESULT)
+    can = {
+        "registers": user.has_perm("core.view_attendanceregister"),
+        "classes": user.has_perm("core.view_classgrade"),
+        "publications": user.has_perm("core.view_termpublication"),
+    }
+    context = {"tabs": _home_tabs(tab), "tab": tab, "can": can}
+    if tab == "attendance":
+        context["attendance_tab"] = analytics.attendance_tab_context(
+            today,
+            include_absentees=can_see_students and can_see_attendance,
+            absent_view=request.GET.get("absent", "month"),
+            class_links=can["classes"],
+        )
+    elif tab == "academics":
+        context["academics_tab"] = home_academics.academics_tab_context(
+            today,
+            include_progress=user.has_perm("core.view_assessment"),
+            publish_rows=can["publications"],
+            include_marks=can_see_results,
+            # Names, marks and absent-day counts together.
+            include_attention=can_see_students and can_see_results and can_see_attendance,
+            include_improvers=can_see_students and can_see_results,
+            class_links=can["classes"],
+        )
+    elif tab == "parents":
+        names = can_see_students and user.has_perm(data_access.GUARDIAN)
+        context["parents_tab"] = home_parents.parents_tab_context(
+            today,
+            notice_form=user.has_perm("core.add_announcement"),
+            show_sent=user.has_perm("core.view_announcement"),
+            invite_links=names,
+            include_reviews=user.has_perm("core.view_guardianaccessreview"),
+            review_names=names,
+            decide_links=user.has_perm("core.add_guardianaccessreview"),
+            guardians_link=user.has_perm(data_access.GUARDIAN),
+            show_missing=user.has_perm(data_access.GUARDIAN),
+        )
+    else:
+        context["today"] = _today_tab(
+            user, today, can_see_names=can_see_students, can_view_registers=can["registers"]
+        )
+    return render(request, "core/admin_overview.html", context)
 
 
 def _open_assessments_needing_marks(user, today):
@@ -3959,6 +4039,7 @@ STUDENT_CHIP_CHOICES = (
     ("new", "New this month"),
     ("unplaced", "Not in a class"),
     ("absent", "Absent 3+ days this year"),
+    ("no_portal", "No parent on the portal"),
 )
 
 
@@ -3977,7 +4058,7 @@ def _parse_id(request, name, valid_ids):
     return value if value in valid_ids else None
 
 
-def _student_chips(request, chip, include_absent=True, sort_param=""):
+def _student_chips(request, chip, include_absent=True, sort_param="", include_no_portal=True):
     """Chip links: each keeps the other filters and the chosen sort; only the active one is marked.
 
     ``sort_param`` is the table's whitelisted sort token, never the raw GET value (audit 13 SF-04).
@@ -3990,6 +4071,8 @@ def _student_chips(request, chip, include_absent=True, sort_param=""):
     chips = []
     for key, label in STUDENT_CHIP_CHOICES:
         if key == "absent" and not include_absent:
+            continue
+        if key == "no_portal" and not include_no_portal:
             continue
         data = dict(base)
         if key != "all":
@@ -4017,6 +4100,8 @@ def student_list(request):
     can_see_guardians = request.user.has_perm(data_access.GUARDIAN)
     can_see_absences = request.user.has_perm(data_access.ATTENDANCE_ENTRY)
     if chip == "absent" and not can_see_absences:
+        chip = None
+    if chip == "no_portal" and not can_see_guardians:
         chip = None
 
     students = Student.objects.all()
@@ -4098,6 +4183,12 @@ def student_list(request):
                 enrollments__academic_year=current_year,
             )
 
+    if chip == "no_portal":
+        ids = list(students.values_list("pk", flat=True))
+        students = students.exclude(
+            pk__in=home_parents.portal_student_ids(ids, business_today())
+        )
+
     columns = (
         STUDENT_COLUMNS
         if can_see_guardians
@@ -4123,7 +4214,11 @@ def student_list(request):
             "status_choices": Student.Status.choices,
             "chip": chip,
             "chips": _student_chips(
-                request, chip, include_absent=can_see_absences, sort_param=table.sort_param
+                request,
+                chip,
+                include_absent=can_see_absences,
+                sort_param=table.sort_param,
+                include_no_portal=can_see_guardians,
             ),
             "can_see_guardians": can_see_guardians,
             "class_filter": class_filter,
