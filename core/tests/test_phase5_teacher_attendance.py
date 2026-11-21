@@ -352,7 +352,8 @@ class TeacherAttendanceAutosaveTests(Phase4Fixture, TestCase):
         iyer.login(username="iyer", password="pass-12345")
         self.assertEqual(self.autosave(self.asha, "PRESENT", client=iyer).status_code, 403)
         anonymous = self.client_class()
-        self.assertEqual(self.autosave(self.asha, "PRESENT", client=anonymous).status_code, 302)
+        # Signed out: a background request gets 401, never the sign-in page (Option B OD-B3).
+        self.assertEqual(self.autosave(self.asha, "PRESENT", client=anonymous).status_code, 401)
         self.assertEqual(self.register().entries.count(), 0)
 
     def test_without_htmx_header_and_on_get_nothing_happens(self):

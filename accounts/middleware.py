@@ -8,11 +8,12 @@ password-change page, sign-out, static files and error responses.
 """
 
 import time
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 
 from django.conf import settings
 from django.contrib.auth import logout
-from django.shortcuts import redirect
+from django.http import JsonResponse
+from django.shortcuts import redirect, resolve_url
 from django.urls import Resolver404, resolve, reverse
 from django.utils.cache import patch_cache_control
 
@@ -44,6 +45,31 @@ def seconds_left(session, now=None):
     idle = settings.SESSION_IDLE_SECONDS - (now - session.get(SEEN_KEY, now))
     absolute = settings.SESSION_ABSOLUTE_SECONDS - (now - session.get(STARTED_KEY, now))
     return {"idle": max(0, round(idle)), "absolute": max(0, round(absolute))}
+
+
+def is_background_request(request):
+    """An HTMX or script request (Option B OD-B3): it must never be answered with a page."""
+    return (
+        request.headers.get("HX-Request") == "true"
+        or request.headers.get("X-Requested-With") == "XMLHttpRequest"
+    )
+
+
+def signed_out_reply(reason):
+    """401 for a background request from a signed-out session (Option B §4.7, finding F-1).
+
+    XHR and fetch follow a redirect silently, so the sign-in page would arrive with status 200 and a
+    script could read it as a successful save. `reason` is "idle", "limit" or None (no expiry seen).
+    """
+    response = JsonResponse({"error": "signed-out", "expired": reason}, status=401)
+    patch_cache_control(response, no_store=True)
+    return response
+
+
+def _redirects_to_login(response):
+    if response.status_code not in (301, 302, 303, 307, 308) or "Location" not in response:
+        return False
+    return urlsplit(response["Location"]).path == resolve_url(settings.LOGIN_URL)
 
 
 def expired_redirect(request, reason):
@@ -81,12 +107,16 @@ class AccountSecurityMiddleware:
             now = time.time()
             started = request.session.get(STARTED_KEY, now)
             seen = request.session.get(SEEN_KEY, now)
+            reason = None
             if now - started > settings.SESSION_ABSOLUTE_SECONDS:
+                reason = "limit"
+            elif now - seen > settings.SESSION_IDLE_SECONDS:
+                reason = "idle"
+            if reason:
                 logout(request)
-                return expired_redirect(request, "limit")
-            if now - seen > settings.SESSION_IDLE_SECONDS:
-                logout(request)
-                return expired_redirect(request, "idle")
+                if is_background_request(request):
+                    return signed_out_reply(reason)
+                return expired_redirect(request, reason)
             request.session[STARTED_KEY] = started
             if not (request.path_info == SESSION_STATUS_PATH and request.method == "GET"):
                 request.session[SEEN_KEY] = now
@@ -101,7 +131,12 @@ class AccountSecurityMiddleware:
             if "Cache-Control" not in response and response.get("Content-Type", "").startswith("text/html"):
                 patch_cache_control(response, no_store=True, private=True)
             return response
-        return self.get_response(request)
+        response = self.get_response(request)
+        # Signed out without an expiry (another tab, cleared cookie): a guarded view sends the
+        # browser to sign in. A background request gets 401 instead (Option B §4.7, part 2).
+        if is_background_request(request) and _redirects_to_login(response):
+            return signed_out_reply(None)
+        return response
 
     @staticmethod
     def _allowed(path):

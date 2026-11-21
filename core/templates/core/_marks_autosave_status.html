@@ -1,0 +1,18 @@
+{% comment %}
+HTMX reply for one autosaved marks row (Option B B1). Only this row's own values: the status line,
+on a conflict this row's current saved value with Use and Keep, and after a save the out-of-band
+counts, hint and the row's new base inputs. Retry is never offered here: the server only answers
+with problems a retry cannot fix; erp.js adds Retry for network, timeout and server failures.
+{% endcomment %}{% with name=enrollment.student.full_name %}
+{% if state == "saved" %}<span class="erp-row-saved">&#10003; Saved<span class="visually-hidden"> {{ name }}</span></span>
+<span id="erp-count-all" data-erp-count="all" hx-swap-oob="true">{{ counts.all }}</span>
+<span id="erp-count-unmarked" data-erp-count="unmarked" hx-swap-oob="true">{{ counts.unmarked }}</span>
+<span id="erp-count-marked" data-erp-count="marked" hx-swap-oob="true">{{ counts.marked }}</span>
+<span id="erp-count-absent" data-erp-count="absent" hx-swap-oob="true">{{ counts.absent }}</span>
+<span id="erp-hint" class="erp-actionbar-status" data-erp-hint hx-swap-oob="true">{{ counts.unmarked }} not entered</span>
+<span id="erp-base-{{ enrollment.pk }}" hx-swap-oob="true"><input type="hidden" name="base_status_{{ enrollment.pk }}" value="{{ base_status }}"><input type="hidden" name="base_score_{{ enrollment.pk }}" value="{{ base_score }}"></span>
+{% elif state == "conflict" %}<span class="erp-row-failed" data-erp-conflict data-server-status="{{ server_status }}" data-server-score="{{ server_score }}">Changed on another device to {% if server_status == "ABSENT" %}Absent{% elif server_status %}{{ server_score }}{% else %}Not entered{% endif %}.</span>
+<button type="button" class="btn btn-sm btn-outline-primary" data-erp-use-mine>Use {% if mine_status == "ABSENT" %}Absent{% else %}{{ mine_score }}{% endif %}<span class="visually-hidden"> for {{ name }}</span></button>
+<button type="button" class="btn btn-sm btn-outline-secondary" data-erp-keep-theirs>Keep {% if server_status == "ABSENT" %}Absent{% elif server_status %}{{ server_score }}{% else %}Not entered{% endif %}<span class="visually-hidden"> for {{ name }}</span></button>
+{% else %}<span class="erp-row-failed">Not saved: {{ message }}{% if name %}<span class="visually-hidden"> ({{ name }})</span>{% endif %}</span>
+{% endif %}{% endwith %}

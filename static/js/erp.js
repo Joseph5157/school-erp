@@ -404,10 +404,10 @@
       })
         .then(function (response) {
           return response.json().catch(function () { return {}; }).then(function (data) {
-            return { ok: response.ok, data: data };
+            return { ok: response.ok, status: response.status, data: data };
           });
         }, function () {
-          return { ok: false, data: {} };
+          return { ok: false, status: 0, data: {} };
         })
         .then(function (result) {
           marked.forEach(function (row) {
@@ -420,8 +420,10 @@
             row._dirty = false;
             row.classList.toggle("is-unsaved", !result.ok);
             if (result.ok) showSaved(row);
+            else if (result.status === 401) showFailure(row, "Not saved: you have been signed out.");
             else showFailure(row, result.data.error || "Not saved.");
           });
+          if (result.status === 401) document.dispatchEvent(new CustomEvent("erp:signed-out"));
           if (announce) {
             announce.textContent = result.ok
               ? "Saved " + marked.length + " student" + (marked.length === 1 ? "" : "s") + " as present."
@@ -493,7 +495,10 @@
         if (!ok) {
           var status = event.detail.xhr ? event.detail.xhr.status : 0;
           // 409 and 422 responses carry their own message and are already swapped in.
-          if (status !== 409 && status !== 422) showFailure(row, "Not saved.");
+          if (status === 401) {
+            showFailure(row, "Not saved: you have been signed out.");
+            document.dispatchEvent(new CustomEvent("erp:signed-out"));
+          } else if (status !== 409 && status !== 422) showFailure(row, "Not saved.");
         }
         if (!othersDirty()) refresh();
         syncAutosaveState();
@@ -550,12 +555,13 @@
 
   // Marks entry: live counts and filter tabs; typing a score selects Marked;
   // Absent clears and disables the score box. Without JS the server rules apply.
+  // With HTMX each row also saves itself on change (Option B B1): see the autosave part below.
   document.querySelectorAll("[data-erp-marks]").forEach(function (sheet) {
     var rows = Array.prototype.slice.call(sheet.querySelectorAll("[data-erp-row]"));
     var tabs = sheet.querySelector("[data-erp-tabs]");
     var staticCounts = sheet.querySelector("[data-erp-static-counts]");
-    var hint = sheet.querySelector("[data-erp-hint]");
     var filter = "all";
+    var autosaveOn = false; // set once HTMX autosave is wired below
 
     function parts(row) {
       return {
@@ -587,6 +593,8 @@
         var target = sheet.querySelector('[data-erp-count="' + key + '"]');
         if (target) target.textContent = counts[key];
       });
+      // Looked up each time: an autosave reply may have replaced the element.
+      var hint = sheet.querySelector("[data-erp-hint]");
       if (hint) hint.textContent = counts.unmarked + " not entered";
       announceDone(counts.unmarked === 0);
     }
@@ -606,6 +614,7 @@
       });
     }
 
+    // Typing never saves: only `change` does (leaving the box, Next or Enter, a status).
     sheet.addEventListener("input", function (event) {
       if (!event.target.classList.contains("erp-score")) return;
       var p = parts(event.target.closest("[data-erp-row]"));
@@ -614,22 +623,32 @@
       }
       refresh(false);
     });
+    // Capture phase: Absent clears the score before an autosave request reads the row.
     sheet.addEventListener("change", function (event) {
       if (event.target.type !== "radio") return;
       var p = parts(event.target.closest("[data-erp-row]"));
       if ((event.target.value === "ABSENT" || event.target.value === "") && p.score) p.score.value = "";
       refresh(true);
-    });
+    }, true);
     // Keypad Next/Enter moves to the next student instead of submitting the form.
     sheet.addEventListener("keydown", function (event) {
       if (event.key !== "Enter" || !event.target.classList.contains("erp-score")) return;
       // An Enter that confirms an input-method (IME) composition belongs to the keyboard.
       if (event.isComposing || event.keyCode === 229) return;
       event.preventDefault();
-      var index = rows.indexOf(event.target.closest("[data-erp-row]"));
+      var row = event.target.closest("[data-erp-row]");
+      var index = rows.indexOf(row);
       for (var i = index + 1; i < rows.length; i++) {
         var next = rows[i].querySelector("input.erp-score");
         if (!rows[i].hidden && next && !next.disabled) { next.focus(); return; }
+      }
+      // Last row: with autosave, save this row and keep focus here; the hidden fallback
+      // button is never focused. Without autosave, go to Save draft as before.
+      if (autosaveOn) {
+        // The sign-in "Next" helper above also hears this key and moves to the row's radios.
+        event.target.focus();
+        if (event.target.value !== row._sentScore) window.htmx.trigger(event.target, "change");
+        return;
       }
       var save = sheet.querySelector('button[type="submit"]');
       if (save) save.focus();
@@ -637,6 +656,311 @@
     // After a rejected save the server puts autofocus on the first invalid score, which also
     // scrolls it into view; the error summary above the roster links every bad row.
     refresh(true);
+
+    // --- Autosave (Option B B1, spec §4.2 and §4.4) -------------------------------------------
+    // Each row posts itself to the autosave endpoint on change, one request at a time per row
+    // (hx-sync queue last), with its own 15-second timeout. The row's hidden base inputs carry the
+    // value the server last confirmed, so a save from a stale page is refused, never applied.
+    // HTMX globals are left alone: these listeners sit on the sheet and see only its requests.
+    // Nothing is retried by itself and nothing is written to browser storage: Retry is a tap.
+    // The per-row bookkeeping (_seq, _sent, _dirty, swapping) is copied from the attendance
+    // roster block above, so attendance stays exactly as it was (spec §4.4 allows the copy).
+    if (!(window.htmx && sheet.querySelector("[hx-post]"))) return;
+    var form = sheet.closest("form");
+    var fallback = sheet.querySelector("[data-erp-save-fallback]");
+    var pageState = sheet.querySelector("[data-erp-autosave-state]");
+    var announce = sheet.querySelector("[data-erp-autosave-announce]");
+    var swapping = null;
+    var resendWhenIdle = false;
+    var anySaved = false;
+    var NOT_SAVED = { retry: true, conflict: true, refused: true, local: true, signedout: true };
+    var NEEDS_SCORE = "Enter a score or choose Absent.";
+
+    // The fallback no longer submits the form here, so it must stay usable after a tap.
+    if (fallback) fallback.removeAttribute("data-erp-once");
+    // What the page loaded counts as already sent, so Enter on an untouched last row sends nothing.
+    rows.forEach(function (row) {
+      var score = row.querySelector("input.erp-score");
+      row._sentScore = score ? score.value : "";
+    });
+
+    function nameOf(row) {
+      var legend = row.querySelector("legend");
+      return legend ? legend.textContent.trim() : "student";
+    }
+    function statusBox(row) {
+      return row.querySelector("[data-erp-row-status]");
+    }
+    function base(row, which) {
+      return row.querySelector('input[name="base_' + which + "_" + row.getAttribute("data-erp-enrollment") + '"]');
+    }
+    function hiddenName(row, prefix) {
+      var who = document.createElement("span");
+      who.className = "visually-hidden";
+      who.textContent = prefix + nameOf(row);
+      return who;
+    }
+    // One row's state and its words. state: saving, saved, idle, or one of NOT_SAVED.
+    // text null keeps the server's own fragment, which HTMX has already put in the row.
+    function setRow(row, state, text, withRetry) {
+      row._state = state;
+      row.classList.toggle("is-unsaved", !!NOT_SAVED[state]);
+      if (text === null) return;
+      var box = statusBox(row);
+      box.textContent = "";
+      if (!text) return;
+      var line = document.createElement("span");
+      if (state === "saved") line.className = "erp-row-saved";
+      else if (state !== "saving") line.className = "erp-row-failed";
+      line.textContent = text;
+      if (state !== "saving") line.appendChild(hiddenName(row, " "));
+      box.appendChild(line);
+      if (withRetry) {
+        var retry = document.createElement("button");
+        retry.type = "button";
+        retry.className = "btn btn-sm btn-outline-secondary";
+        retry.setAttribute("data-erp-retry", "");
+        retry.textContent = "Retry";
+        retry.appendChild(hiddenName(row, " saving ")); // audit 12 A11Y-03
+        box.appendChild(document.createTextNode(" "));
+        box.appendChild(retry);
+      }
+    }
+    function anyDirty() {
+      return rows.some(function (row) { return row._dirty; });
+    }
+    function notSavedRows() {
+      return rows.filter(function (row) { return NOT_SAVED[row._state]; });
+    }
+    function othersDirty() {
+      return rows.some(function (row) {
+        return row._dirty && (row !== swapping || row._sent !== row._seq);
+      });
+    }
+    function syncPage(attention) {
+      if (!pageState) return;
+      var failed = notSavedRows();
+      var text = "Changes save automatically";
+      if (anyDirty()) text = "Saving…";
+      else if (attention && failed.length) {
+        text = failed.length === 1 ? "1 row needs your attention" : failed.length + " rows need your attention";
+      } else if (failed.length) text = "Changes not saved (" + failed.length + ")";
+      else if (anySaved) text = "All changes saved";
+      pageState.hidden = false;
+      pageState.textContent = text;
+      pageState.classList.toggle("is-error", failed.length > 0 && !anyDirty());
+      if (fallback) fallback.hidden = !failed.length;
+    }
+    function say(text) {
+      if (announce) announce.textContent = text;
+    }
+
+    // Capture phase: runs before HTMX's own listener on the row reads it.
+    sheet.addEventListener("change", function (event) {
+      var row = event.target.closest("[data-erp-row]");
+      if (!row) return;
+      row._seq = (row._seq || 0) + 1;
+      row._dirty = true;
+      setRow(row, "saving", "Saving…");
+      syncPage(false);
+    }, true);
+
+    // Local validation (OD-B5): Marked with an empty score, or clearing a saved row, sends
+    // nothing. The row stays not saved until a score or Absent is chosen.
+    sheet.addEventListener("htmx:confirm", function (event) {
+      var row = event.detail.elt;
+      if (!row.hasAttribute || !row.hasAttribute("data-erp-row")) return;
+      var p = parts(row);
+      var status = p.checked ? p.checked.value : "";
+      var empty = !p.score || p.score.value.trim() === "";
+      var wasSaved = base(row, "status") && base(row, "status").value !== "";
+      if (empty && (status === "MARKED" || (status === "" && wasSaved))) {
+        event.preventDefault();
+        row._dirty = false;
+        row._localSeq = row._seq; // an older reply arriving later must not hide this
+        setRow(row, "local", NEEDS_SCORE, false);
+        say("Could not save " + nameOf(row) + ". Enter a score or choose Absent.");
+        syncPage(false);
+      }
+    });
+
+    sheet.addEventListener("htmx:configRequest", function (event) {
+      var row = event.detail.elt;
+      row._sent = row._seq; // the change this request carries
+      var p = parts(row);
+      row._sentScore = p.score ? p.score.value : "";
+      // Only this row travels: HTMX also adds the enclosing form, which holds every row.
+      // HTMX reads `parameters` again after this event, so a plain object replaces it.
+      var pk = row.getAttribute("data-erp-enrollment");
+      var sent = event.detail.parameters;
+      var own = { enrollment: pk };
+      ["status_", "score_", "base_status_", "base_score_"].forEach(function (prefix) {
+        var value = sent[prefix + pk];
+        own[prefix + pk] = value === undefined || value === null ? "" : value;
+      });
+      // Absent never carries a score (the box is disabled, so it is not sent at all).
+      if (p.checked && p.checked.value === "ABSENT") own["score_" + pk] = "";
+      event.detail.parameters = own;
+    });
+
+    // Only a marked row fragment is ever put into the page (spec §4.4 response handler).
+    sheet.addEventListener("htmx:beforeSwap", function (event) {
+      var xhr = event.detail.xhr;
+      var fragment = xhr.getResponseHeader("X-ERP-Row-Fragment") === "1";
+      var code = xhr.status;
+      swapping = event.detail.requestConfig ? event.detail.requestConfig.elt : null;
+      if (fragment && code >= 200 && code < 300 && code !== 204) {
+        event.detail.shouldSwap = true;
+        event.detail.isError = false;
+      } else if (fragment && (code === 403 || code === 404 || code === 409 || code === 422)) {
+        event.detail.shouldSwap = true;
+        event.detail.isError = true;
+      } else {
+        event.detail.shouldSwap = false;
+      }
+    });
+    // Counts in a reply only describe saved rows; skip them while other rows are in flight.
+    // The row's own base inputs are always taken.
+    sheet.addEventListener("htmx:oobBeforeSwap", function (event) {
+      var target = event.detail.target;
+      var isBase = target && target.id && target.id.indexOf("erp-base-") === 0;
+      if (!isBase && othersDirty()) event.preventDefault();
+    });
+    sheet.addEventListener("htmx:afterSwap", function () {
+      swapping = null;
+    });
+
+    sheet.addEventListener("htmx:afterRequest", function (event) {
+      var row = event.detail.elt;
+      if (!row.hasAttribute || !row.hasAttribute("data-erp-row")) return;
+      // A reply to an older change: the row has moved on since this request was built.
+      var stale = row._sent !== row._seq;
+      if (!stale) row._dirty = false;
+      var xhr = event.detail.xhr;
+      var code = xhr ? xhr.status : 0;
+      var fragment = !!xhr && xhr.getResponseHeader("X-ERP-Row-Fragment") === "1";
+      var why = row._retrying;
+      row._retrying = false;
+      if (code === 204) {
+        setRow(row, "idle", "");
+      } else if (fragment && code >= 200 && code < 300) {
+        anySaved = true;
+        if (!stale) {
+          setRow(row, "saved", null);
+          say("Saved " + nameOf(row) + ".");
+        } else if (row._localSeq !== row._seq) {
+          setRow(row, "saving", "Saving…"); // the newer change is still on its way
+        }
+      } else if (fragment && (code === 403 || code === 404 || code === 409 || code === 422)) {
+        var conflict = statusBox(row).querySelector("[data-erp-conflict]");
+        setRow(row, conflict ? "conflict" : "refused", null);
+        say("Could not save " + nameOf(row) + ". " + statusBox(row).textContent.trim());
+      } else if (code === 401) {
+        setRow(row, "signedout", "Not saved: you have been signed out.", false);
+        say("Could not save " + nameOf(row) + ". You have been signed out.");
+        document.dispatchEvent(new CustomEvent("erp:signed-out"));
+      } else if (code === 403) {
+        setRow(row, "refused", "Not saved: the page has expired. Reload the page.", false);
+        say("Could not save " + nameOf(row) + ". Reload the page.");
+      } else if (code === 0 || code >= 500) {
+        setRow(row, "retry", code === 0 ? "Not saved: no connection." : "Not saved.", true);
+        say("Could not save " + nameOf(row) + ". Use Retry or Save draft.");
+      } else {
+        setRow(row, "refused", "Not saved. Reload the page.", false);
+        say("Could not save " + nameOf(row) + ". Reload the page.");
+      }
+      // The newest change was stopped locally (empty score): whatever this older reply said,
+      // the row is still not saved and keeps saying why.
+      if (stale && row._localSeq === row._seq) setRow(row, "local", NEEDS_SCORE, false);
+      swapping = null; // afterSwap does not fire when nothing was swapped
+      if (!othersDirty()) refresh(false);
+      syncPage(why === "fallback");
+      if (resendWhenIdle && !anyDirty()) {
+        resendWhenIdle = false;
+        resendFailed();
+      }
+    });
+    // A lost connection or the 15-second timeout: no reply came, so nothing was swapped.
+    function noConnection(event) {
+      var row = event.detail.elt;
+      if (!row.hasAttribute || !row.hasAttribute("data-erp-row")) return;
+      setRow(row, "retry", "Not saved: no connection.", true);
+      syncPage(false);
+    }
+    sheet.addEventListener("htmx:sendError", noConnection);
+    sheet.addEventListener("htmx:timeout", noConnection);
+    // The connection coming back only changes the words; it never sends anything.
+    window.addEventListener("online", function () {
+      notSavedRows().forEach(function (row) {
+        if (row._state === "retry") setRow(row, "retry", "Connection is back. Tap Retry.", true);
+      });
+    });
+
+    function resend(row, why) {
+      row._retrying = why;
+      window.htmx.trigger(row, "change");
+    }
+    // Fallback Save draft (OD-B4): re-send only rows a retry could fix, each through autosave with
+    // its own base, so the conflict check still applies. Conflicts wait for Use or Keep; refused,
+    // signed-out and "Enter a score" rows would fail the same way again.
+    function resendFailed() {
+      notSavedRows().forEach(function (row) {
+        if (row._state === "retry") resend(row, "fallback");
+      });
+      syncPage(true);
+    }
+
+    sheet.addEventListener("click", function (event) {
+      var row = event.target.closest("[data-erp-row]");
+      if (!row) return;
+      if (event.target.closest("[data-erp-retry]")) {
+        resend(row, "retry");
+        return;
+      }
+      var keep = event.target.closest("[data-erp-keep-theirs]");
+      var mine = event.target.closest("[data-erp-use-mine]");
+      var conflict = statusBox(row).querySelector("[data-erp-conflict]");
+      if (!(keep || mine) || !conflict) return;
+      var serverStatus = conflict.getAttribute("data-server-status");
+      var serverScore = conflict.getAttribute("data-server-score");
+      base(row, "status").value = serverStatus;
+      base(row, "score").value = serverScore;
+      if (mine) {
+        resend(row, "mine"); // the teacher's value, now compared with the server's
+        return;
+      }
+      // Keep theirs: show the saved value; nothing is sent.
+      var p = parts(row);
+      var radio = row.querySelector('input[type="radio"][value="' + serverStatus + '"]');
+      if (radio) radio.checked = true;
+      if (p.score) p.score.value = serverStatus === "MARKED" ? serverScore : "";
+      row._sentScore = p.score ? p.score.value : "";
+      setRow(row, "saved", "✓ Saved");
+      refresh(true);
+      syncPage(false);
+    });
+
+    if (form) {
+      form.addEventListener("submit", function (event) {
+        // With autosave the whole form is never posted: that would skip the conflict check.
+        event.preventDefault();
+        if (anyDirty()) {
+          resendWhenIdle = true; // wait for in-flight saves, then re-send the failed rows
+          syncPage(false);
+          return;
+        }
+        resendFailed();
+      });
+    }
+
+    window.addEventListener("beforeunload", function (event) {
+      if (!anyDirty() && !notSavedRows().length) return;
+      event.preventDefault();
+      event.returnValue = "";
+    });
+
+    autosaveOn = true;
+    syncPage(false);
   });
 
   // Announcement form: show the Class or Section selector only for its audience.
@@ -1096,7 +1420,9 @@
       );
     });
   });
+})();
 
+(function () {
   // Sign-out warning (audit 15 NOTIF-01, audit 18 ERR-01). The server signs out after 30 idle minutes
   // or 8 hours; two minutes before the earlier one, this shows a warning with Stay signed in and Log
   // out. Before showing it, it asks the server (a GET that is not activity) because another tab may
@@ -1121,7 +1447,9 @@
       return Math.min(data.idle, data.absolute);
     }
     function ask(options) {
-      return fetch(url, options).then(function (response) {
+      return fetch(url, Object.assign({}, options, {
+        headers: Object.assign({}, options.headers, { "X-Requested-With": "XMLHttpRequest" }),
+      })).then(function (response) {
         // Only a redirect to the sign-in page means signed out; another redirect (such as a password
         // change that is due) means the session is alive but this answer is not usable.
         var toLogin = response.redirected && new URL(response.url).pathname === loginPath;
@@ -1197,6 +1525,10 @@
         if (error.message === "signed-out") signedOut();
         else say.textContent = "Could not keep you signed in. Reload the page and try again.";
       });
+    });
+    // A background save that got 401 (Option B §4.7) shows the signed-out state at once.
+    document.addEventListener("erp:signed-out", function () {
+      if (loginLink.hidden) signedOut();
     });
     schedule({ idle: Number(box.getAttribute("data-idle")), absolute: Number(box.getAttribute("data-absolute")) });
   })();

@@ -1,4 +1,5 @@
 import datetime
+from decimal import Decimal, InvalidOperation
 
 from django import forms
 from django.conf import settings
@@ -861,6 +862,33 @@ def _plain_score(score):
     return score.normalize()
 
 
+def result_value(status, score):
+    """One marks row as marks autosave compares it (Option B OD-B1): `(status, Decimal or None)`.
+
+    "" means not entered. Absent never carries a score, and "42", "42.0" and "42.00" are equal.
+    Raises ValueError for a status or score the entry page could not have sent.
+    """
+    status = status or ""
+    if status not in ("", *ResultStatus.values):
+        raise ValueError("unknown status")
+    if status == ResultStatus.ABSENT or score in (None, ""):
+        return status, None
+    try:
+        number = Decimal(str(score))
+    except InvalidOperation:
+        raise ValueError("not a number") from None
+    if not number.is_finite():
+        raise ValueError("not a number")
+    return status, number
+
+
+def plain_result_value(value):
+    """`(status, score)` from `result_value` as the strings the entry page shows and posts."""
+    status, score = value
+    plain = _plain_score(score)
+    return status, "" if plain is None else str(plain)
+
+
 class ResultEntryForm(FieldAccessibilityMixin, forms.Form):
     """Bulk DRAFT marks entry for an assessment's date-effective roster.
 
@@ -873,6 +901,7 @@ class ResultEntryForm(FieldAccessibilityMixin, forms.Form):
         super().__init__(*args, **kwargs)
         self.assessment = assessment
         saved = {r.academic_enrollment_id: r for r in assessment.results.all()}
+        self.saved = saved
         self.enrollments = list(assessment.roster())
         for enrollment in self.enrollments:
             result = saved.get(enrollment.pk)
@@ -936,6 +965,15 @@ class ResultEntryForm(FieldAccessibilityMixin, forms.Form):
                 self[self.status_name(enrollment)],
                 self[self.score_name(enrollment)],
             )
+
+    def autosave_rows(self):
+        """`rows()` plus each row's last saved value, as the strings marks autosave compares
+        against (Option B §4.4 base inputs). Empty strings for a row never saved."""
+        for enrollment, status_field, score_field in self.rows():
+            result = self.saved.get(enrollment.pk)
+            base = (plain_result_value(result_value(result.status, result.score))
+                    if result else ("", ""))
+            yield enrollment, status_field, score_field, base[0], base[1]
 
     def counts(self):
         """Display counts: a score with no status is marked; blank is never absent."""

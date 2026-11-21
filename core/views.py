@@ -118,6 +118,8 @@ from core.forms import (
     SubjectForm,
     SubjectOfferingForm,
     TeacherAssignmentForm,
+    plain_result_value,
+    result_value,
 )
 from core.models import (
     AcademicEnrollment,
@@ -139,6 +141,7 @@ from core.models import (
     GuardianAccount,
     GuardianStudentAccess,
     RecordCorrection,
+    ResultStatus,
     School,
     SchoolCalendarDay,
     SchoolLogo,
@@ -2219,7 +2222,140 @@ def assessment_marks_entry(request, pk):
                 messages.error(request, "Marks were not saved. Fix the highlighted rows.")
     context = _assessment_context(assessment)
     context["form"] = form
+    if form is not None:
+        context["autosave_url"] = reverse("core:assessment-marks-autosave", args=[assessment.pk])
     return render(request, "core/assessment_marks_entry.html", context)
+
+
+_MARKS_NO_LONGER = "You can no longer enter marks for this assessment. Reload the page."
+_MARKS_FINALIZED = "This assessment is finalized. Ask an administrator if a result needs correcting."
+_MARKS_NOT_YET = "Marks cannot be entered before the assessment date."
+_MARKS_OFF_ROSTER = "Not on this assessment's roster."
+
+
+class _RowRefused(Exception):
+    """Inside the autosave transaction: roll back and send this row reply instead."""
+
+    def __init__(self, status, message, server=None):
+        super().__init__(message)
+        self.status, self.message, self.server = status, message, server
+
+
+def _marks_counts(assessment):
+    """Saved counts for the marks page after an autosave: two queries whatever the roster size."""
+    roster = assessment.roster()
+    by_status = dict(
+        assessment.results.filter(academic_enrollment__in=roster.values("pk"))
+        .order_by()
+        .values_list("status")
+        .annotate(n=Count("pk"))
+    )
+    total = roster.count()
+    marked = by_status.get(ResultStatus.MARKED, 0)
+    absent = by_status.get(ResultStatus.ABSENT, 0)
+    return {"all": total, "marked": marked, "absent": absent,
+            "unmarked": total - marked - absent}
+
+
+def _marks_entry_problem(user, assessment):
+    """The refusal for a marks save, or None. The same checks before and under the lock."""
+    if not can_enter_results(user, assessment.offering, assessment.section):
+        return 403, _MARKS_NO_LONGER
+    if assessment.status != Assessment.Status.DRAFT:
+        return 409, _MARKS_FINALIZED
+    if not assessment.is_open_for_entry:
+        return 409, _MARKS_NOT_YET
+    return None
+
+
+@teacher_required
+@require_POST
+def assessment_marks_autosave(request, pk):
+    """HTMX: save one marks row of a DRAFT assessment (Option B B1, spec §4.3).
+
+    Same guard, `ResultEntryForm` rules and `save_draft_result` as the whole-form page. Locks the
+    assessment first, then the result row, like every other result write. A save whose base (the
+    value this page last saw confirmed) no longer matches the saved row is refused with 409 and the
+    current value, never overwritten. Replies are row fragments marked `X-ERP-Row-Fragment: 1`
+    and carry only this row's own values.
+    """
+    raw_pk = request.POST.get("enrollment", "")
+    base_names = (f"base_status_{raw_pk}", f"base_score_{raw_pk}")
+    if (request.headers.get("HX-Request") != "true" or not raw_pk.isdigit()
+            or any(name not in request.POST for name in base_names)):
+        return HttpResponse("Autosave needs HTMX; use the Save draft button.", status=400)
+    try:
+        base = result_value(*(request.POST[name] for name in base_names))
+    except ValueError:
+        return HttpResponse("Autosave needs HTMX; use the Save draft button.", status=400)
+    assessment = get_object_or_404(_assessments(), pk=pk)
+
+    def reply(status, *, state="error", message="", enrollment=None, server=None, mine=None):
+        context = {"state": state, "message": message, "enrollment": enrollment}
+        if state == "saved":
+            context["counts"] = _marks_counts(assessment)
+            context["base_status"], context["base_score"] = plain_result_value(server)
+        elif state == "conflict":
+            context["server_status"], context["server_score"] = plain_result_value(server)
+            context["mine_status"], context["mine_score"] = plain_result_value(mine)
+        response = render(request, "core/_marks_autosave_status.html", context, status=status)
+        response["X-ERP-Row-Fragment"] = "1"
+        return response
+
+    # Pre-checks: cheap refusals before any lock or write. Nothing is read from results yet.
+    problem = _marks_entry_problem(request.user, assessment)
+    if problem:
+        return reply(problem[0], message=problem[1])
+    row_data = {name: request.POST.get(name, "") for name in (f"status_{raw_pk}", f"score_{raw_pk}")}
+    form = ResultEntryForm(row_data, assessment=assessment)
+    enrollment = next((e for e in form.enrollments if str(e.pk) == raw_pk), None)
+    if enrollment is None:
+        return reply(404, message=_MARKS_OFF_ROSTER)
+    if not form.is_valid():
+        errors = [message for field_errors in form.errors.values() for message in field_errors]
+        return reply(422, message=errors[0], enrollment=enrollment)
+    status = form.cleaned_data[form.status_name(enrollment)]
+    if not status:
+        return HttpResponse(status=204)  # blank and blank: nothing to save
+    wanted = result_value(status, form.cleaned_data[form.score_name(enrollment)])
+
+    try:
+        with transaction.atomic():
+            assessment._lock()  # T2: the assessment row first, as save draft and finalize do
+            assessment.refresh_from_db(
+                fields=["status", "assessment_date", "maximum_marks", "offering", "section"])
+            problem = _marks_entry_problem(request.user, assessment)
+            if problem:
+                raise _RowRefused(*problem)
+            if not assessment.roster().filter(pk=enrollment.pk).exists():
+                raise _RowRefused(404, _MARKS_OFF_ROSTER)
+            current = (
+                assessment.results.select_for_update()
+                .filter(academic_enrollment=enrollment)
+                .order_by("pk")  # no Meta ordering joins: lock only the result row
+                .first()
+            )
+            saved = result_value(current.status, current.score) if current else ("", None)
+            if saved != base:
+                raise _RowRefused(409, "conflict", server=saved)
+            if saved != wanted:
+                try:
+                    with transaction.atomic():  # an IntegrityError never aborts the outer block
+                        assessment.save_draft_result(
+                            enrollment=enrollment, status=wanted[0], score=wanted[1],
+                            actor=request.user,
+                        )
+                except IntegrityError:
+                    raise _RowRefused(409, "This Student already has a result for this "
+                                           "assessment.") from None
+                except ValidationError as error:
+                    raise _RowRefused(409, error.messages[0]) from None
+    except _RowRefused as refused:
+        if refused.server is not None:
+            return reply(409, state="conflict", enrollment=enrollment, server=refused.server,
+                         mine=wanted)
+        return reply(refused.status, message=refused.message, enrollment=enrollment)
+    return reply(200, state="saved", enrollment=enrollment, server=wanted)
 
 
 @administrator_required("core.change_assessment")

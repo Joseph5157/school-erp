@@ -279,6 +279,16 @@
     "route": "assessments/<int:pk>/finalize/",
     "view": "views.assessment_finalize"
   },
+  "core:assessment-marks-autosave": {
+    "flags": [
+      "require_POST",
+      "teacher_required"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "my/assessments/<int:pk>/marks/autosave/",
+    "view": "views.assessment_marks_autosave"
+  },
   "core:assessment-marks-entry": {
     "flags": [
       "teacher_required"
