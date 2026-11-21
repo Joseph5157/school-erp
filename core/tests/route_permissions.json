@@ -1837,5 +1837,15 @@
     "perms": [],
     "route": "accounts/session/",
     "view": "account_views.session_status"
+  },
+  "root:usage-beacon": {
+    "flags": [
+      "never_cache",
+      "require_POST"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "USAGE_BEACON_PATH.lstrip('/')",
+    "view": "usage_views.beacon"
   }
 }

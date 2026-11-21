@@ -301,6 +301,46 @@ passwords or personal data). Running it on a live installation is safe, and it i
 check a deployment before relying on a narrow role. A gap it reports is information, not an
 error.
 
+## Usage measurement (ADR 0027)
+
+The app can count, in daily totals, how its screens and steps are used, to guide later
+decisions about phone features. The counts hold no names, accounts, students, records, values or
+time of day ([ADR 0027](adr/0027-privacy-safe-usage-measurement.md)). Measurement is **off by
+default** (`USAGE_MEASUREMENT_ENABLED` unset or `False`). Requests carrying Global Privacy
+Control (`Sec-GPC: 1`) are never counted.
+
+### Before switching it on
+
+1. Obtain **written approval** from the school's head or authorised officer (a letter or email).
+   It must name ADR 0027 and the notice paragraph in it. A verbal notice is not enough.
+2. Record the approval's date and reference in this deployment's operations record.
+3. Give the school the notice paragraph from ADR 0027 to publish to staff and guardians.
+4. Confirm the cron service's daily start command begins with
+   `python manage.py purge_usage_counters;` (see [README](../README.md#demo-school-refresh)).
+5. Only then set `USAGE_MEASUREMENT_ENABLED=True` on the web service and redeploy.
+
+To switch it off, remove the variable or set it to `False`. Existing rows are deleted by the
+daily purge as they pass 180 days; nothing else needs doing.
+
+### Retention
+
+`python manage.py purge_usage_counters` deletes rows older than 180 days. It runs daily on the
+cron service as its own step, whether measurement is on or off, and prints only the number of
+rows deleted. It is safe to run by hand at any time.
+
+### Reading the counts
+
+From the service shell only:
+
+```
+python manage.py usage_report --weeks 4 [--area teacher] [--workflow sign_in] [--device phone]
+```
+
+It prints counts by ISO week to the terminal, with any cell under 5 shown as `<5` after the
+filters are applied. Keep no copy on the server. It warns if rows older than the retention cutoff
+exist, which means the cron purge step is missing or failing. There is no page, permission or
+Django admin entry for these counts.
+
 ## Production settings
 
 Set these on the Railway web service. The cron service references the web

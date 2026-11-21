@@ -20,8 +20,8 @@ from django.urls import include, path
 
 from accounts import views as account_views
 from accounts.forms import ThrottledAuthenticationForm
-from accounts.middleware import MANIFEST_PATH
-from core import pwa_views
+from accounts.middleware import MANIFEST_PATH, USAGE_BEACON_PATH
+from core import pwa_views, usage_views
 from core import views as core_views
 
 urlpatterns = [
@@ -43,6 +43,8 @@ urlpatterns = [
     path("accounts/session/", account_views.session_status, name="session-status"),
     path("accounts/password/change/", account_views.password_change, name="password_change"),
     path("choose-area/", core_views.choose_area, name="choose-area"),
+    # Usage beacon (ADR 0027): signed-in only, checked inside the view (401, never a redirect).
+    path(USAGE_BEACON_PATH.lstrip("/"), usage_views.beacon, name="usage-beacon"),
     path("guardian/", include("core.portal_urls")),
     path("", include("core.urls")),
 ]

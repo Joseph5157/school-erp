@@ -121,6 +121,13 @@ never writes, and prints names only (never emails, passwords or personal data). 
 shipped School Administrators and Teachers groups and superusers. A gap is information, not an
 error: a deliberately limited role is meant to have one.
 
+## Usage measurement
+
+Usage counts (ADR 0027) add no permission and no page. `UsageCounter` is not registered in Django
+admin, and the counts are read only with the `usage_report` management command on the server
+(docs/OPERATIONS.md). The usage beacon (`/u/`) accepts signed-in posts of allow-listed events for
+the caller's own areas and returns nothing; signed-out requests get 401.
+
 ## The route inventory guard
 
 `core/tests/route_permissions.json` pins the permission each route enforces, and which
