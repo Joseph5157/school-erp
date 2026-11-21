@@ -8,6 +8,7 @@
     <div class="erp-link-list erp-link-list--menu">
         {% url 'core:report-daily-absentees' as u %}{% include "partials/_link_row.html" with url=u icon="attendance" title="Daily absent students" desc="Students recorded absent on one date, from submitted registers." note="You choose: a date." only %}
         {% if perms.core.view_attendanceregister %}{% url 'core:report-missing-attendance' as u %}{% include "partials/_link_row.html" with url=u icon="stale" title="Missing attendance" desc="Sections with no submitted register on a day attendance was expected. A draft or unopened register is not an absence." note="You choose: a date range, and optionally a Section." only %}{% endif %}
+        {% url 'core:report-absence-runs' as u %}{% include "partials/_link_row.html" with url=u icon="attendance" title="Absent in a row" desc="Students absent 3 or more school days in a row, up to today. Weekends and holidays are skipped." note="You choose: optionally a Section, and 3, 5 or 10 days." only %}
         {% url 'core:report-monthly-section' as u %}{% include "partials/_link_row.html" with url=u icon="reports" title="Monthly Class/Section summary" desc="Present, absent and attendance percentage for each Student in a Section for one month." note="You choose: a Section and a month." only %}
     </div>
 </section>

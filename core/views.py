@@ -22,6 +22,7 @@ from core import (
     assessment_reports,
     assignments,
     attendance_actions,
+    attendance_insights,
     charts,
     dashboard,
     data_access,
@@ -62,6 +63,7 @@ from core.authorization import (
     user_areas,
 )
 from core.forms import (
+    AbsenceRunsForm,
     AcademicEnrollmentForm,
     AcademicTermForm,
     AcademicYearForm,
@@ -1219,6 +1221,9 @@ def my_home(request):
     )
 
     assessments = _open_assessments_needing_marks(request.user, today)
+    # Option A2: students in the teacher's own, unambiguous Section absent 3+ school days in a
+    # row, clipped to the assignment window. Shown only when someone meets the threshold.
+    absence_runs = attendance_insights.class_teacher_absence_runs(request.user, today)
 
     remarks = []
     terms = AcademicTerm.objects.filter(
@@ -1276,6 +1281,7 @@ def my_home(request):
             "assessments": assessments,
             "marks_tile": _marks_tile(assessments, bool(subject_duties)),
             "remarks": remarks,
+            "absence_runs": absence_runs,
         },
     )
 
@@ -4697,6 +4703,35 @@ def report_daily_absentees(request):
         absentees = reports.daily_absentees(form.cleaned_data["date"])
     return render(
         request, "core/report_daily_absentees.html", {"form": form, "absentees": absentees}
+    )
+
+
+@administrator_required("core.view_attendanceentry")
+def report_absence_runs(request):
+    """Students absent N or more school days in a row (Option A2, ADR 0026).
+
+    Scope: enrollments effective today of ACTIVE students, optionally one Section. Computed on
+    every request from current entries and the calendar; never cached.
+    """
+    today = business_today()
+    form = AbsenceRunsForm(request.GET or None)
+    rows = None
+    threshold = attendance_insights.DEFAULT_THRESHOLD
+    if not form.is_bound or form.is_valid():
+        section = None
+        if form.is_bound:
+            threshold = form.cleaned_data["threshold"]
+            section = form.cleaned_data.get("section")
+        enrollments = AcademicEnrollment.objects.effective_on(today).filter(
+            student__status=Student.Status.ACTIVE
+        )
+        if section is not None:
+            enrollments = enrollments.filter(section=section)
+        rows = attendance_insights.absence_runs(enrollments, today, threshold=threshold)
+    return render(
+        request,
+        "core/report_absence_runs.html",
+        {"form": form, "rows": rows, "threshold": threshold, "today": today},
     )
 
 
