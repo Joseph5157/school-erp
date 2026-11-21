@@ -1,6 +1,6 @@
 # Current-State ERP Benchmark Audit
 
-**Audit status:** Draft for product-owner review
+**Audit status:** Approved planning baseline
 **Repository:** `Joseph5157/school-erp`
 **Branch:** `docs/erp-benchmark-codebase-audit`
 **HEAD:** `2edeee60d08f097080a02660453b121ee5721b3c` (matches `origin/docs/erp-benchmark-codebase-audit`; `origin/main` `febc57f` is an ancestor)
