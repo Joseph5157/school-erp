@@ -12,6 +12,7 @@ from django.views.decorators.http import require_http_methods
 from accounts.middleware import seconds_left
 from accounts.models import SecurityEvent
 from accounts.return_path import return_path
+from core import usage
 
 
 class LoginView(auth_views.LoginView):
@@ -23,6 +24,25 @@ class LoginView(auth_views.LoginView):
     """
 
     redirect_authenticated_user = True
+
+    def form_valid(self, form):
+        # The expiry marker survives login() (it only cycles an anonymous session's key) and is
+        # removed after every successful sign-in, whatever its age. ?expired= is never trusted.
+        relogin = usage.take_relogin(self.request)
+        response = super().form_valid(form)
+        area = usage.area_of_user(form.get_user())
+        if area:
+            usage.record(self.request, area=area, workflow="sign_in", step="completed")
+            if relogin:
+                usage.record(self.request, area=area, workflow="session",
+                             step="relogin_after_expiry")
+        return response
+
+    def form_invalid(self, form):
+        # A failed sign-in has no authenticated role, so it is always "public" (ADR 0027).
+        step = "throttled" if getattr(form, "was_throttled", False) else "failed"
+        usage.record(self.request, area="public", workflow="sign_in", step=step)
+        return super().form_invalid(form)
 
     def get_redirect_url(self):
         url = super().get_redirect_url()
@@ -100,6 +120,10 @@ class PasswordChangeView(auth_views.PasswordChangeView):
         user = form.user
         if user.must_change_password:
             get_user_model().objects.filter(pk=user.pk).update(must_change_password=False)
+            area = usage.area_of_user(user)
+            if area:
+                usage.record(self.request, area=area, workflow="sign_in",
+                             step="password_changed_first")
         SecurityEvent.record(
             SecurityEvent.EventType.PASSWORD_CHANGED, actor=user, subject_user=user
         )

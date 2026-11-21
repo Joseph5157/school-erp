@@ -39,6 +39,8 @@ class ThrottledLoginMixin:
             get_user_model().objects.annotate(_k=Lower("username")).filter(_k=key).first()
         )
         if security.is_throttled(username, source):
+            # Read by the sign-in view's usage signal (ADR 0027); never stores the username.
+            self.was_throttled = True
             security.record_failure(username, source)
             self._event(SecurityEvent.EventType.LOGIN_THROTTLED, subject, source)
             raise forms.ValidationError(GENERIC_ERROR, code="invalid_login")

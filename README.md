@@ -104,7 +104,9 @@ on the demo environment, and does nothing once today is outside the academic
 year.
 
 - Daily, on the cron service, use this start command:
-  `sh -c "python manage.py expire_import_batches && python manage.py refresh_demo_school"`
+  `sh -c "python manage.py purge_usage_counters; python manage.py expire_import_batches && python manage.py refresh_demo_school"`
+  The usage-counter purge (ADR 0027) is its own step, before the `;`, so a failure in a later
+  step can never skip it. It runs whether or not usage measurement is switched on.
 - One-off run: `sh -c "EVERCLASS_DEMO_SCHOOL=1 python manage.py refresh_demo_school"`
 - Today's registers are submitted at about 05:30 IST. If the school's notification
   mode is switched to Assist, those submissions will prepare absence alerts in the

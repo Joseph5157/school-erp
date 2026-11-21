@@ -123,6 +123,13 @@ LOGIN_REDIRECT_URL = "home"
 LOGOUT_REDIRECT_URL = "login"
 
 
+# Option B2 (ADR 0027): privacy-safe usage measurement. Off by default. Switch it on for a
+# deployment only after documented written school approval is recorded (docs/OPERATIONS.md).
+# Global Privacy Control (Sec-GPC: 1) is always honoured, on or off.
+USAGE_MEASUREMENT_ENABLED = parse_flag(
+    "USAGE_MEASUREMENT_ENABLED", os.environ.get("USAGE_MEASUREMENT_ENABLED"), default=False
+)
+
 # Phase 6 Gate 7 (ADR 0013): sessions, cookies, network source.
 # 30 minutes of inactivity or 8 hours since sign-in, whichever comes first
 # (OD-5); enforced server-side by accounts.middleware on every request.

@@ -4449,3 +4449,103 @@ class TimetableSlot(models.Model):
 
     def __str__(self):
         return f"{self.get_weekday_display()} {self.period} {self.section}"
+
+
+from core import usage as _u  # noqa: E402  (enums only; core.usage imports no models at load)
+
+
+def _usage_choices(values):
+    return [(value, value) for value in values]
+
+
+class UsageCounter(models.Model):
+    """One daily aggregate usage count (ADR 0027, Option B2). Holds no person, record or value.
+
+    Every column is a fixed enum from core.usage, and the check constraints below mirror the enums
+    and the column-use rules, so the database refuses anything a code path forgets. Written only
+    by core.usage.record(); deleted after 180 days by `purge_usage_counters`. Never registered in
+    Django admin and never served by a route: operators read it with `usage_report` on the server.
+    """
+
+    day = models.DateField(db_index=True)
+    area = models.CharField(max_length=10, choices=_usage_choices(_u.AREAS))
+    workflow = models.CharField(max_length=30, choices=_usage_choices(_u.WORKFLOWS))
+    step = models.CharField(max_length=30, choices=_usage_choices(_u.STEPS))
+    page_route = models.CharField(max_length=40, blank=True, default="",
+                                  choices=_usage_choices(_u.PAGE_ROUTES))
+    duration_bucket = models.CharField(max_length=10, blank=True, default="",
+                                       choices=_usage_choices(_u.DURATION_BUCKETS))
+    size_bucket = models.CharField(max_length=10, blank=True, default="",
+                                   choices=_usage_choices(_u.SIZE_BUCKETS))
+    age_bucket = models.CharField(max_length=10, blank=True, default="",
+                                  choices=_usage_choices(_u.AGE_BUCKETS))
+    device = models.CharField(max_length=10, blank=True, default="",
+                              choices=_usage_choices(_u.DEVICES))
+    display = models.CharField(max_length=10, blank=True, default="",
+                               choices=_usage_choices(_u.DISPLAYS))
+    platform = models.CharField(max_length=10, blank=True, default="",
+                                choices=_usage_choices(_u.PLATFORMS))
+    count = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["day", "area", "workflow", "step", "page_route", "duration_bucket",
+                        "size_bucket", "age_bucket", "device", "display", "platform"],
+                name="usagecounter_one_row_per_dimensions",
+            ),
+            models.CheckConstraint(condition=models.Q(count__gte=1),
+                                   name="usagecounter_count_positive"),
+            models.CheckConstraint(condition=models.Q(area__in=_u.AREAS),
+                                   name="usagecounter_area_enum"),
+            models.CheckConstraint(condition=models.Q(workflow__in=_u.WORKFLOWS),
+                                   name="usagecounter_workflow_enum"),
+            models.CheckConstraint(condition=models.Q(step__in=_u.STEPS),
+                                   name="usagecounter_step_enum"),
+            models.CheckConstraint(
+                condition=models.Q(device="") | models.Q(device__in=_u.DEVICES),
+                name="usagecounter_device_enum"),
+            models.CheckConstraint(
+                condition=models.Q(display="") | models.Q(display__in=_u.DISPLAYS),
+                name="usagecounter_display_enum"),
+            models.CheckConstraint(
+                condition=models.Q(platform="") | models.Q(platform__in=_u.PLATFORMS),
+                name="usagecounter_platform_enum"),
+            # page_route is set if and only if workflow = page, and only from the allow-list.
+            models.CheckConstraint(
+                condition=(models.Q(workflow="page", page_route__in=_u.PAGE_ROUTES)
+                           | (~models.Q(workflow="page") & models.Q(page_route=""))),
+                name="usagecounter_page_route_use"),
+            # duration_bucket only on the completed step of a timed workflow.
+            models.CheckConstraint(
+                condition=(models.Q(duration_bucket="")
+                           | models.Q(step="completed", workflow__in=_u.TIMED_WORKFLOWS,
+                                      duration_bucket__in=_u.DURATION_BUCKETS)),
+                name="usagecounter_duration_use"),
+            # size_bucket only for attendance capture and marks entry.
+            models.CheckConstraint(
+                condition=(models.Q(size_bucket="")
+                           | models.Q(workflow__in=_u.SIZED_WORKFLOWS,
+                                      size_bucket__in=_u.SIZE_BUCKETS)),
+                name="usagecounter_size_use"),
+            # age_bucket is set if and only if workflow = notice_view.
+            models.CheckConstraint(
+                condition=(models.Q(workflow="notice_view", age_bucket__in=_u.AGE_BUCKETS)
+                           | (~models.Q(workflow="notice_view") & models.Q(age_bucket=""))),
+                name="usagecounter_age_use"),
+            # public = not signed in: failed or other sign-in events, or the sign-in page itself.
+            models.CheckConstraint(
+                condition=(~models.Q(area="public") | models.Q(workflow="sign_in")
+                           | models.Q(workflow="page", page_route="root:login")),
+                name="usagecounter_public_use"),
+            # multi only where no single surface applies.
+            models.CheckConstraint(
+                condition=(~models.Q(area="multi")
+                           | models.Q(workflow="sign_in",
+                                      step__in=["completed", "password_changed_first"])
+                           | models.Q(workflow="session", step="relogin_after_expiry")),
+                name="usagecounter_multi_use"),
+        ]
+
+    def __str__(self):
+        return f"{self.day} {self.area} {self.workflow}/{self.step}"

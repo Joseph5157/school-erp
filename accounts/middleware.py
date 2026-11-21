@@ -19,6 +19,7 @@ from django.utils.cache import patch_cache_control
 
 from accounts import request_cache
 from accounts.return_path import return_path
+from core import usage
 
 # The logo is shown in the header of the password-change page itself.
 # session-status: the sign-out warning also runs on the password-change page.
@@ -28,6 +29,10 @@ ALLOWED_WHILE_CHANGE_REQUIRED = {"password_change", "logout", "school-logo", "se
 MANIFEST_PATH = "/manifest.webmanifest"
 # The session warning asks how long is left with a GET here; that GET must not count as activity.
 SESSION_STATUS_PATH = "/accounts/session/"
+# Usage beacons (ADR 0027) are sent by the page, not the person: they must not count as activity,
+# or a page left open would never expire. A test keeps this in step with config/urls.py.
+USAGE_BEACON_PATH = "/u/"
+LOGOUT_PATH = "/accounts/logout/"  # a literal for the same reason as MANIFEST_PATH; test-checked
 STARTED_KEY = "_auth_started_at"
 SEEN_KEY = "_auth_last_seen"
 
@@ -48,9 +53,13 @@ def seconds_left(session, now=None):
 
 
 def is_background_request(request):
-    """An HTMX or script request (Option B OD-B3): it must never be answered with a page."""
+    """An HTMX or script request (Option B OD-B3): it must never be answered with a page.
+
+    The usage beacon always counts, whatever headers it sends (ADR 0027, spec 5.6).
+    """
     return (
-        request.headers.get("HX-Request") == "true"
+        request.path_info == USAGE_BEACON_PATH
+        or request.headers.get("HX-Request") == "true"
         or request.headers.get("X-Requested-With") == "XMLHttpRequest"
     )
 
@@ -86,6 +95,31 @@ def expired_redirect(request, reason):
     return response
 
 
+def _is_passive(request):
+    """Requests that check on the session without being activity by the person."""
+    if request.path_info == SESSION_STATUS_PATH and request.method == "GET":
+        return True
+    return request.path_info == USAGE_BEACON_PATH and request.method == "POST"
+
+
+def _record_expiry(request, area, reason):
+    """Session-expiry signals (ADR 0027): counts by the requested route's surface, no person.
+
+    Runs after logout(), so the expiry marker lands in the new anonymous session. Measurement
+    failures are swallowed by usage.record().
+    """
+    if not usage.active(request):
+        return
+    usage.mark_expired(request)
+    if area is None:
+        return
+    usage.record(request, area=area, workflow="session", step=f"expired_{reason}")
+    # A beacon, a Stay-signed-in POST or a sign-out carries no change by the person: nothing lost.
+    nothing_lost = request.path_info in (USAGE_BEACON_PATH, SESSION_STATUS_PATH, LOGOUT_PATH)
+    if request.method not in ("GET", "HEAD", "OPTIONS") and not nothing_lost:
+        usage.record(request, area=area, workflow="session", step="expired_unsaved")
+
+
 class AccountSecurityMiddleware:
     """Session limits and forced password change, checked on every request.
 
@@ -113,12 +147,14 @@ class AccountSecurityMiddleware:
             elif now - seen > settings.SESSION_IDLE_SECONDS:
                 reason = "idle"
             if reason:
+                area = usage.area_of_route(user, request.path_info)
                 logout(request)
+                _record_expiry(request, area, reason)
                 if is_background_request(request):
                     return signed_out_reply(reason)
                 return expired_redirect(request, reason)
             request.session[STARTED_KEY] = started
-            if not (request.path_info == SESSION_STATUS_PATH and request.method == "GET"):
+            if not _is_passive(request):
                 request.session[SEEN_KEY] = now
             if getattr(user, "must_change_password", False) and not self._allowed(
                 request.path_info
