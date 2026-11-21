@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Marks: {{ assessment.name }}{% endblock %}
 {% block tabbar_class %}{% if not form.enrollments %}{{ block.super }}{% endif %}{% endblock %}
 {% block tabbar %}{% if not form.enrollments %}{{ block.super }}{% endif %}{% endblock %}
@@ -10,20 +11,20 @@
 {% if form %}
 <p class="text-muted">Enter a score, or choose Absent. Leave a row blank if you have not marked that Student yet &mdash; blank is <strong>not</strong> absent. An administrator finalizes the results.</p>
 {% if form.enrollments %}
-<form method="post">
+<form method="post"{% if autosave_url %} hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'{% endif %}>
     {% csrf_token %}
     {% include "partials/_form_error_summary.html" with form=form %}
     {% with counts=form.counts %}
     <div class="erp-roster" data-erp-marks>
         <p class="erp-count-line" data-erp-static-counts>All {{ counts.all }} · Not entered {{ counts.unmarked }} · Marked {{ counts.marked }} · Absent {{ counts.absent }}</p>
         <div class="erp-count-tabs" data-erp-tabs hidden>
-            <button type="button" data-erp-filter="all" aria-pressed="true">All <span data-erp-count="all">{{ counts.all }}</span></button>
-            <button type="button" data-erp-filter="unmarked" aria-pressed="false">Not entered <span data-erp-count="unmarked">{{ counts.unmarked }}</span></button>
-            <button type="button" data-erp-filter="marked" aria-pressed="false">Marked <span data-erp-count="marked">{{ counts.marked }}</span></button>
-            <button type="button" data-erp-filter="absent" aria-pressed="false">Absent <span data-erp-count="absent">{{ counts.absent }}</span></button>
+            <button type="button" data-erp-filter="all" aria-pressed="true">All <span id="erp-count-all" data-erp-count="all">{{ counts.all }}</span></button>
+            <button type="button" data-erp-filter="unmarked" aria-pressed="false">Not entered <span id="erp-count-unmarked" data-erp-count="unmarked">{{ counts.unmarked }}</span></button>
+            <button type="button" data-erp-filter="marked" aria-pressed="false">Marked <span id="erp-count-marked" data-erp-count="marked">{{ counts.marked }}</span></button>
+            <button type="button" data-erp-filter="absent" aria-pressed="false">Absent <span id="erp-count-absent" data-erp-count="absent">{{ counts.absent }}</span></button>
         </div>
-        {% for enrollment, status_field, score_field in form.rows %}
-        <fieldset class="erp-roster-row{% if status_field.errors or score_field.errors %} is-invalid{% endif %}" data-erp-row>
+        {% for enrollment, status_field, score_field, base_status, base_score in form.autosave_rows %}
+        <fieldset class="erp-roster-row{% if status_field.errors or score_field.errors %} is-invalid{% endif %}" data-erp-row data-erp-enrollment="{{ enrollment.pk }}"{% if autosave_url %} hx-post="{{ autosave_url }}" hx-trigger="change" hx-include="this" hx-vals='{"enrollment": {{ enrollment.pk }}}' hx-target="find [data-erp-row-status]" hx-swap="innerHTML" hx-sync="this:queue last" hx-request='{"timeout": 15000}'{% endif %}>
             <legend class="visually-hidden">{{ enrollment.student.full_name }}</legend>
             <span class="erp-roster-name" aria-hidden="true">{{ enrollment.student.full_name }}</span>
             <span class="erp-initials" aria-hidden="true">{{ enrollment.student.full_name|slice:":1"|upper }}</span>
@@ -37,12 +38,17 @@
             {# The ids match the inputs' aria-describedby (FieldAccessibilityMixin). #}
             {% if status_field.errors %}<div class="small text-danger erp-row-error" id="{{ status_field.auto_id }}_error">{{ status_field.errors|join:" " }}</div>{% endif %}
             {% if score_field.errors %}<div class="small text-danger erp-row-error" id="{{ score_field.auto_id }}_error">{{ score_field.errors|join:" " }}</div>{% endif %}
+            {# The value the server last confirmed for this row; autosave compares it (Option B OD-B1). The whole-form save ignores it. #}
+            <span id="erp-base-{{ enrollment.pk }}"><input type="hidden" name="base_status_{{ enrollment.pk }}" value="{{ base_status }}"><input type="hidden" name="base_score_{{ enrollment.pk }}" value="{{ base_score }}"></span>
+            {% if autosave_url %}<div class="erp-row-status" data-erp-row-status></div>{% endif %}
         </fieldset>
         {% endfor %}
         <div class="erp-actionbar">
-            <span class="erp-actionbar-status" data-erp-hint>{{ counts.unmarked }} not entered</span>
-            <button type="submit" class="btn btn-primary" data-erp-once>Save draft</button>
+            <span id="erp-hint" class="erp-actionbar-status" data-erp-hint>{{ counts.unmarked }} not entered</span>
+            {% if autosave_url %}<span class="erp-autosave-state" data-erp-autosave-state role="status" aria-live="polite" hidden>Changes save automatically</span>{% endif %}
+            <button type="submit" class="btn btn-primary" data-erp-once{% if autosave_url %} data-erp-save-fallback{% endif %}>Save draft</button>
         </div>
+        {% if autosave_url %}<p class="visually-hidden" role="status" aria-live="polite" data-erp-autosave-announce></p>{% endif %}
         <p class="visually-hidden" role="status" data-erp-done-announce></p>
     </div>
     {% endwith %}
@@ -58,3 +64,4 @@
 {% include "core/_assessment_result_cards.html" %}
 {% endif %}
 {% endblock %}
+{% block extra_js %}{% if autosave_url and form.enrollments %}<script src="{% static 'vendor/htmx/2.0.4/htmx.min.js' %}" defer></script>{% endif %}{% endblock %}

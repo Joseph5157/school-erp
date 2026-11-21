@@ -246,6 +246,11 @@ urlpatterns = [
         views.assessment_marks_entry,
         name="assessment-marks-entry",
     ),
+    path(
+        "my/assessments/<int:pk>/marks/autosave/",
+        views.assessment_marks_autosave,
+        name="assessment-marks-autosave",
+    ),
     path("assessments/<int:pk>/edit/", views.assessment_update, name="assessment-update"),
     path("assessments/<int:pk>/delete/", views.assessment_delete, name="assessment-delete"),
     path(

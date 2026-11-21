@@ -117,7 +117,8 @@ class BulkPresentTests(Phase4Fixture, TestCase):
         iyer = self.client_class()
         iyer.login(username="iyer", password="pass-12345")
         self.assertEqual(self.bulk(self.asha, client=iyer).status_code, 403)
-        self.assertEqual(self.bulk(self.asha, client=self.client_class()).status_code, 302)
+        # Signed out: a background request gets 401, never the sign-in page (Option B OD-B3).
+        self.assertEqual(self.bulk(self.asha, client=self.client_class()).status_code, 401)
         self.assertEqual(self.register().entries.count(), 0)
 
     def test_plain_form_post_and_get_do_nothing(self):

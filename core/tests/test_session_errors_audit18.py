@@ -172,3 +172,92 @@ class CsrfRetryTests(SessionFixture, TestCase):
     def test_logout_still_goes_home(self):
         response = self.strict.post(reverse("logout"), HTTP_REFERER=f"http://testserver{reverse('logout')}")
         self.assertEqual(self.retry(response), reverse("home"))
+
+
+ERP_JS = Path(settings.BASE_DIR, "static", "js", "erp.js").read_text(encoding="utf-8")
+ATTENDANCE_AUTOSAVE = "core:my-attendance-autosave"
+BULK_PRESENT = "core:my-attendance-autosave-present"
+
+
+def fetch_calls(source):
+    """The text of every `fetch(...)` call, from `fetch(` to its matching closing bracket."""
+    calls, start = [], source.find("fetch(")
+    while start != -1:
+        depth, end = 0, start + len("fetch")
+        for end in range(start + len("fetch"), len(source)):
+            depth += {"(": 1, ")": -1}.get(source[end], 0)
+            if depth == 0:
+                break
+        calls.append(source[start:end + 1])
+        start = source.find("fetch(", end)
+    return calls
+
+
+class BackgroundSignedOutTests(SessionFixture, TestCase):
+    """Option B OD-B3 / finding F-1: a background request from a signed-out session gets 401, never
+    the sign-in page with status 200 that a script could read as a successful save."""
+
+    def assert_signed_out_reply(self, response, expired):
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json(), {"error": "signed-out", "expired": expired})
+        self.assertIn("no-store", response["Cache-Control"])
+        self.assertNotIn("Location", response)
+
+    def test_an_expired_htmx_request_gets_401_and_is_signed_out(self):
+        self.age(SEEN_KEY, 31 * 60)
+        self.assert_signed_out_reply(self.client.get(STUDENTS, HTTP_HX_REQUEST="true"), "idle")
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_an_expired_script_request_gets_401_naming_the_limit(self):
+        self.age(STARTED_KEY, 8 * 60 * 60 + 60)
+        response = self.client.post(STUDENTS, HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assert_signed_out_reply(response, "limit")
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_a_normal_expired_post_keeps_the_redirect(self):
+        self.age(SEEN_KEY, 31 * 60)
+        response = self.client.post(STUDENTS)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self.query(response)["unsaved"], "1")
+
+    def test_attendance_autosave_from_an_expired_session_gets_401_not_200(self):
+        self.age(SEEN_KEY, 31 * 60)
+        url = reverse(ATTENDANCE_AUTOSAVE, args=[self.six_a.pk])
+        self.assert_signed_out_reply(self.client.post(url, HTTP_HX_REQUEST="true"), "idle")
+
+    def test_bulk_present_from_an_expired_session_gets_401(self):
+        self.age(SEEN_KEY, 31 * 60)
+        url = reverse(BULK_PRESENT, args=[self.six_a.pk])
+        response = self.client.post(url, {"enrollment": [self.asha_e.pk]},
+                                    HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assert_signed_out_reply(response, "idle")
+
+    def test_an_anonymous_background_request_gets_401_without_an_expiry(self):
+        url = reverse(ATTENDANCE_AUTOSAVE, args=[self.six_a.pk])
+        self.assert_signed_out_reply(Client().post(url, HTTP_HX_REQUEST="true"), None)
+        self.assert_signed_out_reply(
+            Client().post(url, HTTP_X_REQUESTED_WITH="XMLHttpRequest"), None)
+
+    def test_an_anonymous_page_request_keeps_the_redirect(self):
+        url = reverse(ATTENDANCE_AUTOSAVE, args=[self.six_a.pk])
+        response = Client().post(url)
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response["Location"].startswith(reverse("login")))
+
+    def test_a_signed_in_background_request_is_answered_normally(self):
+        response = self.client.get(STUDENTS, HTTP_HX_REQUEST="true")
+        self.assertEqual(response.status_code, 200)
+
+    def test_every_fetch_in_erp_js_says_it_is_a_background_request(self):
+        calls = fetch_calls(ERP_JS)
+        self.assertGreaterEqual(len(calls), 2)
+        for call in calls:
+            self.assertIn('"X-Requested-With": "XMLHttpRequest"', call, call[:80])
+
+    def test_the_session_box_hears_a_signed_out_reply(self):
+        self.assertIn('document.addEventListener("erp:signed-out"', ERP_JS)
+
+    def test_the_session_warning_runs_on_every_page_not_only_beside_copy_buttons(self):
+        copy = ERP_JS.index("// Credential slip copy buttons")
+        warning = ERP_JS.index("// Sign-out warning")
+        self.assertIn("\n})();\n", ERP_JS[copy:warning])

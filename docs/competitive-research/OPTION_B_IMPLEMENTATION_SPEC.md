@@ -1,6 +1,7 @@
 # Option B Implementation Specification: Phone Save Quality and Privacy-Safe Measurement
 
 - **Status:** Approved implementation specification. All product-owner decisions OD-B1 to OD-B16 are approved (revision 3, after two product-owner reviews). The F-1 fix is part of B1.
+- **Revision 4 (B1, PR #282, product-owner approved):** the equality check now runs before the base check inside the lock (4.3 T5 and T6), so a save whose reply was lost, followed by Retry with the old base, is answered Saved with no write instead of a conflict with the teacher's own value. Refusals still come first, and a genuinely different stored value still gives the conflict.
 - **Baseline:** `main` at `a78734c` (Option A3 merged, PR #280). Option A (A1–A3) and ADR 0026 are in this baseline.
 - **Source:** `CURRENT_STATE_BENCHMARK_AUDIT.md` (approved planning baseline), Option B, gaps G-05 and G-04, and the research questions in §13 that feed MOB-04, MOB-06 to MOB-10 and G-06.
 - **Companion documents:** `CURRENT_STATE_EVIDENCE_INDEX.md`, `OPTION_A_IMPLEMENTATION_SPEC.md`, `docs/PWA_GATE_1_PLAN.md`, `docs/PWA_STARTER_PLAN.md` (Gate 2).
@@ -157,8 +158,8 @@ Request: `HX-Request: true`, the CSRF header, and the row's own form fields: `en
 | T2 | Lock and re-read the assessment: `assessment._lock()` (`select_for_update` on the assessment row, `core/models.py:3092`). | — |
 | T3 | Recheck under the lock: status is DRAFT, `is_open_for_entry` is true, `can_enter_results` is true, and the enrollment is still on the roster. Pre-checks 3 to 5 may have passed before a concurrent change. | The same reply as pre-check 3, 4a, 4b or 5 |
 | T4 | Lock the existing result row, if there is one: `assessment.results.select_for_update().filter(academic_enrollment=enrollment).first()`. | — |
-| T5 | Compare its `(status, score)` with the submitted base. No row is equal to an empty base (OD-B1). | 409 conflict partial carrying only this row's current server value and the two buttons |
-| T6 | If the new value equals the current saved value, write nothing. `updated_at` and `entered_by` stay unchanged, which makes the request idempotent. | 200 "Saved" |
+| T5 | If the stored `(status, score)` already equals the submitted value (compared after normalising, so "42" and "42.00" are equal), write nothing, whatever base the request carried. `updated_at` and `entered_by` stay unchanged and no history is written, which makes the request idempotent: a save whose reply was lost, followed by Retry with the old base, is Saved. Nothing differs, so nothing can be overwritten. | 200 "Saved", with the stored value as the new base |
+| T6 | Otherwise, compare the stored `(status, score)` with the submitted base. No row is equal to an empty base (OD-B1). | 409 conflict partial carrying only this row's current server value and the two buttons |
 | T7 | Save through the existing rules: `assessment.save_draft_result(enrollment=…, status=…, score=…, actor=request.user)`. | On `ValidationError`, 409 with the first message, and the transaction rolls back |
 | T8 | Commit. Build the reply after the commit: out-of-band counts and the new base values. | 200 "Saved" |
 
@@ -171,7 +172,7 @@ Notes:
 
   Autosave follows the existing assessment-then-result lock order. This avoids introducing the inversion present in Revision 1 of this specification; concurrency tests protect that order. Taking `_lock` again inside `save_draft_result` at T7 is harmless, because the lock is already held in the same transaction.
 - **The assessment lock serialises all saves for one assessment.** Autosave against autosave, autosave against the whole-form Save draft, and autosave against finalize all run one after the other. Each request holds the lock only for one row's read-compare-write, which takes milliseconds. Rosters are at most a few dozen rows, so serialising is acceptable.
-- **`IntegrityError` only inside a savepoint.** `save_draft_result` already wraps its insert in an inner `transaction.atomic()` savepoint and turns `IntegrityError` into `ValidationError` (`core/models.py:3207-3219`). The surrounding transaction therefore stays usable, and T7's failure path can still roll back cleanly. Under the assessment lock, two first saves for one enrollment can no longer race, because the second one reads the committed winner at T4 and gets the T5 conflict. The savepoint stays as a defence in depth. Rule for the implementation: **any `IntegrityError` the autosave view itself catches must come from a block wrapped in its own nested `transaction.atomic()`**. A bare `try/except IntegrityError` inside the outer transaction is not allowed, because PostgreSQL would leave the transaction aborted.
+- **`IntegrityError` only inside a savepoint.** `save_draft_result` already wraps its insert in an inner `transaction.atomic()` savepoint and turns `IntegrityError` into `ValidationError` (`core/models.py:3207-3219`). The surrounding transaction therefore stays usable, and T7's failure path can still roll back cleanly. Under the assessment lock, two first saves for one enrollment can no longer race, because the second one reads the committed winner at T4 and gets the T6 conflict (or T5 Saved if both sent the same value). The savepoint stays as a defence in depth. Rule for the implementation: **any `IntegrityError` the autosave view itself catches must come from a block wrapped in its own nested `transaction.atomic()`**. A bare `try/except IntegrityError` inside the outer transaction is not allowed, because PostgreSQL would leave the transaction aborted.
 - **Known asymmetry, unchanged by B1:** `save_draft_result` reads the existing result before it takes the lock (`core/models.py:3200`). In the whole-form path, a row that autosave inserted while the form waited for the lock can make the whole form fail with "This Student already has a result for this assessment.". Nothing is partly saved, and the typed values are kept, which is today's behaviour. The whole-form POST has no base check. After B1 it is reached only without JavaScript or HTMX (4.2), so with JavaScript every save, including the fallback, goes through the base comparison. The no-JavaScript path keeps today's last-write-wins rule (section 12).
 - Score comparison uses `Decimal`, so "42", "42.0" and "42.00" are equal. The base travels as the same plain string the form shows (`_plain_score`).
 - The view must not loop over the whole roster for counts more than once per request. Counts come from one query over `assessment.results` against the roster, after commit, with the query count fixed and tested (10.1).
@@ -203,8 +204,8 @@ Notes:
 | Situation | What happens | Why it is safe |
 | --- | --- | --- |
 | Teacher changes the same row twice quickly | `hx-sync queue last` sends one request at a time per row. The last value wins locally. The hidden base inputs update from each 200 reply before the queued request is built, so the second save is compared against the first save's result. | No lost update inside one tab. |
-| Same row edited in two tabs or devices | Both saves wait on the assessment lock (T2). The second one reads the first's committed row at T4, finds its base stale at T5, gets 409, and shows both values with Use and Keep (OD-B1). | No silent overwrite. |
-| Two first saves for a row never saved (two devices) | The assessment lock serialises them. The second one sees the first's committed row at T4 and gets the conflict at T5. The unique constraint and the savepoint in `save_draft_result` remain a backstop. | No 500, and the transaction is never left aborted. |
+| Same row edited in two tabs or devices | Both saves wait on the assessment lock (T2). The second one reads the first's committed row at T4. If it sent the same value, T5 answers Saved. Otherwise it finds its base stale at T6, gets 409, and shows both values with Use and Keep (OD-B1). | No silent overwrite. |
+| Two first saves for a row never saved (two devices) | The assessment lock serialises them. The second one sees the first's committed row at T4 and gets the conflict at T6 (or Saved at T5 when both values are equal). The unique constraint and the savepoint in `save_draft_result` remain a backstop. | No 500, and the transaction is never left aborted. |
 | Autosave on one device while a no-JavaScript whole-form Save draft from another device is committing | Both lock the assessment first, and the later one waits. If autosave runs second, its base check sees the form's values. If the form runs second, it keeps today's last-write-wins rule (4.3 note, section 12). | The same lock order on both paths. The concurrency tests protect it. |
 | Admin finalizes while the teacher types | Finalize and autosave both lock the assessment first and run one after the other. A save after finalizing gets 409 "finalized" at T3. Finalizing after a save sees the saved row. | Finalization rules are untouched. A finalized result is only ever changed through `correct()`, with its history. |
 | Admin finalizes when a row is still unsaved on the teacher's phone | `finalization_problems` already refuses while any roster enrollment has no result. If every row was saved, the unsaved local edit is refused (409) and the teacher is told to ask for a correction. | The correction path keeps its reason and history. |
@@ -216,7 +217,8 @@ Notes:
 | CSRF failure (stale token after re-sign-in in another tab) | 403 from `CSRF_FAILURE_VIEW`, without the `X-ERP-Row-Fragment` header, so the scoped handler swaps nothing (4.4). The row shows `Not saved: the page has expired. Reload the page.` No Retry. | A retry would fail the same way. |
 | Absolute 8-hour limit near | The existing session warning appears ("Save your work now"). Autosave keeps saving until the limit. | Unchanged. |
 | Fallback Save draft pressed while rows are in flight (JavaScript mode) | The button waits for in-flight saves, then re-sends only the failed rows through autosave with their bases. A row changed elsewhere gets the conflict prompt. | No whole-form POST in JavaScript mode, so the fallback cannot bypass OD-B1. |
-| Duplicate request, for example a proxy replay | Step T6 makes an equal value a no-op. A different value with an old base hits the conflict check. | Idempotent. |
+| Duplicate request, for example a proxy replay | Step T5 makes an equal value a no-op, whatever its base. A different value with an old base hits the conflict check at T6. | Idempotent. |
+| Save committed but its reply lost (network drop or the 15-second timeout), then Retry | Retry sends the same value with the old base. Refusals run first; then T5 finds the stored value equal and answers Saved with no write, and the row's base updates from the reply. | No self-conflict, no duplicate write or history. |
 
 ### 4.6 What does not change
 
@@ -667,7 +669,8 @@ Tests are written before code in each PR. CI runs the full suite on PostgreSQL 1
 - blank and blank gives 204 and no write;
 - a request clearing the score of a saved MARKED row (defence in depth) gives 422 and the result is unchanged (OD-B5);
 - `erp.js` source check: the marks sheet cancels the request (`htmx:confirm`) when the status is Marked and the score is empty, and shows `Enter a score`;
-- equal value gives 200 and `updated_at` is unchanged (idempotent).
+- equal value gives 200 and `updated_at` is unchanged (idempotent);
+- lost reply (revision 4): a saved request followed by a retry with the old base gives 200 Saved; the same score written differently ("12.5" and "12.50") is the same value; the retry makes no database write and no `ResultCorrection`; a genuinely different stored value still gives the 409 conflict; finalized, unassigned, reassigned and off-roster refusals still take precedence over the equality check.
 
 **Concurrency (OD-B1):**
 
@@ -676,7 +679,7 @@ Tests are written before code in each PR. CI runs the full suite on PostgreSQL 1
 - two first saves for one enrollment: the second gets 409 conflict, not 500, and no `IntegrityError` escapes;
 - **lock order.** These run as a `TransactionTestCase` on PostgreSQL with two threads, each on its own connection, synchronised by a barrier. `lock_timeout` is set so that a deadlock fails fast instead of hanging.
   - Autosave against `finalize`: no deadlock, and whichever commits second sees the first's effect. If finalize commits first, the autosave gets 409 "finalized" at T3.
-  - Autosave against the whole-form Save draft, on the same row and on different rows: no deadlock. If autosave runs second, it gets the T5 conflict when the form changed its row. If the form runs second, it keeps today's behaviour.
+  - Autosave against the whole-form Save draft, on the same row and on different rows: no deadlock. If autosave runs second, it gets the T6 conflict when the form changed its row to a different value. If the form runs second, it keeps today's behaviour.
   - Autosave against autosave on the same row with the same base: one 200 and one 409.
   - The captured SQL of the autosave view shows `FOR UPDATE` on `core_assessment` before any lock on `core_studentresult`.
 - **savepoint rule:** a forced `IntegrityError` inside T7 leaves the outer transaction usable. A query after it in the same transaction succeeds, and the view replies 409, not 500;

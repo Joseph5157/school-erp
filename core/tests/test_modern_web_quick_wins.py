@@ -55,4 +55,9 @@ class ScriptTests(SimpleTestCase):
 class MarksSaveOnceTests(MarksFixture, TestCase):
     def test_save_draft_is_one_shot(self):
         page = self.teacher.get(self.entry_url(self.test1))
-        self.assertContains(page, '<button type="submit" class="btn btn-primary" data-erp-once>Save draft</button>')
+        # Still one-shot when it posts the whole form (no HTMX); with autosave it is the fallback.
+        self.assertContains(
+            page,
+            '<button type="submit" class="btn btn-primary" data-erp-once data-erp-save-fallback>'
+            "Save draft</button>",
+        )
