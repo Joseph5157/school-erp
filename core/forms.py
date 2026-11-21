@@ -1372,6 +1372,21 @@ class MissingAttendanceForm(AttendanceRangeForm):
         return cleaned_data
 
 
+class AbsenceRunsForm(forms.Form):
+    """Optional Section and the run length to flag for "Absent in a row" (Option A2, OD-2)."""
+
+    section = forms.ModelChoiceField(
+        queryset=Section.objects.select_related("class_grade"), required=False,
+        empty_label="All sections",
+    )
+    threshold = forms.TypedChoiceField(
+        label="At least",
+        choices=[(n, f"{n} school days") for n in (3, 5, 10)],
+        coerce=int,
+        initial=3,
+    )
+
+
 class MonthlySectionSummaryForm(forms.Form):
     section = forms.ModelChoiceField(queryset=Section.objects.select_related("class_grade"))
     month = forms.CharField(

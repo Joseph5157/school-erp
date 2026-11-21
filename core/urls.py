@@ -460,6 +460,11 @@ urlpatterns = [
         name="report-missing-attendance",
     ),
     path(
+        "attendance/reports/absent-in-a-row/",
+        views.report_absence_runs,
+        name="report-absence-runs",
+    ),
+    path(
         "attendance/reports/monthly/",
         views.report_monthly_section,
         name="report-monthly-section",

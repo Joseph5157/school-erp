@@ -51,6 +51,8 @@ Approved scope:
 - submitted complete roster required; missing/unsubmitted attendance is not ABSENT
 - future attendance prohibited; working Saturdays supported when instructional
 - corrections preserve history; percentages use submitted eligible entries only
+- later (Option A2, ADR 0026): "Absent in a row" report for administrators and a class-teacher
+  card on My Home, from one consecutive-absence definition
 
 Out of scope for Phase 2:
 - period/slot-level attendance

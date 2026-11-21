@@ -48,3 +48,4 @@ ADRs should not replace approved product requirements or domain documentation. T
 - [0020 School logo storage and document letterhead](0020-school-logo-storage-and-document-letterhead.md)
 - [0021 Timetable periods and weekly slots](0021-timetable-periods-and-weekly-slots.md)
 - [0022 Display-only subject averages in analytics](0022-analytics-subject-averages.md): accepted exception to ADR 0009 for chart averages.
+- [0026 Consecutive-absence definition](0026-consecutive-absence-definition.md): "absent N school days in a row" for the admin report and class-teacher card.

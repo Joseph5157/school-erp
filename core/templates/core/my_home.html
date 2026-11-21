@@ -35,6 +35,24 @@
 {% endif %}
 </section>
 
+{% if absence_runs %}
+{# Option A2: only when someone in the teacher's own Section meets the threshold; no empty card. #}
+<section class="erp-assign-group erp-absence-runs" aria-labelledby="day-absent-runs">
+<h2 class="erp-assign-label" id="day-absent-runs">Absent in a row</h2>
+<ul class="erp-day-rows erp-assign-rows">
+{% for run in absence_runs %}
+<li class="erp-assign-row is-link">
+    <span class="erp-day-main">
+        <a class="erp-day-title stretched-link" href="{% url 'core:my-student-detail' run.student_id %}" aria-label="{{ run.name }}, absent {% if run.at_least %}at least {% endif %}{{ run.days }} school days in a row">{{ run.name }}</a>
+        <span class="erp-card-meta">{% if run.at_least %}at least {{ run.days }} days{% else %}{{ run.days }} school days{% endif %}</span>
+    </span>
+    <span class="erp-day-chevron" aria-hidden="true">&rsaquo;</span>
+</li>
+{% endfor %}
+</ul>
+</section>
+{% endif %}
+
 {# Timetable card (ADR 0021 D10, amended 2026-11-17): a count of today's periods, linking to the Timetable page; shown every day. #}
 <a class="erp-tt-entry" href="{% url 'core:my-timetable' %}">
     <span class="erp-tt-entry-icon">{% include "partials/_tab_icon.html" with name="today" %}</span>

@@ -29,7 +29,7 @@ the limits below ever apply to anyone.
 | Guardian names, contacts, links | `core.view_guardian` | Guardians section on the student and applicant pages; the Guardian column and search on the student list |
 | Linked students | `core.view_student` | Children on the guardian list and in its search; the duplicate-guardian warning |
 | Linked applicants | `core.view_applicant` | Applicant children on the guardian list and in its search |
-| Attendance entries (a student's status, notes, absences) | `core.view_attendanceentry` | Register rows; the student page's monthly card; the student list's absent filter; the Overview's absentee and attention lists; attendance summary documents |
+| Attendance entries (a student's status, notes, absences) | `core.view_attendanceentry` | Register rows; the student page's monthly card; the student list's absent filter; the Overview's absentee and attention lists; attendance summary documents; the "Absent in a row" report (`core:report-absence-runs`, ADR 0026) |
 | Marks (scores, grades, percentages, pass/fail, who entered them) | `core.view_studentresult` | Assessment results; publication preview and detail; report cards (page and PDF) |
 | Staged import rows (names, dates of birth, admission numbers) | `core.run_import` | The pending-batch preview |
 | The uploaded file's original name (it can hold a student's name) | `core.run_import` | The import list and the import page; others see "Not shown" |
@@ -37,6 +37,10 @@ the limits below ever apply to anyone.
 
 The Overview's absentee list also needs `core.view_student`, because it names students, and its
 attention list needs students, marks and attendance together.
+
+The class-teacher "Absent in a row" card on My Home needs no permission: it uses the teacher's
+own class-teacher scope (ADR 0012 D8/D9), clipped to the assignment start, and leaves out a
+Section that is ambiguous today (Security Gate 3A). Subject teachers see no card (ADR 0026).
 
 ## What a limited role sees on each screen
 

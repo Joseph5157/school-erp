@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Absent in a row{% endblock %}
+{% block content %}
+{% url 'core:attendance-reports' as header_url %}{% include "partials/_page_header.html" with eyebrow="Attendance reports" title="Absent in a row" purpose="Students absent several school days in a row, up to today." secondary_url=header_url secondary_label="Attendance reports" only %}
+<form method="get" class="erp-toolbar erp-toolbar--inline erp-attendance-report-toolbar" aria-label="Choose a Section and run length">
+    {% include "partials/_form_error_summary.html" with form=form action_text="showing absences in a row" %}
+    {% include "partials/_form_field.html" with field=form.section %}
+    {% include "partials/_form_field.html" with field=form.threshold %}
+    <div class="erp-form-actions">
+        <button type="submit" class="btn btn-outline-secondary">Show students</button>
+    </div>
+</form>
+{% if rows is not None %}
+<section class="erp-panel p-3 p-md-4" aria-labelledby="runs-title">
+    <div class="erp-panel-head mb-3">
+        <h2 class="h5" id="runs-title">Absent {{ threshold }} or more school days in a row</h2>
+        <p class="erp-note-text">Weekends and holidays are skipped. A day whose register was not submitted stops the count.</p>
+    </div>
+    {% if rows %}
+    <div class="erp-table-scroll" role="region" aria-label="Absent in a row" tabindex="0">
+    <table class="table erp-keep erp-attendance-report-table">
+        <caption class="visually-hidden">Students absent {{ threshold }} or more school days in a row, longest first, as of {{ today|date:"j M Y" }}.</caption>
+        <thead>
+            <tr><th scope="col">Student</th><th scope="col">Class</th><th scope="col">School days in a row</th><th scope="col">Since</th></tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            <tr>
+                <th scope="row" class="fw-normal"><a href="{% url 'core:student-attendance' row.student_id %}">{{ row.name }}<span class="visually-hidden">, attendance history</span></a></th>
+                <td>{{ row.class_name }} {{ row.section_name }}</td>
+                <td>
+                    {% if row.stopped_by == "LOOKBACK_LIMIT" %}{{ row.days }}+{% else %}{{ row.days }}{% endif %}
+                    {% if row.stopped_by == "UNKNOWN" %}<p class="erp-note-text mb-0">At least {{ row.days }}. Not taken on {{ row.unknown_date|date:"j M" }}</p>
+                    {% elif row.stopped_by == "SCOPE_START" %}<p class="erp-note-text mb-0">At least {{ row.days }}</p>{% endif %}
+                </td>
+                <td><span class="text-nowrap">{{ row.first_date|date:"j M Y" }}</span></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="mb-0">No student has been absent {{ threshold }} or more school days in a row (as of {{ today|date:"j M Y" }}).</p>
+    {% endif %}
+</section>
+{% endif %}
+{% endblock %}

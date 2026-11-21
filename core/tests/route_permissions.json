@@ -1090,6 +1090,15 @@
     "route": "publications/stale/",
     "view": "views.publications_stale"
   },
+  "core:report-absence-runs": {
+    "flags": [],
+    "inner": [],
+    "perms": [
+      "core.view_attendanceentry"
+    ],
+    "route": "attendance/reports/absent-in-a-row/",
+    "view": "views.report_absence_runs"
+  },
   "core:report-daily-absentees": {
     "flags": [],
     "inner": [],
