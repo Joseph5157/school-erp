@@ -1,0 +1,5 @@
+{# One sent notice. `r` has title, audience, published_on, withdrawn and url. #}
+<li class="erp-home-row">
+    <span class="erp-home-main">{{ r.title }}<span class="erp-home-meta">{{ r.audience }} &middot; {{ r.published_on|date:"j M" }}{% if r.withdrawn %} &middot; Withdrawn{% endif %}</span></span>
+    <a class="erp-home-open" href="{{ r.url }}">Open<span class="erp-sr-only"> {{ r.title }}</span></a>
+</li>

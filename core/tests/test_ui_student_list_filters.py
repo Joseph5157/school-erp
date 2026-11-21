@@ -2,7 +2,10 @@
 current-placement and guardian columns, and the two empty states."""
 
 from datetime import date, timedelta
+from unittest import mock
 
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
 from django.db.models import Max
 from django.test import TestCase
 from django.urls import reverse
@@ -15,6 +18,8 @@ from core.models import (
     AttendanceStatus,
     ClassGrade,
     Guardian,
+    GuardianAccount,
+    GuardianStudentAccess,
     Section,
     Student,
     StudentGuardian,
@@ -221,3 +226,81 @@ class StudentListFilterTests(AuthorizationClientsMixin, Phase4Fixture, TestCase)
         client = self.client_class()
         client.login(username="rao", password="pass-12345")
         self.assertEqual(client.get(self.url).status_code, 403)
+
+
+PINNED_TODAY = date(2026, 7, 15)
+
+
+class NoPortalChipTests(AuthorizationClientsMixin, Phase4Fixture, TestCase):
+    """The 'No parent on the portal' chip, the target of the home Invite links."""
+
+    def setUp(self):
+        super().setUp()
+        self.build_phase4()
+        self.url = reverse("core:student-list")
+        self.user_model = get_user_model()
+        self.verifier = self.user_model.objects.create_user(username="verifier")
+        patcher = mock.patch("core.views.business_today", return_value=PINNED_TODAY)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def names(self, response):
+        return [student.full_name for student in response.context["students"]]
+
+    def student(self, name, section=None):
+        student = Student.objects.create(
+            applicant=Applicant.objects.create(admission_status="ACCEPTED", full_name=name),
+            full_name=name,
+        )
+        student.enroll(
+            academic_year=self.year, class_grade=self.grade6,
+            section=section or self.six_a, start_date=date(2026, 6, 1),
+        )
+        return student
+
+    def put_on_portal(self, student, username):
+        guardian = Guardian.objects.create(full_name=f"Parent of {student.full_name}")
+        link = StudentGuardian.objects.create(
+            student=student, guardian=guardian, relationship_type="FATHER"
+        )
+        GuardianAccount.objects.create(
+            user=self.user_model.objects.create_user(username=username),
+            guardian=guardian, identity_verified_by=self.verifier,
+            identity_verification_method="OTHER", identity_verification_note="x",
+            created_by=self.verifier,
+        )
+        GuardianStudentAccess.objects.create(student_guardian=link, granted_by=self.verifier)
+
+    def test_no_portal_chip_lists_students_without_a_portal_parent(self):
+        with_parent = self.student("Has Parent")
+        without = self.student("No Parent")
+        self.put_on_portal(with_parent, "parent1")
+
+        response = self.administrator.get(self.url, {"chip": "no_portal"})
+        names = self.names(response)
+        self.assertIn(without.full_name, names)
+        self.assertNotIn(with_parent.full_name, names)
+        self.assertContains(response, "No parent on the portal")
+
+    def test_no_portal_chip_combines_with_section(self):
+        self.put_on_portal(self.student("Has Parent A"), "parent2")
+        self.student("No Parent A")
+        self.student("No Parent B", section=self.six_b)
+
+        response = self.administrator.get(
+            self.url, {"chip": "no_portal", "section": self.six_a.pk}
+        )
+        self.assertEqual(self.names(response), ["No Parent A"])
+
+    def test_no_portal_chip_needs_guardian_permission(self):
+        self.put_on_portal(self.student("Has Parent"), "parent3")
+        self.student("No Parent")
+        user = self.user_model.objects.create_user(username="viewer", password="pass-12345")
+        user.user_permissions.add(Permission.objects.get(codename="view_student"))
+        client = self.client_class()
+        client.login(username="viewer", password="pass-12345")
+
+        response = client.get(self.url, {"chip": "no_portal"})
+        self.assertEqual(response.status_code, 200)
+        self.assertCountEqual(self.names(response), ["Has Parent", "No Parent"])
+        self.assertNotContains(response, "No parent on the portal")

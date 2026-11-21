@@ -7,7 +7,7 @@ from django.urls import reverse
 
 from core import guardian_accounts as ga
 from core import models as core_models
-from core.dashboard import glance_cards, parents_glance
+from core.dashboard import glance_cards
 from core.models import (
     TEACHERS_GROUP_NAME,
     AcademicTerm,
@@ -35,7 +35,6 @@ class GlanceEmptySchoolTests(AuthorizationClientsMixin, TestCase):
             self.assertEqual(cards[key]["count"], 0)
         self.assertEqual(cards["term"]["count"], "-")
         self.assertEqual(cards["term"]["summary"], "No term is running today.")
-        self.assertEqual(parents_glance(self.superuser)["count"], 0)
 
     def test_overview_renders_glance_section_on_empty_school(self):
         response = self.administrator.get(reverse("core:admin-overview"))
@@ -79,7 +78,6 @@ class GlanceCountTests(AuthorizationClientsMixin, AttendanceFixtureMixin, TestCa
         self.assertEqual(cards["students"]["count"], 1)
         self.assertEqual(cards["teachers"]["count"], 1)
         self.assertEqual(cards["classes"]["count"], 2)
-        self.assertEqual(parents_glance(self.superuser)["count"], 1)
 
     def test_term_card_names_the_term_running_today(self):
         AcademicTerm.objects.create(
@@ -104,7 +102,6 @@ class GlanceLinkPermissionTests(AuthorizationClientsMixin, TestCase):
         self.assertEqual(cards["teachers"]["url"], reverse("core:teacher-list"))
         self.assertEqual(cards["classes"]["url"], reverse("core:class-grade-list"))
         self.assertEqual(cards["term"]["url"], reverse("core:academic-year-list"))
-        self.assertEqual(parents_glance(self.admin_user)["url"], reverse("core:guardian-list"))
 
     def test_only_permitted_links_are_given(self):
         user = User.objects.create_user(username="limited", password="x")
@@ -113,4 +110,3 @@ class GlanceLinkPermissionTests(AuthorizationClientsMixin, TestCase):
         self.assertEqual(cards["students"]["url"], reverse("core:student-list"))
         for key in ("teachers", "classes", "term"):
             self.assertEqual(cards[key]["url"], "")
-        self.assertEqual(parents_glance(user)["url"], "")

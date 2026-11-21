@@ -3,6 +3,7 @@
 import datetime
 import re
 from pathlib import Path
+from unittest import mock
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -12,7 +13,20 @@ from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
-from core.models import Assessment, ClassGrade, Section, Student, StudentResult
+from core import announcements
+from core.models import (
+    AcademicEnrollment,
+    Announcement,
+    Assessment,
+    ClassGrade,
+    Guardian,
+    GuardianAccount,
+    GuardianStudentAccess,
+    Section,
+    Student,
+    StudentGuardian,
+    StudentResult,
+)
 from core.tests.test_admin_overview_analytics import TODAY, A, MarksFixture, P
 
 URL = reverse("core:admin-overview")
@@ -40,6 +54,35 @@ def seed_academics(fx, extra_classes=3):
                 )
     fx.assessment({fx.s1: 15, fx.s2: 15}, name="Draft ready", finalize=False)
     fx.assessment({fx.s1: 12}, name="Draft marking", finalize=False)  # s2 unmarked: in progress
+
+
+def add_portal_parent(fx, enrollment, name, username):
+    """A guardian with a login and an active grant on the enrollment's student. Returns the grant."""
+    guardian = Guardian.objects.create(full_name=name)
+    link = StudentGuardian.objects.create(
+        student=enrollment.student, guardian=guardian, relationship_type="FATHER"
+    )
+    user = get_user_model().objects.create_user(username=username)
+    GuardianAccount.objects.create(
+        user=user, guardian=guardian, identity_verified_by=fx.admin_user,
+        identity_verification_method="OTHER", identity_verification_note="x",
+        created_by=fx.admin_user,
+    )
+    return GuardianStudentAccess.objects.create(student_guardian=link, granted_by=fx.admin_user)
+
+
+def seed_parents(fx):
+    """s1 has a portal parent; a third student has a pending-review grant (placement ended); one published notice."""
+    add_portal_parent(fx, fx.s1, "Rajesh Rao", "seed-parent1")
+    fx.s3 = fx.enroll_student("Leaver Lal", fx.class_grade, fx.section)
+    fx.review_grant = add_portal_parent(fx, fx.s3, "Sunita Lal", "seed-parent2")
+    AcademicEnrollment.objects.filter(pk=fx.s3.pk).update(
+        status="COMPLETED", end_date=datetime.date(2026, 7, 1)
+    )
+    fx.notice = announcements.publish(
+        title="Sports day", body="Bring a hat", audience=Announcement.Audience.ALL,
+        actor=fx.admin_user,
+    )
 
 
 def card_html(html, name):
@@ -164,9 +207,9 @@ class HomeTabsTests(MarksFixture, TestCase):
             with self.subTest(tab=key):
                 response = self.get(self.superuser_client, tab=key)
                 if key == "parents":
-                    self.assertContains(response, "Pending access reviews")
+                    self.assertContains(response, "Guardian access")
                 else:
-                    self.assertNotContains(response, "Pending access reviews")
+                    self.assertNotContains(response, "Guardian access")
                 if key != "today":
                     self.assertNotContains(response, "Attendance today")
                     self.assertNotContains(response, "School at a glance")
@@ -207,16 +250,191 @@ class HomeTabsTests(MarksFixture, TestCase):
         ).context["today"]["attendance"]["not_taken"]
         self.assertIsNone(rows)
 
-    def test_parents_tab_shows_guardians_and_links_only_what_the_viewer_may_open(self):
-        response = self.get(self.superuser_client, tab="parents")
-        parents = response.context["parents_tab"]
-        self.assertEqual(parents["glance"]["key"], "guardians")
-        self.assertEqual(parents["announcements_url"], reverse("core:announcement-list"))
-        self.assertContains(response, reverse("core:announcement-list"))
-        plain = self.get(self.viewer("plain-parents", "view_school"), tab="parents").context["parents_tab"]
-        self.assertIsNone(plain["access_review_card"])
-        self.assertIsNone(plain["announcements_url"])
-        self.assertEqual(plain["glance"]["url"], "")
+    def parents_page(self, client=None):
+        return self.get(client or self.superuser_client, tab="parents").content.decode()
+
+    def test_parents_tab_shows_three_cards(self):
+        seed_parents(self)
+        html = self.parents_page()
+        for name, title in (("notice", "New announcement"), ("engagement", "Parent engagement"),
+                            ("access", "Guardian access")):
+            self.assertIn(title, card_html(html, name))
+        self.assertNotIn("Parents at a glance", html)
+        self.assertNotIn("Pending access reviews", html)
+
+    def test_card_form_posts_to_the_preview_page(self):
+        html = card_html(self.parents_page(), "notice")
+        self.assertIn(f'action="{reverse("core:announcement-create")}"', html)
+        self.assertIn("data-erp-audience-form", html)
+        self.assertIn('class="erp-btn erp-btn--primary"', html)
+        self.assertIn("Message", html)
+        self.assertIn("You'll see a preview before anything is sent.", html)
+
+    def test_card_form_errors_land_on_new_notice_page(self):
+        response = self.superuser_client.post(
+            reverse("core:announcement-create"), {"title": "", "body": "Hello", "audience": "ALL"}
+        )
+        self.assertTemplateUsed(response, "core/announcement_form.html")
+        self.assertContains(response, "Hello")
+
+    def test_card_form_preview_then_publish_still_works(self):
+        response = self.superuser_client.post(
+            reverse("core:announcement-create"), {"title": "Trip", "body": "Bring lunch", "audience": "ALL"}
+        )
+        self.assertTemplateUsed(response, "core/announcement_preview.html")
+        self.assertFalse(Announcement.objects.filter(title="Trip").exists())
+
+    def test_sent_list_newest_first_links_to_detail(self):
+        seed_parents(self)
+        newer = announcements.publish(
+            title="Fee reminder", body="Due soon", audience=Announcement.Audience.ALL,
+            actor=self.admin_user,
+        )
+        announcements.withdraw(newer, actor=self.admin_user, reason="Wrong date")
+        html = card_html(self.parents_page(), "notice")
+        self.assertLess(html.index("Fee reminder"), html.index("Sports day"))
+        self.assertIn(reverse("core:announcement-detail", args=[self.notice.pk]), html)
+        self.assertIn("Whole school", html)
+        self.assertIn("Withdrawn", html)
+        self.assertIn(reverse("core:announcement-list"), html)
+        self.assertIn("All announcements", html)
+
+    def test_sent_list_empty_message(self):
+        self.assertIn("No notices sent yet.", card_html(self.parents_page(), "notice"))
+
+    def test_engagement_card_shows_percent_and_counts(self):
+        seed_parents(self)
+        html = card_html(self.parents_page(), "engagement")
+        self.assertIn("50%", html)
+        self.assertIn("1 of 2", html)
+        self.assertIn("Students with a parent on the portal", html)
+        self.assertIn("Parents who logged in this month", html)
+        self.assertIn("Notice reads aren't tracked yet.", html.replace("&#x27;", "'"))
+        self.assertIn(reverse("core:guardian-list"), html)
+
+    def test_engagement_card_without_students_shows_dash(self):
+        # The fixture always enrolls two students; a date past every placement leaves none.
+        with mock.patch("core.views.business_today", return_value=datetime.date(2030, 1, 1)):
+            html = card_html(self.parents_page(), "engagement")
+        self.assertIn("&ndash;", html)
+        self.assertIn("No students in a class yet", html)
+        self.assertIn("No parents on the portal yet", html)
+        self.assertNotIn("%", html)
+
+    def test_missing_rows_invite_link_needs_student_and_guardian(self):
+        seed_parents(self)
+        html = card_html(self.parents_page(), "access")
+        self.assertIn("Missing a parent on the portal", html)
+        self.assertIn("1 of 2 students", html)
+        invite = f'{reverse("core:student-list")}?section={self.section.pk}&amp;chip=no_portal'
+        self.assertIn(invite, html)
+        self.assertIn("Invite", html)
+        # Without view_guardian the per-section counts are hidden altogether.
+        client = self.viewer("no-invite", "view_school", "view_student", "view_guardianaccessreview")
+        response = self.get(client, tab="parents")
+        self.assertIsNone(response.context["parents_tab"]["missing"])
+        html = card_html(response.content.decode(), "access")
+        self.assertNotIn("Missing a parent on the portal", html)
+        self.assertNotIn("of 2 students", html)
+        self.assertNotIn("Invite", html)
+
+    def test_missing_rows_need_view_guardian(self):
+        seed_parents(self)
+        plain = self.get(self.viewer("m-plain", "view_school", "view_student"), tab="parents")
+        html = plain.content.decode()
+        self.assertIsNone(plain.context["parents_tab"]["missing"])
+        self.assertNotIn("Missing a parent on the portal", html)
+        self.assertNotIn("of 2 students", html)
+        guardian = self.get(self.viewer("m-guard", "view_school", "view_guardian"), tab="parents")
+        self.assertIsNotNone(guardian.context["parents_tab"]["missing"])
+        html = guardian.content.decode()
+        self.assertIn("Missing a parent on the portal", html)
+        self.assertIn("1 of 2 students", html)
+
+    def test_access_card_hidden_without_guardian_or_review_permission(self):
+        seed_parents(self)
+        html = self.parents_page(self.viewer("a-plain", "view_school"))
+        self.assertNotIn("erp-card--access", html)
+        self.assertIn("erp-card--engagement", html)
+
+    def test_parents_tab_computes_placements_once(self):
+        from core import home_parents
+
+        with mock.patch.object(home_parents, "_placements", wraps=home_parents._placements) as spy:
+            self.parents_page()
+        self.assertEqual(spy.call_count, 1)
+
+    def test_missing_empty_messages(self):
+        with mock.patch("core.views.business_today", return_value=datetime.date(2030, 1, 1)):
+            html = card_html(self.parents_page(), "access")
+        self.assertIn("No students in a class yet.", html)
+        add_portal_parent(self, self.s1, "Rajesh Rao", "p1")
+        add_portal_parent(self, self.s2, "Meena Parent", "p2")
+        html = card_html(self.parents_page(), "access")
+        self.assertIn("Every student in a class has a parent on the portal.", html)
+
+    def test_reviews_need_view_guardianaccessreview(self):
+        seed_parents(self)
+        plain = self.get(self.viewer("plain-parents", "view_school"), tab="parents")
+        self.assertIsNone(plain.context["parents_tab"]["reviews"])
+        self.assertNotIn("Access reviews", plain.content.decode())
+        self.assertIn("Access reviews", self.parents_page())
+
+    def test_review_names_need_student_and_guardian(self):
+        seed_parents(self)
+        client = self.viewer("reviewer", "view_school", "view_guardianaccessreview")
+        response = self.get(client, tab="parents")
+        reviews = response.context["parents_tab"]["reviews"]
+        self.assertIsNone(reviews["rows"])
+        html = card_html(response.content.decode(), "access")
+        self.assertIn("1 waiting", html)
+        self.assertIn(reverse("core:guardian-access-reviews"), html)
+        self.assertNotIn("Leaver Lal", html)
+        self.assertIn("Leaver Lal", card_html(self.parents_page(), "access"))
+
+    def test_no_reviews_waiting_message(self):
+        html = card_html(self.parents_page(), "access")
+        self.assertIn("No access reviews waiting.", html)
+
+    def test_review_rows_link_to_decide_with_add_permission(self):
+        seed_parents(self)
+        decide = reverse("core:guardian-access-review-decide", args=[self.review_grant.pk])
+        self.assertIn(decide, card_html(self.parents_page(), "access"))
+        client = self.viewer(
+            "no-add", "view_school", "view_guardianaccessreview", "view_student", "view_guardian"
+        )
+        html = card_html(self.parents_page(client), "access")
+        self.assertNotIn(decide, html)
+        self.assertIn(reverse("core:guardian-access-reviews"), html)
+
+    def test_notice_card_permissions(self):
+        seed_parents(self)
+        html = self.parents_page(self.viewer("p-plain", "view_school"))
+        self.assertNotIn("erp-card--notice", html)
+        self.assertIn("erp-analytics--no-notice", html)
+        self.assertNotIn("data-erp-audience-form", html)
+        add_only = self.parents_page(self.viewer("p-add", "view_school", "add_announcement"))
+        self.assertIn("data-erp-audience-form", add_only)
+        self.assertNotIn("Sports day", add_only)
+        self.assertNotIn("erp-analytics--no-notice", add_only)
+        view_only = self.parents_page(self.viewer("p-view", "view_school", "view_announcement"))
+        self.assertIn("Sports day", view_only)
+        self.assertNotIn("data-erp-audience-form", view_only)
+
+    def test_parents_tab_queries_do_not_grow_with_sections(self):
+        seed_parents(self)
+        self.parents_page()
+        with CaptureQueriesContext(connection) as before:
+            self.parents_page()
+        for i in range(5):
+            grade = ClassGrade.objects.create(name=f"Grade {i + 5}")
+            section = Section.objects.create(class_grade=grade, name="A")
+            first = self.enroll_student(f"Extra A{i}", grade, section)
+            self.enroll_student(f"Extra B{i}", grade, section)
+            add_portal_parent(self, first, f"Extra Parent {i}", f"extra-parent{i}")
+        with CaptureQueriesContext(connection) as after:
+            self.parents_page()
+        self.assertEqual(len(before), len(after))
 
     def test_tab_bar_markup_and_phone_css(self):
         from pathlib import Path
@@ -457,6 +675,18 @@ class HomeTabsTests(MarksFixture, TestCase):
                      ".erp-home .erp-analytics--no-absent > .erp-card--classes { grid-column: span 12; }"):
             self.assertIn(rule, css)
 
+    def test_parents_css(self):
+        css = Path(settings.BASE_DIR, "static", "css", "erp.css").read_text(encoding="utf-8")
+        self.assertIn(".erp-stage-list--two { grid-template-columns: repeat(2, minmax(0, 1fr)); }", css)
+        self.assertRegex(css, r"\.erp-stage-meta \{[^}]*font-size: var\(--erp-text-sm\)")
+        self.assertIn(".erp-home .erp-analytics > .erp-card--notice { grid-column: span 7; grid-row: span 2; }", css)
+        self.assertIn(".erp-home .erp-analytics > .erp-card--engagement { grid-column: span 5; align-self: start; }", css)
+        self.assertIn(".erp-home .erp-analytics > .erp-card--access { grid-column: span 5; align-self: start; }", css)
+        self.assertIn(".erp-home .erp-analytics--no-notice > .erp-card--engagement { grid-column: span 12; }", css)
+        self.assertIn(".erp-home .erp-analytics--no-notice > .erp-card--access { grid-column: span 12; }", css)
+        self.assertIn(".erp-notice-form .erp-field { margin-bottom: 0; }", css)
+        self.assertIn(".erp-home .erp-analytics--parents { grid-template-rows: auto 1fr; }", css)
+
 
 class AcademicsTabTests(MarksFixture, TestCase):
     url = reverse("core:admin-overview") + "?tab=academics"
@@ -672,7 +902,7 @@ class OverviewNoBootstrapTests(MarksFixture, TestCase):
     def test_overview_cards_use_erp_card(self):
         for d in (1, 2, 3, 6, 7, 8):
             self.day(datetime.date(2026, 7, d), {self.s1: P, self.s2: A})
-        for tab, extra in (("today", {}), ("attendance", {}), ("attendance", {"absent": "term"}), ("academics", {})):
+        for tab, extra in (("today", {}), ("attendance", {}), ("attendance", {"absent": "term"}), ("academics", {}), ("parents", {})):
             html = self.administrator.get(URL, {"tab": tab, **extra}).content.decode()
             body = html[html.index('class="erp-page-header'):html.index("</main>")]
             with self.subTest(tab=tab, extra=extra):
@@ -686,6 +916,7 @@ class OverviewNoBootstrapTests(MarksFixture, TestCase):
         for d in (1, 2, 3, 6, 7, 8):
             self.day(datetime.date(2026, 7, d), {self.s1: P, self.s2: A})
         seed_academics(self)
+        seed_parents(self)
         pages = [(tab, {}) for tab in TAB_KEYS] + [("attendance", {"absent": "term"})]
         for tab, extra in pages:
             response = self.administrator.get(URL, {"tab": tab, **extra})

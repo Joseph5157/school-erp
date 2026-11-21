@@ -1430,6 +1430,11 @@ a.erp-glance-tile:hover, a.erp-glance-tile:focus-visible { border-color: var(--e
 .erp-stage-count { font-size: var(--erp-text-title); font-weight: 700; line-height: 1.1; }
 .erp-stage-count a { display: inline-flex; align-items: center; justify-content: center; min-height: 2.75rem; min-width: 2.75rem; color: inherit; }
 .erp-stage-label { font-size: var(--erp-text-sm); color: var(--erp-ink-soft); overflow-wrap: anywhere; }
+.erp-stage-list--two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.erp-stage-meta { font-size: var(--erp-text-sm); color: var(--erp-ink-soft); overflow-wrap: anywhere; }
+.erp-notice-form { display: grid; gap: var(--erp-space-3); }
+.erp-notice-form textarea { width: 100%; }
+.erp-notice-form .erp-field { margin-bottom: 0; } /* the grid gap spaces the fields */
 .erp-class-bar { width: 100%; height: .75rem; appearance: none; border: 0; border-radius: 999px; background: var(--erp-rule); overflow: hidden; }
 .erp-class-bar::-webkit-progress-bar { background: var(--erp-rule); border-radius: 999px; }
 .erp-class-bar::-webkit-progress-value { background: var(--erp-viz-attendance); border-radius: 999px; }
@@ -1661,6 +1666,14 @@ a.erp-col:hover .erp-col-label { text-decoration: underline; }
   .erp-home .erp-analytics--no-best > .erp-card--pass { grid-column: span 12; }
   .erp-home .erp-analytics--no-attention > .erp-card--improvers { grid-column: span 12; }
   .erp-home .erp-analytics--no-improvers > .erp-card--attention { grid-column: span 12; }
+  /* Parents tab: the tall notice card (7) spans two rows; parent engagement and guardian access stack beside it (5).
+     With no notice card, both widen to full rows. The second row takes the slack, so engagement and access stay together. */
+  .erp-home .erp-analytics--parents { grid-template-rows: auto 1fr; }
+  .erp-home .erp-analytics > .erp-card--notice { grid-column: span 7; grid-row: span 2; }
+  .erp-home .erp-analytics > .erp-card--engagement { grid-column: span 5; align-self: start; }
+  .erp-home .erp-analytics > .erp-card--access { grid-column: span 5; align-self: start; }
+  .erp-home .erp-analytics--no-notice > .erp-card--engagement { grid-column: span 12; }
+  .erp-home .erp-analytics--no-notice > .erp-card--access { grid-column: span 12; }
 
   .erp-analytics-top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--erp-space-3); }
   .erp-analytics-top .erp-section-title { margin: 0; }

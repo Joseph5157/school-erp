@@ -9,13 +9,12 @@ from django.contrib.auth import get_user_model
 from django.db.models import Min
 from django.urls import reverse
 
-from core import analytics, guardian_access, nav_badges
+from core import analytics, nav_badges
 from core import models as core_models
 from core.models import (
     TEACHERS_GROUP_NAME,
     Applicant,
     ClassGrade,
-    GuardianAccount,
     Student,
 )
 
@@ -48,15 +47,6 @@ def _publications(today, user):
         "publications", "Results to publish", nav_badges.cached_count(user, "core:publications-stale"),
         "Published results that are out of date.",
         reverse("core:publications-stale"),
-    )
-
-
-def _access_reviews(today, user):
-    return _card(
-        "access_reviews", "Pending access reviews",
-        len(guardian_access.pending_reviews(today)),
-        "Guardian access that needs an explicit decision.",
-        reverse("core:guardian-access-reviews"),
     )
 
 
@@ -135,13 +125,3 @@ def glance_cards(user, today=None):
             reverse("core:academic-year-list"), user, "core.view_academicyear",
         ),
     ]
-
-
-def parents_glance(user):
-    """The Parents tab's headline figure: guardians who can sign in to the portal."""
-    return _glance_card(
-        "guardians", "Guardians with portal access",
-        GuardianAccount.objects.filter(revoked_at__isnull=True).count(),
-        "Guardians who can sign in to the portal.",
-        reverse("core:guardian-list"), user, "core.view_guardian",
-    )

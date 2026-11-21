@@ -1593,7 +1593,7 @@ class BonafideForm(forms.Form):
 class AnnouncementForm(forms.Form):
     title = forms.CharField(max_length=120)
     body = forms.CharField(max_length=2000, widget=forms.Textarea(attrs={"rows": 6}),
-                           help_text="Plain text. Line breaks are kept.")
+                           label="Message", help_text="Plain text. Line breaks are kept.")
     audience = forms.ChoiceField(choices=Announcement.Audience.choices,
                                  widget=forms.RadioSelect, initial=Announcement.Audience.ALL)
     class_grade = forms.ModelChoiceField(ClassGrade.objects.active(), required=False,
