@@ -825,9 +825,11 @@ class AssessmentFilterForm(FilterLabelsMixin, forms.Form):
         required=False,
     )
 
-    # A checkbox turns any text into True; only these raw values are accepted, so an invalid
-    # value makes the form invalid and no filter is applied.
-    DUE_VALUES = {"", "1", "0", "true", "false", "on"}
+    # A checkbox widget turns any text except "true"/"false" into True, so the raw value is read
+    # here: "1", "true" and "on" mean due by today; "", "0" and "false" mean off; anything else
+    # makes the form invalid and no filter is applied.
+    DUE_ON = {"1", "true", "on"}
+    DUE_OFF = {"", "0", "false"}
 
     def __init__(self, *args, academic_year=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -836,9 +838,10 @@ class AssessmentFilterForm(FilterLabelsMixin, forms.Form):
 
     def clean_due(self):
         raw = self.data.get(self.add_prefix("due"), "") if self.is_bound else ""
-        if str(raw).strip().lower() not in self.DUE_VALUES:
+        raw = str(raw).strip().lower()
+        if raw not in self.DUE_ON | self.DUE_OFF:
             raise ValidationError("Tick the box, or leave it empty.")
-        return self.cleaned_data["due"]
+        return raw in self.DUE_ON
 
     def clean(self):
         cleaned_data = super().clean()

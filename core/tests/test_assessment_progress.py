@@ -11,6 +11,8 @@ All data here is synthetic and local.
 import datetime
 from unittest import mock
 
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
 from django.test import TestCase
 from django.urls import reverse
 
@@ -75,6 +77,24 @@ class CountParityTests(ProgressFixture, TestCase):
         _, names = self.listed(url)
         self.assertNotIn("Future", names)
         self.assertNotIn("Done", names)
+
+
+class AcademicsTabLinkTests(ProgressFixture, TestCase):
+    HOME = reverse("core:admin-overview")
+
+    def test_tab_links_in_progress_to_the_matching_list(self):
+        url = home_academics.results_to_finish(TODAY, publish_rows=True)["in_progress_url"]
+        page = self.administrator.get(self.HOME, {"tab": "academics"})
+        self.assertContains(page, 'href="{}"'.format(url.replace("&", "&amp;")))
+
+    def test_no_link_without_view_assessment(self):
+        user = get_user_model().objects.create_user(username="school", password="pass-12345")
+        user.user_permissions.add(*Permission.objects.filter(codename__in=["view_school"]))
+        client = self.client_class()
+        client.force_login(user)
+        page = client.get(self.HOME, {"tab": "academics"})
+        self.assertEqual(page.status_code, 200)
+        self.assertNotContains(page, "progress=marking")
 
 
 class SharedRuleTests(ProgressFixture, TestCase):

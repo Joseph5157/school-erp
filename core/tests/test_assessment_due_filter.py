@@ -55,6 +55,12 @@ class DueFilterTests(MarksFixture, TestCase):
         self.assertIn("due", response.context["form"].errors)
         self.assertIn("Future draft", names)
 
+    def test_due_zero_or_false_means_off(self):
+        for value in ("0", "false"):
+            response, names = self.names(due=value)
+            self.assertFalse(response.context["form"].errors)
+            self.assertIn("Future draft", names)
+
     def test_filtered_note_mentions_the_due_filter(self):
         response, _ = self.names(due="1")
         self.assertContains(response, "Showing assessments that match the filters.")
