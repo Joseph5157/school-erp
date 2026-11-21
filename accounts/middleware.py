@@ -32,6 +32,7 @@ SESSION_STATUS_PATH = "/accounts/session/"
 # Usage beacons (ADR 0027) are sent by the page, not the person: they must not count as activity,
 # or a page left open would never expire. A test keeps this in step with config/urls.py.
 USAGE_BEACON_PATH = "/u/"
+LOGOUT_PATH = "/accounts/logout/"  # a literal for the same reason as MANIFEST_PATH; test-checked
 STARTED_KEY = "_auth_started_at"
 SEEN_KEY = "_auth_last_seen"
 
@@ -52,9 +53,13 @@ def seconds_left(session, now=None):
 
 
 def is_background_request(request):
-    """An HTMX or script request (Option B OD-B3): it must never be answered with a page."""
+    """An HTMX or script request (Option B OD-B3): it must never be answered with a page.
+
+    The usage beacon always counts, whatever headers it sends (ADR 0027, spec 5.6).
+    """
     return (
-        request.headers.get("HX-Request") == "true"
+        request.path_info == USAGE_BEACON_PATH
+        or request.headers.get("HX-Request") == "true"
         or request.headers.get("X-Requested-With") == "XMLHttpRequest"
     )
 
@@ -109,9 +114,9 @@ def _record_expiry(request, area, reason):
     if area is None:
         return
     usage.record(request, area=area, workflow="session", step=f"expired_{reason}")
-    # A beacon or a Stay-signed-in POST carries no change by the person, so nothing was lost.
-    background_check = request.path_info in (USAGE_BEACON_PATH, SESSION_STATUS_PATH)
-    if request.method not in ("GET", "HEAD", "OPTIONS") and not background_check:
+    # A beacon, a Stay-signed-in POST or a sign-out carries no change by the person: nothing lost.
+    nothing_lost = request.path_info in (USAGE_BEACON_PATH, SESSION_STATUS_PATH, LOGOUT_PATH)
+    if request.method not in ("GET", "HEAD", "OPTIONS") and not nothing_lost:
         usage.record(request, area=area, workflow="session", step="expired_unsaved")
 
 

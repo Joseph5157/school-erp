@@ -17,7 +17,8 @@ import time
 from datetime import timedelta
 
 from django.conf import settings
-from django.db import DatabaseError, IntegrityError, transaction
+from django.db import Error as DatabaseError
+from django.db import IntegrityError, transaction
 from django.db.models import F
 
 logger = logging.getLogger(__name__)
@@ -269,7 +270,8 @@ def record(request, *, area, workflow, step, page_route="", duration_bucket="", 
                     with transaction.atomic():  # savepoint S2: the creation race
                         _insert(dims)
                 except IntegrityError:
-                    _increment(dims)  # another request created the row first
+                    if _increment(dims) == 0:  # another request created the row first
+                        return False  # it vanished again (purged); drop the event
     except DatabaseError:
         logger.warning("Usage counter write dropped (route %s)", _route_pattern(request))
         return False

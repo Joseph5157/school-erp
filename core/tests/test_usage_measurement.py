@@ -22,7 +22,7 @@ from django.db import DatabaseError, IntegrityError, connection, models, transac
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
-from accounts.middleware import SEEN_KEY, STARTED_KEY, USAGE_BEACON_PATH
+from accounts.middleware import LOGOUT_PATH, SEEN_KEY, STARTED_KEY, USAGE_BEACON_PATH
 from core import usage
 from core.models import TEACHERS_GROUP_NAME, Guardian, UsageCounter
 
@@ -206,6 +206,8 @@ class ConstraintTests(TestCase):
         self.assert_refused(area="guardian", workflow="notice_view", step="viewed")  # no age
         self.assert_refused(age_bucket="later")                                     # age elsewhere
         self.assert_refused(duration_bucket="<5s")                                  # not completed
+        self.assert_refused(area="admin", workflow="sign_in", step="completed",
+                            duration_bucket="<5s")                                  # untimed
         self.assert_refused(area="public")                                          # teacher flow
         self.assert_refused(area="public", workflow="page", step="viewed",
                             page_route="core:my-home")
@@ -348,6 +350,7 @@ class BeaconTests(Users, TestCase):
     def test_path_matches_the_url_name(self):
         self.assertEqual(reverse("usage-beacon"), BEACON)
         self.assertEqual(USAGE_BEACON_PATH, BEACON)
+        self.assertEqual(LOGOUT_PATH, reverse("logout"))
 
     def test_anonymous_gets_401_not_a_redirect(self):
         response = self.post(beacon_body(), client=Client())
@@ -470,6 +473,15 @@ class BeaconTests(Users, TestCase):
         self.post(beacon_body())
         self.assertEqual(self.client.session[SEEN_KEY], before)
 
+    def test_an_expired_beacon_without_script_headers_still_gets_401(self):
+        session = self.client.session
+        session[SEEN_KEY] = time.time() - 31 * 60
+        session[STARTED_KEY] = time.time() - 31 * 60
+        session.save()
+        response = self.client.post(BEACON, beacon_body(), content_type="application/json")
+        self.assertEqual(response.status_code, 401)
+        self.assertNotIn("Clear-Site-Data", response)
+
     def test_an_expired_session_is_still_signed_out_with_401(self):
         session = self.client.session
         session[SEEN_KEY] = time.time() - 31 * 60
@@ -559,6 +571,11 @@ class SessionSignalTests(Users, TestCase):
         self.client.post(reverse("core:student-list"))
         self.assertEqual(sorted(rows(workflow="session", area="admin")),
                          [("expired_idle", 1), ("expired_unsaved", 1)])
+
+    def test_signing_out_after_expiry_is_not_counted_as_unsaved(self):
+        self.expire()
+        self.client.post(reverse("logout"))
+        self.assertEqual(rows(workflow="session"), [("expired_idle", 1)])
 
     def test_absolute_limit_expiry(self):
         self.expire(seconds_idle=60, started=9 * 3600)

@@ -38,7 +38,7 @@ Stored bucket labels use ASCII hyphens (`5-15s`), where the spec text shows en d
 
 **Beacon.** Signed-in pages may post allow-listed events to `/u/` (`usage-beacon`). The view returns 401 itself to a signed-out request (never a redirect), checks CSRF, accepts at most 2 KB and 20 events, refuses the whole batch if any field is outside the enums, the client-reportable events or the caller's own areas, and records at most 200 events per session per hour. A beacon never counts as activity for the 30-minute idle limit. Its reply has no body.
 
-**No new client storage.** No cookie, localStorage, sessionStorage or IndexedDB entry is added. The only session values are bare integers: the expiry marker for the re-sign-in signal, the beacon rate window and, in B3, workflow start times. They hold no record ID and disappear at sign-out.
+**No new client storage.** No cookie, localStorage, sessionStorage or IndexedDB entry is added. The only session values are bare integers: the expiry marker for the re-sign-in signal, the beacon rate window and, in B3, workflow start times. They hold no record ID and disappear at sign-out. The expiry marker sits in the anonymous session until the next successful sign-in removes it, or until that anonymous session itself expires; it is never copied into a counter row.
 
 **Honest claims.** The data is described as aggregate, identifier-free and designed to minimise re-identification, never as anonymous. In a small school a weekly count can still hint at a person when combined with other knowledge, which is why the small-number rule, the written approval and operator-only access exist.
 
@@ -48,4 +48,5 @@ Stored bucket labels use ASCII hyphens (`5-15s`), where the spec text shows en d
 ## Consequences
 - One model and one migration (`core/migrations/0095_usagecounter.py`). No new permission, dependency or CI job. The only deployment change is one added step in the cron start command.
 - B2 records only sign-in and session signals on the server: sign-in completed, failed (always `public`) and throttled; first forced password change; session expiry by idle or absolute limit, with `expired_unsaved` for a lost non-GET submission; and re-sign-in within 10 minutes of a real expiry, proven by a session marker and never by the editable `?expired=` value.
+- Known limit: with `SESSION_SAVE_EVERY_REQUEST`, a beacon in flight while a page loads can save its older copy of the session over the page's, moving the idle clock back by that overlap (milliseconds). The same already holds for the session-status check. B3's client sends beacons only on hide or every 30 seconds, never alongside a navigation it starts.
 - The ten workflows of spec section 6, the sign-in page view, the server-recorded autosave outcomes and the client queue that sends beacons are instrumented in B3. The full report sections, ratios, secondary suppression and CSV output also come in B3.

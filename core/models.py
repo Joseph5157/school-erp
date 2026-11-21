@@ -4516,10 +4516,10 @@ class UsageCounter(models.Model):
                 condition=(models.Q(workflow="page", page_route__in=_u.PAGE_ROUTES)
                            | (~models.Q(workflow="page") & models.Q(page_route=""))),
                 name="usagecounter_page_route_use"),
-            # duration_bucket only on a completed step.
+            # duration_bucket only on the completed step of a timed workflow.
             models.CheckConstraint(
                 condition=(models.Q(duration_bucket="")
-                           | models.Q(step="completed",
+                           | models.Q(step="completed", workflow__in=_u.TIMED_WORKFLOWS,
                                       duration_bucket__in=_u.DURATION_BUCKETS)),
                 name="usagecounter_duration_use"),
             # size_bucket only for attendance capture and marks entry.

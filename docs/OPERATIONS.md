@@ -326,7 +326,11 @@ daily purge as they pass 180 days; nothing else needs doing.
 
 `python manage.py purge_usage_counters` deletes rows older than 180 days. It runs daily on the
 cron service as its own step, whether measurement is on or off, and prints only the number of
-rows deleted. It is safe to run by hand at any time.
+rows deleted. It is safe to run by hand at any time. **Every deployment needs this daily cron
+step**, including a production school without the demo refresh: there, the cron start command is
+`sh -c "python manage.py purge_usage_counters; python manage.py expire_import_batches"`.
+Because the purge is followed by `;`, a failed purge does not stop the next step and does not
+fail the job, so `usage_report`'s stale-row warning is how a missing or failing purge shows up.
 
 ### Reading the counts
 
