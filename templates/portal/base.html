@@ -10,7 +10,7 @@
     <link href="{% static 'css/erp.css' %}" rel="stylesheet">
 </head>
 {% with here=request.resolver_match.url_name %}
-<body class="erp has-tabbar">
+<body class="erp has-tabbar"{% if usage_body %} data-erp-usage="1" data-erp-usage-url="{{ usage_body.url }}" data-erp-route="{{ usage_body.route }}" data-erp-area="{{ usage_body.area }}"{% endif %}>
     <a class="visually-hidden-focusable erp-skip" href="#main">Skip to content</a>
     <header class="erp-topbar">
         {% include "portal/_shell_brand.html" %}

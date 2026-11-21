@@ -337,13 +337,26 @@ fail the job, so `usage_report`'s stale-row warning is how a missing or failing 
 From the service shell only:
 
 ```
-python manage.py usage_report --weeks 4 [--area teacher] [--workflow sign_in] [--device phone]
+python manage.py usage_report --weeks 4 [--area teacher] [--workflow marks_entry] [--device phone] [--format csv]
 ```
 
-It prints counts by ISO week to the terminal, with any cell under 5 shown as `<5` after the
-filters are applied. Keep no copy on the server. It warns if rows older than the retention cutoff
-exist, which means the cron purge step is missing or failing. There is no page, permission or
-Django admin entry for these counts.
+It prints, per ISO week: each workflow's started and completed counts, completion rate and "left
+incomplete" (started minus completed, an upper bound, not a count of people), durations and roster
+sizes as buckets; save attempts and failures; sign-in and session counts by area; page views by
+route and device; notice views by notice age; install shown, installed and dismissed; display mode
+and platform. Page and notice figures are **events, not people**. `network` means **observed
+network failures**, which miss complete disconnects. Any cell under 5 shows as `<5` after the
+filters and weekly grouping, and another cell shows as `*` (any value) wherever a printed total
+or split could otherwise reveal or narrow it. CSV output follows the same rules. Keep no copy on the server.
+
+An unfiltered report of at least 4 weeks ends with the section 9 review triggers of the Option B
+spec (offline write, push, login convenience, native apps, admin phone coverage, marks entry),
+each ratio with its minimum denominator. Below a minimum a figure is `n/a`, which is neither met
+nor missed. A trigger only opens a design gate; it never approves an offline, push, login or
+native-app build.
+
+It warns if rows older than the retention cutoff exist, which means the cron purge step is missing
+or failing. There is no page, permission or Django admin entry for these counts.
 
 ## Production settings
 

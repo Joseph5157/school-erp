@@ -1,4 +1,147 @@
 // Everclass ERP progressive enhancements. Every page works without this file.
+
+// Usage measurement (ADR 0027, Option B3). Off unless the server put data-erp-usage="1" on <body>,
+// which it does only when measurement is switched on (after written school approval) and the page
+// request carried no Sec-GPC header. Nothing is queued or sent while the browser's Global Privacy
+// Control is on. An event is a workflow and step name from fixed lists plus coarse buckets; it never
+// carries a name, ID, value, URL, search term or time of day. Events wait in page memory only (at
+// most 20, the oldest dropped first) and are sent when the page is hidden, every 30 seconds, or
+// right after a successful save, so a failure seen offline is sent once the connection is proven
+// back. A failed send keeps its events in memory for the next moment; closing the page loses them.
+// Nothing is written to browser storage, and nothing here ever retries or queues a save.
+var erpUsage = (function () {
+  "use strict";
+  var page = document.body;
+  var MAX_EVENTS = 20;
+  var enabled = !!page && page.getAttribute("data-erp-usage") === "1" && !!window.fetch;
+  var queue = [];
+  var sending = false;
+  var BUCKETS = [[5, "<5s"], [15, "5-15s"], [60, "15-60s"], [180, "1-3m"], [600, "3-10m"], [1800, "10-30m"]];
+
+  function gpc() {
+    return navigator.globalPrivacyControl === true;
+  }
+  function on() {
+    return enabled && !gpc();
+  }
+  function route() {
+    return enabled ? page.getAttribute("data-erp-route") || "" : "";
+  }
+  // Coarse device dimensions (OD-B11), matching the CSS breakpoints. The user agent is read here
+  // only to tell Android from iOS; it is never sent.
+  function device() {
+    if (window.matchMedia("(min-width: 992px)").matches) return "desktop";
+    return window.matchMedia("(min-width: 576px)").matches ? "tablet" : "phone";
+  }
+  function display() {
+    return window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true ? "installed" : "browser";
+  }
+  function platform() {
+    var agent = navigator.userAgent || "";
+    if (/Android/i.test(agent)) return "android";
+    if (/iPhone|iPad|iPod/.test(agent) || (/Macintosh/.test(agent) && navigator.maxTouchPoints > 1)) return "ios";
+    return "other";
+  }
+  function header() {
+    return "device=" + device() + ";display=" + display() + ";platform=" + platform();
+  }
+  // Time since a performance.now() reading, as a bucket only (0 means since the page was requested).
+  function since(started) {
+    var seconds = (window.performance.now() - started) / 1000;
+    for (var i = 0; i < BUCKETS.length; i++) if (seconds < BUCKETS[i][0]) return BUCKETS[i][1];
+    return ">30m";
+  }
+  // Each event keeps the device dimensions of the moment it happened (a phone turned sideways, or a
+  // resized window, must not relabel events queued before), and one send carries one set of them.
+  function add(workflow, step, duration, size) {
+    if (!on()) return;
+    var event = { w: workflow, s: step };
+    if (duration) event.b = duration;
+    if (size) event.z = size;
+    queue.push({ e: event, d: device(), x: display(), p: platform() });
+    while (queue.length > MAX_EVENTS) queue.shift();
+  }
+  function requeue(batch) {
+    queue = batch.concat(queue);
+    while (queue.length > MAX_EVENTS) queue.shift();
+  }
+  function token() {
+    var input = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    return input ? input.value : "";
+  }
+  function flush() {
+    if (!enabled || sending || !queue.length) return;
+    if (gpc()) { queue = []; return; }
+    var first = queue[0];
+    var batch = queue.filter(function (item) { return item.d === first.d && item.x === first.x && item.p === first.p; });
+    queue = queue.filter(function (item) { return batch.indexOf(item) === -1; });
+    sending = true;
+    fetch(page.getAttribute("data-erp-usage-url"), {
+      method: "POST",
+      credentials: "same-origin",
+      keepalive: true,
+      headers: { "Content-Type": "application/json", "X-CSRFToken": token(), "X-Requested-With": "XMLHttpRequest" },
+      body: JSON.stringify({ d: first.d, x: first.x, p: first.p, r: route(), a: page.getAttribute("data-erp-area"), e: batch.map(function (item) { return item.e; }) }),
+    }).then(function (response) {
+      sending = false;
+      // 204 is accepted. A refused batch (400, 401, 403) would be refused again, so it is dropped.
+      if (response.status >= 500) requeue(batch);
+      else if (queue.length) flush(); // events from another device state go in their own send
+    }, function () {
+      sending = false;
+      requeue(batch); // offline: kept in memory until the next flush moment
+    });
+  }
+  if (enabled) {
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "hidden") flush();
+    });
+    window.setInterval(flush, 30000);
+  }
+  return { on: on, add: add, flush: flush, since: since, route: route, header: header };
+})();
+// End of usage measurement.
+
+// Usage events that belong to the page rather than one control (ADR 0027, B3). The device header
+// lets the server count its own save outcomes by coarse device; it is sent only when measurement is on.
+document.addEventListener("htmx:configRequest", function (event) {
+  if (erpUsage.on()) event.detail.headers["X-ERP-Client"] = erpUsage.header();
+});
+function usageHeaders(headers) {
+  if (erpUsage.on()) headers["X-ERP-Client"] = erpUsage.header();
+  return headers;
+}
+(function () {
+  if (!erpUsage.on()) return;
+  erpUsage.add("page", "viewed");
+  if (erpUsage.route() === "core:my-home") {
+    // teacher_home: requested, then fully loaded; the time is from the request, in page memory only.
+    erpUsage.add("teacher_home", "started");
+    window.addEventListener("load", function () {
+      var took = erpUsage.since(0);
+      erpUsage.add("teacher_home", "completed", took);
+    });
+  }
+  if (erpUsage.route() === "core:report-missing-attendance") {
+    // missing_attendance_act: the report is shown, then a Take register or Review class teacher
+    // link is followed. Counted once per page view; the event goes out when the page is hidden.
+    var started = window.performance.now();
+    var acted = false;
+    erpUsage.add("missing_attendance_act", "started");
+    document.addEventListener("click", function (event) {
+      if (acted || !event.target.closest || !event.target.closest("[data-erp-usage-act]")) return;
+      acted = true;
+      var took = erpUsage.since(started);
+      erpUsage.add("missing_attendance_act", "completed", took);
+    });
+  }
+  // install: installed is its own outcome, never inferred from a dismissal or the prompt.
+  window.addEventListener("appinstalled", function () {
+    erpUsage.add("install", "installed");
+    erpUsage.flush();
+  });
+})();
+
 (function () {
   "use strict";
 
@@ -396,11 +539,12 @@
         body.append("enrollment", row.getAttribute("data-erp-enrollment"));
       });
       syncAutosaveState();
+      erpUsage.add("attendance_capture", "attempt");
       fetch(bulkUrl, {
         method: "POST",
         body: body,
         credentials: "same-origin",
-        headers: { "X-CSRFToken": token ? token.value : "", "X-Requested-With": "XMLHttpRequest" },
+        headers: usageHeaders({ "X-CSRFToken": token ? token.value : "", "X-Requested-With": "XMLHttpRequest" }),
       })
         .then(function (response) {
           return response.json().catch(function () { return {}; }).then(function (data) {
@@ -410,6 +554,9 @@
           return { ok: false, status: 0, data: {} };
         })
         .then(function (result) {
+          if (result.status === 0) erpUsage.add("attendance_capture", "network");
+          else if (result.status >= 500) erpUsage.add("attendance_capture", "server");
+          if (result.ok) erpUsage.flush();
           marked.forEach(function (row) {
             if (row._seq !== row._bulkSeq) {
               // Changed by hand while the batch was in flight: the two requests may have
@@ -462,6 +609,7 @@
       roster.addEventListener("htmx:configRequest", function (event) {
         var row = event.detail.elt;
         row._sent = row._seq; // the change this request carries
+        erpUsage.add("attendance_capture", "attempt");
         var note = row.querySelector('input[name^="note_"]');
         var chosen = row.querySelector('input[type="radio"]:checked');
         if (note && chosen && chosen.value === "PRESENT" && note.value) {
@@ -492,8 +640,14 @@
             ? "Saved " + nameOf(row) + "."
             : "Could not save " + nameOf(row) + ". Use Retry or Save draft.";
         }
+        var code = event.detail.xhr ? event.detail.xhr.status : 0;
+        // Usage (ADR 0027): failures only the browser can see; the server counts its own replies.
+        if (ok && row._retrying) erpUsage.add("attendance_capture", "retry_succeeded");
+        if (code >= 500) erpUsage.add("attendance_capture", "server");
+        row._retrying = false;
+        if (ok) erpUsage.flush();
         if (!ok) {
-          var status = event.detail.xhr ? event.detail.xhr.status : 0;
+          var status = code;
           // 409 and 422 responses carry their own message and are already swapped in.
           if (status === 401) {
             showFailure(row, "Not saved: you have been signed out.");
@@ -524,9 +678,18 @@
         });
       }
 
+      // Usage: an observed network failure (not a request cut short by leaving the page).
+      roster.addEventListener("htmx:sendError", function () {
+        erpUsage.add("attendance_capture", "network");
+      });
+
       roster.addEventListener("click", function (event) {
         var retry = event.target.closest("[data-erp-retry]");
-        if (retry) window.htmx.trigger(retry.closest("[data-erp-row]"), "change");
+        if (!retry) return;
+        var row = retry.closest("[data-erp-row]");
+        row._retrying = true;
+        erpUsage.add("attendance_capture", "retry_tapped");
+        window.htmx.trigger(row, "change");
       });
     }
 
@@ -666,6 +829,16 @@
     // The per-row bookkeeping (_seq, _sent, _dirty, swapping) is copied from the attendance
     // roster block above, so attendance stays exactly as it was (spec §4.4 allows the copy).
     if (!(window.htmx && sheet.querySelector("[hx-post]"))) return;
+    // Usage (ADR 0027, B3): marks_entry starts only when the sheet still has rows to enter (the
+    // server renders the size bucket only then); opening a complete sheet is just a page view. It
+    // completes the first time a server reply says nothing is left. Timer and size stay in memory.
+    var markSize = sheet.getAttribute("data-erp-usage-size") || "";
+    var marksStarted = null;
+    var marksDone = false;
+    if (markSize && rows.some(function (row) { return statusOf(row) === "unmarked"; })) {
+      marksStarted = window.performance.now();
+      erpUsage.add("marks_entry", "started", null, markSize);
+    }
     var form = sheet.closest("form");
     var fallback = sheet.querySelector("[data-erp-save-fallback]");
     var pageState = sheet.querySelector("[data-erp-autosave-state]");
@@ -787,6 +960,7 @@
     sheet.addEventListener("htmx:configRequest", function (event) {
       var row = event.detail.elt;
       row._sent = row._seq; // the change this request carries
+      erpUsage.add("marks_entry", "attempt");
       var p = parts(row);
       row._sentScore = p.score ? p.score.value : "";
       // Only this row travels: HTMX also adds the enclosing form, which holds every row.
@@ -841,6 +1015,22 @@
       var fragment = !!xhr && xhr.getResponseHeader("X-ERP-Row-Fragment") === "1";
       var why = row._retrying;
       row._retrying = false;
+      // Usage: failures only the browser can see (the server counts its own replies), a Retry that
+      // worked, and completion from the server's own count of rows left to enter.
+      if (fragment && code >= 200 && code < 300) {
+        if (why === "retry") erpUsage.add("marks_entry", "retry_succeeded");
+        var left = /id="erp-count-unmarked"[^>]*>(\d+)</.exec(xhr.responseText || "");
+        if (left && left[1] === "0" && !marksDone && marksStarted !== null) {
+          marksDone = true;
+          var took = erpUsage.since(marksStarted);
+          erpUsage.add("marks_entry", "completed", took, markSize);
+        }
+        erpUsage.flush();
+      } else if (code >= 500) {
+        erpUsage.add("marks_entry", "server");
+      } else if (code === 403 && !fragment) {
+        erpUsage.add("marks_entry", "csrf");
+      }
       if (code === 204) {
         setRow(row, "idle", "");
       } else if (fragment && code >= 200 && code < 300) {
@@ -884,6 +1074,8 @@
     function noConnection(event) {
       var row = event.detail.elt;
       if (!row.hasAttribute || !row.hasAttribute("data-erp-row")) return;
+      // An observed network failure: sent with a later successful flush, lost if the page closes.
+      erpUsage.add("marks_entry", "network");
       setRow(row, "retry", "Not saved: no connection.", true);
       syncPage(false);
     }
@@ -914,6 +1106,7 @@
       var row = event.target.closest("[data-erp-row]");
       if (!row) return;
       if (event.target.closest("[data-erp-retry]")) {
+        erpUsage.add("marks_entry", "retry_tapped");
         resend(row, "retry");
         return;
       }
@@ -944,6 +1137,7 @@
       form.addEventListener("submit", function (event) {
         // With autosave the whole form is never posted: that would skip the conflict check.
         event.preventDefault();
+        erpUsage.add("marks_entry", "fallback_save_used");
         if (anyDirty()) {
           resendWhenIdle = true; // wait for in-flight saves, then re-send the failed rows
           syncPage(false);
@@ -1306,6 +1500,7 @@
   var ios = /iPhone|iPad|iPod/.test(window.navigator.userAgent);
   var offered = null;
   var done = false;
+  var counted = false;
 
   function remember() {
     try { window.localStorage.setItem(KEY, String(Date.now())); } catch (error) { /* blocked */ }
@@ -1314,6 +1509,10 @@
     install.hidden = !offered;
     howto.hidden = !!offered || !ios;
     bar.hidden = done || !phone.matches || !(offered || ios);
+    if (!bar.hidden && !counted) {
+      counted = true; // once per page view (ADR 0027, B3)
+      erpUsage.add("install", "shown");
+    }
   }
 
   window.addEventListener("beforeinstallprompt", function (event) {
@@ -1338,6 +1537,7 @@
     }
   });
   dismiss.addEventListener("click", function () {
+    erpUsage.add("install", "dismissed"); // a dismissal, never counted as an installation
     remember();
     done = true;
     update();

@@ -15,7 +15,7 @@
     {% csrf_token %}
     {% include "partials/_form_error_summary.html" with form=form %}
     {% with counts=form.counts %}
-    <div class="erp-roster" data-erp-marks>
+    <div class="erp-roster" data-erp-marks{% if usage_size %} data-erp-usage-size="{{ usage_size }}"{% endif %}>
         <p class="erp-count-line" data-erp-static-counts>All {{ counts.all }} · Not entered {{ counts.unmarked }} · Marked {{ counts.marked }} · Absent {{ counts.absent }}</p>
         <div class="erp-count-tabs" data-erp-tabs hidden>
             <button type="button" data-erp-filter="all" aria-pressed="true">All <span id="erp-count-all" data-erp-count="all">{{ counts.all }}</span></button>

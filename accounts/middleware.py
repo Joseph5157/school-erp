@@ -120,6 +120,23 @@ def _record_expiry(request, area, reason):
         usage.record(request, area=area, workflow="session", step="expired_unsaved")
 
 
+def _view_name(path):
+    """The route name for a path, or "" (the middleware runs before URL resolution)."""
+    if not usage.enabled():
+        return ""
+    try:
+        return resolve(path).view_name
+    except Resolver404:
+        return ""
+
+
+def _record_signed_out(request, view_name):
+    """ADR 0027 (B3): a 401 answering a background save on an autosave route is counted for that
+    route (marks or attendance), never for a person. Swallowed by usage.record() on failure."""
+    if view_name:
+        usage.record_signed_out(request, view_name)
+
+
 class AccountSecurityMiddleware:
     """Session limits and forced password change, checked on every request.
 
@@ -151,6 +168,7 @@ class AccountSecurityMiddleware:
                 logout(request)
                 _record_expiry(request, area, reason)
                 if is_background_request(request):
+                    _record_signed_out(request, _view_name(request.path_info))
                     return signed_out_reply(reason)
                 return expired_redirect(request, reason)
             request.session[STARTED_KEY] = started
@@ -171,6 +189,8 @@ class AccountSecurityMiddleware:
         # Signed out without an expiry (another tab, cleared cookie): a guarded view sends the
         # browser to sign in. A background request gets 401 instead (Option B §4.7, part 2).
         if is_background_request(request) and _redirects_to_login(response):
+            match = getattr(request, "resolver_match", None)
+            _record_signed_out(request, match.view_name if match is not None else "")
             return signed_out_reply(None)
         return response
 

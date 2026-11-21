@@ -61,10 +61,10 @@
                         Past day: office to take{% if row.teacher %} (class teacher: {% if perms.accounts.manage_teacher_accounts and row.teacher_linkable %}<a href="{% url 'core:teacher-detail' row.teacher.pk %}">{{ teacher_name }}</a>{% else %}{{ teacher_name }}{% endif %}){% endif %}
                         {% endif %}
                         {% if perms.core.view_sectionclassteacher %}{% for year in row.review_years %}
-                        &middot; <a class="text-nowrap" href="{% url 'core:academic-year-class-teachers' year.id %}">Review class teacher{% if year.name %} ({{ year.name }}){% endif %}<span class="visually-hidden"> for {{ row.section }} on {{ row.date|date:"j M Y" }}</span></a>
+                        &middot; <a class="text-nowrap" href="{% url 'core:academic-year-class-teachers' year.id %}" data-erp-usage-act>Review class teacher{% if year.name %} ({{ year.name }}){% endif %}<span class="visually-hidden"> for {{ row.section }} on {{ row.date|date:"j M Y" }}</span></a>
                         {% endfor %}{% endif %}
                         {% if not row.register and row.can_take and perms.core.add_attendanceregister %}
-                        &middot; <a class="text-nowrap" href="{{ row.take_url }}">Take register<span class="visually-hidden"> for {{ row.section }} on {{ row.date|date:"j M Y" }}</span></a>
+                        &middot; <a class="text-nowrap" href="{{ row.take_url }}" data-erp-usage-act>Take register<span class="visually-hidden"> for {{ row.section }} on {{ row.date|date:"j M Y" }}</span></a>
                         {% endif %}
                     </p>
                 </td>

@@ -25,6 +25,10 @@ class LoginView(auth_views.LoginView):
 
     redirect_authenticated_user = True
 
+    # Sign-in page views (public GETs) are deliberately not counted (ADR 0027, B3 decision):
+    # bots can generate them, they would make one hot counter row, and the sign-in attempt
+    # signals below (completed, failed, throttled) already feed every approved login trigger.
+
     def form_valid(self, form):
         # The expiry marker survives login() (it only cycles an anonymous session's key) and is
         # removed after every successful sign-in, whatever its age. ?expired= is never trusted.
@@ -36,6 +40,12 @@ class LoginView(auth_views.LoginView):
             if relogin:
                 usage.record(self.request, area=area, workflow="session",
                              step="relogin_after_expiry")
+        if area == "guardian":
+            # guardian_first_view starts here and ends at the first child, attendance or report
+            # page (core.portal_views). The timer is epoch seconds only, in the new session.
+            usage.record(self.request, area="guardian", workflow="guardian_first_view",
+                         step="started")
+            usage.start_timer(self.request, usage.GUARDIAN_TIMER)
         return response
 
     def form_invalid(self, form):

@@ -1,6 +1,7 @@
 from django.urls import reverse
 
 from core import models as core_models
+from core import usage
 from core.academic_years import (
     current_academic_year,
     is_year_scoped_page,
@@ -117,6 +118,8 @@ def roles(request):
         "brand_logo": _brand_logo(user, school),
         "school_name": (school.name if school is not None else "") if in_header_area else "",
         "current_year_name": (year.name if year is not None else "") if in_header_area else "",
+        # ADR 0027 (Option B3): <body> data for the usage queue; None when off or under GPC.
+        "usage_body": usage.body_attributes(request, area),
         **selector,
         **_guardian_shell(user, area, url_name),
     }

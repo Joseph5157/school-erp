@@ -43,6 +43,7 @@ from core import (
     setup_checklist,
     teacher_accounts,
     timetable,
+    usage,
 )
 from core.academic_years import current_academic_year
 from core.authorization import (
@@ -1541,6 +1542,15 @@ def my_attendance(request, section_pk):
         "register": register,
         "is_instructional": year.is_instructional_day(today),
     }
+    if (register is None or not register.is_submitted) and usage.active(request) \
+            and usage.ATTENDANCE_TIMER not in request.session:
+        # attendance_capture starts at the first view of today's draft or unopened register in
+        # this session (ADR 0027, B3). The timer is a bare number; two Sections share it.
+        roster_of = register or AttendanceRegister(
+            academic_year=year, class_grade=section.class_grade, section=section, date=today)
+        usage.record(request, area="teacher", workflow="attendance_capture", step="started",
+                     size_bucket=usage.size_bucket(roster_of.eligible_enrollments().count()))
+        usage.start_timer(request, usage.ATTENDANCE_TIMER)
     if register is not None and register.is_submitted:
         context["entries"] = register.entries.select_related(
             "academic_enrollment__student"
@@ -1629,6 +1639,13 @@ def my_attendance_submit(request, section_pk):
             messages.error(request, f"Attendance was not submitted. {error.messages[0]}")
         else:
             messages.success(request, "Attendance saved and submitted.")
+            if usage.active(request):
+                age = usage.take_timer(request, usage.ATTENDANCE_TIMER)
+                usage.record(
+                    request, area="teacher", workflow="attendance_capture", step="completed",
+                    duration_bucket=usage.duration_bucket(age) if age is not None else "",
+                    size_bucket=usage.size_bucket(register.entries.count()),
+                )
         return redirect(attendance_url)
     if register.is_submitted:
         return redirect(attendance_url)
@@ -1657,18 +1674,21 @@ def my_attendance_autosave(request, section_pk):
     section = get_object_or_404(Section, pk=section_pk)
     today = business_today()
     register = AttendanceRegister.objects.filter(section=section, date=today).first()
-    _attendance_year(request.user, section, today, register)
+    _attendance_year_or_count(request, section, today, register)
     if register is None:
         raise Http404("No register for today.")
 
-    def reply(state, enrollment, message, status):
+    def reply(state, enrollment, message, status, outcome=None):
         context = {"state": state, "enrollment": enrollment, "message": message}
         if state == "saved":
             context["counts"] = AttendanceCaptureForm(register=register).counts()
-        return render(request, "core/_attendance_autosave_status.html", context, status=status)
+        response = render(request, "core/_attendance_autosave_status.html", context,
+                          status=status)
+        _attendance_outcome(request, outcome)  # after the save's own transaction has closed
+        return response
 
     if register.is_submitted:
-        return reply("error", None, _SUBMITTED_MESSAGE, 409)
+        return reply("error", None, _SUBMITTED_MESSAGE, 409, "closed")
     roster = AttendanceCaptureForm(register=register)
     enrollment = next(
         (e for e in roster.enrollments if str(e.pk) == request.POST.get("enrollment")), None
@@ -1682,14 +1702,29 @@ def my_attendance_autosave(request, section_pk):
     form = AttendanceCaptureForm(row_data, register=register)
     if not form.is_valid():
         errors = [message for field_errors in form.errors.values() for message in field_errors]
-        return reply("error", enrollment, errors[0], 422)
+        return reply("error", enrollment, errors[0], 422, "invalid")
     try:
         with transaction.atomic():
             for row, status, note in form.statuses():
                 register.save_draft_entry(enrollment=row, status=status, absence_note=note)
     except ValidationError as error:
         return reply("error", enrollment, error.messages[0], 409)
-    return reply("saved", enrollment, "Saved", 200)
+    return reply("saved", enrollment, "Saved", 200, "saved")
+
+
+def _attendance_outcome(request, step):
+    """A server-seen attendance save outcome (ADR 0027, B3): one event per request, no person."""
+    if step:
+        usage.record(request, area="teacher", workflow="attendance_capture", step=step)
+
+
+def _attendance_year_or_count(request, section, today, register):
+    """_attendance_year for the autosave endpoints; a refusal is counted as `forbidden`."""
+    try:
+        return _attendance_year(request.user, section, today, register)
+    except PermissionDenied:
+        _attendance_outcome(request, "forbidden")
+        raise
 
 
 @teacher_required
@@ -1706,10 +1741,11 @@ def my_attendance_autosave_present(request, section_pk):
     section = get_object_or_404(Section, pk=section_pk)
     today = business_today()
     register = AttendanceRegister.objects.filter(section=section, date=today).first()
-    _attendance_year(request.user, section, today, register)
+    _attendance_year_or_count(request, section, today, register)
     if register is None:
         raise Http404("No register for today.")
     if register.is_submitted:
+        _attendance_outcome(request, "closed")
         return JsonResponse({"error": _SUBMITTED_MESSAGE}, status=409)
     wanted = list(dict.fromkeys(request.POST.getlist("enrollment")))
     if not wanted:
@@ -1726,6 +1762,7 @@ def my_attendance_autosave_present(request, section_pk):
     form = AttendanceCaptureForm(data, register=register)
     if not form.is_valid():
         errors = [message for field_errors in form.errors.values() for message in field_errors]
+        _attendance_outcome(request, "invalid")
         return JsonResponse({"error": errors[0]}, status=422)
     try:
         with transaction.atomic():
@@ -1733,6 +1770,7 @@ def my_attendance_autosave_present(request, section_pk):
                 register.save_draft_entry(enrollment=row, status=status, absence_note=note)
     except ValidationError as error:
         return JsonResponse({"error": error.messages[0]}, status=409)
+    _attendance_outcome(request, "saved")  # one event per request, like the one attempt it was
     return JsonResponse({"saved": [by_pk[pk].pk for pk in wanted]})
 
 
@@ -2224,6 +2262,11 @@ def assessment_marks_entry(request, pk):
     context["form"] = form
     if form is not None:
         context["autosave_url"] = reverse("core:assessment-marks-autosave", args=[assessment.pk])
+        if usage.active(request) and form.counts()["unmarked"] > 0:
+            # marks_entry runs its timer in page memory; the page reports its start and
+            # completion with this bucket, never the roster size (ADR 0027, B3). Only a sheet
+            # with work left starts the workflow: opening a complete sheet is a page view.
+            context["usage_size"] = usage.size_bucket(len(form.enrollments))
     return render(request, "core/assessment_marks_entry.html", context)
 
 
@@ -2236,9 +2279,15 @@ _MARKS_OFF_ROSTER = "Not on this assessment's roster."
 class _RowRefused(Exception):
     """Inside the autosave transaction: roll back and send this row reply instead."""
 
-    def __init__(self, status, message, server=None):
+    def __init__(self, status, message, server=None, outcome=None):
         super().__init__(message)
         self.status, self.message, self.server = status, message, server
+        self.outcome = outcome
+
+
+def _marks_refusal_outcome(status):
+    """The usage step for a refusal by _marks_entry_problem (ADR 0027, B3)."""
+    return "forbidden" if status == 403 else "closed"
 
 
 def _marks_counts(assessment):
@@ -2290,7 +2339,8 @@ def assessment_marks_autosave(request, pk):
         return HttpResponse("Autosave needs HTMX; use the Save draft button.", status=400)
     assessment = get_object_or_404(_assessments(), pk=pk)
 
-    def reply(status, *, state="error", message="", enrollment=None, server=None, mine=None):
+    def reply(status, *, state="error", message="", enrollment=None, server=None, mine=None,
+              outcome=None):
         context = {"state": state, "message": message, "enrollment": enrollment}
         if state == "saved":
             context["counts"] = _marks_counts(assessment)
@@ -2300,12 +2350,15 @@ def assessment_marks_autosave(request, pk):
             context["mine_status"], context["mine_score"] = plain_result_value(mine)
         response = render(request, "core/_marks_autosave_status.html", context, status=status)
         response["X-ERP-Row-Fragment"] = "1"
+        if outcome:
+            # ADR 0027 (B3): the server-seen outcome, after the save's transaction has closed.
+            usage.record(request, area="teacher", workflow="marks_entry", step=outcome)
         return response
 
     # Pre-checks: cheap refusals before any lock or write. Nothing is read from results yet.
     problem = _marks_entry_problem(request.user, assessment)
     if problem:
-        return reply(problem[0], message=problem[1])
+        return reply(problem[0], message=problem[1], outcome=_marks_refusal_outcome(problem[0]))
     row_data = {name: request.POST.get(name, "") for name in (f"status_{raw_pk}", f"score_{raw_pk}")}
     form = ResultEntryForm(row_data, assessment=assessment)
     enrollment = next((e for e in form.enrollments if str(e.pk) == raw_pk), None)
@@ -2313,7 +2366,7 @@ def assessment_marks_autosave(request, pk):
         return reply(404, message=_MARKS_OFF_ROSTER)
     if not form.is_valid():
         errors = [message for field_errors in form.errors.values() for message in field_errors]
-        return reply(422, message=errors[0], enrollment=enrollment)
+        return reply(422, message=errors[0], enrollment=enrollment, outcome="invalid")
     status = form.cleaned_data[form.status_name(enrollment)]
     if not status:
         return HttpResponse(status=204)  # blank and blank: nothing to save
@@ -2326,7 +2379,7 @@ def assessment_marks_autosave(request, pk):
                 fields=["status", "assessment_date", "maximum_marks", "offering", "section"])
             problem = _marks_entry_problem(request.user, assessment)
             if problem:
-                raise _RowRefused(*problem)
+                raise _RowRefused(*problem, outcome=_marks_refusal_outcome(problem[0]))
             if not assessment.roster().filter(pk=enrollment.pk).exists():
                 raise _RowRefused(404, _MARKS_OFF_ROSTER)
             current = (
@@ -2352,16 +2405,18 @@ def assessment_marks_autosave(request, pk):
                             actor=request.user,
                         )
                 except IntegrityError:
+                    # A concurrent first save for this row won: a conflict (spec 4.5).
                     raise _RowRefused(409, "This Student already has a result for this "
-                                           "assessment.") from None
+                                           "assessment.", outcome="conflict") from None
                 except ValidationError as error:
                     raise _RowRefused(409, error.messages[0]) from None
     except _RowRefused as refused:
         if refused.server is not None:
             return reply(409, state="conflict", enrollment=enrollment, server=refused.server,
-                         mine=wanted)
-        return reply(refused.status, message=refused.message, enrollment=enrollment)
-    return reply(200, state="saved", enrollment=enrollment, server=wanted)
+                         mine=wanted, outcome="conflict")
+        return reply(refused.status, message=refused.message, enrollment=enrollment,
+                     outcome=refused.outcome)
+    return reply(200, state="saved", enrollment=enrollment, server=wanted, outcome="saved")
 
 
 @administrator_required("core.change_assessment")
@@ -4250,6 +4305,8 @@ def _student_chips(request, chip, include_absent=True, sort_param="", include_no
 @administrator_required("core.view_student")
 def student_list(request):
     query = request.GET.get("q", "").strip()
+    if query:
+        _start_find_student(request)  # only that a search was made; the term is never kept
     status = parse_choice(request, "status", Student.Status.choices)
     chip = parse_choice(request, "chip", STUDENT_CHIP_CHOICES)
     current_year = _current_academic_year(business_today())
@@ -4403,9 +4460,32 @@ def profile_sections(*candidates):
     }
 
 
+def _start_find_student(request):
+    """find_student starts with a search (ADR 0027, B3). Refining a search that is still running
+    (under 10 minutes) is the same find: it keeps one start and its first timer."""
+    if not usage.active(request):
+        return
+    age = usage.timer_age(request, usage.FIND_TIMER)
+    if age is not None and age <= usage.FIND_WINDOW_SECONDS:
+        return
+    usage.record(request, area="admin", workflow="find_student", step="started")
+    usage.start_timer(request, usage.FIND_TIMER)
+
+
+def _complete_find_student(request):
+    """Opening a student within 10 minutes of a search completes find_student."""
+    if usage.FIND_TIMER not in request.session:
+        return
+    age = usage.take_timer(request, usage.FIND_TIMER, max_age=usage.FIND_WINDOW_SECONDS)
+    if age is not None:
+        usage.record(request, area="admin", workflow="find_student", step="completed",
+                     duration_bucket=usage.duration_bucket(age))
+
+
 @administrator_required("core.view_student")
 def student_detail(request, pk):
     student = get_object_or_404(Student, pk=pk)
+    _complete_find_student(request)
     # Guardians and attendance are their own classes of data (Security Gate 4B).
     can_see_guardians = request.user.has_perm(data_access.GUARDIAN)
     can_see_attendance = request.user.has_perm(data_access.ATTENDANCE_ENTRY)
