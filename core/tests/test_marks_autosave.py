@@ -3,7 +3,7 @@
 import re
 import threading
 import time
-from datetime import timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 from pathlib import Path
 from unittest import mock, skipUnless
@@ -20,6 +20,7 @@ from core import guardian_accounts as ga
 from core.forms import ResultEntryForm
 from core.models import (
     TEACHERS_GROUP_NAME,
+    AcademicEnrollment,
     Assessment,
     Guardian,
     GuardianAccount,
@@ -271,6 +272,85 @@ class AutosaveConflictTests(AutosaveFixture, TestCase):
         }, follow=True)
         self.assertContains(response, "Marks saved as draft.")
         self.assertEqual(self.saved(self.asha), ("MARKED", Decimal("5")))
+
+
+class AutosaveIdempotentRetryTests(AutosaveFixture, TestCase):
+    """A save whose reply was lost, then Retry with the old base: Saved, never a self-conflict.
+
+    Order under the lock: refusals (assignment, DRAFT, date, roster) first, then "stored value
+    equals the request" (Saved, no write), then the base check (conflict), then the save.
+    """
+
+    def writes(self, queries):
+        return [q["sql"] for q in queries.captured_queries
+                if q["sql"].startswith(("INSERT", "UPDATE", "DELETE")) and "core_studentresult" in q["sql"]]
+
+    def test_retry_with_the_old_base_after_a_lost_reply_is_saved(self):
+        self.assertEqual(self.post_row(self.asha, "MARKED", "12").status_code, 200)  # reply "lost"
+        retry = self.post_row(self.asha, "MARKED", "12")                            # same old base
+        self.assertEqual(retry.status_code, 200)
+        self.assertContains(retry, "Saved")
+        self.assertNotContains(retry, "data-erp-conflict")
+        self.assertIn(f'name="base_score_{self.asha.pk}" value="12"', retry.content.decode())
+        self.assertEqual(self.saved(self.asha), ("MARKED", Decimal("12")))
+
+    def test_the_same_score_written_differently_is_the_same_value(self):
+        self.assertEqual(self.post_row(self.asha, "MARKED", "12.5").status_code, 200)
+        retry = self.post_row(self.asha, "MARKED", "12.50")
+        self.assertEqual(retry.status_code, 200)
+        self.assertNotContains(retry, "data-erp-conflict")
+        self.assertIn(f'name="base_score_{self.asha.pk}" value="12.5"', retry.content.decode())
+
+    def test_absent_retried_is_saved_too(self):
+        self.result(self.test1, self.asha, "MARKED", "18")
+        self.assertEqual(self.post_row(self.asha, "ABSENT", "", "MARKED", "18").status_code, 200)
+        retry = self.post_row(self.asha, "ABSENT", "", "MARKED", "18")
+        self.assertEqual(retry.status_code, 200)
+        self.assertEqual(self.saved(self.asha), ("ABSENT", None))
+
+    def test_the_idempotent_retry_writes_nothing(self):
+        self.post_row(self.asha, "MARKED", "12")
+        before = StudentResult.objects.get()
+        with CaptureQueriesContext(connection) as queries:
+            self.assertEqual(self.post_row(self.asha, "MARKED", "12.00").status_code, 200)
+        self.assertEqual(self.writes(queries), [])
+        after = StudentResult.objects.get()
+        self.assertEqual((after.updated_at, after.entered_by_id), (before.updated_at, before.entered_by_id))
+        self.assertFalse(ResultCorrection.objects.exists())
+
+    def test_a_genuinely_different_stored_value_is_still_a_conflict(self):
+        self.result(self.test1, self.asha, "MARKED", "18")
+        response = self.post_row(self.asha, "MARKED", "12")  # old empty base, different value
+        self.assertEqual(response.status_code, 409)
+        self.assertContains(response, 'data-server-score="18"', status_code=409)
+        self.assertEqual(self.saved(self.asha), ("MARKED", Decimal("18")))
+
+    def test_a_finalized_assessment_is_refused_before_the_equality_check(self):
+        self.post_row(self.asha, "MARKED", "12")
+        self.force_finalize(self.test1)
+        response = self.post_row(self.asha, "MARKED", "12")
+        self.assertEqual(response.status_code, 409)
+        self.assertContains(response, FINALIZED, status_code=409)
+
+    def test_an_unassigned_teacher_is_refused_before_the_equality_check(self):
+        self.post_row(self.asha, "MARKED", "12")
+        response = self.post_row(self.asha, "MARKED", "12", client=self.client_for(self.iyer))
+        self.assertEqual(response.status_code, 403)
+        self.assertContains(response, NO_LONGER, status_code=403)
+
+    def test_a_reassigned_teacher_is_refused_before_the_equality_check(self):
+        self.post_row(self.asha, "MARKED", "12")
+        self.duty.end_date = MONDAY - timedelta(days=1)
+        self.duty.save(update_fields=["end_date"])
+        self.assertEqual(self.post_row(self.asha, "MARKED", "12").status_code, 403)
+
+    def test_an_enrollment_off_the_roster_is_refused_before_the_equality_check(self):
+        self.post_row(self.asha, "MARKED", "12")
+        # Backdated: the enrollment now starts after the assessment date, so it is off the roster.
+        AcademicEnrollment.objects.filter(pk=self.asha.pk).update(start_date=date(2026, 8, 1))
+        response = self.post_row(self.asha, "MARKED", "12")
+        self.assertEqual(response.status_code, 404)
+        self.assertContains(response, OFF_ROSTER, status_code=404)
 
 
 @skipUnless(connection.vendor == "postgresql", "SELECT ... FOR UPDATE only reaches PostgreSQL")

@@ -2336,9 +2336,15 @@ def assessment_marks_autosave(request, pk):
                 .first()
             )
             saved = result_value(current.status, current.score) if current else ("", None)
-            if saved != base:
+            # T5: the stored value already equals this request (a lost reply then Retry, or a
+            # replay): Saved, with no write, whatever base the request carried. Nothing differs,
+            # so nothing can be overwritten.
+            if saved == wanted:
+                pass
+            # T6: otherwise a base that no longer matches the stored value is a conflict.
+            elif saved != base:
                 raise _RowRefused(409, "conflict", server=saved)
-            if saved != wanted:
+            else:
                 try:
                     with transaction.atomic():  # an IntegrityError never aborts the outer block
                         assessment.save_draft_result(
