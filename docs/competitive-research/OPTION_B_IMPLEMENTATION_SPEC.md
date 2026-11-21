@@ -465,7 +465,7 @@ Add `usage-beacon` to `route_permissions.json` with flags `require_POST` and `ne
 | `teacher_home` | Teacher | `started`, `completed` | `my-home` requested | Page `load` event | Page memory only | — |
 | `find_student` | Admin | `started`, `completed` | GET of `student-list` with a non-empty `q` (measurement never reads the term) | GET of `student-detail` in the same session within 10 minutes | Server session key `_u_find_student` | — |
 | `missing_attendance_act` | Admin | `started`, `completed` | GET of the Missing attendance report | A "Take register" or "Review class teacher" link is followed (Option A1 links) | Page memory; sent on click | — |
-| `page` | Admin, teacher, guardian (beacon); `public` for the sign-in page (server) | `viewed` | Any HTML page | — | — | `page_route`. This is the G-04 phone inventory. |
+| `page` | Admin, teacher, guardian (beacon); the sign-in page is not recorded (revision 5) | `viewed` | Any HTML page | — | — | `page_route`. This is the G-04 phone inventory. |
 | `guardian_first_view` | Guardian | `started`, `completed` | Successful guardian sign-in | First GET of a portal child, attendance or report page | Server session key `_u_guardian` | — |
 | `guardian_report_pdf` | Guardian | `started`, `completed` | Report card page shown | PDF download response sent (server side) | Server only, no timer | — |
 | `notice_view` | Guardian | `viewed`, recorded when the notice detail is shown | — | — | — | `age_bucket` (OD-B13) |
@@ -554,7 +554,7 @@ Output goes to stdout only, as plain text or `--format csv`. No file is kept on 
 | `core/usage_views.py` (new) | B2 | Beacon view. |
 | `config/urls.py` | B2 | `usage-beacon` route. |
 | `config/settings.py` | B2 | `USAGE_MEASUREMENT_ENABLED = parse_flag(…, default False)`. |
-| `accounts/views.py`, `accounts/forms.py` | B2 | Sign-in page view, sign-in, throttle, relogin and password-change signals. |
+| `accounts/views.py`, `accounts/forms.py` | B2 | Sign-in, throttle, relogin and password-change signals (sign-in page views deferred, revision 5). |
 | `core/views.py`, `core/portal_views.py` | B3 | Workflow start and completion calls listed in 6. |
 | `templates/base.html`, `templates/portal/base.html` | B3 | `data-erp-usage`, `data-erp-route` (allow-listed name or `other`) and `data-erp-area` on `<body>` when enabled and no `Sec-GPC`. |
 | `core/management/commands/usage_report.py` (B3), `purge_usage_counters.py` (B2) (new) | B2, B3 | Report and purge. |
