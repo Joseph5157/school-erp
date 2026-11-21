@@ -8,6 +8,7 @@ browsers and does not keep a session alive, and the sign-in and session signals 
 
 import json
 import logging
+import re
 import time
 from datetime import date, timedelta
 from io import StringIO
@@ -283,6 +284,16 @@ class PurgeTests(TestCase):
         self.assertEqual(sorted(UsageCounter.objects.values_list("day", flat=True)),
                          [TODAY - timedelta(days=179), TODAY])
 
+    def test_window_is_exactly_180_days_including_today(self):
+        for back in range(0, 182):
+            self.make(TODAY - timedelta(days=back))
+        self.run_purge()
+        days = set(UsageCounter.objects.values_list("day", flat=True))
+        self.assertEqual(len(days), 180)
+        self.assertEqual(min(days), TODAY - timedelta(days=179))
+        self.assertEqual(max(days), TODAY)
+        self.assertEqual(usage.cutoff(TODAY), TODAY - timedelta(days=180))
+
     def test_second_run_deletes_nothing_and_prints_only_a_number(self):
         self.make(TODAY - timedelta(days=200))
         self.run_purge()
@@ -309,6 +320,28 @@ class ReportTests(TestCase):
     def test_no_warning_when_rows_are_in_range(self):
         UsageCounter.objects.create(day=TODAY, area="admin", workflow="sign_in", step="completed")
         self.assertNotIn("older than", self.report())
+
+    def test_no_total_or_subtotal_can_reveal_a_hidden_cell(self):
+        """Complementary suppression: the foundation prints no totals or subtotals at all.
+
+        One weekly cell is 3 (shown <5) next to large cells in the same week and workflow. With
+        no total, subtotal or per-area split printed, no subtraction can recover the 3. B3 must
+        add complementary suppression before it prints any total (spec 6.1).
+        """
+        monday = TODAY - timedelta(days=TODAY.weekday())
+        for step, count in (("completed", 40), ("failed", 3), ("throttled", 12)):
+            UsageCounter.objects.create(day=monday, area="public" if step != "completed"
+                                        else "admin", workflow="sign_in", step=step, count=count)
+        UsageCounter.objects.create(day=monday, area="teacher", workflow="sign_in",
+                                    step="completed", count=9)
+        out = self.report("--weeks", "1")
+        self.assertNotRegex(out.lower(), r"total|sum|all steps")
+        data = [line.split() for line in out.splitlines() if line.startswith("  ")]
+        self.assertEqual(sorted(data), [["sign_in", "completed", "49"],
+                                        ["sign_in", "failed", "<5"],
+                                        ["sign_in", "throttled", "12"]])
+        printed = [int(c) for _, _, c in data if c.isdigit()]
+        self.assertNotIn(sum(printed) + 3, [int(n) for n in re.findall(r"\d+", out)])
 
     def test_small_cells_are_hidden_after_filtering_and_weekly_grouping(self):
         monday = TODAY - timedelta(days=TODAY.weekday())

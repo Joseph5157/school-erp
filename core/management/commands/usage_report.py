@@ -5,6 +5,9 @@ server shell, is the only way to read them (OD-B8). Counts are grouped by ISO we
 under 5 is printed as "<5" after every filter and grouping (OD-B12). Output goes to stdout only.
 
 B3 extends this report with the workflow sections, ratios and CSV output of spec section 6.1.
+This foundation deliberately prints no totals or subtotals, so no hidden cell can be recovered by
+subtraction. Any total added later must first apply complementary suppression (spec 6.1): hide a
+second contributing cell, or omit the total.
 """
 
 from collections import defaultdict
