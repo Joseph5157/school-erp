@@ -2,7 +2,7 @@
 
 Status: **Proposed**, 2026-11-22. The product owner chose the options below on 2026-11-22. See
 [JAVASCRIPT_TESTING_IMPLEMENTATION_SPEC.md](../engineering/JAVASCRIPT_TESTING_IMPLEMENTATION_SPEC.md),
-revision r2, section 13.0.
+revision r3, section 13.0.
 
 This ADR stays Proposed until the spike in that spec (section 7.1) passes. The harness
 implementation PR (JS1) then records the spike evidence here, moves the status to Accepted, adds
@@ -129,9 +129,10 @@ and requirements rules.
 
 **Both:**
 
-- One more parallel, path-aware CI job (`js`), targeting under 90 seconds for a cached draft run.
-- Whether the job joins the documented "PR verified" rule is an open point for the product owner
-  (spec section 9).
+- One more parallel, path-aware CI job (`js`), targeting under 90 seconds for a cached draft run
+  (Option 2: 2 minutes).
+- When the job applies to a PR, the PR is verified only when it passes on the exact approved head;
+  a skipped job is not required, and pushes to `main` always run it (OD-JS7).
 
 ## Security and privacy
 
@@ -146,7 +147,9 @@ and requirements rules.
   0027 allow-list rather than relaxing it.
 - **Test output.** No test logs request bodies on success. A failing test saves a Playwright trace
   and screenshot, which CI uploads only when the job fails and keeps for 7 days. They show only the
-  synthetic fixture page and its intercepted requests.
+  synthetic fixture page and its intercepted requests. The artifacts are visible only to people
+  who can read the repository. The later live-server journeys must not reuse this capture
+  unchanged, because it would record session cookies and seeded data. They need their own rule.
 
 ## CI and Railway consequences
 
@@ -155,9 +158,9 @@ and requirements rules.
   or CI configuration change. It always runs on pushes to `main`. Docs-only PRs stay skipped.
 - `core/tests/test_ci_policy.py` and a new boundary test, both in the draft-safety set, guard
   against quiet removal or skipping. They check the job's existence and command, the minimum test
-  count per file, and that no skip or `.only` appears without an issue link.
-- `IMPLEMENTATION_WORKFLOW.md`, `DEFINITION_OF_DONE.md` and `AGENTS.md` change only if the product
-  owner confirms the job joins the "PR verified" rule.
+  count per file, and that no skip or expected-failure marker appears in `browser_tests/` at all.
+- `AGENTS.md`, `IMPLEMENTATION_WORKFLOW.md`, `DEFINITION_OF_DONE.md` and the PR template carry
+  that rule, worded to apply from JS1 onward.
 - Railway is unchanged. Railpack installs `requirements.txt` only, and under Option 2 no root
   `package.json` exists. The first staging build after the implementation merges is checked for a
   Python-only provider and no extra install step.

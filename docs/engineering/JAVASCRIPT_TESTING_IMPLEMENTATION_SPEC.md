@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | Status | **Approved by the product owner on 2026-11-22**, with the decisions recorded in section 13. Implementation is conditional on the JS1 spike (section 7.1). |
-| Revision | r2, 2026-11-22. Product-owner decisions OD-JS1 to OD-JS15 recorded, plus six corrections: the toolchain wording, fixture fidelity, one browser per job, a path-aware CI job, source-string tests as temporary, and ADR acceptance only after the spike. r1 added Option 5 after independent review. r0 recommended `node:test` + jsdom. Section 19 lists the review and the r2 changes. |
+| Revision | r3 (with review fixes), 2026-11-22. OD-JS7 merge-gate rule approved and applied to AGENTS.md, IMPLEMENTATION_WORKFLOW.md, DEFINITION_OF_DONE.md and the PR template in the docs PR. A1 is no longer merged as an expected failure: JS2 records F-JS1 as a confirmed uncovered defect, and JS3 adds the regression test, shows it failing, fixes the bug and leaves it passing. r3 also applies the fixes from the second independent review (section 19.2). r2: product-owner decisions OD-JS1 to OD-JS15 recorded, plus six corrections: the toolchain wording, fixture fidelity, one browser per job, a path-aware CI job, source-string tests as temporary, and ADR acceptance only after the spike. r1 added Option 5 after independent review. r0 recommended `node:test` + jsdom. Section 19 lists both independent reviews and the owner's r2 changes. |
 | Baseline | `origin/main` at `d7d309067ea099edf03562167e317d04ccdb428c` (ENG-CI-01, #286) |
 | Risk tier | High. The later implementation changes the repository's testing stack and guards marks autosave, attendance autosave, sessions and privacy measurement. |
 | ADR | [0028 Behavioural tests for JavaScript](../adr/0028-javascript-behaviour-testing.md), **Proposed**. It stays Proposed until the spike passes, and is accepted in the JS1 PR using the spike evidence. The ADR index and the `ARCHITECTURE.md` note are updated in that PR. |
@@ -392,13 +392,13 @@ on 2026-11-22 (OD-JS1 A).
   npm optional-dependency trap or Railpack detection question. Playwright's internal driver is a
   detail of the pip package, not a Node stack the repository maintains.
 
+- **Vitest adds the least.** Under the per-test-page constraint its jsdom environment and timers do
+  not apply. What remains is ergonomics, bought with a Vite peer and native binaries.
+
 **What these tests are not.** They run the real `erp.js` and real HTMX against representative,
 hand-written DOM fixtures. They do not render Django templates, so they are not full-page,
 template or visual-regression tests. Template drift is caught by the fixture contract
 (section 7.5). Rendering and permissions stay with Django tests.
-- **Vitest adds the least.** Under the per-test-page constraint its jsdom environment and timers do
-  not apply. What remains is ergonomics, bought with a Vite peer and native binaries.
-
 **When Option 2 is better.** If the spike shows the browser install or runtime breaks the CI budget,
 or that holding routes is unreliable, Option 2 is the fallback. Its harness is fully specified in
 section 7.3. Option 2 is faster and has no browser download, but gives lower fidelity and still
@@ -462,8 +462,12 @@ The spike **passes only if** it shows all of the following (product-owner condit
 4. **Page-hide flush, GPC and storage.** `erp.js` does not use `navigator.sendBeacon`. Its usage
    flush is a `fetch` with `keepalive: true` sent when the page becomes hidden (`erp.js:79-82`,
    `:96-98`). The spike must show that this request is intercepted on `visibilitychange` to
-   hidden. It must also show that Global Privacy Control can be switched on and that
-   `localStorage` can be read, cleared and made to throw.
+   hidden. Headless Chromium does not hide pages by itself, so overriding `document.visibilityState`
+   and dispatching `visibilitychange` is acceptable. If `page.route` does not see the `keepalive`
+   request, `context.route` is an acceptable alternative. It must also show that Global Privacy
+   Control can be switched on and that `localStorage` can be read, cleared and made to throw.
+   Tests pause the page clock, which also pauses HTMX's own swap and settle timers, so they
+   advance the clock explicitly after each reply.
 5. **Repeatability.** The spike tests pass 10 consecutive runs on Windows and on the GitHub Linux
    runner.
 6. **No real network.** Every request outside `https://erp.test/` is aborted and fails the test,
@@ -486,7 +490,8 @@ the spike evidence and moves the ADR to Accepted.
   - small init scripts only where the browser cannot be configured otherwise:
     `navigator.globalPrivacyControl`, `(display-mode: standalone)`, and a throwing `localStorage`
     for the storage-failure cases;
-  - a `page.on("pageerror")` hook that fails the test.
+  - a `page.on("pageerror")` hook that collects errors. `tearDown` asserts the list is empty,
+    because an exception raised inside the handler would not fail the test in the synchronous API.
 - **Router:** serves `https://erp.test/<fixture>` from `browser_tests/fixtures/` and
   `/static/...` byte-for-byte from the repository's `static/` folder. It records every other
   request (method, URL, headers, body) and holds it for the test. The test can answer it, fail it,
@@ -551,6 +556,13 @@ values**: URLs become `<url>` and primary keys become `<pk>`, so a fixture that 
   that one exception, with the production value asserted separately.
 - **Other checks:** the hidden base input naming pattern, and the `X-ERP-Row-Fragment` header the
   fixtures send.
+- **Server reply fragments.** `erp.js` also reads the replies: the `X-ERP-Row-Fragment` header
+  (`erp.js:983`, `:1015`), `[data-erp-conflict]` with `data-server-status` and `data-server-score`
+  (`:1045`, `:1115-1118`), the Use mine and Keep theirs controls, and the status fragment's root
+  classes. The contract renders `_marks_autosave_status.html` and `_attendance_autosave_status.html`
+  (saved, conflict and refused states) through the real views. It compares their marker
+  attributes and classes with the hand-written reply fixtures. It also checks that the 401 body
+  from `accounts/middleware.py` matches the fixture's.
 - **What it does not do:** it reads the committed fixture files. It never writes files or starts a
   browser.
 
@@ -566,7 +578,9 @@ values**: URLs become `<url>` and primary keys become `<pk>`, so a fixture that 
   them as an artifact only when the job fails, kept for 7 days. They contain only the synthetic
   fixture page and its intercepted requests: no Django page, no session, no staging data. Passing
   tests save nothing. Request bodies may appear in a failure message, and they are always
-  synthetic fixture data.
+  synthetic fixture data. Artifacts are visible only to people who can read the repository. The
+  later live-server journeys must not reuse this capture unchanged, because it would record
+  session cookies and seeded data. They need their own rule.
 - **Logging.** No test logs a request body on success.
 
 ## 8. Coverage packages
@@ -597,7 +611,7 @@ this section. JS2 adds the marks and attendance cases below.
 
 | Case | Asserts | Server half |
 | --- | --- | --- |
-| A1 Latest choice wins (OD-JS15) | The teacher changes a row (A), then changes it again (B) while A is in flight. A's reply, whether success or failure, never replaces B's state: the row stays "Saving…", no "Saved {name}." is announced for A, and the next request sent carries B's value. When B's reply arrives, the row shows B's result. This fails today (F-JS1). In JS2 it lands as an expected failure carrying an issue link, and JS3 fixes it. | — |
+| A1 Latest choice wins (OD-JS15) | The teacher changes a row (A), then changes it again (B) while A is in flight. A's reply, whether success or failure, never replaces B's state: the row stays "Saving…", no "Saved {name}." is announced for A, and the next request sent carries B's value. When B's reply arrives, the row shows B's result. **Not in JS2.** JS2 records F-JS1 in its PR description and in a GitHub issue as a confirmed, uncovered defect, with no expected-failure test, so `main` holds no expected failures. JS3 adds this test (section 8.2). | — |
 | A2 Mark unanswered as present never overwrites | Rows Absent, unanswered, unanswered: only the two unanswered rows become Present; the Absent row and its note are untouched; one bulk request lists exactly those two enrollments | C7 exists |
 | A3 401 never shown as saved | Row save answered 401: "Not saved: you have been signed out.", never Saved; `erp:signed-out` fires; the session box shows its signed-out state; same for bulk present through `fetch` | C7 exists (`test_session_errors_audit18.py:196-249`) |
 | A4 Typed values remain after sign-out | An absence note typed before a 401 stays in its field and the chosen radio stays checked | — |
@@ -628,7 +642,13 @@ This is a separate PR after JS2, because F-JS1 is an existing product defect (OD
   `htmx:afterRequest` (`erp.js:621-659`), following the marks pattern (`:1038-1043`, `:1064`).
 - **What does not change.** No timeout is added to attendance. That is a separate question, and
   `test_marks_autosave.py:469-471` stays green.
-- **Test.** A1 changes from expected failure to pass.
+- **Test first, then the fix.** JS3 is built in two commits:
+  1. The first commit adds only the A1 regression test (section 8.1). Its `js` job run on the
+     draft PR (or a recorded local run) must show A1 **failing** against the old behaviour.
+  2. The second commit implements the fix and leaves A1 passing.
+
+  The PR description links both runs as the evidence that the test proves the bug. It is not
+  merged until A1 passes. No expected-failure marker is ever used.
 
 ### 8.3 JS4: privacy-safe usage measurement (`bt_usage.py`)
 
@@ -680,15 +700,16 @@ Option 5. Section 9.1 gives the differences for Option 2.
 | Item | Proposal |
 | --- | --- |
 | Job | New job `js`, beside `lint` and `test`, with no `needs:` either way, so it runs in parallel and adds nothing to the full suite's time. |
-| When (path-aware) | Docs-only PRs skip the whole workflow, as today (`paths-ignore`). On other PRs, drafts included, the job's first step lists the files changed against the PR base (`git diff --name-only`, checkout with full history). The install and test steps run only when a relevant path changed. They always run on pushes to `main`. Relevant paths: `static/js/**`, `static/vendor/**`, `static/css/**`, `templates/**`, `core/templates/**`, `accounts/templates/**`, `core/forms.py` (renders `enterkeyhint` and score attributes), `browser_tests/**`, `requirements.txt`, `requirements-browser.txt`, `.github/workflows/**`. A skipped run still reports the `js` check as passed. A plain shell step is used, so no third-party path-filter action is added. |
+| When (path-aware) | Docs-only PRs skip the whole workflow, as today (`paths-ignore`). On other PRs, drafts included, the job checks out with `fetch-depth: 0`. Its first step runs `git diff --name-only "$BASE_SHA" "$GITHUB_SHA"` with `BASE_SHA` set to `github.event.pull_request.base.sha`. The install and test steps run only when a relevant path changed. They always run on pushes to `main`. **The check fails closed:** if the base SHA is missing or the diff cannot be computed, the step sets "run", and the tests run. Relevant paths: `static/js/**`, `static/vendor/**`, `static/css/**`, `browser_tests/**`, `requirements.txt`, `requirements-browser.txt`, `config/**`, `manage.py`, `.github/workflows/**`. Templates and `core/forms.py` are not listed, because the browser tests use hand-written fixtures. Template and form drift is caught by the fixture contract test (section 7.5), which runs in the `test` job, draft safety included. When the steps are skipped, the `js` check still reports success, so whether the job applied is read from its test step. A plain shell step is used, so no third-party path-filter action is added. |
 | Setup | `actions/setup-python@v5` (3.13, pip cache); `pip install -r requirements.txt -r requirements-browser.txt`; restore `~/.cache/ms-playwright` keyed on the pinned Playwright version; `python -m playwright install --with-deps chromium`. |
 | Run | `python manage.py test browser_tests --pattern="bt_*.py" --noinput`. The `bt_` prefix keeps these tests out of the default `test*.py` discovery, so the normal suite and local runs never need a browser. |
 | Settings | Same settings as the `test` job, minus the database service: the tests are `SimpleTestCase` and must not touch the database. |
+| Draft-safety additions | `core.tests.test_js_toolchain_boundary` and `core.tests.test_js_fixture_contract` join `DRAFT_SAFETY_TESTS` in the `test` job. |
 | Failure reporting | The test log, plus the Playwright trace and screenshot of each failing test, uploaded with `actions/upload-artifact` only when the job fails, kept for 7 days (section 7.6). |
 | Budget | A cached draft run under 90 seconds wall-clock. An uncached run (new Playwright version) may take longer. Over budget is a bug to fix, not a reason to move the job. |
 | Policy guard | Extend `core/tests/test_ci_policy.py` (already in `DRAFT_SAFETY_TESTS`). It checks that the `js` job exists, has no job-level `if:` and no `continue-on-error`, and runs exactly the command above. It also checks that the install and test steps are conditioned only on the path check or a push to `main`, and that the relevant-path list contains at least the paths in the row above. |
-| Test-content guard | New `core/tests/test_js_toolchain_boundary.py`, added to `DRAFT_SAFETY_TESTS`. It checks that each browser test file listed in this spec, once its PR has merged, exists and defines at least its listed number of test methods. No `skip` decorator or `expectedFailure` may appear without an issue link in the same line. `requirements.txt` must not contain `playwright`, and no `package.json` or `node_modules` may exist at the repository root or under `static/`. |
-| Merge gate | `IMPLEMENTATION_WORKFLOW.md` section 11, `DEFINITION_OF_DONE.md` state 2 and `AGENTS.md` (Verification) say a PR is verified when `lint` and `test` pass. **Open point:** the OD-JS7 answer did not say whether JS1 should add `js` to that rule. AGENTS.md is the canonical rule file, so the change waits for an explicit yes. |
+| Test-content guard | New `core/tests/test_js_toolchain_boundary.py`, added to `DRAFT_SAFETY_TESTS`. It checks that each browser test file listed in this spec, once its PR has merged, exists and defines at least its listed number of test methods. No `skip`, `skipIf`, `skipUnless` or `expectedFailure` may appear in `browser_tests/` at all, so `main` never holds skipped or expected-failing browser tests. `requirements.txt` must not contain `playwright`, and no `package.json` or `node_modules` may exist at the repository root or under `static/`. |
+| Merge gate (OD-JS7, approved) | When the path-aware `js` job applies, a PR is verified only when that job passes on the exact approved head. A skipped `js` job is not required. Pushes to `main` always run it. The docs PR writes this rule into `AGENTS.md` (Verification), `IMPLEMENTATION_WORKFLOW.md` section 11, `DEFINITION_OF_DONE.md` state 2 and the PR template, worded to apply from JS1 onward. A skipped job still reports `js` as passed, so whether it applied is read from the test step's conclusion (`gh run view <run-id> --json jobs`). |
 | Required checks | None on `main` today. Unchanged here. |
 | Railway | No change. Railpack installs `requirements.txt` only; no browser or Playwright package reaches staging or production (section 10.3). |
 
@@ -702,7 +723,7 @@ step is the one allowed `if:`.
 
 The budget is 2 minutes. The policy and boundary guards are the same, with these additions:
 
-- `.only`, `{ skip }` and `{ todo }` are forbidden unless the same line carries an issue link;
+- `.only`, `{ skip }` and `{ todo }` are forbidden;
 - the reporter's summary must show at least the expected number of tests.
 
 ## 10. Dependencies and maintenance
@@ -715,10 +736,12 @@ The budget is 2 minutes. The policy and boundary guards are the same, with these
 - **Browser.** Chromium only, at the build that version of Playwright expects. Moving the pin moves
   the browser.
 - **Updates.** A deliberate PR at least every three months and on relevant advisories (OD-JS9).
-  Each update re-runs the browser job, nothing else.
+  An update changes `requirements-browser.txt`, which triggers the `js` job and the normal
+  `lint` and `test` jobs.
 - **Local setup (Windows).** `pip install -r requirements-browser.txt`, then
   `python -m playwright install chromium`. It is documented in `docs/engineering/README.md#commands`.
-  Contributors who never touch `erp.js` can skip it; CI runs the job for every PR.
+  Contributors who never touch `erp.js` can skip it; CI runs the job whenever a relevant path
+  changes (section 9).
 - **Harness code.** About 150-250 lines (page context, router, assertions helpers).
 
 ### 10.2 Node version (Option 2 or Vitest only)
@@ -799,11 +822,11 @@ Not part of this spec's implementation. Recorded so the decision is not lost (OD
 | OD-JS4 | A: ADR 0028 plus a note in `ARCHITECTURE.md`. Both are made in JS1, when the spike has passed and the ADR is accepted |
 | OD-JS5 | Marks and attendance first; measurement coverage (JS4) before measurement is enabled |
 | OD-JS6 | A: full journeys deferred |
-| OD-JS7 | Separate parallel `js` job on relevant code PRs, including drafts (path-aware, section 9). Whether it joins the "PR verified" rule in AGENTS.md is an **open point** (section 9) |
+| OD-JS7 | Separate parallel `js` job on relevant code PRs, including drafts (path-aware, section 9). When the job applies, a PR is verified only when it passes on the exact approved head; a skipped job is not required; pushes to `main` always run it. Written into the merge-gate documents by the docs PR |
 | OD-JS8 | Deferred unless the fallback is needed |
 | OD-JS9 | A: exact pins, reviewed at least quarterly |
 | OD-JS10 | A: behaviour source-text tests are replaced only after equivalent browser coverage exists; architectural checks stay |
-| OD-JS11 | A: feature bugs fixed in separate PRs |
+| OD-JS11 | Feature bugs fixed in separate PRs. A defect found while writing coverage is recorded as a confirmed uncovered defect; its regression test arrives with the fix, shown failing first. No expected-failure tests on `main` (this replaces the "lands marked as pending" wording in option A below) |
 | OD-JS12 | A: `browser_tests/` and `requirements-browser.txt` |
 | OD-JS13 | A: hand-written minimal fixtures with Django contract checks |
 | OD-JS14 | A: the real vendored HTMX |
@@ -936,16 +959,20 @@ PRs are taken one at a time, each merged before the next starts.
 
 | PR | Contents | Files (new unless stated) |
 | --- | --- | --- |
-| Docs | This spec (r2, approved) and ADR 0028 (Proposed). The ADR index is not changed yet | `docs/engineering/JAVASCRIPT_TESTING_IMPLEMENTATION_SPEC.md`, `docs/adr/0028-javascript-behaviour-testing.md` |
-| JS1 | Spike with its evidence; harness; harness self-checks; path-aware `js` CI job; policy, boundary and fixture-contract tests; commands docs. ADR 0028 moved to Accepted using the spike evidence, the ADR index updated, and the `ARCHITECTURE.md` note added | `browser_tests/support/**`, `browser_tests/fixtures/**`, `browser_tests/bt_harness.py`, `requirements-browser.txt`, `.github/workflows/ci.yml` (edit), `core/tests/test_ci_policy.py` (edit), `core/tests/test_js_toolchain_boundary.py`, `core/tests/test_js_fixture_contract.py`, `docs/engineering/README.md` (edit), `docs/adr/0028-…` (edit), `docs/adr/README.md` (edit), `docs/ARCHITECTURE.md` (edit). Merge-gate docs and `AGENTS.md` only if the open point in section 9 is answered yes |
-| JS2 | Marks (M1-M9) and attendance (A1-A5) cases, with A1 as an expected failure carrying an issue link; retire the replaced marks and attendance behaviour stand-ins | `browser_tests/bt_marks_autosave.py`, `browser_tests/bt_attendance_autosave.py`, `core/tests/test_marks_autosave.py` (edit, stand-ins only) |
-| JS3 | F-JS1 fix (section 8.2); A1 passes | `static/js/erp.js` (attendance block), `browser_tests/bt_attendance_autosave.py` |
+| Docs (#287) | This spec (approved) and ADR 0028 (Proposed). The OD-JS7 merge-gate rule. The ADR index is not changed yet | `docs/engineering/JAVASCRIPT_TESTING_IMPLEMENTATION_SPEC.md`, `docs/adr/0028-javascript-behaviour-testing.md`, `AGENTS.md`, `docs/engineering/IMPLEMENTATION_WORKFLOW.md`, `docs/engineering/DEFINITION_OF_DONE.md`, `.github/pull_request_template.md` (edits) |
+| JS1 | Spike with its evidence; harness; harness self-checks; path-aware `js` CI job; policy, boundary and fixture-contract tests; commands docs. ADR 0028 moved to Accepted using the spike evidence, the ADR index updated, and the `ARCHITECTURE.md` note added | `browser_tests/support/**`, `browser_tests/fixtures/**`, `browser_tests/bt_harness.py`, `requirements-browser.txt`, `.github/workflows/ci.yml` (edit), `core/tests/test_ci_policy.py` (edit), `core/tests/test_js_toolchain_boundary.py`, `core/tests/test_js_fixture_contract.py`, `docs/engineering/README.md` (edit), `docs/adr/0028-…` (edit), `docs/adr/README.md` (edit), `docs/ARCHITECTURE.md` (edit). The merge-gate documents already carry the `js` rule from the docs PR |
+| JS2 | Marks (M1-M9) and attendance (A2-A5) cases. F-JS1 recorded as a confirmed uncovered defect, with an issue and no test; retire the replaced marks and attendance behaviour stand-ins | `browser_tests/bt_marks_autosave.py`, `browser_tests/bt_attendance_autosave.py`, `core/tests/test_marks_autosave.py` and `core/tests/test_attendance_bulk_present.py` (edits, stand-ins only) |
+| JS3 | A1 regression test shown failing on the old behaviour, then the F-JS1 fix with A1 passing (section 8.2) | `static/js/erp.js` (attendance block), `browser_tests/bt_attendance_autosave.py` |
 | JS4 | Usage measurement cases, before measurement is enabled anywhere; retire usage behaviour stand-ins | `browser_tests/bt_usage.py`, `core/tests/test_usage_workflows.py` (edit) |
 | JS5 (later) | PWA and common interface cases; retire their stand-ins | browser test files, `core/tests/test_pwa_gate1.py`, `test_session_errors_audit18.py`, others (edit) |
 | Later | A few full Django browser journeys (OD-JS6, separate decision) | — |
 
 Only JS3 changes `static/js/erp.js`. No PR changes templates, settings, `requirements.txt`,
 `static/vendor/` or Railway configuration.
+
+If JS1 never lands, for example because the spike fails and the product owner drops the
+approach, a follow-up docs PR removes the `js` rule lines from `AGENTS.md`,
+`IMPLEMENTATION_WORKFLOW.md`, `DEFINITION_OF_DONE.md` and the PR template.
 
 ## 15. Acceptance criteria
 
@@ -960,7 +987,7 @@ Only JS3 changes `static/js/erp.js`. No PR changes templates, settings, `require
    uploads the trace and screenshot. That commit is removed before review.
 4. Harness self-checks prove: per-test context isolation, the controlled 30 s interval, a
    byte-identical `erp.js`, page errors failing tests, and real network requests failing tests.
-5. `git diff origin/main -- static templates config requirements.txt` is empty.
+5. `git diff origin/main -- static templates core/templates config requirements.txt` is empty.
 6. The boundary, CI policy and fixture contract tests pass in the draft-safety run.
 7. ADR 0028 is Accepted with the spike evidence, listed in the ADR index, and noted in
    `ARCHITECTURE.md`.
@@ -969,8 +996,8 @@ Only JS3 changes `static/js/erp.js`. No PR changes templates, settings, `require
 
 **JS2 to JS4:**
 
-- Every listed case exists and passes. The only exception is A1 in JS2, an expected failure with an
-  issue link, which passes in JS3.
+- Every listed case exists and passes; none is skipped or marked as an expected failure. A1 is
+  absent from JS2. In JS3 it is shown failing on the old behaviour before the fix, then passing.
 - Each removed source-string test is listed beside its replacement in the PR description.
 - JS3 changes only the attendance block of `erp.js` and its test. `test_marks_autosave.py:469-471`
   stays green.
@@ -991,7 +1018,7 @@ Only JS3 changes `static/js/erp.js`. No PR changes templates, settings, `require
 
 ## 17. Current, proposed and deferred
 
-| | Current (baseline `d7d3090`) | Approved (r2), conditional on the spike | Deferred |
+| | Current (baseline `d7d3090`) | Approved (r3), conditional on the spike | Deferred |
 | --- | --- | --- | --- |
 | Test tools | Django test framework only | Plus Python Playwright browser fixture tests (`node:test` + jsdom only if the spike fails and the owner agrees) | Whole-journey tests |
 | JavaScript checks | About 60 source-string test methods; manual browser checks | Behaviour verified by execution; behaviour stand-ins removed as coverage lands; architectural checks kept | Journeys; WebKit |
@@ -999,7 +1026,7 @@ Only JS3 changes `static/js/erp.js`. No PR changes templates, settings, `require
 | `erp.js` | Classic script, served directly | Unchanged | Optional helper extraction; any module split needs its own decision |
 | CI | `lint`, `test` | Plus a path-aware `js` job on relevant PRs, drafts included | Required checks |
 | Railway | Python-only Railpack build | Unchanged; verified after first merge | — |
-| F-JS1 | Present (read from code) | Exposed by A1 in JS2; fixed in JS3 so the latest choice wins | Attendance timeout (separate question) |
+| F-JS1 | Present (read from code) | Recorded as a confirmed uncovered defect in JS2. Regression test shown failing, then fixed, in JS3, so the latest choice wins | Attendance timeout (separate question) |
 
 ## 18. External sources
 
@@ -1057,9 +1084,32 @@ against the code on 2026-11-22. Each finding was then checked against the code b
 | 7 | Spike pass conditions | Section 7.1. The `sendBeacon` condition is recorded as the page-hide `keepalive` fetch, because `erp.js` has no `sendBeacon` (only `keepalive: true` at `erp.js:82`) |
 | 8 | Diagnostics on failure | Trace and screenshot uploaded on failure, synthetic fixtures only, 7-day retention (sections 7.6 and 9; ADR updated) |
 | 9 | Budget: a cached draft run under 90 s | Sections 4 and 9 |
-| 10 | OD-JS15: latest choice wins, one in-flight request per row with one replaceable pending value | A1 and new section 8.2 (JS3) |
+| 10 | OD-JS15: latest choice wins, one in-flight request per row with one replaceable pending value | A1 and new section 8.2 (JS3). Superseded in r3: no expected failure in JS2 |
 | 11 | Order: docs PR, then JS1 (spike, harness, CI), JS2 (marks and attendance), JS3 (F-JS1 fix), JS4 (measurement), later journeys | Section 14. PWA and common interface moved to JS5, not yet scheduled |
 
-**Open point:** OD-JS7 did not say whether the `js` job joins the "PR verified" rule in
-`AGENTS.md`, `IMPLEMENTATION_WORKFLOW.md` and `DEFINITION_OF_DONE.md`. Nothing changes there until
-the product owner says yes.
+**OD-JS7 merge gate:** decided in r3, see section 9.
+
+### 19.2 Second independent review (r3 working tree, 2026-11-22)
+
+A separate agent without the drafting context reviewed r3, including the rule-document edits. It
+found nothing that contradicts the owner's decisions. Each finding was checked against the code
+by the author.
+
+| # | Severity | Finding | Verdict | Action |
+| --- | --- | --- | --- | --- |
+| 1 | Medium | The fixture contract ignores server reply fragments that `erp.js` reads, so a changed fragment or view leaves the browser tests green | **Confirmed** (`erp.js:983`, `:1015`, `:1045`, `:1115`; `_marks_autosave_status.html`, `_attendance_autosave_status.html` exist) | Section 7.5: contract covers reply fragments and the 401 body |
+| 2 | Medium | A broken path check would skip silently and still show green | **Confirmed** (design gap) | Section 9: fails closed; base is `github.event.pull_request.base.sha`; `fetch-depth: 0` |
+| 3 | Low | Path list misses `config/**` and `manage.py`; `accounts/templates/` does not exist; templates and forms cannot affect the browser tests | **Confirmed** (`accounts/templates` absent) | Path list corrected; template drift assigned to the contract test |
+| 4 | Low | Where the contract test runs was unclear | **Confirmed** | Section 9 names both tests in `DRAFT_SAFETY_TESTS` |
+| 5 | Medium | ADR still allowed skips with an issue link | **Confirmed** (ADR line 158) | ADR aligned: no skip or expected-failure markers |
+| 6 | Medium | Revision row cited a missing section 19.2 | **Confirmed** | This section added; pointer updated |
+| 7 | Low | Leftover r2 wording; "every PR"; "nothing else" | **Confirmed** | Corrected in the ADR and sections 10.1 and 17 |
+| 8 | Low | PR template checkbox lacked "from JS1 onward" | **Confirmed** | Qualifier added |
+| 9 | Low | "Skipped job" is imprecise; "approved head" before approval; where the run id comes from | **Confirmed** | Wording now says "test step was skipped"; the owner's phrase kept, with "(the final head presented for approval)"; run-id command added |
+| 10 | Low | Workflow paragraph read as present tense; no revert plan if JS1 never lands | **Confirmed** | "Applies once JS1 adds the job"; revert line in section 14 |
+| 11 | Low | Spike risks: paused clock freezes HTMX timers; visibility needs overriding; `keepalive` may need `context.route`; `pageerror` exceptions do not fail sync tests | **Plausible** (inference about Playwright) | Section 7.1 condition 4 and section 7.2 updated |
+| 12 | Low | Diagnostics: limit artifact access; do not reuse capture for live-server journeys | **Plausible** | ADR and section 7.6 rule added |
+| 13 | Low | ADR and spec budgets differed for Option 2 | **Confirmed** | ADR states the 2-minute Option 2 budget |
+| 14 | Nit | Paragraph inside a bullet list in section 5.1 | **Confirmed** | Moved below the list |
+| 15 | Nit | JS1 criterion 5 missed `core/templates` | **Confirmed** | Added |
+| 16 | Nit | JS2 file list missed `test_attendance_bulk_present.py` | **Confirmed** | Added |

@@ -40,6 +40,9 @@ gates (section 3 there).
   draft-safety run does not count. A push
   after that undoes this state until the full suite passes on the new head. A docs-only PR has
   no CI run (`paths-ignore`), and the PR says so.
+- **JavaScript browser tests:** when the path-aware `js` job applies to the PR (from ENG-JS-01
+  JS1 onward), it passed on the exact approved head. A `js` job whose test step was skipped
+  because no relevant path changed is not required.
 - Acceptance results (tests, browser checks, review verdicts) are reported to the product
   owner, including what was **not** tested or checked.
 

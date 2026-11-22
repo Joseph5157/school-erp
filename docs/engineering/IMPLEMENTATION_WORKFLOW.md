@@ -163,6 +163,23 @@ To see which mode ran on a head, read the run title (`CI (full)` or `CI (draft s
 same head could satisfy it (for example after Ready, before the full run finishes, or after
 a PR is moved back to draft). Decide on a full-only gate before adding required checks.
 
+**JavaScript browser tests (`js` job, ADR 0028). Applies once ENG-JS-01 JS1 adds the job; until
+then there is no `js` job and nothing here applies.** The job runs in
+parallel with `lint` and `test`, drafts included. It is path-aware: its install and test steps run
+only when the PR changes a relevant path (JavaScript, vendored scripts, CSS, templates,
+`core/forms.py`, browser tests, requirements or CI files). The full list is in `ci.yml` and in
+spec `docs/engineering/JAVASCRIPT_TESTING_IMPLEMENTATION_SPEC.md` §9. Pushes to `main` always run
+them.
+
+- **The rule.** When the job applies, a PR is verified only when the `js` job passed on the exact
+  approved head (the final head presented for approval). A `js` job whose test step was skipped
+  because no relevant path changed is not required.
+- **Telling whether it applied.** A skipped job still reports `js` as passed, so read the run's
+  steps. Take the run id of the head's `CI (full)` run from
+  `gh run list --workflow CI --commit <sha> --json databaseId,displayTitle`, then run
+  `gh run view <run-id> --json jobs`. The test step shows `success` when the job applied and
+  `skipped` when it did not.
+
 ### Gates
 
 These are separate steps. Passing one does not grant the next.
@@ -176,7 +193,9 @@ These are separate steps. Passing one does not grant the next.
    (tests, browser checks, review verdicts) are reported to the product owner. Check that
    the latest run for that head is titled `CI (full)` and succeeded (`gh run list --workflow
    CI --commit <sha>`). A run on an older commit, or a draft-safety run, does not count. Any new push undoes this
-   state until the full suite passes again on the new head.
+   state until the full suite passes again on the new head. When the path-aware `js` job applies
+   to the PR, it must also have passed on that same head (see above). A skipped `js` job is not
+   required.
 4. **Merge approved.** The product owner explicitly authorizes merging that exact PR head.
    Approval for one PR, or for an earlier head, does not carry over.
 5. **Guarded merge.** Exact-head squash merge (section 12).
