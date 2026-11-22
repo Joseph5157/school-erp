@@ -128,6 +128,7 @@ year.
 - [docs/OPERATIONS.md](docs/OPERATIONS.md) — running a production installation: crash logs and error emails
 - [docs/ECC_EVALUATION.md](docs/ECC_EVALUATION.md) — ECC experiment goals and evaluation framework
 - [docs/adr/README.md](docs/adr/README.md) — ADR purpose and process
+- [docs/engineering/README.md](docs/engineering/README.md) — engineering workflow: stages, risk tiers, definition of done, handoff and PR templates (agent rules: [AGENTS.md](AGENTS.md))
 
 ## Important note
 
