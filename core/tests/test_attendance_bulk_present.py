@@ -7,9 +7,7 @@ save one at a time.
 """
 
 from datetime import date
-from pathlib import Path
 
-from django.conf import settings
 from django.test import TestCase
 from django.urls import reverse
 
@@ -126,7 +124,7 @@ class BulkPresentTests(Phase4Fixture, TestCase):
         self.assertEqual(self.teacher.get(self.bulk_url).status_code, 405)
         self.assertEqual(self.register().entries.count(), 0)
 
-    # --- the page and the script ---
+    # --- the page (the script's single bulk request is browser test A2, bt_attendance_autosave.py) ---
 
     def test_teacher_page_wires_the_button_and_rows(self):
         page = self.teacher.get(self.url)
@@ -139,8 +137,3 @@ class BulkPresentTests(Phase4Fixture, TestCase):
             reverse("core:attendance-register-detail", args=[self.register().pk])
         )
         self.assertNotContains(page, "data-erp-bulk-url")
-
-    def test_script_posts_bulk_rows_once_instead_of_firing_each_row(self):
-        script = (Path(settings.BASE_DIR) / "static" / "js" / "erp.js").read_text(encoding="utf-8")
-        self.assertIn("saveBulk(marked)", script)
-        self.assertIn('body.append("enrollment"', script)

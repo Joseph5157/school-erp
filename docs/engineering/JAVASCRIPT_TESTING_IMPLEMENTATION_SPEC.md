@@ -612,7 +612,7 @@ this section. JS2 adds the marks and attendance cases below.
 
 | Case | Asserts | Server half |
 | --- | --- | --- |
-| A1 Latest choice wins (OD-JS15) | The teacher changes a row (A), then changes it again (B) while A is in flight. A's reply, whether success or failure, never replaces B's state: the row stays "Saving…", no "Saved {name}." is announced for A, and the next request sent carries B's value. When B's reply arrives, the row shows B's result. **Not in JS2.** JS2 records F-JS1 in its PR description and in a GitHub issue as a confirmed, uncovered defect, with no expected-failure test, so `main` holds no expected failures. JS3 adds this test (section 8.2). | — |
+| A1 Latest choice wins (OD-JS15) | The teacher changes a row (A), then changes it again (B) while A is in flight. A's reply, whether success or failure, never replaces B's state: the row stays "Saving…", no "Saved {name}." is announced for A, and the next request sent carries B's value. When B's reply arrives, the row shows B's result. **Not in JS2.** JS2 records F-JS1 in its PR description and in GitHub issue [#289](https://github.com/Joseph5157/school-erp/issues/289) as a confirmed, uncovered defect, with no expected-failure test, so `main` holds no expected failures. JS3 adds this test (section 8.2). | — |
 | A2 Mark unanswered as present never overwrites | Rows Absent, unanswered, unanswered: only the two unanswered rows become Present; the Absent row and its note are untouched; one bulk request lists exactly those two enrollments | C7 exists |
 | A3 401 never shown as saved | Row save answered 401: "Not saved: you have been signed out.", never Saved; `erp:signed-out` fires; the session box shows its signed-out state; same for bulk present through `fetch` | C7 exists (`test_session_errors_audit18.py:196-249`) |
 | A4 Typed values remain after sign-out | An absence note typed before a 401 stays in its field and the chosen radio stays checked | — |
@@ -1126,3 +1126,11 @@ by the author.
 | 5 | Chromium 156 crashed on replies with a body and no headers, and on aborts sent after the route handler returned. The harness always sends a `Content-Type`, makes network failures on arrival only, and replaces a crashed browser | Section 4 (Races); `browser_tests/support/page.py` |
 | 6 | JS1 review fixes: an unservable request is aborted at once and fails the test; subTest failures save diagnostics; service workers blocked; a records file joins the diagnostics; tearDown enforcement, diagnostics and isolation proven by probe tests run in a nested suite; the fixture contract compares every behaviour-relevant attribute and value on every row, the roster and the form; the attendance fixture gains the submit button and done announcer it lacked | Sections 7.2, 7.5, 7.6; `browser_tests/` |
 | 7 | CI: `contents: read`; a 5-minute test-step timeout inside the 10-minute job, and an `always()` upload whenever the test step did not pass; the policy test checks the exact command and applies the path pattern to sample paths; the marker ban covers every skip and expected-failure spelling | Section 9 |
+
+### 19.4 JS2 notes (2026-11-22)
+
+| # | Note | Where |
+| --- | --- | --- |
+| 1 | F-JS1 confirmed in Chromium: after the older reply, the row shows "✓ Saved" and announces "Saved Student A." while the newer change is in flight; an older 500 shows "Not saved." with Retry. The newer request carries the newer value, so no wrong value is saved. Issue #289; no test until JS3 | Section 3.5 |
+| 2 | Fixtures gained the session box (attendance) and replies for a 403 row fragment and bulk present (saved and 401), all pinned by the contract test | Section 7.5 |
+| 3 | Two equivalent mutants: removing the marks `htmx:timeout` listener (afterRequest with status 0 shows the same words) and the last-row Enter trigger (the sign-in "Next" helper's focus move already fires `change`, F-JS4). The string check for the Enter trigger is kept for that reason | `test_marks_autosave.py` |
