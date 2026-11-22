@@ -146,7 +146,8 @@ and requirements rules.
   from the page never appear in any usage request. Running the code this way strengthens the ADR
   0027 allow-list rather than relaxing it.
 - **Test output.** No test logs request bodies on success. A failing test saves a Playwright trace
-  and screenshot, which CI uploads only when the job fails and keeps for 7 days. They show only the
+  and screenshot, and a records file of page errors and blocked or unservable requests. CI uploads
+  them only when the browser test step did not pass and keeps them for 7 days. They show only the
   synthetic fixture page and its intercepted requests. The artifacts are visible only to people
   who can read the repository. The later live-server journeys must not reuse this capture
   unchanged, because it would record session cookies and seeded data. They need their own rule.
@@ -154,8 +155,8 @@ and requirements rules.
 ## CI and Railway consequences
 
 - CI gains one job, `js`. On pull requests, drafts included, it installs Chromium and runs only
-  when JavaScript, vendored scripts, CSS, relevant templates or forms, browser tests, requirements
-  or CI configuration change. It always runs on pushes to `main`. Docs-only PRs stay skipped.
+  when JavaScript, vendored scripts, CSS, browser tests, requirements, settings or CI configuration
+  change. Template and form drift is caught by the fixture contract test in the Django suite. It always runs on pushes to `main`. Docs-only PRs stay skipped.
 - `core/tests/test_ci_policy.py` and a new boundary test, both in the draft-safety set, guard
   against quiet removal or skipping. They check the job's existence and command, the minimum test
   count per file, and that no skip or expected-failure marker appears in `browser_tests/` at all.

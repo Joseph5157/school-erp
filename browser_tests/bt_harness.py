@@ -1,28 +1,23 @@
 """Self-checks for the browser fixture harness (ENG-JS-01 JS1, spec sections 7.2 and 8.1).
 
-These prove the harness itself: isolation, the page clock, request control, error and network
-guards, diagnostics, and that every fixture page loads the real scripts cleanly. Marks,
-attendance and measurement behaviour tests arrive in later PRs (JS2, JS4).
+These prove the harness itself: the page clock, request control, error and network guards,
+diagnostics, and that every fixture page loads the real scripts cleanly. EnforcementTests runs the
+probes in browser_tests/support/probes.py in a nested suite, to prove that tearDown really fails a
+test on a page error, a real-network request or an unservable request, that a failing test saves
+its diagnostics, and that tests are isolated. Marks, attendance and measurement behaviour tests
+arrive in later PRs (JS2, JS4).
 """
 
 import hashlib
+import json
 import pathlib
 import tempfile
+import unittest
 
+from browser_tests.support import probes
 from browser_tests.support.page import STATIC, FixturePage
 
 FIXTURE_PAGES = ("marks.html", "attendance.html", "usage.html", "sidebar.html", "blank.html")
-
-
-class IsolationTests(FixturePage):
-    def test_1_storage_written_in_one_test(self):
-        self.open("blank.html")
-        self.page.evaluate("localStorage.setItem('bt-isolation', 'written')")
-        self.assertEqual(self.page.evaluate("localStorage.getItem('bt-isolation')"), "written")
-
-    def test_2_is_absent_in_the_next_test(self):
-        self.open("blank.html")
-        self.assertIsNone(self.page.evaluate("localStorage.getItem('bt-isolation')"))
 
 
 class ServedFilesTests(FixturePage):
@@ -43,10 +38,13 @@ class ServedFilesTests(FixturePage):
                 self.open(fixture)
                 self.pump(0.1)
                 self.assertEqual(self.page_errors, [], fixture)
-        # erp.js ran on the roster pages: it reveals the filter tabs that start hidden.
-        for fixture in ("marks.html", "attendance.html"):
+        # erp.js ran: it reveals the roster filter tabs and the sidebar button, which start hidden.
+        for fixture, hidden_until_erp_js in (("marks.html", "[data-erp-tabs]"),
+                                             ("attendance.html", "[data-erp-tabs]"),
+                                             ("sidebar.html", "[data-erp-sidebar-toggle]")):
             self.open(fixture)
-            self.assertFalse(self.page.locator("[data-erp-tabs]").is_hidden(), fixture)
+            self.wait_until(lambda selector=hidden_until_erp_js: self.page.locator(selector).is_visible(),
+                            message=f"erp.js to run on {fixture}")
 
 
 class ClockTests(FixturePage):
@@ -116,4 +114,71 @@ class DiagnosticsTests(FixturePage):
             self.save_diagnostics(stem)
             self.assertGreater((stem.parent / "diagnostics.png").stat().st_size, 0)
             self.assertGreater((stem.parent / "diagnostics-trace.zip").stat().st_size, 0)
+            records = json.loads((stem.parent / "diagnostics-records.json").read_text(encoding="utf-8"))
+            self.assertEqual(set(records), {"page_errors", "external_requests", "route_errors", "held_requests"})
         self.context.tracing.start(screenshots=True, snapshots=True)  # tearDown stops it again
+
+
+class EnforcementTests(unittest.TestCase):
+    """Runs probe tests in a nested suite and checks the outcome the harness gave them."""
+
+    def run_probes(self, case):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        self.artifacts = pathlib.Path(folder.name)
+        case.artifacts = self.artifacts
+        self.addCleanup(delattr, case, "artifacts")  # back to FixturePage.artifacts
+        result = unittest.TestResult()
+        unittest.defaultTestLoader.loadTestsFromTestCase(case).run(result)
+        return result
+
+    def only_failure(self, result):
+        self.assertEqual(result.errors, [])
+        self.assertEqual(len(result.failures), 1, result.failures)
+        return result.failures[0][1]
+
+    def records(self, case_name):
+        found = list(self.artifacts.glob(f"*{case_name}-test_*-records.json"))
+        self.assertEqual(len(found), 1, sorted(p.name for p in self.artifacts.iterdir()))
+        return json.loads(found[0].read_text(encoding="utf-8"))
+
+    def assert_diagnostics_saved(self, case_name):
+        for suffix in (".png", "-trace.zip"):
+            found = list(self.artifacts.glob(f"*{case_name}-test_*{suffix}"))
+            self.assertEqual(len(found), 1, f"{case_name}{suffix}")
+            self.assertGreater(found[0].stat().st_size, 0)
+
+    def test_a_page_error_fails_the_test_and_is_in_the_diagnostics(self):
+        traceback = self.only_failure(self.run_probes(probes.PageErrorProbe))
+        self.assertIn("errors were thrown in the page", traceback)
+        self.assertIn("bt-probe-error", " ".join(self.records("PageErrorProbe")["page_errors"]))
+        self.assert_diagnostics_saved("PageErrorProbe")
+
+    def test_a_real_network_request_fails_the_test_and_is_in_the_diagnostics(self):
+        traceback = self.only_failure(self.run_probes(probes.ExternalRequestProbe))
+        self.assertIn("the page tried to reach the real network", traceback)
+        self.assertEqual(self.records("ExternalRequestProbe")["external_requests"], ["https://example.com/bt-probe"])
+
+    def test_a_request_the_harness_cannot_serve_is_aborted_and_fails_the_test(self):
+        # The probe's own assertion shows the request was aborted at once; tearDown then fails it.
+        traceback = self.only_failure(self.run_probes(probes.RouteErrorProbe))
+        self.assertIn("the harness could not serve a request", traceback)
+        self.assertIn("bt-missing.js", " ".join(self.records("RouteErrorProbe")["route_errors"]))
+        # pump() fails the test as soon as it runs, before the test can carry on.
+        traceback = self.only_failure(self.run_probes(probes.RouteErrorPumpProbe))
+        self.assertIn("the harness could not serve a request", traceback)
+        self.assertNotIn("pump() did not fail the test", traceback)
+
+    def test_a_failing_test_saves_a_screenshot_trace_and_records(self):
+        self.assertIn("bt-probe failure", self.only_failure(self.run_probes(probes.FailingProbe)))
+        self.assert_diagnostics_saved("FailingProbe")
+        self.records("FailingProbe")
+
+    def test_a_failure_inside_a_subtest_also_saves_diagnostics(self):
+        self.assertIn("bt-probe subtest failure", self.only_failure(self.run_probes(probes.SubTestFailingProbe)))
+        self.assert_diagnostics_saved("SubTestFailingProbe")
+
+    def test_storage_and_cookies_do_not_leak_between_tests(self):
+        result = self.run_probes(probes.IsolationProbe)
+        self.assertEqual(result.testsRun, 2)
+        self.assertTrue(result.wasSuccessful(), result.failures + result.errors)

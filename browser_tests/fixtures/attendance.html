@@ -61,9 +61,11 @@
     <span id="erp-hint" class="erp-actionbar-status is-warn" data-erp-hint>3 unmarked</span>
     <span class="erp-autosave-state" data-erp-autosave-state role="status" aria-live="polite" hidden>All changes saved</span>
     <button type="submit" name="action" value="save" class="btn btn-outline-primary" data-erp-save-fallback>Save draft</button>
+    <button type="submit" name="action" value="submit" class="btn btn-primary">Review and submit</button>
   </div>
   <p class="small text-danger mb-1" role="alert" data-erp-wait-message hidden>Waiting for attendance changes to save. Try again in a moment.</p>
   <p class="visually-hidden" role="status" aria-live="polite" data-erp-autosave-announce></p>
+  <p class="visually-hidden" role="status" data-erp-done-announce></p>
 </div>
 </form>
 <script src="/static/vendor/htmx/2.0.4/htmx.min.js" defer></script>

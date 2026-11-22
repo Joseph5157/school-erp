@@ -3,7 +3,9 @@
 One Chromium process per test run, a fresh browser context and page per test. Every request is
 intercepted at the context level: fixture pages and /static/ files are served from disk, other
 requests to https://erp.test are held for the test to answer, and anything else is aborted and
-recorded so the test fails. No Django server, database or real network is used.
+recorded so the test fails. If serving a request raises (for example a missing fixture), the request
+is aborted at once and the test fails. Service workers are blocked. No Django server, database or
+real network is used.
 
 These are plain unittest tests, run with
 `python -m unittest discover -s browser_tests -p "bt_*.py" -t .`. Django's SimpleTestCase does
@@ -12,6 +14,7 @@ cannot be restored at teardown. The tests need no Django anyway.
 """
 
 import atexit
+import json
 import os
 import pathlib
 import tempfile
@@ -89,14 +92,20 @@ class FixturePage(unittest.TestCase):
     viewport = {"width": 390, "height": 800}
     init_scripts = ()
     clock = False  # install the page clock before the page loads
+    artifacts = ARTIFACTS  # where a failing test's diagnostics go
+    # A stuck Playwright call fails the test (and saves its diagnostics) well before the CI step
+    # timeout kills the run.
+    action_timeout_ms = 10_000
 
     def setUp(self):
-        self.context = browser().new_context(viewport=self.viewport)
+        self.context = browser().new_context(viewport=self.viewport, service_workers="block")
+        self.context.set_default_timeout(self.action_timeout_ms)
         self.context.tracing.start(screenshots=True, snapshots=True)
         self.held = []
         self.fail_paths = []
         self.external = []
         self.page_errors = []
+        self.route_errors = []
         self.context.route("**/*", self._route)
         for script in self.init_scripts:
             self.context.add_init_script(script)
@@ -112,29 +121,58 @@ class FixturePage(unittest.TestCase):
                 held.respond(204)
             except Exception:  # the page may already have given up on it
                 pass
+        guard_failed = bool(self.route_errors or self.page_errors or self.external)
         try:
-            if failed:
-                self.save_diagnostics(ARTIFACTS / self.id().replace(".", "-"))
+            if failed or guard_failed:
+                self.save_diagnostics(self.artifacts / self.id().replace(".", "-"))
             else:
                 self.context.tracing.stop()
         finally:
             self.context.close()
         if not failed:
+            self.assertEqual(self.route_errors, [], "the harness could not serve a request")
             self.assertEqual(self.page_errors, [], "errors were thrown in the page")
             self.assertEqual(self.external, [], "the page tried to reach the real network")
 
     def save_diagnostics(self, stem):
-        """Screenshot and Playwright trace for a failing test; stops this context's tracing."""
+        """Screenshot, Playwright trace and the guard records for a failing test.
+
+        Stops this context's tracing. The records file lists page errors, blocked real-network
+        requests, requests the harness could not serve, and held requests (path and method only).
+        """
         stem = pathlib.Path(stem)
         stem.parent.mkdir(parents=True, exist_ok=True)
-        self.page.screenshot(path=f"{stem}.png", full_page=True)
-        self.context.tracing.stop(path=f"{stem}-trace.zip")
+        records = {
+            "page_errors": self.page_errors,
+            "external_requests": self.external,
+            "route_errors": self.route_errors,
+            "held_requests": [{"method": h.method, "path": h.path, "answered": h.answered} for h in self.held],
+        }
+        pathlib.Path(f"{stem}-records.json").write_text(json.dumps(records, indent=2), encoding="utf-8")
+        try:
+            self.page.screenshot(path=f"{stem}.png", full_page=True)
+        finally:
+            self.context.tracing.stop(path=f"{stem}-trace.zip")
 
     def _failed(self):
+        # A failure inside self.subTest() is recorded against a _SubTest whose test_case is self.
         result = self._outcome.result
-        return any(test is self for test, _ in list(result.errors) + list(result.failures))
+        return any(getattr(test, "test_case", test) is self
+                   for test, _ in list(result.errors) + list(result.failures))
 
     def _route(self, route, request):
+        try:
+            self._serve(route, request)
+        except Exception as error:
+            # Never leave a request hanging: abort it now (inside the handler, which is safe) and
+            # fail the test, at its next pump() or in tearDown at the latest.
+            self.route_errors.append(f"{request.method} {request.url}: {type(error).__name__}: {error}")
+            try:
+                route.abort("failed")
+            except Exception:  # already answered before the error
+                pass
+
+    def _serve(self, route, request):
         url = request.url
         if url.startswith(ORIGIN + "/static/"):
             path = STATIC / url[len(ORIGIN + "/static/"):].split("?")[0]
@@ -166,6 +204,8 @@ class FixturePage(unittest.TestCase):
         """Let the browser and Playwright exchange events for a moment of real time."""
         self.page.evaluate("0")
         time.sleep(seconds)
+        if self.route_errors:
+            self.fail(f"the harness could not serve a request: {self.route_errors}")
 
     def wait_until(self, condition, timeout=5.0, message="condition"):
         end = time.monotonic() + timeout

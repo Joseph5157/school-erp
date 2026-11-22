@@ -2,9 +2,12 @@
 
 The browser tests run erp.js against hand-written fixture pages and replies in
 browser_tests/fixtures/. These tests render the real pages and replies through the views and
-check that the fixtures keep the same structure erp.js depends on: hx-* attributes and their
-normalised values, data-erp-* hooks, erp-* classes, input names, and the reply markers. Text is
-not compared. Primary keys become <pk> and autosave URLs become <url>.
+check, element by element and in order, that every fixture row, the roster around the rows, the
+form and each reply carry the same behaviour-relevant attributes with the same values as the real
+ones: hx-*, data-erp-* and data-server-* attributes, ids, input names, types and values (radio
+values are what erp.js selects on), checked, hidden and the other attributes in BEHAVIOUR_ATTRS,
+and erp-* and is-* classes. Text, labels and Bootstrap classes are not compared. Primary keys
+become <pk>, autosave and bulk URLs become <url> and the CSRF token becomes <token>.
 
 One documented exception: marks fixture row 103 has a 600 ms request timeout so a browser test can
 reach the timeout path in real time; production rows use 15000.
@@ -62,39 +65,76 @@ class Tree(HTMLParser):
             self.current = node.parent
 
 
+# Attributes erp.js, HTMX or the browser act on. Their values are compared, not just their names.
+BEHAVIOUR_ATTRS = {
+    "id", "name", "type", "value", "for", "checked", "hidden", "disabled", "inputmode",
+    "enterkeyhint", "step", "role", "aria-live", "aria-pressed", "aria-expanded", "aria-controls",
+}
+BEHAVIOUR_PREFIXES = ("hx-", "data-erp-", "data-server-")
+PK_ATTRS = {"id", "name", "for", "aria-controls", "hx-vals", "data-erp-enrollment"}
+URL_ATTRS = {"hx-post", "data-erp-bulk-url", "data-erp-usage-url"}
+
+
 def norm(value):
     return re.sub(r"\d+", "<pk>", value or "")
 
 
-def hook_attrs(element):
-    """hx-* and data-erp-* attributes with normalised values."""
+def behaviour(element):
+    """The element's behaviour-relevant attributes with normalised values (empty when it has none).
+
+    Primary keys become <pk>, autosave and bulk URLs become <url>, the CSRF token becomes <token>,
+    and hx-headers keeps only its header names. Classes keep only erp-* and is-* tokens. Text and
+    other attributes (labels, Bootstrap classes, aria-hidden) are not compared.
+    """
+    attrs = element.attrs
     out = {}
-    for name, value in element.attrs.items():
-        if name == "hx-post":
-            out[name] = "<url>"
-        elif name.startswith(("hx-", "data-erp-")):
-            out[name] = norm(value) if name in ("hx-vals", "data-erp-enrollment") else (value or "")
+    for name, value in attrs.items():
+        value = value or ""
+        if not (name in BEHAVIOUR_ATTRS or name.startswith(BEHAVIOUR_PREFIXES)):
+            continue
+        if name in URL_ATTRS:
+            value = "<url>"
+        elif name == "hx-headers":
+            value = ",".join(sorted(json.loads(value)))
+        elif name == "value" and attrs.get("name") == "csrfmiddlewaretoken":
+            value = "<token>"
+        elif name in PK_ATTRS:
+            value = norm(value)
+        out[name] = value
+    classes = sorted(c for c in (attrs.get("class") or "").split() if c.startswith(("erp-", "is-")))
+    if classes:
+        out["class"] = " ".join(classes)
     return out
 
 
-def markers(elements):
-    """The structure erp.js reads, as a set: tags, hooks, erp-* classes, input kinds and names."""
-    found = set()
-    for el in elements:
-        classes = tuple(sorted(c for c in (el.attrs.get("class") or "").split() if c.startswith("erp-")))
-        hooks = tuple(sorted(n for n in el.attrs if n.startswith(("data-erp-", "data-server-"))))
-        element_id = el.attrs.get("id") or ""
-        found.add((
-            el.tag, classes, hooks, "hx-swap-oob" in el.attrs,
-            norm(element_id) if element_id.startswith("erp-") else "",
-            el.attrs.get("type", "") if el.tag == "input" else "", norm(el.attrs.get("name")),
-            el.attrs.get("enterkeyhint", ""), el.attrs.get("inputmode", ""),
-        ))
-    return found
+def signature(elements):
+    """Ordered (tag, behaviour) pairs of the elements that carry any behaviour-relevant attribute."""
+    return [(el.tag, behaviour(el)) for el in elements if behaviour(el)]
+
+
+def descendants(element):
+    return list(element.walk())[1:]
 
 
 def rows(tree):
     return [el for el in tree.root.walk() if "data-erp-row" in el.attrs]
+
+
+def outside_rows(element):
+    """The element's descendants that are not inside a row (counts, tabs, hints, action bar)."""
+    out = []
+    for child in element.children:
+        if "data-erp-row" in child.attrs:
+            continue
+        out.append(child)
+        out.extend(outside_rows(child))
+    return out
+
+
+def first(tree, attribute):
+    found = [el for el in tree.root.walk() if attribute in el.attrs]
+    assert found, attribute
+    return found[0]
 
 
 def page_hooks(tree):
@@ -105,37 +145,54 @@ def fixture(name):
     return (FIXTURES / name).read_text(encoding="utf-8")
 
 
-class ContractMixin:
-    def assert_row_matches(self, fixture_row, real_row):
-        self.assertEqual(hook_attrs(fixture_row), hook_attrs(real_row))
-        fixture_inner = markers(list(fixture_row.walk())[1:])
-        real_inner = markers(list(real_row.walk())[1:])
-        self.assertEqual(fixture_inner, real_inner,
-                         f"fixture only: {fixture_inner - real_inner}; real only: {real_inner - fixture_inner}")
+def diff(fixture_sig, real_sig):
+    for index, (a, b) in enumerate(zip(fixture_sig, real_sig, strict=False)):
+        if a != b:
+            return f"first difference at element {index}: fixture {a} != real {b}"
+    return f"fixture has {len(fixture_sig)} elements, real has {len(real_sig)}"
 
-    def assert_page_matches(self, fixture_html, real_html):
+
+class ContractMixin:
+    def assert_same(self, fixture_sig, real_sig):
+        self.assertEqual(fixture_sig, real_sig, diff(fixture_sig, real_sig))
+
+    def assert_page_matches(self, fixture_html, real_html, roster, row_exceptions=None):
+        """Every fixture row, the roster outside the rows, and the form match the real page."""
         fixture_tree, real_tree = Tree(fixture_html), Tree(real_html)
-        self.assert_row_matches(rows(fixture_tree)[0], rows(real_tree)[0])
+        fixture_rows, real_rows = rows(fixture_tree), rows(real_tree)
+        self.assertGreaterEqual(len(real_rows), len(fixture_rows))
+        for index, (fixture_row, real_row) in enumerate(zip(fixture_rows, real_rows, strict=False)):
+            with self.subTest(row=index):
+                fixture_sig = signature([fixture_row] + descendants(fixture_row))
+                for name, value in (row_exceptions or {}).get(index, {}).items():
+                    fixture_sig[0][1][name] = value
+                self.assert_same(fixture_sig, signature([real_row] + descendants(real_row)))
+        with self.subTest(part="roster outside the rows"):
+            self.assert_same(signature(outside_rows(first(fixture_tree, roster))),
+                             signature(outside_rows(first(real_tree, roster))))
+        with self.subTest(part="form"):
+            fixture_form, real_form = first(fixture_tree, "hx-headers"), first(real_tree, "hx-headers")
+            self.assertEqual((fixture_form.tag, behaviour(fixture_form)), (real_form.tag, behaviour(real_form)))
         missing = page_hooks(fixture_tree) - page_hooks(real_tree)
         self.assertEqual(missing, set(), "the fixture uses hooks the real page no longer has")
 
     def assert_reply_matches(self, fixture_name, response):
-        fixture_markers = markers(list(Tree(fixture(f"replies/{fixture_name}")).root.walk())[1:])
-        real_markers = markers(list(Tree(response.content.decode()).root.walk())[1:])
-        self.assertEqual(fixture_markers, real_markers,
-                         f"fixture only: {fixture_markers - real_markers}; real only: {real_markers - fixture_markers}")
+        self.assert_same(signature(descendants(Tree(fixture(f"replies/{fixture_name}")).root)),
+                         signature(descendants(Tree(response.content.decode()).root)))
 
 
 class MarksFixtureContractTests(ContractMixin, AutosaveFixture, TestCase):
     def test_the_marks_page_fixture_matches_the_real_page(self):
         real = self.teacher.get(self.entry_url(self.test1)).content.decode()
-        self.assert_page_matches(fixture("marks.html"), real)
+        # Row 103's short timeout is the one documented exception (next test).
+        self.assert_page_matches(fixture("marks.html"), real, "data-erp-marks",
+                                 row_exceptions={2: {"hx-request": '{"timeout": 15000}'}})
         self.assertIn("""hx-request='{"timeout": 15000}'""", real)
 
     def test_the_only_fixture_exception_is_row_103s_short_timeout(self):
-        first, _, third = rows(Tree(fixture("marks.html")))
-        a, b = hook_attrs(first), hook_attrs(third)
-        self.assertEqual({k for k in a if a[k] != b[k]}, {"hx-request"})
+        row_101, _, row_103 = rows(Tree(fixture("marks.html")))
+        a, b = behaviour(row_101), behaviour(row_103)
+        self.assertEqual({k for k in a if a[k] != b[k]}, {"hx-request"})  # pks are normalised
         self.assertEqual(json.loads(a["hx-request"]), {"timeout": 15000})
         self.assertEqual(json.loads(b["hx-request"]), {"timeout": 600})
 
@@ -177,7 +234,7 @@ class AttendanceFixtureContractTests(ContractMixin, Phase4Fixture, TestCase):
 
     def test_the_attendance_page_fixture_matches_the_real_page(self):
         real = self.teacher.get(self.url).content.decode()
-        self.assert_page_matches(fixture("attendance.html"), real)
+        self.assert_page_matches(fixture("attendance.html"), real, "data-erp-roster")
         self.assertIn("data-erp-bulk-url=", real)
 
     def test_the_saved_reply_fixture_matches(self):

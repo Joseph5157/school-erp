@@ -141,6 +141,8 @@ jobs:
     # changed; pushes to main always run them. If the base is missing or the diff fails, the tests
     # run (fails closed). The Django fixture-contract and boundary tests run in the test job.
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
@@ -183,13 +185,17 @@ jobs:
       - name: Install system libraries for the cached browser
         if: steps.paths.outputs.run == 'true' && steps.browsers.outputs.cache-hit == 'true'
         run: python -m playwright install-deps chromium
+      # The step timeout is well inside the job's, so a hung run is stopped while the job can still
+      # upload what the failing tests saved. A job killed by its own timeout uploads nothing.
       - name: Browser tests
+        id: tests
         if: steps.paths.outputs.run == 'true'
+        timeout-minutes: 5
         env:
           BT_ARTIFACT_DIR: ${{ runner.temp }}/bt-artifacts
         run: python -m unittest discover -s browser_tests -p "bt_*.py" -t .
       - name: Upload failure diagnostics (synthetic fixtures only)
-        if: failure() && steps.paths.outputs.run == 'true'
+        if: always() && steps.paths.outputs.run == 'true' && steps.tests.outcome != 'success'
         uses: actions/upload-artifact@v4
         with:
           name: browser-test-diagnostics
