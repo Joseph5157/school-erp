@@ -64,7 +64,7 @@ jobs:
       # "draft" only for a pull request that is a draft right now; everything else is "full".
       CI_MODE: ${{ (github.event_name == 'pull_request' && github.event.pull_request.draft) && 'draft' || 'full' }}
       # Draft safety set: route-permission inventory, permission and privacy guards, sessions,
-      # deployment settings and this workflow's own policy. About 240 tests, under a minute.
+      # deployment settings and this workflow's own policy. About 250 tests, under a minute.
       DRAFT_SAFETY_TESTS: >-
         core.tests.test_ci_policy
         core.tests.test_security_gate4b_route_inventory

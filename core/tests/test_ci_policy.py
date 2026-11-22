@@ -83,10 +83,13 @@ class CiPolicyTests(SimpleTestCase):
             self.assertFalse([ln for ln in job if re.match(r"^    (name|if):", ln)])
         self.assertIn("ruff check .", "\n".join(self.lint_job))
 
+    def test_test_job_still_waits_for_lint(self):
+        self.assertIn("    needs: lint", self.test_job)
+
     def test_mode_is_draft_only_for_a_draft_pull_request(self):
-        mode = re.search(r"^\s*CI_MODE:\s*(.+)$", "\n".join(self.test_job), re.M)
-        self.assertIsNotNone(mode, "the test job must set CI_MODE")
-        expr = mode.group(1)
+        modes = re.findall(r"^\s*CI_MODE:\s*(.+)$", "\n".join(self.test_job), re.M)
+        self.assertEqual(len(modes), 1, "CI_MODE is set once, at job level, and never overridden")
+        expr = modes[0]
         self.assertIn("github.event_name == 'pull_request'", expr)
         self.assertIn("github.event.pull_request.draft", expr)
         self.assertRegex(expr, r"\|\|\s*'full'\s*\}\}$", "anything else must fall back to full")

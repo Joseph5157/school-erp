@@ -35,8 +35,9 @@ gates (section 3 there).
 - Independent review done. Each finding checked and given a verdict; chosen fixes pushed.
 - Marked **Ready for review** once implementation and fixes were final. Ready only starts
   full CI; it is not merge approval.
-- **CI:** the full suite is green on the final Ready head (`gh pr checks <N>`, and the latest
-  `test` run for that head says `Test mode: full`). A draft-safety run does not count. A push
+- **CI:** the full suite is green on the final Ready head: the latest run for that head is
+  titled `CI (full)` and succeeded (`gh run list --workflow CI --commit <sha>`). A
+  draft-safety run does not count. A push
   after that undoes this state until the full suite passes on the new head. A docs-only PR has
   no CI run (`paths-ignore`), and the PR says so.
 - Acceptance results (tests, browser checks, review verdicts) are reported to the product

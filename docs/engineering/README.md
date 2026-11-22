@@ -25,6 +25,7 @@ Run from the repository root with the project `venv` active. Local `manage.py` r
 | CSS text guard tests (after `erp.css` edits) | `python manage.py test --pattern="test_ui*.py" --parallel 4 --noinput` |
 | Route permission inventory | `python manage.py test core.tests.test_security_gate4b_route_inventory --noinput` |
 | PR checks on the current head | `gh pr checks <N>` |
+| Which CI mode ran on a head (`CI (full)` or `CI (draft safety)`) | `gh run list --workflow CI --commit <sha> --json displayTitle,status,conclusion` |
 | Mark Ready for review (starts the full suite; not merge approval) | `gh pr ready <N>` |
 | Guarded merge (only after approval) | `gh pr merge <N> --squash --match-head-commit <sha>` |
 

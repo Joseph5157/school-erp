@@ -154,6 +154,15 @@ Anything that is not a draft PR runs the full mode. The safety-test list is in `
 (`DRAFT_SAFETY_TESTS`), and `core/tests/test_ci_policy.py` guards these rules. A green
 draft-safety run never verifies a PR.
 
+To see which mode ran on a head, read the run title (`CI (full)` or `CI (draft safety)`):
+`gh run list --workflow CI --commit <sha> --json displayTitle,event,status,conclusion`.
+`gh pr checks <N>` shows only pass or fail for `lint` and `test`, not the mode.
+
+`main` has no branch protection or required checks today. Both modes report checks named
+`lint` and `test`, so if `test` were made a required check, a green draft-safety run on the
+same head could satisfy it (for example after Ready, before the full run finishes, or after
+a PR is moved back to draft). Decide on a full-only gate before adding required checks.
+
 ### Gates
 
 These are separate steps. Passing one does not grant the next.
@@ -164,9 +173,9 @@ These are separate steps. Passing one does not grant the next.
    is ready for final verification. Mark it with `gh pr ready <N>`, which starts the full suite.
    Ready is **not** merge approval.
 3. **PR verified.** The full suite passed on the **final Ready head**, and acceptance results
-   (tests, browser checks, review verdicts) are reported to the product owner. Check with
-   `gh pr checks <N>` and confirm the latest `test` run for that head says `Test mode: full`.
-   A run on an older commit, or a draft-safety run, does not count. Any new push undoes this
+   (tests, browser checks, review verdicts) are reported to the product owner. Check that
+   the latest run for that head is titled `CI (full)` and succeeded (`gh run list --workflow
+   CI --commit <sha>`). A run on an older commit, or a draft-safety run, does not count. Any new push undoes this
    state until the full suite passes again on the new head.
 4. **Merge approved.** The product owner explicitly authorizes merging that exact PR head.
    Approval for one PR, or for an earlier head, does not carry over.

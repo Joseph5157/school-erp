@@ -78,8 +78,8 @@ Workspace; mark the rest N/A.
 - [ ] Kept as a draft while work and review were in progress (draft CI runs safety tests only).
 - [ ] Marked Ready for review once implementation and fixes were final. Ready starts the full
       suite; it is not merge approval.
-- [ ] Full suite passed on the head SHA above, after the last push (`gh pr checks <N>`; the
-      `test` run says `Test mode: full`).
+- [ ] Full suite passed on the head SHA above, after the last push: the latest run is titled
+      `CI (full)` and succeeded (`gh run list --workflow CI --commit <sha>`).
 - [ ] N/A: docs-only PR (`docs/**`, `*.md`), which CI skips.
 
 ## Deployment and rollback
