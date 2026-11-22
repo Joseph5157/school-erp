@@ -8,8 +8,8 @@ gates (section 3 there).
 | State | Short test |
 | --- | --- |
 | 1. Implemented locally | The task works in its worktree and its targeted checks pass. |
-| 2. PR verified | Draft PR reviewed, findings settled, CI green on the final head. |
-| 3. Merged | The product owner approved, and the exact head was squash-merged. |
+| 2. PR verified | Reviewed, findings settled, marked Ready, full CI green on the final head, acceptance results reported. |
+| 3. Merged | The product owner approved that exact head, and it was squash-merged. |
 | 4. Released to staging | Deployed to staging and checked there. |
 | 5. Production-ready | Safe to run for a real school. |
 | 6. Closed out | Docs, follow-ups and cleanup finished. |
@@ -30,16 +30,22 @@ gates (section 3 there).
 
 ## 2. PR verified
 
-- Draft PR open with the template filled in, including base and head SHA.
+- PR open with the template filled in, including base and head SHA. It was a draft while the
+  work and the review were in progress.
 - Independent review done. Each finding checked and given a verdict; chosen fixes pushed.
-- **CI:** green on the final head commit (`gh pr checks <N>`). A docs-only PR has no CI run
-  (`paths-ignore`), and the PR says so.
-- The report states what was **not** tested or checked.
+- Marked **Ready for review** once implementation and fixes were final. Ready only starts
+  full CI; it is not merge approval.
+- **CI:** the full suite is green on the final Ready head (`gh pr checks <N>`, and the latest
+  `test` run for that head says `Test mode: full`). A draft-safety run does not count. A push
+  after that undoes this state until the full suite passes on the new head. A docs-only PR has
+  no CI run (`paths-ignore`), and the PR says so.
+- Acceptance results (tests, browser checks, review verdicts) are reported to the product
+  owner, including what was **not** tested or checked.
 
 ## 3. Merged
 
-- **User acceptance:** the product owner approved this PR for merge explicitly; only then was
-  the draft marked ready.
+- **User acceptance:** the product owner explicitly approved merging this exact PR head, after
+  the full CI and acceptance results were reported.
 - Merged with `gh pr merge <N> --squash --match-head-commit <head-sha>`.
 - `main` contains the squash commit; the PR shows `MERGED`.
 

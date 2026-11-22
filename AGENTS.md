@@ -49,18 +49,23 @@ Start with [docs/engineering/README.md](docs/engineering/README.md).
 - Locally: run the targeted tests for the changed area and the areas around it, plus
   `ruff check .` ([commands](docs/engineering/README.md#commands)). Do not run the full
   suite locally unless the product owner asks; CI runs it.
-- The full CI run must pass on the **final PR head commit** before merge. A new push needs
-  a new green run. (CI skips PRs that only change `docs/**` or `*.md`; those need a
-  manual review only.)
+- Draft PRs get a quick CI mode (lint, checks, a fixed safety-test set). The complete suite
+  runs when the PR is marked Ready for review and on every later push. It must pass on the
+  **final PR head commit** before merge; a draft-safety run does not count, and a new push
+  needs a new full run. (CI skips PRs that only change `docs/**` or `*.md`; those need a
+  manual review only.) Details:
+  [IMPLEMENTATION_WORKFLOW.md §11](docs/engineering/IMPLEMENTATION_WORKFLOW.md#11-ready-final-ci-and-acceptance).
 - Check UI changes in a browser at phone (360–390px) and desktop widths.
 
 ## Pull requests and merging
 
 - Open the PR as a **draft** and fill in the PR template. Get an independent review, check
   each finding yourself and report a verdict for each one.
-- **Never merge without the product owner's explicit approval** for that PR. Only then mark
-  the draft ready.
-- Merge only the exact head that was reviewed and tested:
+- Mark the PR Ready for review (`gh pr ready <N>`) only when the implementation and review
+  fixes are complete. Ready starts the full suite; it is **not** merge approval.
+- **Never merge without the product owner's explicit approval** for that PR head, given
+  after full CI and acceptance results are reported.
+- Merge only the exact head that was verified:
   `gh pr merge <N> --squash --match-head-commit <sha>`.
 - Clean up only what this task created, and only after the merge is confirmed. The rules
   for squash merges are in
