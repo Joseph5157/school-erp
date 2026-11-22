@@ -40,8 +40,6 @@ jobs:
     # Ten consecutive runs (condition 5) and a forced failure that must upload diagnostics (condition 8).
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    env:
-      BT_ARTIFACT_DIR: ${{ runner.temp }}/bt-artifacts
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -60,6 +58,8 @@ jobs:
             echo "run $i: $(grep '^Ran' "run-$i.log") wall=$(python -c "print(round($end-$start,2))")s stderr_lines=$(wc -l < "run-$i.log")"
           done
       - name: Forced failure must fail and leave diagnostics
+        env:
+          BT_ARTIFACT_DIR: ${{ runner.temp }}/bt-artifacts
         run: |
           if BT_SPIKE_FORCE_FAIL=1 python -m unittest browser_tests.bt_spike.DiagnosticsSpike; then
             echo "expected a failure"; exit 1
