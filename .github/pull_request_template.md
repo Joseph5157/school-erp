@@ -80,6 +80,9 @@ Workspace; mark the rest N/A.
       suite; it is not merge approval.
 - [ ] Full suite passed on the head SHA above, after the last push: the latest run is titled
       `CI (full)` and succeeded (`gh run list --workflow CI --commit <sha>`).
+- [ ] JavaScript browser tests (from ENG-JS-01 JS1 onward; N/A before): the `js` job applied and
+      passed on the head SHA above, or its test step was skipped because no relevant path
+      changed (`gh run view <run-id> --json jobs`).
 - [ ] N/A: docs-only PR (`docs/**`, `*.md`), which CI skips.
 
 ## Deployment and rollback

@@ -55,6 +55,10 @@ Start with [docs/engineering/README.md](docs/engineering/README.md).
   needs a new full run. (CI skips PRs that only change `docs/**` or `*.md`; those need a
   manual review only.) Details:
   [IMPLEMENTATION_WORKFLOW.md §11](docs/engineering/IMPLEMENTATION_WORKFLOW.md#11-ready-final-ci-and-acceptance).
+- JavaScript browser tests (ADR 0028; the `js` CI job, from ENG-JS-01 JS1 onward): the job is
+  path-aware. When it applies to a PR, the PR is verified only when the `js` job passes on the
+  **exact approved head** (the final head presented for approval). A `js` job whose test step
+  was skipped because no relevant path changed is not required. Pushes to `main` always run it.
 - Check UI changes in a browser at phone (360–390px) and desktop widths.
 
 ## Pull requests and merging
