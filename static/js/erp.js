@@ -621,6 +621,9 @@ function usageHeaders(headers) {
       roster.addEventListener("htmx:beforeSwap", function (event) {
         // detail.elt is the swap target; the row that made the request is on requestConfig.
         swapping = event.detail.requestConfig ? event.detail.requestConfig.elt : null;
+        // A reply to an older change (the row has changed since this request was built) is never
+        // put into the row: the newer change is still on its way and the row keeps "Saving…".
+        if (swapping && swapping._sent !== swapping._seq) event.detail.shouldSwap = false;
       });
       // Counts in a response only describe saved rows; skip them while other rows are in flight.
       roster.addEventListener("htmx:oobBeforeSwap", function (event) {
@@ -632,20 +635,32 @@ function usageHeaders(headers) {
       roster.addEventListener("htmx:afterRequest", function (event) {
         var row = event.detail.elt;
         if (!row.hasAttribute || !row.hasAttribute("data-erp-row")) return;
-        if (row._sent === row._seq) row._dirty = false;
+        // A reply to an older change: the row has moved on since this request was built.
+        var stale = row._sent !== row._seq;
+        if (!stale) row._dirty = false;
         var ok = event.detail.successful;
-        row.classList.toggle("is-unsaved", !ok);
-        if (announce) {
-          announce.textContent = ok
-            ? "Saved " + nameOf(row) + "."
-            : "Could not save " + nameOf(row) + ". Use Retry or Save draft.";
-        }
         var code = event.detail.xhr ? event.detail.xhr.status : 0;
         // Usage (ADR 0027): failures only the browser can see; the server counts its own replies.
         if (ok && row._retrying) erpUsage.add("attendance_capture", "retry_succeeded");
         if (code >= 500) erpUsage.add("attendance_capture", "server");
         row._retrying = false;
         if (ok) erpUsage.flush();
+        swapping = null; // afterSwap does not fire when nothing was swapped
+        if (stale) {
+          // The latest choice wins (OD-JS15): whatever this older reply said, the row keeps
+          // "Saving…" and nothing is announced; the newer request's reply decides. A sign-out is
+          // about the whole session, so the session box still hears of it.
+          if (code === 401) document.dispatchEvent(new CustomEvent("erp:signed-out"));
+          if (!othersDirty()) refresh();
+          syncAutosaveState();
+          return;
+        }
+        row.classList.toggle("is-unsaved", !ok);
+        if (announce) {
+          announce.textContent = ok
+            ? "Saved " + nameOf(row) + "."
+            : "Could not save " + nameOf(row) + ". Use Retry or Save draft.";
+        }
         if (!ok) {
           var status = code;
           // 409 and 422 responses carry their own message and are already swapped in.
