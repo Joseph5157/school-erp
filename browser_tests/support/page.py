@@ -186,11 +186,7 @@ class FixturePage(unittest.TestCase):
             self.page.evaluate("0")
         except Exception:  # a crashed or closed page; the test's own failure says why
             pass
-        for held in self.pending():  # never answered on purpose (for example a timeout test)
-            try:
-                held.respond(204)
-            except Exception:  # the page may already have given up on it
-                pass
+        self._release_held()
         guard_failed = bool(self.route_errors or self.page_errors or self.external)
         try:
             if failed or guard_failed:
@@ -203,6 +199,21 @@ class FixturePage(unittest.TestCase):
             self.assertEqual(self.route_errors, [], "the harness could not serve a request")
             self.assertEqual(self.page_errors, [], "errors were thrown in the page")
             self.assertEqual(self.external, [], "the page tried to reach the real network")
+
+    def _release_held(self):
+        """Teardown only: settle every held route the test did not answer, closed ones included.
+
+        A route left open when the context closes makes Playwright print a CancelledError. This
+        bypasses Held.respond (and its closed-request assertion), ignores every error and records
+        nothing, so it cannot change the test's result.
+        """
+        for held in self.held:
+            if held.answered:
+                continue
+            try:
+                held.route.fulfill(status=204, headers={"Content-Type": "text/plain; charset=utf-8"})
+            except Exception:  # the page or Playwright may already have finished with it
+                pass
 
     def save_diagnostics(self, stem):
         """Screenshot, Playwright trace and the guard records for a failing test.
