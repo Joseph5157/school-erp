@@ -1,12 +1,11 @@
-"""Attendance autosave in a real browser (ENG-JS-01 JS2, spec section 8.1, cases A2-A5).
+"""Attendance autosave in a real browser (ENG-JS-01, spec section 8.1, cases A1-A5).
 
 The unchanged erp.js and HTMX run against browser_tests/fixtures/attendance.html (rows 201-203 and
 the session box). Requests are held until the test answers them with reply fixtures the Django
 contract test keeps in step with the real views.
 
-A1 (an older reply must never replace a newer pending change) is not here: it is defect F-JS1,
-recorded in GitHub issue #289 with no expected-failure test. JS3 adds A1, shows it failing, and
-fixes the attendance block.
+A1 (JS3, spec section 8.2) is the regression test for defect F-JS1 (issue #289): an older reply
+must never replace a newer pending change (OD-JS15, the latest choice wins).
 """
 
 from browser_tests.support.autosave import COUNT_SIGNED_OUT, HTML, JSON, form, multipart
@@ -47,6 +46,58 @@ class AttendancePage(FixturePage):
                         message="the session box's signed-out state")
         self.assertTrue(self.page.locator("[data-erp-session-login]").is_visible())
         self.assertTrue(self.page.locator("[data-erp-session-stay]").is_hidden())
+
+
+class LatestChoiceWinsTests(AttendancePage):
+    """A1: the teacher changes row 201 (A: Present), then again (B: Absent) while A is in flight."""
+
+    def page_line(self):
+        return self.page.locator("[data-erp-autosave-state]").inner_text().strip()
+
+    def change_twice(self):
+        self.open("attendance.html")
+        self.page.check("#id_status_201_0")  # A: Present
+        older = self.next_request(SAVE)
+        self.assertEqual(form(older)["status_201"], "PRESENT")
+        self.page.check("#id_status_201_1")  # B: Absent
+        self.pump(0.2)
+        self.assertEqual(len(self.pending(SAVE)), 1, "B waits for A's reply (queue last)")
+        return older
+
+    def newer_after(self, older, *answer):
+        """Answer the older request, then check B's state is untouched while B is in flight."""
+        older.respond(*answer)
+        self.wait_until(lambda: len(self.requests_to(SAVE)) == 2, message="the newer request")
+        newer = self.requests_to(SAVE)[1]
+        self.pump(0.2)
+        self.assertEqual(self.row_status(201), "Saving…", "the older reply must not replace B's state")
+        self.assertNotIn("is-unsaved", self.page.locator('[data-erp-enrollment="201"]').get_attribute("class"))
+        self.assertEqual(self.announced(), "", "nothing is announced for the older reply")
+        self.assertEqual(self.page_line(), "Saving…")
+        self.assertEqual(form(newer)["status_201"], "ABSENT", "the next request carries B's value")
+        self.assertEqual(self.checked(201), "ABSENT")
+        return newer
+
+    def test_a1_an_older_success_never_shows_saved_over_a_newer_change(self):
+        newer = self.newer_after(self.change_twice(), 200, reply("attendance_saved.html"), HTML)
+        newer.respond(200, reply("attendance_saved.html"), HTML)
+        self.wait_for_status(201, "✓ Saved")
+        self.assertEqual(self.announced(), "Saved Student A.")
+        self.wait_until(lambda: self.page_line() == "All changes saved", message="All changes saved")
+
+    def test_a1_an_older_failure_never_shows_not_saved_over_a_newer_change(self):
+        newer = self.newer_after(self.change_twice(), 500, "Server error", HTML)
+        newer.respond(200, reply("attendance_saved.html"), HTML)
+        self.wait_for_status(201, "✓ Saved")
+        self.assertEqual(self.announced(), "Saved Student A.")
+
+    def test_a1_the_newer_reply_decides_what_the_row_shows(self):
+        newer = self.newer_after(self.change_twice(), 200, reply("attendance_saved.html"), HTML)
+        newer.respond(500, "Server error", HTML)
+        self.wait_for_status(201, "Not saved.")
+        self.assertEqual(self.page.locator('[data-erp-enrollment="201"] [data-erp-retry]').count(), 1)
+        self.assertEqual(self.announced(), "Could not save Student A. Use Retry or Save draft.")
+        self.assertEqual(self.page_line(), "Changes not saved")
 
 
 class BulkPresentTests(AttendancePage):
