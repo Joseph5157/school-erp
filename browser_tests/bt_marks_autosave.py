@@ -1,8 +1,10 @@
 """Marks autosave in a real browser (ENG-JS-01 JS2, spec section 8.1, cases M1-M9).
 
-The unchanged erp.js and HTMX run against browser_tests/fixtures/marks.html (rows 101-103; row 103
-has the documented 600 ms timeout). Every autosave request is held until the test answers it, with
-reply fixtures the Django contract test keeps in step with the real view. The server half of each
+The unchanged erp.js and HTMX run against browser_tests/fixtures/marks.html (rows 101-103, each with
+the production 15-second request timeout). Every autosave request is held until the test answers it,
+with reply fixtures the Django contract test keeps in step with the real view. The timeout runs on
+the page clock (XHR_TIMEOUT_ON_PAGE_CLOCK), so only a test that moves the clock reaches it and a
+slow runner cannot. The server half of each
 case is covered by core/tests/test_marks_autosave.py.
 """
 
@@ -15,6 +17,8 @@ NEEDS_SCORE = "Enter a score or choose Absent."
 
 class MarksPage(FixturePage):
     init_scripts = (COUNT_SIGNED_OUT,)
+    clock = True
+    xhr_timeouts_on_page_clock = True
 
     def setUp(self):
         super().setUp()
@@ -58,6 +62,10 @@ class MarksPage(FixturePage):
         self.wait_until(lambda: self.sent() > already, message="a new autosave request")
         return [h for h in self.held if h.path.startswith(SAVE)][already]
 
+    def time_out(self):
+        """Move the page clock past the 15-second request timeout."""
+        self.page.clock.run_for(15_001)
+
     def fail_101(self):
         """Row 101 fails with no connection (a network error made on arrival)."""
         self.fail_on_arrival(SAVE)
@@ -97,11 +105,20 @@ class OlderReplyTests(MarksPage):
 
 class LostReplyTests(MarksPage):
     def test_m3_a_lost_reply_offers_retry_which_resends_the_original_base(self):
-        self.enter_score(103, "9")  # row 103 times out after 600 ms
+        # Paused, so only the test moves time: the timeout fires at exactly 15 seconds.
+        self.page.clock.pause_at(self.page.evaluate("Date.now()") + 1000)
+        self.enter_score(103, "9")
         lost = self.next_request(SAVE)
         self.assertEqual((form(lost)["base_status_103"], form(lost)["base_score_103"]), ("", ""))
+        self.page.clock.run_for(14_999)
+        self.pump(0.1)
+        self.assertEqual(self.row_status(103), "Saving…")
+        self.page.clock.run_for(2)
         self.wait_for_status(103, "Not saved: no connection.")
         self.assertTrue(self.has_retry(103))
+        self.wait_until(lambda: lost.closed, message="the lost request to be closed")
+        with self.assertRaisesRegex(AssertionError, "had already closed"):
+            lost.respond(200, reply("marks_saved.html"), FRAGMENT)  # too late: the row gave up on it
         self.page.click('[data-erp-enrollment="103"] [data-erp-retry]')
         retry = self.new_save(1)
         body = form(retry)
@@ -130,8 +147,11 @@ class FailureStateTests(MarksPage):
             self.fail_101()
             self.assert_failed(101, "Not saved: no connection.", retry=True)
         with self.subTest("timeout"):
+            already = self.sent()
             self.open("marks.html")
             self.enter_score(103, "9")
+            self.new_save(already)
+            self.time_out()
             self.assert_failed(103, "Not saved: no connection.", retry=True)
         with self.subTest("500"):
             self.answer_101(500, "Server error")
@@ -192,7 +212,7 @@ class FallbackTests(MarksPage):
         self.assertEqual(self.held, [])
         # One row lost its connection, two have conflicts: Save draft resends only the first.
         self.fail_101()
-        for pk, score in ((102, "14"), (103, "15")):  # answered at once: row 103 times out after 600 ms
+        for pk, score in ((102, "14"), (103, "15")):
             self.enter_score(pk, score)
             self.next_request(SAVE).respond(409, reply("marks_conflict.html"), FRAGMENT)
             self.wait_for_status(pk, "Changed on another device")
@@ -264,7 +284,7 @@ class EnterTests(MarksPage):
         self.page.keyboard.type("7")
         self.page.keyboard.press("Enter")
         saved = self.next_request(SAVE)
-        saved.respond(204)  # quickly: row 103 times out after 600 ms
+        saved.respond(204)
         self.assertEqual(self.page.evaluate("document.activeElement.id"), "id_score_103")
         self.assertEqual(form(saved)["score_103"], "7")
         self.no_request(SAVE)

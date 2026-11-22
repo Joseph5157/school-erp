@@ -334,7 +334,7 @@ agreed with that reading.
 | --- | --- |
 | How | Python Playwright (one pip package, pinned like the rest of the stack) drives headless Chromium. Each test opens a fresh page at `https://erp.test/…`. `page.route` serves the hand-written fixture HTML plus the unchanged `static/js/erp.js` and vendored `htmx.min.js` from disk, and intercepts every other request. No Django server, database or seed data. |
 | Races | The route handler holds autosave requests. The test then fulfils them in any order (`route.fulfill`) or never answers. Network failures are made on arrival (`fail_on_arrival`): aborting a request after its handler has returned crashed Chromium 156 in JS1. |
-| Time | `page.clock` (installed before the page loads) controls `setTimeout`, `setInterval`, `Date` and `performance.now` for the 30 s flush, 6 s auto-hide and session timers. The XHR timeout is not a JavaScript timer. For the 15 s marks timeout, the fixture uses a short timeout value, recorded as the one documented exception in the fixture contract (section 7.5). |
+| Time | `page.clock` (installed before the page loads) controls `setTimeout`, `setInterval`, `Date` and `performance.now` for the 30 s flush, 6 s auto-hide and session timers. The XHR timeout is not a JavaScript timer, and `page.clock` cannot move it (checked in JS2). The harness's opt-in init script runs the page's own XHR timeout on `setTimeout`, so the clock reaches the production 15 s marks timeout; the fixture keeps the production value (section 7.5). |
 | Fidelity | Real engine: change on blur, real focus and visibility, `matchMedia` from the viewport (360-390 px and desktop), native `<dialog>`, CSS (fixture can link `erp.css`), real HTMX request, queue and swap order. Errors surface through `page.on("pageerror")`, which fails the test. |
 | Gaps | Same as any browser automation: the real install prompt, real keypad "Next", and OS sleep or wake. Display mode `standalone` and Global Privacy Control are set with small init scripts. |
 | Runner | Plain `unittest` (no Django, no database) in `browser_tests/`, run with `python -m unittest discover -s browser_tests -p "bt_*.py" -t .`. Django's `SimpleTestCase` fails at teardown once Playwright's event loop is running (found in the spike). The `bt_` prefix keeps the files out of Django's `test*.py` discovery, so the normal suite never needs a browser. |
@@ -457,8 +457,8 @@ The spike **passes only if** it shows all of the following (product-owner condit
    flush, session check) can be held, answered later and answered out of order, from the
    synchronous API. Aborting a request produces HTMX's `sendError`.
 3. **Controlled time.** `page.clock` controls the 30 s interval, `setTimeout`, `Date` and
-   `performance.now` when installed before the page loads. The marks timeout path is reached with
-   the fixture's short timeout (section 7.5).
+   `performance.now` when installed before the page loads. The marks timeout path is reached by
+   running the XHR timeout on the page clock (JS2; section 7.5).
 4. **Page-hide flush, GPC and storage.** `erp.js` does not use `navigator.sendBeacon`. Its usage
    flush is a `fetch` with `keepalive: true` sent when the page becomes hidden (`erp.js:79-82`,
    `:96-98`). The spike must show that this request is intercepted on `visibilitychange` to
@@ -552,8 +552,8 @@ attribute and every `hx-*` attribute in the matching fixture, it compares **name
 values**: URLs become `<url>` and primary keys become `<pk>`, so a fixture that changes
 `hx-sync="this:queue last"` to `replace` fails.
 
-- **Exception:** the marks timeout value. The fixture's short `hx-request` timeout is listed as
-  that one exception, with the production value asserted separately.
+- **No exceptions.** Since JS2 every fixture value matches production, including the marks
+  15-second timeout, which the browser tests reach on the page clock.
 - **Other checks:** the hidden base input naming pattern, and the `X-ERP-Row-Fragment` header the
   fixtures send.
 - **Server reply fragments.** `erp.js` also reads the replies: the `X-ERP-Row-Fragment` header
@@ -1134,3 +1134,4 @@ by the author.
 | 1 | F-JS1 confirmed in Chromium: after the older reply, the row shows "✓ Saved" and announces "Saved Student A." while the newer change is in flight; an older 500 shows "Not saved." with Retry. The newer request carries the newer value, so no wrong value is saved. Issue #289; no test until JS3 | Section 3.5 |
 | 2 | Fixtures gained the session box (attendance) and replies for a 403 row fragment and bulk present (saved and 401), all pinned by the contract test | Section 7.5 |
 | 3 | Two equivalent mutants: removing the marks `htmx:timeout` listener (afterRequest with status 0 shows the same words) and the last-row Enter trigger (the sign-in "Next" helper's focus move already fires `change`, F-JS4). The string check for the Enter trigger is kept for that reason | `test_marks_autosave.py` |
+| 4 | Review fix: the 600 ms row-103 timeout and its contract exception are gone. `page.clock` cannot move a native XHR timeout, so an opt-in test-only init script runs the page's own timeout on `setTimeout` (only `timeout` then `loadend` reach the page, as in a browser). Tests that hold replies cannot be overtaken by a slow runner, and answering a request the page already closed fails with a clear assertion | `browser_tests/support/page.py`; section 7.5 |

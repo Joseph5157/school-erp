@@ -66,7 +66,42 @@ class ClockTests(FixturePage):
         self.next_request("/u/").respond(204)
 
 
+class XhrTimeoutClockTests(FixturePage):
+    clock = True
+    xhr_timeouts_on_page_clock = True
+
+    def test_an_xhr_timeout_runs_on_the_page_clock(self):
+        self.open("blank.html")
+        # Paused, so real time spent waiting for the request cannot move the page clock.
+        self.page.clock.pause_at(self.page.evaluate("Date.now()") + 1000)
+        self.page.evaluate(
+            "window.seen = []; const x = new XMLHttpRequest(); x.open('POST', '/held/t'); x.timeout = 15000;"
+            "['timeout', 'abort', 'load', 'error', 'loadend'].forEach(n => x.addEventListener(n, () => window.seen.push(n)));"
+            "x.onabort = () => window.seen.push('onabort'); x.ontimeout = () => window.seen.push('ontimeout');"
+            "x.send('a');")
+        held = self.next_request("/held/")
+        self.page.clock.run_for(14_999)
+        self.pump(0.1)
+        self.assertEqual(self.page.evaluate("window.seen"), [])
+        self.page.clock.run_for(2)
+        self.wait_until(lambda: "loadend" in self.page.evaluate("window.seen"), message="the timeout")
+        # As a browser reports a timeout: timeout (listener, then handler), then loadend; no abort.
+        self.assertEqual(self.page.evaluate("window.seen"), ["timeout", "ontimeout", "loadend"])
+        self.wait_until(lambda: held.closed, message="the request to be closed")
+        self.assertEqual(self.pending("/held/"), [])
+
+
 class RequestControlTests(FixturePage):
+    def test_answering_a_request_the_page_already_closed_fails_clearly(self):
+        self.open("blank.html")
+        self.page.evaluate("window.x = new XMLHttpRequest(); x.open('POST', '/held/c'); x.send('a');")
+        held = self.next_request("/held/")
+        self.page.evaluate("x.abort()")
+        with self.assertRaisesRegex(AssertionError, "had already closed POST /held/c"):
+            held.respond(200, "too late")
+        self.assertFalse(held.answered)
+
+
     def test_held_requests_are_answered_later_and_in_any_order(self):
         self.open("blank.html")
         self.page.evaluate(

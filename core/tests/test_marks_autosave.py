@@ -202,7 +202,6 @@ class AutosaveSavingTests(AutosaveFixture, TestCase):
         self.assertEqual(after.entered_by_id, before.entered_by_id)
 
 
-
 class AutosaveConflictTests(AutosaveFixture, TestCase):
     def test_a_stale_base_is_refused_with_only_that_rows_server_value(self):
         self.result(self.test1, self.asha, "MARKED", "18")
