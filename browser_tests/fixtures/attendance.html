@@ -1,53 +1,68 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><title>Attendance fixture</title></head>
+<head><meta charset="utf-8"><title>Attendance capture fixture</title></head>
 <body class="erp">
 <form method="post" id="attendance-capture" hx-headers='{"X-CSRFToken": "test-token"}'>
 <input type="hidden" name="csrfmiddlewaretoken" value="test-token">
 <div class="erp-roster" data-erp-roster>
   <div class="erp-countbar">
-    <p class="erp-count-line" data-erp-static-counts>3 students</p>
+    <p class="erp-count-line" data-erp-static-counts>3 students &middot; 0 present &middot; 0 absent &middot; <span class="erp-count-unmarked is-warn">3 unmarked</span></p>
     <div class="erp-count-tabs" data-erp-tabs hidden>
-      <button type="button" data-erp-filter="all" aria-pressed="true">All <span id="erp-count-all" data-erp-count="all">3</span></button>
-      <button type="button" data-erp-filter="unmarked" aria-pressed="false">Unmarked <span id="erp-count-unmarked" data-erp-count="unmarked">3</span></button>
-      <button type="button" data-erp-filter="present" aria-pressed="false">Present <span id="erp-count-present" data-erp-count="present">0</span></button>
-      <button type="button" data-erp-filter="absent" aria-pressed="false">Absent <span id="erp-count-absent" data-erp-count="absent">0</span></button>
+      <button type="button" data-erp-filter="all" aria-pressed="true"><span class="erp-count-label">All</span><span id="erp-count-all" data-erp-count="all">3</span></button>
+      <button type="button" data-erp-filter="unmarked" class="erp-count-unmarked is-warn" aria-pressed="false"><span class="erp-count-label">Unmarked</span><span id="erp-count-unmarked" data-erp-count="unmarked">3</span></button>
+      <button type="button" data-erp-filter="present" aria-pressed="false"><span class="erp-count-label">Present</span><span id="erp-count-present" data-erp-count="present">0</span></button>
+      <button type="button" data-erp-filter="absent" aria-pressed="false"><span class="erp-count-label">Absent</span><span id="erp-count-absent" data-erp-count="absent">0</span></button>
       <button type="button" class="btn btn-outline-secondary btn-sm erp-mark-present" data-erp-mark-present data-erp-bulk-url="/attendance/present/">Mark unanswered as present</button>
     </div>
   </div>
-<fieldset class="erp-roster-row" data-erp-row data-erp-enrollment="201" hx-post="/attendance/autosave/" hx-trigger="change" hx-include="this" hx-vals='{"enrollment": 201}' hx-target="find [data-erp-row-status]" hx-swap="innerHTML" hx-sync="this:queue last">
-  <legend class="visually-hidden">Student A</legend>
-  <div class="erp-toggles">
-    <input type="radio" name="status_201" value="PRESENT" id="id_status_201_0"><label for="id_status_201_0">Present</label>
-    <input type="radio" name="status_201" value="ABSENT" id="id_status_201_1"><label for="id_status_201_1">Absent</label>
-  </div>
-  <div class="erp-note"><label for="id_note_201">Absence note</label><input type="text" name="note_201" id="id_note_201"></div>
-  <div class="erp-row-status" data-erp-row-status></div>
-</fieldset>
-<fieldset class="erp-roster-row" data-erp-row data-erp-enrollment="202" hx-post="/attendance/autosave/" hx-trigger="change" hx-include="this" hx-vals='{"enrollment": 202}' hx-target="find [data-erp-row-status]" hx-swap="innerHTML" hx-sync="this:queue last">
-  <legend class="visually-hidden">Student B</legend>
-  <div class="erp-toggles">
-    <input type="radio" name="status_202" value="PRESENT" id="id_status_202_0"><label for="id_status_202_0">Present</label>
-    <input type="radio" name="status_202" value="ABSENT" id="id_status_202_1"><label for="id_status_202_1">Absent</label>
-  </div>
-  <div class="erp-note"><label for="id_note_202">Absence note</label><input type="text" name="note_202" id="id_note_202"></div>
-  <div class="erp-row-status" data-erp-row-status></div>
-</fieldset>
-<fieldset class="erp-roster-row" data-erp-row data-erp-enrollment="203" hx-post="/attendance/autosave/" hx-trigger="change" hx-include="this" hx-vals='{"enrollment": 203}' hx-target="find [data-erp-row-status]" hx-swap="innerHTML" hx-sync="this:queue last">
-  <legend class="visually-hidden">Student C</legend>
-  <div class="erp-toggles">
-    <input type="radio" name="status_203" value="PRESENT" id="id_status_203_0"><label for="id_status_203_0">Present</label>
-    <input type="radio" name="status_203" value="ABSENT" id="id_status_203_1"><label for="id_status_203_1">Absent</label>
-  </div>
-  <div class="erp-note"><label for="id_note_203">Absence note</label><input type="text" name="note_203" id="id_note_203"></div>
-  <div class="erp-row-status" data-erp-row-status></div>
-</fieldset>
+  <fieldset class="erp-roster-row" data-erp-row data-erp-enrollment="201" hx-post="/attendance/autosave/" hx-trigger="change" hx-include="this" hx-vals='{"enrollment": 201}' hx-target="find [data-erp-row-status]" hx-swap="innerHTML" hx-sync="this:queue last">
+    <legend class="visually-hidden">Student A</legend>
+    <span class="erp-roster-name" aria-hidden="true">Student A</span>
+    <span class="erp-initials" aria-hidden="true">A</span>
+    <div class="erp-toggles">
+      <input type="radio" name="status_201" value="PRESENT" id="id_status_201_0"><label for="id_status_201_0" class="erp-toggle is-present">Present</label>
+      <input type="radio" name="status_201" value="ABSENT" id="id_status_201_1"><label for="id_status_201_1" class="erp-toggle is-absent">Absent</label>
+    </div>
+    <div class="erp-note">
+      <label class="form-label small mb-1" for="id_note_201">Absence note<span class="visually-hidden"> for Student A</span></label>
+      <input type="text" name="note_201" id="id_note_201">
+    </div>
+    <div class="erp-row-status" data-erp-row-status></div>
+  </fieldset>
+  <fieldset class="erp-roster-row" data-erp-row data-erp-enrollment="202" hx-post="/attendance/autosave/" hx-trigger="change" hx-include="this" hx-vals='{"enrollment": 202}' hx-target="find [data-erp-row-status]" hx-swap="innerHTML" hx-sync="this:queue last">
+    <legend class="visually-hidden">Student B</legend>
+    <span class="erp-roster-name" aria-hidden="true">Student B</span>
+    <span class="erp-initials" aria-hidden="true">B</span>
+    <div class="erp-toggles">
+      <input type="radio" name="status_202" value="PRESENT" id="id_status_202_0"><label for="id_status_202_0" class="erp-toggle is-present">Present</label>
+      <input type="radio" name="status_202" value="ABSENT" id="id_status_202_1"><label for="id_status_202_1" class="erp-toggle is-absent">Absent</label>
+    </div>
+    <div class="erp-note">
+      <label class="form-label small mb-1" for="id_note_202">Absence note<span class="visually-hidden"> for Student B</span></label>
+      <input type="text" name="note_202" id="id_note_202">
+    </div>
+    <div class="erp-row-status" data-erp-row-status></div>
+  </fieldset>
+  <fieldset class="erp-roster-row" data-erp-row data-erp-enrollment="203" hx-post="/attendance/autosave/" hx-trigger="change" hx-include="this" hx-vals='{"enrollment": 203}' hx-target="find [data-erp-row-status]" hx-swap="innerHTML" hx-sync="this:queue last">
+    <legend class="visually-hidden">Student C</legend>
+    <span class="erp-roster-name" aria-hidden="true">Student C</span>
+    <span class="erp-initials" aria-hidden="true">C</span>
+    <div class="erp-toggles">
+      <input type="radio" name="status_203" value="PRESENT" id="id_status_203_0"><label for="id_status_203_0" class="erp-toggle is-present">Present</label>
+      <input type="radio" name="status_203" value="ABSENT" id="id_status_203_1"><label for="id_status_203_1" class="erp-toggle is-absent">Absent</label>
+    </div>
+    <div class="erp-note">
+      <label class="form-label small mb-1" for="id_note_203">Absence note<span class="visually-hidden"> for Student C</span></label>
+      <input type="text" name="note_203" id="id_note_203">
+    </div>
+    <div class="erp-row-status" data-erp-row-status></div>
+  </fieldset>
   <div class="erp-actionbar">
-    <span id="erp-hint" class="erp-actionbar-status" data-erp-hint>3 unmarked</span>
+    <span id="erp-hint" class="erp-actionbar-status is-warn" data-erp-hint>3 unmarked</span>
     <span class="erp-autosave-state" data-erp-autosave-state role="status" aria-live="polite" hidden>All changes saved</span>
     <button type="submit" name="action" value="save" class="btn btn-outline-primary" data-erp-save-fallback>Save draft</button>
   </div>
-  <p class="small text-danger mb-1" role="alert" data-erp-wait-message hidden>Waiting for attendance changes to save.</p>
+  <p class="small text-danger mb-1" role="alert" data-erp-wait-message hidden>Waiting for attendance changes to save. Try again in a moment.</p>
   <p class="visually-hidden" role="status" aria-live="polite" data-erp-autosave-announce></p>
 </div>
 </form>

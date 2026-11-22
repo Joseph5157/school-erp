@@ -126,3 +126,74 @@ class CiPolicyTests(SimpleTestCase):
 
     def test_no_pull_request_target(self):
         self.assertNotIn("pull_request_target", self.text)
+
+
+# --- Browser tests: the path-aware `js` job (ADR 0028, ENG-JS-01 spec section 9) ----------------
+
+BROWSER_TESTS = 'python -m unittest discover -s browser_tests -p "bt_*.py" -t .'
+RUNS = "steps.paths.outputs.run == 'true'"
+# Paths whose change must run the browser tests on a pull request.
+RELEVANT = ("static/(js|vendor|css)/", "browser_tests/", r"requirements\.txt$",
+            r"requirements-browser\.txt$", "config/", r"manage\.py$", r"\.github/workflows/")
+
+
+class JsJobPolicyTests(SimpleTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        lines = WORKFLOW.read_text(encoding="utf-8").splitlines()
+        jobs = _block(lines, "jobs:", 0)
+        cls.test_job = _block(jobs, "test:", 2)
+        cls.js_job = _block(jobs, "js:", 2)
+        cls.js_steps = _steps(cls.js_job or [])
+
+    def _step(self, text):
+        found = [s for s in self.js_steps if text in s]
+        self.assertEqual(len(found), 1, f"exactly one js step contains {text!r}")
+        return found[0]
+
+    def test_the_js_job_exists_and_cannot_be_skipped_or_ignored(self):
+        self.assertIsNotNone(self.js_job, "the js job must exist under that id")
+        self.assertFalse([ln for ln in self.js_job if re.match(r"^    (name|if|needs|continue-on-error):", ln)])
+        self.assertNotIn("continue-on-error", "\n".join(self.js_job))
+
+    def test_the_path_check_fails_closed_against_the_exact_base(self):
+        checkout = self._step("actions/checkout@v4")
+        self.assertIn("fetch-depth: 0", checkout)
+        paths = self._step("id: paths")
+        self.assertIsNone(_step_if(paths), "the path check itself always runs")
+        self.assertIn("github.event.pull_request.base.sha", paths)
+        self.assertIn('git diff --name-only "$BASE_SHA" "$GITHUB_SHA"', paths)
+        # Starts at run=true and only a successful diff of a pull request can turn it off, so a
+        # push to main, a missing base or a failed diff all run the tests.
+        script = paths[paths.index("run: |"):]
+        self.assertLess(script.index("run=true"), script.index("run=false"))
+        self.assertIn('[ "$EVENT" = "pull_request" ] && [ -n "$BASE_SHA" ]', script)
+        self.assertIn("if changed=$(git diff", script)
+        self.assertNotIn("| grep", script, "a pipe into grep -q can fail open under pipefail")
+
+    def test_the_relevant_paths_cover_scripts_tests_requirements_settings_and_ci(self):
+        paths = self._step("id: paths")
+        pattern = re.search(r"relevant='([^']+)'", paths)
+        self.assertIsNotNone(pattern)
+        for path in RELEVANT:
+            self.assertIn(path, pattern.group(1))
+
+    def test_install_and_test_steps_are_gated_only_by_the_path_check(self):
+        test = self._step(BROWSER_TESTS)
+        self.assertEqual(_step_if(test), RUNS)
+        for text in ("pip install -r requirements-browser.txt", "--only-shell chromium", "install-deps chromium"):
+            condition = _step_if(self._step(text))
+            self.assertIsNotNone(condition, text)
+            self.assertTrue(condition.startswith(RUNS), f"{text}: {condition}")
+
+    def test_failure_diagnostics_are_kept_for_seven_days(self):
+        upload = self._step("actions/upload-artifact@v4")
+        self.assertEqual(_step_if(upload), f"failure() && {RUNS}")
+        self.assertIn("retention-days: 7", upload)
+
+    def test_the_django_browser_contract_tests_run_in_draft_safety(self):
+        body = "\n".join(self.test_job)
+        modules = re.search(r"DRAFT_SAFETY_TESTS:\s*>-\n((?:\s{8}\S.*\n?)+)", body).group(1).split()
+        self.assertIn("core.tests.test_js_toolchain_boundary", modules)
+        self.assertIn("core.tests.test_js_fixture_contract", modules)

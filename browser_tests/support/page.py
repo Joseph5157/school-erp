@@ -1,9 +1,14 @@
-"""Browser fixture harness (ENG-JS-01, ADR 0028, spec section 7.2). SPIKE VERSION.
+"""Browser fixture harness (ENG-JS-01, ADR 0028, spec section 7.2).
 
 One Chromium process per test run, a fresh browser context and page per test. Every request is
 intercepted at the context level: fixture pages and /static/ files are served from disk, other
 requests to https://erp.test are held for the test to answer, and anything else is aborted and
 recorded so the test fails. No Django server, database or real network is used.
+
+These are plain unittest tests, run with
+`python -m unittest discover -s browser_tests -p "bt_*.py" -t .`. Django's SimpleTestCase does
+not work here: once Playwright's event loop is running, Django's per-context database wrappers
+cannot be restored at teardown. The tests need no Django anyway.
 """
 
 import atexit
@@ -20,6 +25,7 @@ STATIC = ROOT / "static"
 FIXTURES = ROOT / "browser_tests" / "fixtures"
 ORIGIN = "https://erp.test"
 TYPES = {".html": "text/html; charset=utf-8", ".js": "application/javascript", ".css": "text/css"}
+# Failure screenshots and traces show only synthetic fixture pages (spec section 7.6).
 ARTIFACTS = pathlib.Path(os.environ.get("BT_ARTIFACT_DIR") or (pathlib.Path(tempfile.gettempdir()) / "bt-artifacts"))
 
 _playwright = None
@@ -28,20 +34,29 @@ _browser = None
 
 def _close():
     global _playwright, _browser
-    if _browser is not None:
+    if _browser is not None and _browser.is_connected():
         _browser.close()
+    if _playwright is not None:
         _playwright.stop()
-        _browser = _playwright = None
+    _browser = _playwright = None
 
 
 def browser():
     """The one browser for this run, started on first use and closed at exit."""
     global _playwright, _browser
-    if _browser is None:
+    if _browser is not None and not _browser.is_connected():
+        _browser = None  # a crashed browser is replaced, so one crash cannot fail every later test
+    if _playwright is None:
         _playwright = sync_playwright().start()
-        _browser = _playwright.chromium.launch()
         atexit.register(_close)
+    if _browser is None:
+        _browser = _playwright.chromium.launch()
     return _browser
+
+
+def reply(name):
+    """A hand-written server reply from fixtures/replies/ (kept honest by the Django contract test)."""
+    return (FIXTURES / "replies" / name).read_text(encoding="utf-8")
 
 
 class Held:
@@ -57,18 +72,20 @@ class Held:
         self.answered = False
 
     def respond(self, status=200, body="", headers=None):
+        # A reply with a body but no headers crashed the Chromium 156 renderer (found in JS1), so
+        # every reply carries a Content-Type.
+        headers = dict(headers or {})
+        if not any(key.lower() == "content-type" for key in headers):
+            headers["Content-Type"] = "text/plain; charset=utf-8"
         self.answered = True
-        self.route.fulfill(status=status, body=body, headers=headers or {})
+        self.route.fulfill(status=status, body=body, headers=headers)
 
-    def fail(self):
-        self.answered = True
-        self.route.abort("failed")
+    # There is deliberately no later "fail": aborting a request after its route handler has
+    # returned crashed the Chromium 156 renderer with every abort code (found in JS1). Network
+    # failures are made on arrival instead (FixturePage.fail_on_arrival).
 
 
 class FixturePage(unittest.TestCase):
-    """Plain unittest: Django's SimpleTestCase breaks once Playwright's event loop is running
-    (database wrappers are per async context), and these tests need no Django at all."""
-
     viewport = {"width": 390, "height": 800}
     init_scripts = ()
     clock = False  # install the page clock before the page loads
@@ -77,6 +94,7 @@ class FixturePage(unittest.TestCase):
         self.context = browser().new_context(viewport=self.viewport)
         self.context.tracing.start(screenshots=True, snapshots=True)
         self.held = []
+        self.fail_paths = []
         self.external = []
         self.page_errors = []
         self.context.route("**/*", self._route)
@@ -91,15 +109,12 @@ class FixturePage(unittest.TestCase):
         failed = self._failed()
         for held in self.pending():  # never answered on purpose (for example a timeout test)
             try:
-                held.fail()
+                held.respond(204)
             except Exception:  # the page may already have given up on it
                 pass
         try:
             if failed:
-                ARTIFACTS.mkdir(parents=True, exist_ok=True)
-                stem = ARTIFACTS / self.id().replace(".", "-")
-                self.page.screenshot(path=f"{stem}.png", full_page=True)
-                self.context.tracing.stop(path=f"{stem}-trace.zip")
+                self.save_diagnostics(ARTIFACTS / self.id().replace(".", "-"))
             else:
                 self.context.tracing.stop()
         finally:
@@ -107,6 +122,13 @@ class FixturePage(unittest.TestCase):
         if not failed:
             self.assertEqual(self.page_errors, [], "errors were thrown in the page")
             self.assertEqual(self.external, [], "the page tried to reach the real network")
+
+    def save_diagnostics(self, stem):
+        """Screenshot and Playwright trace for a failing test; stops this context's tracing."""
+        stem = pathlib.Path(stem)
+        stem.parent.mkdir(parents=True, exist_ok=True)
+        self.page.screenshot(path=f"{stem}.png", full_page=True)
+        self.context.tracing.stop(path=f"{stem}-trace.zip")
 
     def _failed(self):
         result = self._outcome.result
@@ -116,17 +138,26 @@ class FixturePage(unittest.TestCase):
         url = request.url
         if url.startswith(ORIGIN + "/static/"):
             path = STATIC / url[len(ORIGIN + "/static/"):].split("?")[0]
-            route.fulfill(status=200, body=path.read_bytes(), headers={"Content-Type": TYPES.get(path.suffix, "application/octet-stream")})
+            route.fulfill(status=200, body=path.read_bytes(),
+                          headers={"Content-Type": TYPES.get(path.suffix, "application/octet-stream")})
         elif url.startswith(ORIGIN + "/fixtures/"):
             path = FIXTURES / url[len(ORIGIN + "/fixtures/"):].split("?")[0]
             route.fulfill(status=200, body=path.read_bytes(), headers={"Content-Type": TYPES[".html"]})
         elif url.startswith(ORIGIN + "/"):
-            self.held.append(Held(route, request))
+            path = url[len(ORIGIN):]
+            if any(path.startswith(prefix) for prefix in self.fail_paths):
+                route.abort("internetdisconnected")  # a network failure, made while handling
+            else:
+                self.held.append(Held(route, request))
         else:
             self.external.append(url)
             route.abort("blockedbyclient")
 
     # --- helpers ----------------------------------------------------------------------------
+
+    def fail_on_arrival(self, path):
+        """Requests to this path fail as network errors when they arrive (see Held)."""
+        self.fail_paths.append(path)
 
     def open(self, fixture):
         self.page.goto(f"{ORIGIN}/fixtures/{fixture}")

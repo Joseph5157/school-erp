@@ -111,7 +111,7 @@ FROZEN: The initial School ERP technology stack is:
 - Authentication: Django authentication
 - User model: Custom User model from the beginning of the project
 - Authorization: Django Groups/Permissions plus explicit domain-level authorization checks
-- Testing: Django test framework initially
+- Testing: Django test framework initially; behavioural tests of `static/js/erp.js` run in a test-only Python Playwright toolchain (ADR 0028), with no Node/npm toolchain and nothing added to production
 - Linting and formatting: Ruff
 - Python environment: `venv`
 - Dependency management: `pip` with pinned dependencies
