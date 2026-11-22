@@ -1,9 +1,18 @@
 name: CI
+# The run title shows the test mode, so the Actions list tells a draft-safety run from a full one.
+run-name: >-
+  CI (${{ (github.event_name == 'pull_request' && github.event.pull_request.draft) && 'draft safety' || 'full' }})
 
+# Test mode (docs/engineering/IMPLEMENTATION_WORKFLOW.md, section 11):
+# - Draft PR: lint, system check, migration check and a fixed safety-test set.
+# - PR that is Ready for review, and every push to main: lint and the complete suite.
+# Anything that is not a draft PR runs the complete suite.
 on:
   push:
     branches: [main]
   pull_request:
+    # ready_for_review starts the complete suite when a draft is marked Ready.
+    types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
     # Docs-only PRs have nothing for these checks to catch.
     paths-ignore:
       - "docs/**"
@@ -52,7 +61,39 @@ jobs:
       DB_PASSWORD: erp
       DB_HOST: localhost
       DB_PORT: "5432"
+      # "draft" only for a pull request that is a draft right now; everything else is "full".
+      CI_MODE: ${{ (github.event_name == 'pull_request' && github.event.pull_request.draft) && 'draft' || 'full' }}
+      # Draft safety set: route-permission inventory, permission and privacy guards, sessions,
+      # deployment settings and this workflow's own policy. About 250 tests, under a minute.
+      DRAFT_SAFETY_TESTS: >-
+        core.tests.test_ci_policy
+        core.tests.test_security_gate4b_route_inventory
+        core.tests.test_test_settings
+        core.tests.test_security_gate2_deployment_safety
+        core.tests.test_security_gate4a_crash_email_privacy
+        core.tests.test_security_gate1_account_protection
+        core.tests.test_security_gate3a_academic_year_authorization
+        core.tests.test_security_gate4b_bundles
+        core.tests.test_security_gate4b_people_pages
+        core.tests.test_security_gate4b_results_pages
+        core.tests.test_security_gate4b_attendance_pages
+        core.tests.test_security_gate4b_documents
+        core.tests.test_security_gate4b_imports
+        core.tests.test_phase6_security
+        core.tests.test_session_errors_audit18
     steps:
+      - name: Test mode
+        run: |
+          if [ "$CI_MODE" = "draft" ]; then
+            label="draft safety"
+            note="Draft PR: safety tests only. The complete suite runs when the PR is marked Ready for review."
+          else
+            label="full"
+            note="Complete PostgreSQL suite."
+          fi
+          echo "Test mode: $label"
+          echo "::notice title=Test mode: $label::$note"
+          { echo "## Test mode: $label"; echo; echo "$note"; } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
@@ -78,7 +119,11 @@ jobs:
           psql -h "$DB_HOST" -U "$DB_USER" -d postgres -c "SELECT pg_reload_conf()"
           sleep 1
           psql -h "$DB_HOST" -U "$DB_USER" -d postgres -c "SHOW autovacuum"
+      - name: Draft safety tests (PostgreSQL)
+        if: env.CI_MODE == 'draft'
+        run: python manage.py test $DRAFT_SAFETY_TESTS --parallel 4 --noinput
       - name: Test suite (PostgreSQL)
+        if: env.CI_MODE != 'draft'
         run: |
           pip install py-spy
           bash .github/scripts/report_test_stall.sh 420 300 &

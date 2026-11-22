@@ -75,7 +75,11 @@ Workspace; mark the rest N/A.
 
 ## CI on the final head
 
-- [ ] CI passed on the head SHA above (`gh pr checks <N>`), after the last push.
+- [ ] Kept as a draft while work and review were in progress (draft CI runs safety tests only).
+- [ ] Marked Ready for review once implementation and fixes were final. Ready starts the full
+      suite; it is not merge approval.
+- [ ] Full suite passed on the head SHA above, after the last push: the latest run is titled
+      `CI (full)` and succeeded (`gh run list --workflow CI --commit <sha>`).
 - [ ] N/A: docs-only PR (`docs/**`, `*.md`), which CI skips.
 
 ## Deployment and rollback
@@ -87,6 +91,7 @@ Workspace; mark the rest N/A.
 ## Workspace and merge
 
 - [ ] Built in a fresh worktree. The original checkout and its untracked files were not touched.
-- [ ] The product owner approved this PR for merge, and it was then marked ready (`gh pr ready <N>`).
+- [ ] The product owner explicitly approved merging this exact head, after full CI and
+      acceptance results were reported.
 - [ ] Merge with `gh pr merge <N> --squash --match-head-commit <head-sha>`.
 - [ ] After the merge is confirmed: remove only this task's worktree and branches.

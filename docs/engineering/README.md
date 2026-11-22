@@ -25,10 +25,13 @@ Run from the repository root with the project `venv` active. Local `manage.py` r
 | CSS text guard tests (after `erp.css` edits) | `python manage.py test --pattern="test_ui*.py" --parallel 4 --noinput` |
 | Route permission inventory | `python manage.py test core.tests.test_security_gate4b_route_inventory --noinput` |
 | PR checks on the current head | `gh pr checks <N>` |
-| Mark an approved draft ready | `gh pr ready <N>` |
+| Which CI mode ran on a head (`CI (full)` or `CI (draft safety)`) | `gh run list --workflow CI --commit <sha> --json displayTitle,status,conclusion` |
+| Mark Ready for review (starts the full suite; not merge approval) | `gh pr ready <N>` |
 | Guarded merge (only after approval) | `gh pr merge <N> --squash --match-head-commit <sha>` |
 
-The full suite runs in CI (`.github/workflows/ci.yml`) on PostgreSQL.
+The full suite runs in CI (`.github/workflows/ci.yml`) on PostgreSQL once a PR is Ready for
+review, and on every push to `main`. Draft PRs run a quick safety mode
+([IMPLEMENTATION_WORKFLOW.md §11](IMPLEMENTATION_WORKFLOW.md#11-ready-final-ci-and-acceptance)).
 
 Related: [ARCHITECTURE.md](../ARCHITECTURE.md) (frozen decisions and source-of-truth
 hierarchy), [adr/README.md](../adr/README.md) (ADRs), [PERMISSIONS.md](../PERMISSIONS.md),

@@ -64,7 +64,9 @@ guardian, operator.>
 ## Test plan
 
 - <test module and the cases: allowed, refused, edge dates, history kept>
-- Local: targeted tests + `ruff check .`. CI runs the full suite on the final head.
+- Local: targeted tests + `ruff check .`. Draft CI runs safety tests only; mark the PR Ready
+  (not merge approval) when the work and review fixes are final, and the full suite must pass
+  on that final head.
 
 ## Browser acceptance
 
@@ -93,9 +95,9 @@ Stop and report, without guessing, if:
 4. Tests and checks run, with results; anything not run and why
 5. Browser checks done, with widths
 6. Reviewer findings with verdicts and what was fixed
-7. CI status on the final head
+7. CI on the final head: the draft-safety run, then the full run after Ready (run links)
 8. Migrations: none, or which
 9. Open questions and follow-ups
 10. Confirmation that the original checkout and unrelated files were not touched, and the PR
-    was not merged
+    was not merged (Ready for review is not merge approval)
 ````

@@ -25,7 +25,7 @@ table says so, the product owner has accepted it.
 | 8 | Isolated implementation | Commits on a task branch in its own worktree | Implementation agent |
 | 9 | Targeted verification | Test, lint and browser results for the changed area | Implementation agent |
 | 10 | Independent review | Findings with verdicts | Independent reviewer, then implementation agent |
-| 11 | Final CI and acceptance | Green CI on the final head; owner's merge approval | CI, product owner |
+| 11 | Ready, final CI and acceptance | PR marked Ready; full CI green on the final head; acceptance results reported; owner's merge approval | Implementation agent, CI, product owner |
 | 12 | Guarded merge and cleanup | Squash commit on `main`; task worktree and branches removed | Release operator |
 | 13 | Staging release | Deployed and checked on staging | Release operator, product owner |
 | 14 | Closeout | Docs, spec status and follow-ups updated | Implementation agent |
@@ -118,8 +118,8 @@ everything else, and between one guardian's children and another's.
   [README.md](README.md#commands).
 - After `static/css/erp.css` edits, run the CSS text guard tests (`--pattern="test_ui*.py"`).
 - After adding or changing routes, run `core.tests.test_security_gate4b_route_inventory`.
-- Do not run the full suite locally by default; CI runs it on every code PR. Run it locally
-  only when the product owner asks. This replaces the "full local suite" step in older phase
+- Do not run the full suite locally by default; CI runs it once a code PR is Ready for review
+  (section 11). Run it locally only when the product owner asks. This replaces the "full local suite" step in older phase
   plans.
 - For visible changes, check in a browser at 360–390px and at desktop width. Run
   `collectstatic` and restart the server first so you are not looking at stale CSS.
@@ -127,27 +127,64 @@ everything else, and between one guardian's children and another's.
 
 ## 10. Independent review
 
-- Open the PR as a **draft** with the template filled in.
+- Open the PR as a **draft** with the template filled in. While it is a draft, CI runs the
+  quick draft-safety mode (section 11), not the full suite.
 - Ask an independent reviewer (a separate agent or person without the implementer's context)
   to check the diff against the spec, the ADRs, permissions, privacy and the tests.
 - Verify every finding against the code yourself. Give each one a verdict: confirmed,
   plausible or rejected (with the reason). Record them in the PR.
 - Batch the fixes the product owner chooses and push once, then update the head SHA in the PR.
 
-## 11. Final CI and acceptance
+## 11. Ready, final CI and acceptance
 
-- CI must be green on the **final head commit**. Check with `gh pr checks <N>` after the last
-  push. A run on an older commit does not count.
-- CI ignores PRs that change only `docs/**` or `*.md` files (`paths-ignore` in `ci.yml`).
-  Those PRs have no CI run on the PR; their gate is the review. CI still runs on the push to
-  `main` after the merge.
-- The product owner approves the merge explicitly, for this PR, after seeing the report.
-  Approval for one PR does not carry over to another.
+### CI modes
+
+`.github/workflows/ci.yml` picks its test mode from the event. The `lint` and `test` checks
+keep the same names in both modes; the run title and the job summary say which mode ran.
+
+| Event | Mode | What runs |
+| --- | --- | --- |
+| PR opened, reopened, pushed to or converted back while it is a **draft** | Draft safety | `ruff check .`, `manage.py check`, the migration check, and a fixed safety-test set (route-permission inventory, permission, privacy, session and deployment guards; about 250 tests) |
+| PR marked **Ready for review** (`ready_for_review`) | Full | Lint, system check, migration check and the complete PostgreSQL suite |
+| Any push to a PR that is **Ready** | Full | The same complete run again on the new head |
+| Push to `main` (every merge, including docs-only) | Full | The same complete run |
+| PR that changes only `docs/**` or `*.md` | None | Skipped by `paths-ignore`; the review is the gate |
+
+Anything that is not a draft PR runs the full mode. The safety-test list is in `ci.yml`
+(`DRAFT_SAFETY_TESTS`), and `core/tests/test_ci_policy.py` guards these rules. A green
+draft-safety run never verifies a PR.
+
+To see which mode ran on a head, read the run title (`CI (full)` or `CI (draft safety)`):
+`gh run list --workflow CI --commit <sha> --json displayTitle,event,status,conclusion`.
+`gh pr checks <N>` shows only pass or fail for `lint` and `test`, not the mode.
+
+`main` has no branch protection or required checks today. Both modes report checks named
+`lint` and `test`, so if `test` were made a required check, a green draft-safety run on the
+same head could satisfy it (for example after Ready, before the full run finishes, or after
+a PR is moved back to draft). Decide on a full-only gate before adding required checks.
+
+### Gates
+
+These are separate steps. Passing one does not grant the next.
+
+1. **Draft.** Implementation and independent review are still in progress. CI runs draft
+   safety.
+2. **Ready for review.** Implementation and the chosen review fixes are complete, and the head
+   is ready for final verification. Mark it with `gh pr ready <N>`, which starts the full suite.
+   Ready is **not** merge approval.
+3. **PR verified.** The full suite passed on the **final Ready head**, and acceptance results
+   (tests, browser checks, review verdicts) are reported to the product owner. Check that
+   the latest run for that head is titled `CI (full)` and succeeded (`gh run list --workflow
+   CI --commit <sha>`). A run on an older commit, or a draft-safety run, does not count. Any new push undoes this
+   state until the full suite passes again on the new head.
+4. **Merge approved.** The product owner explicitly authorizes merging that exact PR head.
+   Approval for one PR, or for an earlier head, does not carry over.
+5. **Guarded merge.** Exact-head squash merge (section 12).
 
 ## 12. Guarded merge and cleanup
 
-After the product owner approves, mark the draft ready (`gh pr ready <N>`); GitHub will not
-merge a draft. Then merge only the exact head that was reviewed and tested:
+The PR is already Ready and verified (section 11). After the product owner approves, merge
+only the exact head that was verified:
 
 ```bash
 gh pr merge <N> --squash --match-head-commit <head-sha>
