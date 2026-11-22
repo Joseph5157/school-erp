@@ -156,7 +156,8 @@ and requirements rules.
 
 - CI gains one job, `js`. On pull requests, drafts included, it installs Chromium and runs only
   when JavaScript, vendored scripts, CSS, browser tests, requirements, settings or CI configuration
-  change. Template and form drift is caught by the fixture contract test in the Django suite. It always runs on pushes to `main`. Docs-only PRs stay skipped.
+  change. Template and form drift is caught by the fixture contract test in the Django suite. It
+  always runs on pushes to `main`. Docs-only PRs stay skipped.
 - `core/tests/test_ci_policy.py` and a new boundary test, both in the draft-safety set, guard
   against quiet removal or skipping. They check the job's existence and command, the minimum test
   count per file, and that no skip or expected-failure marker appears in `browser_tests/` at all.

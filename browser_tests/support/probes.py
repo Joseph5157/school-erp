@@ -21,7 +21,9 @@ class PageErrorProbe(FixturePage):
 class ExternalRequestProbe(FixturePage):
     def test_real_network_request(self):
         self.open("blank.html")
-        self.page.evaluate("fetch('https://example.com/bt-probe').then(() => 0, () => 0)")
+        # Fire and forget: the test ends without waiting, so only tearDown's last round-trip can
+        # catch the request.
+        self.page.evaluate("fetch('https://example.com/bt-probe').catch(() => 0); 0")
 
 
 class RouteErrorProbe(FixturePage):

@@ -116,6 +116,12 @@ class FixturePage(unittest.TestCase):
 
     def tearDown(self):
         failed = self._failed()
+        # One last round-trip first, so a request the page made just before the test ended has
+        # reached the route handler (and is held, blocked or recorded) before the guards are read.
+        try:
+            self.page.evaluate("0")
+        except Exception:  # a crashed or closed page; the test's own failure says why
+            pass
         for held in self.pending():  # never answered on purpose (for example a timeout test)
             try:
                 held.respond(204)
