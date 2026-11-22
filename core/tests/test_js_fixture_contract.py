@@ -9,8 +9,8 @@ values are what erp.js selects on), checked, hidden and the other attributes in 
 and erp-* and is-* classes. Text, labels and Bootstrap classes are not compared. Primary keys
 become <pk>, autosave and bulk URLs become <url> and the CSRF token becomes <token>.
 
-One documented exception: marks fixture row 103 has a 600 ms request timeout so a browser test can
-reach the timeout path in real time; production rows use 15000.
+There are no exceptions: every marks row keeps the production 15-second timeout. The browser tests
+reach the timeout by running it on the page clock (browser_tests/support/page.py).
 """
 
 import json
@@ -69,10 +69,12 @@ class Tree(HTMLParser):
 BEHAVIOUR_ATTRS = {
     "id", "name", "type", "value", "for", "checked", "hidden", "disabled", "inputmode",
     "enterkeyhint", "step", "role", "aria-live", "aria-pressed", "aria-expanded", "aria-controls",
+    "data-idle", "data-absolute", "data-status-url", "data-login-url",  # the session box
 }
 BEHAVIOUR_PREFIXES = ("hx-", "data-erp-", "data-server-")
-PK_ATTRS = {"id", "name", "for", "aria-controls", "hx-vals", "data-erp-enrollment"}
-URL_ATTRS = {"hx-post", "data-erp-bulk-url", "data-erp-usage-url"}
+# data-idle and data-absolute are the seconds left in the session when the page was rendered.
+PK_ATTRS = {"id", "name", "for", "aria-controls", "hx-vals", "data-erp-enrollment", "data-idle", "data-absolute"}
+URL_ATTRS = {"hx-post", "data-erp-bulk-url", "data-erp-usage-url", "data-status-url", "data-login-url"}
 
 
 def norm(value):
@@ -156,17 +158,15 @@ class ContractMixin:
     def assert_same(self, fixture_sig, real_sig):
         self.assertEqual(fixture_sig, real_sig, diff(fixture_sig, real_sig))
 
-    def assert_page_matches(self, fixture_html, real_html, roster, row_exceptions=None):
+    def assert_page_matches(self, fixture_html, real_html, roster):
         """Every fixture row, the roster outside the rows, and the form match the real page."""
         fixture_tree, real_tree = Tree(fixture_html), Tree(real_html)
         fixture_rows, real_rows = rows(fixture_tree), rows(real_tree)
         self.assertGreaterEqual(len(real_rows), len(fixture_rows))
         for index, (fixture_row, real_row) in enumerate(zip(fixture_rows, real_rows, strict=False)):
             with self.subTest(row=index):
-                fixture_sig = signature([fixture_row] + descendants(fixture_row))
-                for name, value in (row_exceptions or {}).get(index, {}).items():
-                    fixture_sig[0][1][name] = value
-                self.assert_same(fixture_sig, signature([real_row] + descendants(real_row)))
+                self.assert_same(signature([fixture_row] + descendants(fixture_row)),
+                                 signature([real_row] + descendants(real_row)))
         with self.subTest(part="roster outside the rows"):
             self.assert_same(signature(outside_rows(first(fixture_tree, roster))),
                              signature(outside_rows(first(real_tree, roster))))
@@ -176,6 +176,11 @@ class ContractMixin:
         missing = page_hooks(fixture_tree) - page_hooks(real_tree)
         self.assertEqual(missing, set(), "the fixture uses hooks the real page no longer has")
 
+    def assert_session_box_matches(self, fixture_html, real_html):
+        fixture_box, real_box = first(Tree(fixture_html), "data-erp-session"), first(Tree(real_html), "data-erp-session")
+        self.assert_same(signature([fixture_box] + descendants(fixture_box)),
+                         signature([real_box] + descendants(real_box)))
+
     def assert_reply_matches(self, fixture_name, response):
         self.assert_same(signature(descendants(Tree(fixture(f"replies/{fixture_name}")).root)),
                          signature(descendants(Tree(response.content.decode()).root)))
@@ -184,17 +189,14 @@ class ContractMixin:
 class MarksFixtureContractTests(ContractMixin, AutosaveFixture, TestCase):
     def test_the_marks_page_fixture_matches_the_real_page(self):
         real = self.teacher.get(self.entry_url(self.test1)).content.decode()
-        # Row 103's short timeout is the one documented exception (next test).
-        self.assert_page_matches(fixture("marks.html"), real, "data-erp-marks",
-                                 row_exceptions={2: {"hx-request": '{"timeout": 15000}'}})
+        self.assert_page_matches(fixture("marks.html"), real, "data-erp-marks")
         self.assertIn("""hx-request='{"timeout": 15000}'""", real)
 
-    def test_the_only_fixture_exception_is_row_103s_short_timeout(self):
-        row_101, _, row_103 = rows(Tree(fixture("marks.html")))
-        a, b = behaviour(row_101), behaviour(row_103)
-        self.assertEqual({k for k in a if a[k] != b[k]}, {"hx-request"})  # pks are normalised
-        self.assertEqual(json.loads(a["hx-request"]), {"timeout": 15000})
-        self.assertEqual(json.loads(b["hx-request"]), {"timeout": 600})
+    def test_every_fixture_row_keeps_the_production_timeout(self):
+        fixture_rows = rows(Tree(fixture("marks.html")))
+        self.assertEqual(len(fixture_rows), 3)
+        for row in fixture_rows:
+            self.assertEqual(json.loads(behaviour(row)["hx-request"]), {"timeout": 15000})
 
     def test_the_saved_reply_fixture_matches(self):
         response = self.post_row(self.asha, "MARKED", "12")
@@ -207,6 +209,12 @@ class MarksFixtureContractTests(ContractMixin, AutosaveFixture, TestCase):
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response["X-ERP-Row-Fragment"], "1")
         self.assert_reply_matches("marks_conflict.html", response)
+
+    def test_the_forbidden_reply_fixture_matches(self):
+        response = self.post_row(self.asha, "MARKED", "12", client=self.client_for(self.iyer))
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response["X-ERP-Row-Fragment"], "1")
+        self.assert_reply_matches("marks_forbidden.html", response)
 
     def test_the_refused_reply_fixture_matches(self):
         response = self.post_row(self.bina, "MARKED", "99")
@@ -235,6 +243,7 @@ class AttendanceFixtureContractTests(ContractMixin, Phase4Fixture, TestCase):
     def test_the_attendance_page_fixture_matches_the_real_page(self):
         real = self.teacher.get(self.url).content.decode()
         self.assert_page_matches(fixture("attendance.html"), real, "data-erp-roster")
+        self.assert_session_box_matches(fixture("attendance.html"), real)
         self.assertIn("data-erp-bulk-url=", real)
 
     def test_the_saved_reply_fixture_matches(self):
@@ -250,3 +259,18 @@ class AttendanceFixtureContractTests(ContractMixin, Phase4Fixture, TestCase):
         expected = json.loads(fixture("replies/signed_out.json"))
         self.assertEqual(set(response.json()), set(expected))
         self.assertEqual(response.json()["error"], expected["error"])
+
+    def test_the_bulk_present_reply_fixtures_match(self):
+        bulk = reverse("core:my-attendance-autosave-present", args=[self.six_a.pk])
+        ajax = {"HTTP_X_REQUESTED_WITH": "XMLHttpRequest"}
+        saved = self.teacher.post(bulk, {"enrollment": [self.ravi.pk, self.mina.pk]}, **ajax)
+        self.assertEqual(saved.status_code, 200)
+        expected = json.loads(fixture("replies/attendance_bulk_saved.json"))
+        self.assertEqual(set(saved.json()), set(expected))
+        # The real ids are database keys: the reply lists exactly the students sent, as the
+        # fixture lists exactly the two rows the browser test sends (202 and 203).
+        self.assertEqual(set(saved.json()["saved"]), {self.ravi.pk, self.mina.pk})
+        self.assertEqual(len(saved.json()["saved"]), len(expected["saved"]))
+        signed_out = Client().post(bulk, {"enrollment": [self.ravi.pk]}, **ajax)
+        self.assertEqual(signed_out.status_code, 401)
+        self.assertEqual(signed_out.json(), json.loads(fixture("replies/signed_out.json")))

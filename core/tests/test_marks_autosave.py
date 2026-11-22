@@ -47,11 +47,6 @@ def marks_block():
     return ERP_JS[start:end]
 
 
-def attendance_block():
-    start = ERP_JS.index("// Attendance roster:")
-    return ERP_JS[start:ERP_JS.index("// Marks entry:", start)]
-
-
 class AutosaveFixture(MarksFixture):
     def autosave_url(self, assessment=None):
         return reverse("core:assessment-marks-autosave", args=[(assessment or self.test1).pk])
@@ -205,11 +200,6 @@ class AutosaveSavingTests(AutosaveFixture, TestCase):
         after = StudentResult.objects.get()
         self.assertEqual(after.updated_at, before.updated_at)
         self.assertEqual(after.entered_by_id, before.entered_by_id)
-
-    def test_the_marks_script_refuses_marked_with_an_empty_score_locally(self):
-        block = marks_block()
-        self.assertIn('"htmx:confirm"', block)
-        self.assertIn("Enter a score", block)
 
 
 class AutosaveConflictTests(AutosaveFixture, TestCase):
@@ -499,22 +489,10 @@ class MarksAutosaveScriptTests(TestCase):
         self.assertIn('sheet.addEventListener("htmx:beforeSwap"', marks_block())
         self.assertNotIn('document.addEventListener("htmx:beforeSwap"', ERP_JS)
 
-    def test_only_marked_row_fragments_are_swapped(self):
-        block = marks_block()
-        self.assertIn("X-ERP-Row-Fragment", block)
-        self.assertIn("shouldSwap = false", block)
-        self.assertIn('"htmx:sendError"', block)
-        self.assertIn('"htmx:timeout"', block)
-
-    def test_failures_map_to_the_approved_texts(self):
-        block = marks_block()
-        for text in ("Not saved: no connection.", "Not saved: you have been signed out.",
-                     "Not saved: the page has expired. Reload the page.",
-                     "Connection is back. Tap Retry.", "Changes save automatically",
-                     "All changes saved", "Changes not saved (", "rows need your attention"):
-            self.assertIn(text, block)
-
     def test_last_row_enter_saves_and_keeps_focus_in_the_row(self):
+        # Kept although browser test M8 covers the behaviour: in Chromium the sign-in "Next"
+        # helper's focus move already fires `change`, so M8 still passes without this trigger
+        # (spec F-JS4). Retire only when a browser test can tell the difference.
         block = marks_block()
         handler = block[block.index('sheet.addEventListener("keydown"'):]
         handler = handler[:handler.index("\n    });") + 8]
@@ -522,10 +500,10 @@ class MarksAutosaveScriptTests(TestCase):
         self.assertIn('window.htmx.trigger(event.target, "change")', handler)
         self.assertIn("event.target.focus();", handler)
 
-    def test_fallback_resends_failed_rows_and_never_posts_the_whole_form(self):
+    def test_the_marks_block_never_submits_the_whole_form_itself(self):
+        # Policy guard (an absence on every path). The behaviour, that Save draft resends only
+        # failed rows and never posts the form, is browser test M6 (bt_marks_autosave.py).
         block = marks_block()
-        self.assertIn("event.preventDefault()", block)
-        self.assertIn("resendFailed", block)
         self.assertNotIn(".submit()", block)
         self.assertNotIn("requestSubmit", block)
 
@@ -534,28 +512,8 @@ class MarksAutosaveScriptTests(TestCase):
         for word in ("localStorage", "sessionStorage", "indexedDB", "setTimeout", "setInterval"):
             self.assertNotIn(word, block)
 
-    def test_a_request_carries_only_its_own_row(self):
-        # HTMX adds the enclosing form, which holds every row; the sheet sends only this row.
-        block = marks_block()
-        self.assertIn('["status_", "score_", "base_status_", "base_score_"]', block)
-        self.assertIn("event.detail.parameters = own;", block)
-
-    def test_an_older_reply_never_marks_a_newer_change_saved(self):
-        # Review finding: a reply to an older request must not show "Saved" over a newer change
-        # that is still on its way, or over an empty score the sheet refused to send.
-        block = marks_block()
-        self.assertIn("var stale = row._sent !== row._seq;", block)
-        self.assertIn("row._localSeq = row._seq;", block)
-        self.assertIn('if (stale && row._localSeq === row._seq) setRow(row, "local", NEEDS_SCORE, false);',
-                      block)
-        self.assertIn('setRow(row, "saving", "Saving…"); // the newer change is still on its way', block)
-
     def test_leaving_with_unsaved_rows_warns(self):
         self.assertIn('"beforeunload"', marks_block())
-
-    def test_both_sheets_report_a_signed_out_reply_to_the_session_box(self):
-        self.assertIn('"erp:signed-out"', marks_block())
-        self.assertIn('"erp:signed-out"', attendance_block())
 
     def test_marks_template_keeps_the_whole_form_post_for_no_javascript(self):
         source = MARKS_TEMPLATE.read_text(encoding="utf-8")

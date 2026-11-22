@@ -57,6 +57,56 @@ def browser():
     return _browser
 
 
+# Opt-in (FixturePage.xhr_timeouts_on_page_clock): a native XHR timeout is not a JavaScript timer,
+# so page.clock cannot move it (checked in JS2). This test-only init script keeps the page's own
+# timeout value but runs it on setTimeout, which the page clock controls; when it expires the
+# request is ended and only `timeout` then `loadend` reach the page's handlers, as for a real
+# timeout (the abort events of ending it are kept silent).
+# Time still flows naturally, so a test that never moves the clock sees the real timeout.
+XHR_TIMEOUT_ON_PAGE_CLOCK = """
+(() => {
+  const proto = XMLHttpRequest.prototype;
+  const send = proto.send;
+  const add = proto.addEventListener;
+  // While the request is ended for its timeout, its abort and loadend listeners stay silent; the
+  // events a browser fires for a timeout (timeout, then loadend) are dispatched afterwards.
+  proto.addEventListener = function (type, listener, options) {
+    if ((type === "abort" || type === "loadend") && typeof listener === "function") {
+      const inner = listener;
+      listener = function (event) { if (!this.btSilent) return inner.call(this, event); };
+    }
+    return add.call(this, type, listener, options);
+  };
+  Object.defineProperty(proto, "timeout", {
+    configurable: true,
+    get() { return this.btTimeout || 0; },
+    set(ms) { this.btTimeout = Number(ms) || 0; },
+  });
+  proto.send = function (...args) {
+    const xhr = this;
+    if (xhr.btTimeout > 0) {
+      const timer = setTimeout(() => {
+        if (xhr.readyState === XMLHttpRequest.DONE) return;
+        xhr.btTimedOut = true;
+        xhr.btSilent = true;
+        const onabort = xhr.onabort, onloadend = xhr.onloadend;
+        xhr.onabort = null;
+        xhr.onloadend = null;
+        xhr.abort();
+        xhr.onabort = onabort;
+        xhr.onloadend = onloadend;
+        xhr.btSilent = false;
+        xhr.dispatchEvent(new ProgressEvent("timeout"));
+        xhr.dispatchEvent(new ProgressEvent("loadend"));
+      }, xhr.btTimeout);
+      xhr.addEventListener("loadend", () => { if (!xhr.btTimedOut) clearTimeout(timer); });
+    }
+    return send.apply(this, args);
+  };
+})();
+"""
+
+
 def reply(name):
     """A hand-written server reply from fixtures/replies/ (kept honest by the Django contract test)."""
     return (FIXTURES / "replies" / name).read_text(encoding="utf-8")
@@ -65,8 +115,11 @@ def reply(name):
 class Held:
     """A request the page made to https://erp.test, waiting for the test to answer it."""
 
-    def __init__(self, route, request):
+    def __init__(self, route, request, owner):
         self.route = route
+        self.request = request
+        self.owner = owner
+        self.closed = None  # the failure text once the page has given up on this request
         self.url = request.url
         self.path = request.url[len(ORIGIN):]
         self.method = request.method
@@ -80,6 +133,12 @@ class Held:
         headers = dict(headers or {})
         if not any(key.lower() == "content-type" for key in headers):
             headers["Content-Type"] = "text/plain; charset=utf-8"
+        self.owner.page.evaluate("0")  # take in any requestfailed event first
+        if self.closed:
+            # Playwright accepts a reply to a closed request silently; that would hide a test
+            # that answered too late (for example after a timeout).
+            raise AssertionError(f"the page had already closed {self.method} {self.path} ({self.closed}) "
+                                 "before the test answered it")
         self.answered = True
         self.route.fulfill(status=status, body=body, headers=headers)
 
@@ -92,6 +151,7 @@ class FixturePage(unittest.TestCase):
     viewport = {"width": 390, "height": 800}
     init_scripts = ()
     clock = False  # install the page clock before the page loads
+    xhr_timeouts_on_page_clock = False  # needs clock = True; see XHR_TIMEOUT_ON_PAGE_CLOCK
     artifacts = ARTIFACTS  # where a failing test's diagnostics go
     # A stuck Playwright call fails the test (and saves its diagnostics) well before the CI step
     # timeout kills the run.
@@ -107,6 +167,10 @@ class FixturePage(unittest.TestCase):
         self.page_errors = []
         self.route_errors = []
         self.context.route("**/*", self._route)
+        self.context.on("requestfailed", self._request_failed)
+        if self.xhr_timeouts_on_page_clock:
+            assert self.clock, "xhr_timeouts_on_page_clock needs clock = True"
+            self.context.add_init_script(XHR_TIMEOUT_ON_PAGE_CLOCK)
         for script in self.init_scripts:
             self.context.add_init_script(script)
         self.page = self.context.new_page()
@@ -122,11 +186,7 @@ class FixturePage(unittest.TestCase):
             self.page.evaluate("0")
         except Exception:  # a crashed or closed page; the test's own failure says why
             pass
-        for held in self.pending():  # never answered on purpose (for example a timeout test)
-            try:
-                held.respond(204)
-            except Exception:  # the page may already have given up on it
-                pass
+        self._release_held()
         guard_failed = bool(self.route_errors or self.page_errors or self.external)
         try:
             if failed or guard_failed:
@@ -140,6 +200,21 @@ class FixturePage(unittest.TestCase):
             self.assertEqual(self.page_errors, [], "errors were thrown in the page")
             self.assertEqual(self.external, [], "the page tried to reach the real network")
 
+    def _release_held(self):
+        """Teardown only: settle every held route the test did not answer, closed ones included.
+
+        A route left open when the context closes makes Playwright print a CancelledError. This
+        bypasses Held.respond (and its closed-request assertion), ignores every error and records
+        nothing, so it cannot change the test's result.
+        """
+        for held in self.held:
+            if held.answered:
+                continue
+            try:
+                held.route.fulfill(status=204, headers={"Content-Type": "text/plain; charset=utf-8"})
+            except Exception:  # the page or Playwright may already have finished with it
+                pass
+
     def save_diagnostics(self, stem):
         """Screenshot, Playwright trace and the guard records for a failing test.
 
@@ -152,7 +227,8 @@ class FixturePage(unittest.TestCase):
             "page_errors": self.page_errors,
             "external_requests": self.external,
             "route_errors": self.route_errors,
-            "held_requests": [{"method": h.method, "path": h.path, "answered": h.answered} for h in self.held],
+            "held_requests": [{"method": h.method, "path": h.path, "answered": h.answered, "closed": h.closed}
+                              for h in self.held],
         }
         pathlib.Path(f"{stem}-records.json").write_text(json.dumps(records, indent=2), encoding="utf-8")
         try:
@@ -165,6 +241,11 @@ class FixturePage(unittest.TestCase):
         result = self._outcome.result
         return any(getattr(test, "test_case", test) is self
                    for test, _ in list(result.errors) + list(result.failures))
+
+    def _request_failed(self, request):
+        for held in self.held:
+            if held.request is request:
+                held.closed = request.failure or "failed"
 
     def _route(self, route, request):
         try:
@@ -192,7 +273,7 @@ class FixturePage(unittest.TestCase):
             if any(path.startswith(prefix) for prefix in self.fail_paths):
                 route.abort("internetdisconnected")  # a network failure, made while handling
             else:
-                self.held.append(Held(route, request))
+                self.held.append(Held(route, request, self))
         else:
             self.external.append(url)
             route.abort("blockedbyclient")
@@ -222,7 +303,9 @@ class FixturePage(unittest.TestCase):
         self.fail(f"timed out waiting for {message}")
 
     def pending(self, path=None):
-        return [h for h in self.held if not h.answered and (path is None or h.path.startswith(path))]
+        """Held requests still open: not answered, and not closed by the page."""
+        return [h for h in self.held
+                if not h.answered and not h.closed and (path is None or h.path.startswith(path))]
 
     def next_request(self, path=None, timeout=5.0):
         self.wait_until(lambda: self.pending(path), timeout, f"a request to {path or 'erp.test'}")

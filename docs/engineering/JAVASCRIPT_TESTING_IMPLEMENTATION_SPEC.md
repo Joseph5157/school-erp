@@ -334,7 +334,7 @@ agreed with that reading.
 | --- | --- |
 | How | Python Playwright (one pip package, pinned like the rest of the stack) drives headless Chromium. Each test opens a fresh page at `https://erp.test/…`. `page.route` serves the hand-written fixture HTML plus the unchanged `static/js/erp.js` and vendored `htmx.min.js` from disk, and intercepts every other request. No Django server, database or seed data. |
 | Races | The route handler holds autosave requests. The test then fulfils them in any order (`route.fulfill`) or never answers. Network failures are made on arrival (`fail_on_arrival`): aborting a request after its handler has returned crashed Chromium 156 in JS1. |
-| Time | `page.clock` (installed before the page loads) controls `setTimeout`, `setInterval`, `Date` and `performance.now` for the 30 s flush, 6 s auto-hide and session timers. The XHR timeout is not a JavaScript timer. For the 15 s marks timeout, the fixture uses a short timeout value, recorded as the one documented exception in the fixture contract (section 7.5). |
+| Time | `page.clock` (installed before the page loads) controls `setTimeout`, `setInterval`, `Date` and `performance.now` for the 30 s flush, 6 s auto-hide and session timers. The XHR timeout is not a JavaScript timer, and `page.clock` cannot move it (checked in JS2). The harness's opt-in init script runs the page's own XHR timeout on `setTimeout`, so the clock reaches the production 15 s marks timeout; the fixture keeps the production value (section 7.5). |
 | Fidelity | Real engine: change on blur, real focus and visibility, `matchMedia` from the viewport (360-390 px and desktop), native `<dialog>`, CSS (fixture can link `erp.css`), real HTMX request, queue and swap order. Errors surface through `page.on("pageerror")`, which fails the test. |
 | Gaps | Same as any browser automation: the real install prompt, real keypad "Next", and OS sleep or wake. Display mode `standalone` and Global Privacy Control are set with small init scripts. |
 | Runner | Plain `unittest` (no Django, no database) in `browser_tests/`, run with `python -m unittest discover -s browser_tests -p "bt_*.py" -t .`. Django's `SimpleTestCase` fails at teardown once Playwright's event loop is running (found in the spike). The `bt_` prefix keeps the files out of Django's `test*.py` discovery, so the normal suite never needs a browser. |
@@ -457,8 +457,8 @@ The spike **passes only if** it shows all of the following (product-owner condit
    flush, session check) can be held, answered later and answered out of order, from the
    synchronous API. Aborting a request produces HTMX's `sendError`.
 3. **Controlled time.** `page.clock` controls the 30 s interval, `setTimeout`, `Date` and
-   `performance.now` when installed before the page loads. The marks timeout path is reached with
-   the fixture's short timeout (section 7.5).
+   `performance.now` when installed before the page loads. The marks timeout path is reached by
+   running the XHR timeout on the page clock (JS2; section 7.5).
 4. **Page-hide flush, GPC and storage.** `erp.js` does not use `navigator.sendBeacon`. Its usage
    flush is a `fetch` with `keepalive: true` sent when the page becomes hidden (`erp.js:79-82`,
    `:96-98`). The spike must show that this request is intercepted on `visibilitychange` to
@@ -552,8 +552,8 @@ attribute and every `hx-*` attribute in the matching fixture, it compares **name
 values**: URLs become `<url>` and primary keys become `<pk>`, so a fixture that changes
 `hx-sync="this:queue last"` to `replace` fails.
 
-- **Exception:** the marks timeout value. The fixture's short `hx-request` timeout is listed as
-  that one exception, with the production value asserted separately.
+- **No exceptions.** Since JS2 every fixture value matches production, including the marks
+  15-second timeout, which the browser tests reach on the page clock.
 - **Other checks:** the hidden base input naming pattern, and the `X-ERP-Row-Fragment` header the
   fixtures send.
 - **Server reply fragments.** `erp.js` also reads the replies: the `X-ERP-Row-Fragment` header
@@ -612,7 +612,7 @@ this section. JS2 adds the marks and attendance cases below.
 
 | Case | Asserts | Server half |
 | --- | --- | --- |
-| A1 Latest choice wins (OD-JS15) | The teacher changes a row (A), then changes it again (B) while A is in flight. A's reply, whether success or failure, never replaces B's state: the row stays "Saving…", no "Saved {name}." is announced for A, and the next request sent carries B's value. When B's reply arrives, the row shows B's result. **Not in JS2.** JS2 records F-JS1 in its PR description and in a GitHub issue as a confirmed, uncovered defect, with no expected-failure test, so `main` holds no expected failures. JS3 adds this test (section 8.2). | — |
+| A1 Latest choice wins (OD-JS15) | The teacher changes a row (A), then changes it again (B) while A is in flight. A's reply, whether success or failure, never replaces B's state: the row stays "Saving…", no "Saved {name}." is announced for A, and the next request sent carries B's value. When B's reply arrives, the row shows B's result. **Not in JS2.** JS2 records F-JS1 in its PR description and in GitHub issue [#289](https://github.com/Joseph5157/school-erp/issues/289) as a confirmed, uncovered defect, with no expected-failure test, so `main` holds no expected failures. JS3 adds this test (section 8.2). | — |
 | A2 Mark unanswered as present never overwrites | Rows Absent, unanswered, unanswered: only the two unanswered rows become Present; the Absent row and its note are untouched; one bulk request lists exactly those two enrollments | C7 exists |
 | A3 401 never shown as saved | Row save answered 401: "Not saved: you have been signed out.", never Saved; `erp:signed-out` fires; the session box shows its signed-out state; same for bulk present through `fetch` | C7 exists (`test_session_errors_audit18.py:196-249`) |
 | A4 Typed values remain after sign-out | An absence note typed before a 401 stays in its field and the chosen radio stays checked | — |
@@ -1126,3 +1126,12 @@ by the author.
 | 5 | Chromium 156 crashed on replies with a body and no headers, and on aborts sent after the route handler returned. The harness always sends a `Content-Type`, makes network failures on arrival only, and replaces a crashed browser | Section 4 (Races); `browser_tests/support/page.py` |
 | 6 | JS1 review fixes: an unservable request is aborted at once and fails the test; subTest failures save diagnostics; service workers blocked; a records file joins the diagnostics; tearDown enforcement, diagnostics and isolation proven by probe tests run in a nested suite; the fixture contract compares every behaviour-relevant attribute and value on every row, the roster and the form; the attendance fixture gains the submit button and done announcer it lacked | Sections 7.2, 7.5, 7.6; `browser_tests/` |
 | 7 | CI: `contents: read`; a 5-minute test-step timeout inside the 10-minute job, and an `always()` upload whenever the test step did not pass; the policy test checks the exact command and applies the path pattern to sample paths; the marker ban covers every skip and expected-failure spelling | Section 9 |
+
+### 19.4 JS2 notes (2026-11-22)
+
+| # | Note | Where |
+| --- | --- | --- |
+| 1 | F-JS1 confirmed in Chromium: after the older reply, the row shows "✓ Saved" and announces "Saved Student A." while the newer change is in flight; an older 500 shows "Not saved." with Retry. The newer request carries the newer value, so no wrong value is saved. Issue #289; no test until JS3 | Section 3.5 |
+| 2 | Fixtures gained the session box (attendance) and replies for a 403 row fragment and bulk present (saved and 401), all pinned by the contract test | Section 7.5 |
+| 3 | Two equivalent mutants: removing the marks `htmx:timeout` listener (afterRequest with status 0 shows the same words) and the last-row Enter trigger (the sign-in "Next" helper's focus move already fires `change`, F-JS4). The string check for the Enter trigger is kept for that reason | `test_marks_autosave.py` |
+| 4 | Review fix: the 600 ms row-103 timeout and its contract exception are gone. `page.clock` cannot move a native XHR timeout, so an opt-in test-only init script runs the page's own timeout on `setTimeout` (only `timeout` then `loadend` reach the page, as in a browser). Tests that hold replies cannot be overtaken by a slow runner, and answering a request the page already closed fails with a clear assertion | `browser_tests/support/page.py`; section 7.5 |

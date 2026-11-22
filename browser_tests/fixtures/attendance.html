@@ -2,6 +2,15 @@
 <html lang="en">
 <head><meta charset="utf-8"><title>Attendance capture fixture</title></head>
 <body class="erp">
+<section class="erp-session-warning" aria-label="Sign-out warning" data-erp-session data-idle="1800" data-absolute="28800" data-status-url="/accounts/session/" data-login-url="/accounts/login/" hidden>
+    <p class="erp-session-say" role="alert" data-erp-session-say></p>
+    <p class="erp-session-time" data-erp-session-time></p>
+    <div class="erp-session-actions">
+        <form method="post" action="/accounts/session/" data-erp-session-stay><input type="hidden" name="csrfmiddlewaretoken" value="test-token"><button type="submit" class="btn btn-primary btn-sm">Stay signed in</button></form>
+        <form method="post" action="/accounts/logout/" data-erp-session-logout><input type="hidden" name="csrfmiddlewaretoken" value="test-token"><button type="submit" class="btn btn-outline-secondary btn-sm">Log out</button></form>
+        <a class="btn btn-primary btn-sm" href="/accounts/login/" data-erp-session-login hidden>Log in again</a>
+    </div>
+</section>
 <form method="post" id="attendance-capture" hx-headers='{"X-CSRFToken": "test-token"}'>
 <input type="hidden" name="csrfmiddlewaretoken" value="test-token">
 <div class="erp-roster" data-erp-roster>
