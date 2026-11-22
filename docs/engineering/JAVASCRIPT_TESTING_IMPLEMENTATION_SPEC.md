@@ -2,11 +2,11 @@
 
 | | |
 | --- | --- |
-| Status | **Approved by the product owner on 2026-11-22**, with the decisions recorded in section 13. Implementation is conditional on the JS1 spike (section 7.1). |
-| Revision | r3 (with review fixes), 2026-11-22. OD-JS7 merge-gate rule approved and applied to AGENTS.md, IMPLEMENTATION_WORKFLOW.md, DEFINITION_OF_DONE.md and the PR template in the docs PR. A1 is no longer merged as an expected failure: JS2 records F-JS1 as a confirmed uncovered defect, and JS3 adds the regression test, shows it failing, fixes the bug and leaves it passing. r3 also applies the fixes from the second independent review (section 19.2). r2: product-owner decisions OD-JS1 to OD-JS15 recorded, plus six corrections: the toolchain wording, fixture fidelity, one browser per job, a path-aware CI job, source-string tests as temporary, and ADR acceptance only after the spike. r1 added Option 5 after independent review. r0 recommended `node:test` + jsdom. Section 19 lists both independent reviews and the owner's r2 changes. |
+| Status | **Approved by the product owner on 2026-11-22**, with the decisions recorded in section 13. The JS1 spike passed every condition in section 7.1 (evidence in ADR 0028). |
+| Revision | r4, 2026-11-22 (JS1): the spike passed; plain `unittest` and headless-only Chromium approved; harness behaviour found in JS1 recorded (section 19.3). r3 (with review fixes): OD-JS7 merge-gate rule approved and applied to AGENTS.md, IMPLEMENTATION_WORKFLOW.md, DEFINITION_OF_DONE.md and the PR template in the docs PR. A1 is no longer merged as an expected failure: JS2 records F-JS1 as a confirmed uncovered defect, and JS3 adds the regression test, shows it failing, fixes the bug and leaves it passing. r3 also applies the fixes from the second independent review (section 19.2). r2: product-owner decisions OD-JS1 to OD-JS15 recorded, plus six corrections: the toolchain wording, fixture fidelity, one browser per job, a path-aware CI job, source-string tests as temporary, and ADR acceptance only after the spike. r1 added Option 5 after independent review. r0 recommended `node:test` + jsdom. Section 19 lists both independent reviews and the owner's r2 changes. |
 | Baseline | `origin/main` at `d7d309067ea099edf03562167e317d04ccdb428c` (ENG-CI-01, #286) |
 | Risk tier | High. The later implementation changes the repository's testing stack and guards marks autosave, attendance autosave, sessions and privacy measurement. |
-| ADR | [0028 Behavioural tests for JavaScript](../adr/0028-javascript-behaviour-testing.md), **Proposed**. It stays Proposed until the spike passes, and is accepted in the JS1 PR using the spike evidence. The ADR index and the `ARCHITECTURE.md` note are updated in that PR. |
+| ADR | [0028 Behavioural tests for JavaScript](../adr/0028-javascript-behaviour-testing.md), **Accepted** in the JS1 PR with the spike evidence; listed in the ADR index and noted in `ARCHITECTURE.md`. |
 | Affects | Nothing yet. This document installs, changes and implements nothing. |
 
 Every statement about code below cites the baseline. "Read from code, not exercised" marks a
@@ -333,16 +333,16 @@ agreed with that reading.
 | Aspect | Assessment |
 | --- | --- |
 | How | Python Playwright (one pip package, pinned like the rest of the stack) drives headless Chromium. Each test opens a fresh page at `https://erp.test/…`. `page.route` serves the hand-written fixture HTML plus the unchanged `static/js/erp.js` and vendored `htmx.min.js` from disk, and intercepts every other request. No Django server, database or seed data. |
-| Races | The route handler holds autosave requests. The test then fulfils them in any order (`route.fulfill`), aborts them as network failures (`route.abort`) or never answers. Holding and later fulfilling a route from the synchronous API is an inference; the spike confirms it. |
+| Races | The route handler holds autosave requests. The test then fulfils them in any order (`route.fulfill`) or never answers. Network failures are made on arrival (`fail_on_arrival`): aborting a request after its handler has returned crashed Chromium 156 in JS1. |
 | Time | `page.clock` (installed before the page loads) controls `setTimeout`, `setInterval`, `Date` and `performance.now` for the 30 s flush, 6 s auto-hide and session timers. The XHR timeout is not a JavaScript timer. For the 15 s marks timeout, the fixture uses a short timeout value, recorded as the one documented exception in the fixture contract (section 7.5). |
 | Fidelity | Real engine: change on blur, real focus and visibility, `matchMedia` from the viewport (360-390 px and desktop), native `<dialog>`, CSS (fixture can link `erp.css`), real HTMX request, queue and swap order. Errors surface through `page.on("pageerror")`, which fails the test. |
 | Gaps | Same as any browser automation: the real install prompt, real keypad "Next", and OS sleep or wake. Display mode `standalone` and Global Privacy Control are set with small init scripts. |
-| Runner | Django's runner. Tests are `SimpleTestCase` classes (no database) in their own folder, run with their own pattern so the normal suite never needs a browser (section 9). |
+| Runner | Plain `unittest` (no Django, no database) in `browser_tests/`, run with `python -m unittest discover -s browser_tests -p "bt_*.py" -t .`. Django's `SimpleTestCase` fails at teardown once Playwright's event loop is running (found in the spike). The `bt_` prefix keeps the files out of Django's `test*.py` discovery, so the normal suite never needs a browser. |
 | Dependencies | `playwright` (pip) plus the Chromium build matched to that package version, downloaded by `python -m playwright install --with-deps chromium`. The Python package ships its own internal driver. The repository has no project-managed Node/npm toolchain, package manifest, build pipeline or production dependency. |
 | Production boundary | The package goes in a separate `requirements-browser.txt`, never in `requirements.txt`, which is the file Railway installs. A boundary test enforces this. |
 | Runtime | Estimate: one browser launch per job (about 1 s), then about 100-300 ms per test with a fresh context and page, so roughly 10-20 s for the first packages. CI install takes about 60-90 s uncached, and the target with the browser cache is a draft run under 90 s in total (section 9). |
 | Later journeys | The same tool covers the deferred whole-journey tests (section 12). The final stack gains one tool instead of two. |
-| Weaknesses | A 150 MB-class browser download in CI. Slower than jsdom. Browser updates arrive with each Playwright version (only when the pin is moved). Windows contributors also install Chromium locally. |
+| Weaknesses | A browser download: the headless shell in CI (cached by version); the full local install measured 719 MB. Slower than jsdom. Browser updates arrive with each Playwright version (only when the pin is moved). Windows contributors also install Chromium locally. |
 
 ### Summary
 
@@ -384,7 +384,7 @@ on 2026-11-22 (OD-JS1 A).
   focus leaves a score (F-JS3, F-JS4; Option B OD-B2). jsdom does not do that. Dialogs, CSS-driven
   hiding, `matchMedia` and real focus also come free.
 - **It answers the stack change rule more directly.** It stays within the current stack (Python,
-  pip, Django's test runner) and adds one pinned package and a browser. ARCHITECTURE asks why the
+  pip, `unittest`) and adds one pinned package and a browser. ARCHITECTURE asks why the
   problem cannot be solved within the current architecture. With Option 5 it mostly can.
 - **One tool, not two.** The hybrid plan already expects a browser layer later. With Option 5 that
   layer is the same tool, so the repository ends with one new test tool.
@@ -494,7 +494,7 @@ the spike evidence and moves the ADR to Accepted.
     because an exception raised inside the handler would not fail the test in the synchronous API.
 - **Router:** serves `https://erp.test/<fixture>` from `browser_tests/fixtures/` and
   `/static/...` byte-for-byte from the repository's `static/` folder. It records every other
-  request (method, URL, headers, body) and holds it for the test. The test can answer it, fail it,
+  request (method, URL, headers, body) and holds it for the test. The test can answer it,
   or leave it pending.
 - **Real network blocked:** any request outside `https://erp.test/` is aborted and fails the test.
 - **Browser lifetime:** one browser process per test job. It is started on first use by the
@@ -574,8 +574,9 @@ values**: URLs become `<url>` and primary keys become `<pk>`, so a fixture that 
   events `w, s, b, z`) and that values come from the ADR 0027 enums.
 - **Canary.** A student name and an enrollment ID in the page (the canary) must never appear in any
   usage request body.
-- **Failure diagnostics.** A failing test saves a Playwright trace and a screenshot. CI uploads
-  them as an artifact only when the job fails, kept for 7 days. They contain only the synthetic
+- **Failure diagnostics.** A failing test saves a Playwright trace, a screenshot and a records file
+  (page errors, blocked requests, unservable requests, held request paths). CI uploads them as an
+  artifact only when the browser test step did not pass, kept for 7 days. They contain only the synthetic
   fixture page and its intercepted requests: no Django page, no session, no staging data. Passing
   tests save nothing. Request bodies may appear in a failure message, and they are always
   synthetic fixture data. Artifacts are visible only to people who can read the repository. The
@@ -694,21 +695,21 @@ JS4 must be merged before any school switches measurement on (OD-JS5).
 
 ## 9. CI design
 
-Specified only; `.github/workflows/ci.yml` is not changed by this task. The table describes
-Option 5. Section 9.1 gives the differences for Option 2.
+Implemented in JS1 (`.github/workflows/ci.yml`, job `js`). The table describes Option 5 as built.
+Section 9.1 gives the differences for Option 2.
 
 | Item | Proposal |
 | --- | --- |
 | Job | New job `js`, beside `lint` and `test`, with no `needs:` either way, so it runs in parallel and adds nothing to the full suite's time. |
 | When (path-aware) | Docs-only PRs skip the whole workflow, as today (`paths-ignore`). On other PRs, drafts included, the job checks out with `fetch-depth: 0`. Its first step runs `git diff --name-only "$BASE_SHA" "$GITHUB_SHA"` with `BASE_SHA` set to `github.event.pull_request.base.sha`. The install and test steps run only when a relevant path changed. They always run on pushes to `main`. **The check fails closed:** if the base SHA is missing or the diff cannot be computed, the step sets "run", and the tests run. Relevant paths: `static/js/**`, `static/vendor/**`, `static/css/**`, `browser_tests/**`, `requirements.txt`, `requirements-browser.txt`, `config/**`, `manage.py`, `.github/workflows/**`. Templates and `core/forms.py` are not listed, because the browser tests use hand-written fixtures. Template and form drift is caught by the fixture contract test (section 7.5), which runs in the `test` job, draft safety included. When the steps are skipped, the `js` check still reports success, so whether the job applied is read from its test step. A plain shell step is used, so no third-party path-filter action is added. |
-| Setup | `actions/setup-python@v5` (3.13, pip cache); `pip install -r requirements.txt -r requirements-browser.txt`; restore `~/.cache/ms-playwright` keyed on the pinned Playwright version; `python -m playwright install --with-deps chromium`. |
-| Run | `python manage.py test browser_tests --pattern="bt_*.py" --noinput`. The `bt_` prefix keeps these tests out of the default `test*.py` discovery, so the normal suite and local runs never need a browser. |
-| Settings | Same settings as the `test` job, minus the database service: the tests are `SimpleTestCase` and must not touch the database. |
+| Setup | The job has `permissions: contents: read`. `actions/setup-python@v5` (3.13, pip cache on `requirements-browser.txt`); `pip install -r requirements-browser.txt` only; restore `~/.cache/ms-playwright` keyed on that file; on a cache miss `python -m playwright install --with-deps --only-shell chromium`, on a hit `python -m playwright install-deps chromium`. |
+| Run | `python -m unittest discover -s browser_tests -p "bt_*.py" -t .`. The job installs only `requirements-browser.txt` and the headless shell (`--only-shell`); it needs no Django settings, database or `requirements.txt`. |
+| Settings | None: the browser tests do not import Django. The Django fixture-contract and boundary tests run in the `test` job (next row). |
 | Draft-safety additions | `core.tests.test_js_toolchain_boundary` and `core.tests.test_js_fixture_contract` join `DRAFT_SAFETY_TESTS` in the `test` job. |
-| Failure reporting | The test log, plus the Playwright trace and screenshot of each failing test, uploaded with `actions/upload-artifact` only when the job fails, kept for 7 days (section 7.6). |
+| Failure reporting | A failing test saves a screenshot, a Playwright trace and a records file (page errors, blocked real-network requests, requests the harness could not serve, and the held requests' method and path). The test step has a 5-minute timeout inside the job's 10, so a hung run is stopped while the job can still upload. The upload step runs `if: always()` whenever the test step did not succeed, and keeps the artifact for 7 days (section 7.6). A job killed by its own timeout would upload nothing, which is why the step timeout exists. Each Playwright call also times out after 10 seconds, so a stuck test fails, and saves its diagnostics, long before that. |
 | Budget | A cached draft run under 90 seconds wall-clock. An uncached run (new Playwright version) may take longer. Over budget is a bug to fix, not a reason to move the job. |
-| Policy guard | Extend `core/tests/test_ci_policy.py` (already in `DRAFT_SAFETY_TESTS`). It checks that the `js` job exists, has no job-level `if:` and no `continue-on-error`, and runs exactly the command above. It also checks that the install and test steps are conditioned only on the path check or a push to `main`, and that the relevant-path list contains at least the paths in the row above. |
-| Test-content guard | New `core/tests/test_js_toolchain_boundary.py`, added to `DRAFT_SAFETY_TESTS`. It checks that each browser test file listed in this spec, once its PR has merged, exists and defines at least its listed number of test methods. No `skip`, `skipIf`, `skipUnless` or `expectedFailure` may appear in `browser_tests/` at all, so `main` never holds skipped or expected-failing browser tests. `requirements.txt` must not contain `playwright`, and no `package.json` or `node_modules` may exist at the repository root or under `static/`. |
+| Policy guard | Extend `core/tests/test_ci_policy.py` (already in `DRAFT_SAFETY_TESTS`). It checks that the `js` job exists, has no job-level `name`, `if`, `needs` or `continue-on-error`, has only `contents: read`, and that the test step's `run:` line is exactly the command above, with no `continue-on-error`, `shell` or `working-directory`. It checks that the install and test steps are conditioned only on the path check, that the path check fails closed, and applies the relevant-path pattern to sample paths that must and must not run the tests. It also checks the step timeout is at least 3 minutes inside the job's, and the upload condition and retention. |
+| Test-content guard | New `core/tests/test_js_toolchain_boundary.py`, added to `DRAFT_SAFETY_TESTS`. It checks that each browser test file listed in this spec, once its PR has merged, exists and defines at least its listed number of test methods. No skip or expected-failure marker in any spelling (`skip`, `skipIf`, `skipUnless`, `skipTest`, `SkipTest`, `expectedFailure`, pytest `skip` or `xfail`, and similar) may appear anywhere in `browser_tests/`, so `main` never holds skipped or expected-failing browser tests. `requirements.txt` must not contain `playwright`, and no `package.json` or `node_modules` may exist at the repository root or under `static/`. |
 | Merge gate (OD-JS7, approved) | When the path-aware `js` job applies, a PR is verified only when that job passes on the exact approved head. A skipped `js` job is not required. Pushes to `main` always run it. The docs PR writes this rule into `AGENTS.md` (Verification), `IMPLEMENTATION_WORKFLOW.md` section 11, `DEFINITION_OF_DONE.md` state 2 and the PR template, worded to apply from JS1 onward. A skipped job still reports `js` as passed, so whether it applied is read from the test step's conclusion (`gh run view <run-id> --json jobs`). |
 | Required checks | None on `main` today. Unchanged here. |
 | Railway | No change. Railpack installs `requirements.txt` only; no browser or Playwright package reaches staging or production (section 10.3). |
@@ -1048,10 +1049,10 @@ Checked 2026-11-22. Versions must be rechecked when JS1 starts.
   [jsdom README](https://raw.githubusercontent.com/jsdom/jsdom/main/README.md).
 - `node:test` mock timers status: [node issue 61039](https://github.com/nodejs/node/issues/61039)
   and the Node test runner docs.
-- Playwright Python capabilities assumed here (`page.route`, `route.fulfill` and `route.abort`,
-  `page.clock`, `pageerror`, browser install with `--with-deps`) are from general knowledge of the
-  library. They were not checked against a specific release in this task; the JS1 spike verifies
-  them.
+- Playwright Python capabilities (`page.route`, `route.fulfill` and `route.abort`,
+  `page.clock`, `pageerror`, browser install with `--with-deps`) were first taken from general
+  knowledge of the library. The JS1 spike verified them against playwright 1.64.1 (ADR 0028,
+  "Spike evidence").
 
 ## 19. Independent review and verdicts
 
@@ -1113,3 +1114,15 @@ by the author.
 | 14 | Nit | Paragraph inside a bullet list in section 5.1 | **Confirmed** | Moved below the list |
 | 15 | Nit | JS1 criterion 5 missed `core/templates` | **Confirmed** | Added |
 | 16 | Nit | JS2 file list missed `test_attendance_bulk_present.py` | **Confirmed** | Added |
+
+### 19.3 r4 changes from JS1 (2026-11-22)
+
+| # | Change | Where |
+| --- | --- | --- |
+| 1 | Spike passed all nine conditions; evidence recorded in ADR 0028, which is now Accepted | Header; ADR 0028 |
+| 2 | Plain `unittest` replaces `manage.py test` + `SimpleTestCase` for browser tests (approved) | Sections 4, 5.1, 9 |
+| 3 | CI installs only the headless shell (`--only-shell`) and `requirements-browser.txt` (approved) | Section 9 |
+| 4 | Measured: proposed job 35 s uncached, 28 s cached; local full Chromium 719 MB | Section 4 |
+| 5 | Chromium 156 crashed on replies with a body and no headers, and on aborts sent after the route handler returned. The harness always sends a `Content-Type`, makes network failures on arrival only, and replaces a crashed browser | Section 4 (Races); `browser_tests/support/page.py` |
+| 6 | JS1 review fixes: an unservable request is aborted at once and fails the test; subTest failures save diagnostics; service workers blocked; a records file joins the diagnostics; tearDown enforcement, diagnostics and isolation proven by probe tests run in a nested suite; the fixture contract compares every behaviour-relevant attribute and value on every row, the roster and the form; the attendance fixture gains the submit button and done announcer it lacked | Sections 7.2, 7.5, 7.6; `browser_tests/` |
+| 7 | CI: `contents: read`; a 5-minute test-step timeout inside the 10-minute job, and an `always()` upload whenever the test step did not pass; the policy test checks the exact command and applies the path pattern to sample paths; the marker ban covers every skip and expected-failure spelling | Section 9 |

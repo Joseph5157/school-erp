@@ -1,12 +1,10 @@
 # ADR 0028: Behavioural tests for JavaScript
 
-Status: **Proposed**, 2026-11-22. The product owner chose the options below on 2026-11-22. See
-[JAVASCRIPT_TESTING_IMPLEMENTATION_SPEC.md](../engineering/JAVASCRIPT_TESTING_IMPLEMENTATION_SPEC.md),
-revision r3, section 13.0.
-
-This ADR stays Proposed until the spike in that spec (section 7.1) passes. The harness
-implementation PR (JS1) then records the spike evidence here, moves the status to Accepted, adds
-the ADR to the [ADR index](README.md) and adds the note to `ARCHITECTURE.md`.
+Status: **Accepted**, 2026-11-22, in the harness implementation PR (ENG-JS-01 JS1), after the spike
+passed every condition in
+[JAVASCRIPT_TESTING_IMPLEMENTATION_SPEC.md](../engineering/JAVASCRIPT_TESTING_IMPLEMENTATION_SPEC.md)
+section 7.1. The product owner chose the options below on 2026-11-22 (spec section 13.0). Evidence
+is under "Spike evidence" below. Proposed on the same day in PR #287.
 
 ## Problem
 
@@ -65,13 +63,15 @@ The full comparison is in spec section 4.
    Real change-on-blur, focus, `matchMedia`, dialogs and CSS. The same tool later runs the whole
    journeys.
 
-## Decision (chosen by the product owner; effective when the spike passes)
+## Decision (chosen by the product owner)
 
-1. **Option 5, subject to a time-boxed spike in JS1.** Behavioural tests of `erp.js` run in headless
-   Chromium through Python Playwright. There is one browser process per test job, with a fresh
-   browser context and page per test. They load the **unchanged** served files and run under
-   Django's test runner as `SimpleTestCase` classes with no database (OD-JS1, OD-JS2, OD-JS3,
-   OD-JS14).
+1. **Option 5.** Behavioural tests of `erp.js` run in headless Chromium through Python Playwright.
+   There is one browser process per test job, with a fresh browser context and page per test.
+   They load the **unchanged** served files. They are plain `unittest` tests in `browser_tests/`,
+   run with `python -m unittest discover -s browser_tests -p "bt_*.py" -t .`, and need no Django
+   or database. Django's `SimpleTestCase` was tried in the spike and does not work once
+   Playwright's event loop is running. CI installs only the headless-shell build of Chromium
+   (OD-JS1, OD-JS2, OD-JS3, OD-JS14; plain `unittest` and headless-only approved after the spike).
 2. The tests run the real JavaScript and HTMX against representative hand-written DOM fixtures.
    They are not full Django-template or visual-regression tests. A Django contract test keeps the
    fixtures in step with the templates (OD-JS13).
@@ -146,7 +146,8 @@ and requirements rules.
   from the page never appear in any usage request. Running the code this way strengthens the ADR
   0027 allow-list rather than relaxing it.
 - **Test output.** No test logs request bodies on success. A failing test saves a Playwright trace
-  and screenshot, which CI uploads only when the job fails and keeps for 7 days. They show only the
+  and screenshot, and a records file of page errors and blocked or unservable requests. CI uploads
+  them only when the browser test step did not pass and keeps them for 7 days. They show only the
   synthetic fixture page and its intercepted requests. The artifacts are visible only to people
   who can read the repository. The later live-server journeys must not reuse this capture
   unchanged, because it would record session cookies and seeded data. They need their own rule.
@@ -154,8 +155,9 @@ and requirements rules.
 ## CI and Railway consequences
 
 - CI gains one job, `js`. On pull requests, drafts included, it installs Chromium and runs only
-  when JavaScript, vendored scripts, CSS, relevant templates or forms, browser tests, requirements
-  or CI configuration change. It always runs on pushes to `main`. Docs-only PRs stay skipped.
+  when JavaScript, vendored scripts, CSS, browser tests, requirements, settings or CI configuration
+  change. Template and form drift is caught by the fixture contract test in the Django suite. It
+  always runs on pushes to `main`. Docs-only PRs stay skipped.
 - `core/tests/test_ci_policy.py` and a new boundary test, both in the draft-safety set, guard
   against quiet removal or skipping. They check the job's existence and command, the minimum test
   count per file, and that no skip or expected-failure marker appears in `browser_tests/` at all.
@@ -164,6 +166,28 @@ and requirements rules.
 - Railway is unchanged. Railpack installs `requirements.txt` only, and under Option 2 no root
   `package.json` exists. The first staging build after the implementation merges is checked for a
   Python-only provider and no extra install step.
+
+## Spike evidence (2026-11-22)
+
+Run on branch `test/eng-js-01-js1` with playwright 1.64.1 (Chromium 156) and a temporary workflow
+limited to that branch with `contents: read`, deleted afterwards.
+
+| # | Condition (spec 7.1) | Result |
+| --- | --- | --- |
+| 1 | Change on blur and Next save the row left | Passed |
+| 2 | XHR and `fetch` replies held and answered out of order | Passed |
+| 3 | Page clock and request timeout controlled | Passed |
+| 4 | Page-hide `keepalive` flush, GPC, blocked storage | Passed |
+| 5 | Ten consecutive runs | Windows 10/10 (14 tests, 4.5-5.3 s); GitHub Linux 10/10 (4.2-4.4 s) |
+| 6 | No real network | Passed; external requests blocked and fail the test |
+| 7 | Cached draft run under 90 s | Proposed job: 35 s uncached, 28 s cached |
+| 8 | Failure diagnostics | Passed; screenshot and trace uploaded, kept 7 days |
+| 9 | Boundary | Passed; no Node files, no production, template, settings or `requirements.txt` change |
+
+Found while building JS1: with Chromium 156, a reply that has a body but no headers, and an abort
+sent after the route handler has returned, both crash the renderer. The harness therefore always
+sends a `Content-Type` and makes network failures on arrival only; a crashed browser is replaced
+before the next test.
 
 ## Rollback
 

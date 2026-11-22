@@ -24,6 +24,9 @@ Run from the repository root with the project `venv` active. Local `manage.py` r
 | Targeted tests | `python manage.py test core.tests.test_<area> --parallel 4 --noinput` |
 | CSS text guard tests (after `erp.css` edits) | `python manage.py test --pattern="test_ui*.py" --parallel 4 --noinput` |
 | Route permission inventory | `python manage.py test core.tests.test_security_gate4b_route_inventory --noinput` |
+| Browser tests: one-time setup (test-only; never in `requirements.txt`) | `pip install -r requirements-browser.txt` then `python -m playwright install chromium` |
+| Browser tests for `static/js/erp.js` (ADR 0028) | `python -m unittest discover -s browser_tests -p "bt_*.py" -t .` |
+| Browser fixture contract and toolchain boundary (Django) | `python manage.py test core.tests.test_js_fixture_contract core.tests.test_js_toolchain_boundary --noinput` |
 | PR checks on the current head | `gh pr checks <N>` |
 | Which CI mode ran on a head (`CI (full)` or `CI (draft safety)`) | `gh run list --workflow CI --commit <sha> --json displayTitle,status,conclusion` |
 | Mark Ready for review (starts the full suite; not merge approval) | `gh pr ready <N>` |

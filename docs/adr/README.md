@@ -50,3 +50,4 @@ ADRs should not replace approved product requirements or domain documentation. T
 - [0022 Display-only subject averages in analytics](0022-analytics-subject-averages.md): accepted exception to ADR 0009 for chart averages.
 - [0026 Consecutive-absence definition](0026-consecutive-absence-definition.md): "absent N school days in a row" for the admin report and class-teacher card.
 - [0027 Privacy-safe usage measurement](0027-privacy-safe-usage-measurement.md): daily aggregate counters with no person, record or value; off by default, written school approval, 180-day purge, operator-only report.
+- [0028 Behavioural tests for JavaScript](0028-javascript-behaviour-testing.md): test-only Python Playwright browser fixture tests for `static/js/erp.js`; no Node/npm toolchain, nothing on Railway; path-aware `js` CI job.

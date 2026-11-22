@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Marks entry fixture</title></head>
+<body class="erp">
+<form method="post" hx-headers='{"X-CSRFToken": "test-token"}'>
+<input type="hidden" name="csrfmiddlewaretoken" value="test-token">
+<div class="erp-roster" data-erp-marks>
+  <p class="erp-count-line" data-erp-static-counts>All 3 &middot; Not entered 3 &middot; Marked 0 &middot; Absent 0</p>
+  <div class="erp-count-tabs" data-erp-tabs hidden>
+    <button type="button" data-erp-filter="all" aria-pressed="true">All <span id="erp-count-all" data-erp-count="all">3</span></button>
+    <button type="button" data-erp-filter="unmarked" aria-pressed="false">Not entered <span id="erp-count-unmarked" data-erp-count="unmarked">3</span></button>
+    <button type="button" data-erp-filter="marked" aria-pressed="false">Marked <span id="erp-count-marked" data-erp-count="marked">0</span></button>
+    <button type="button" data-erp-filter="absent" aria-pressed="false">Absent <span id="erp-count-absent" data-erp-count="absent">0</span></button>
+  </div>
+  <fieldset class="erp-roster-row" data-erp-row data-erp-enrollment="101" hx-post="/marks/autosave/" hx-trigger="change" hx-include="this" hx-vals='{"enrollment": 101}' hx-target="find [data-erp-row-status]" hx-swap="innerHTML" hx-sync="this:queue last" hx-request='{"timeout": 15000}'>
+    <legend class="visually-hidden">Student A</legend>
+    <span class="erp-roster-name" aria-hidden="true">Student A</span>
+    <span class="erp-initials" aria-hidden="true">A</span>
+    <div class="erp-note is-filled">
+      <label class="form-label small mb-1" for="id_score_101">Score out of 20<span class="visually-hidden"> for Student A</span></label>
+      <input type="number" name="score_101" step="0.01" inputmode="decimal" enterkeyhint="next" class="form-control erp-score" id="id_score_101">
+    </div>
+    <div class="erp-toggles erp-toggles-3">
+      <input type="radio" name="status_101" value="" id="id_status_101_0" checked><label for="id_status_101_0" class="erp-toggle is-blank">Not entered</label><input type="radio" name="status_101" value="MARKED" id="id_status_101_1"><label for="id_status_101_1" class="erp-toggle is-marked">Marked</label><input type="radio" name="status_101" value="ABSENT" id="id_status_101_2"><label for="id_status_101_2" class="erp-toggle is-absent">Absent</label>
+    </div>
+    <span id="erp-base-101"><input type="hidden" name="base_status_101" value=""><input type="hidden" name="base_score_101" value=""></span>
+    <div class="erp-row-status" data-erp-row-status></div>
+  </fieldset>
+  <fieldset class="erp-roster-row" data-erp-row data-erp-enrollment="102" hx-post="/marks/autosave/" hx-trigger="change" hx-include="this" hx-vals='{"enrollment": 102}' hx-target="find [data-erp-row-status]" hx-swap="innerHTML" hx-sync="this:queue last" hx-request='{"timeout": 15000}'>
+    <legend class="visually-hidden">Student B</legend>
+    <span class="erp-roster-name" aria-hidden="true">Student B</span>
+    <span class="erp-initials" aria-hidden="true">B</span>
+    <div class="erp-note is-filled">
+      <label class="form-label small mb-1" for="id_score_102">Score out of 20<span class="visually-hidden"> for Student B</span></label>
+      <input type="number" name="score_102" step="0.01" inputmode="decimal" enterkeyhint="next" class="form-control erp-score" id="id_score_102">
+    </div>
+    <div class="erp-toggles erp-toggles-3">
+      <input type="radio" name="status_102" value="" id="id_status_102_0" checked><label for="id_status_102_0" class="erp-toggle is-blank">Not entered</label><input type="radio" name="status_102" value="MARKED" id="id_status_102_1"><label for="id_status_102_1" class="erp-toggle is-marked">Marked</label><input type="radio" name="status_102" value="ABSENT" id="id_status_102_2"><label for="id_status_102_2" class="erp-toggle is-absent">Absent</label>
+    </div>
+    <span id="erp-base-102"><input type="hidden" name="base_status_102" value=""><input type="hidden" name="base_score_102" value=""></span>
+    <div class="erp-row-status" data-erp-row-status></div>
+  </fieldset>
+  <fieldset class="erp-roster-row" data-erp-row data-erp-enrollment="103" hx-post="/marks/autosave/" hx-trigger="change" hx-include="this" hx-vals='{"enrollment": 103}' hx-target="find [data-erp-row-status]" hx-swap="innerHTML" hx-sync="this:queue last" hx-request='{"timeout": 600}'>
+    <legend class="visually-hidden">Student C</legend>
+    <span class="erp-roster-name" aria-hidden="true">Student C</span>
+    <span class="erp-initials" aria-hidden="true">C</span>
+    <div class="erp-note is-filled">
+      <label class="form-label small mb-1" for="id_score_103">Score out of 20<span class="visually-hidden"> for Student C</span></label>
+      <input type="number" name="score_103" step="0.01" inputmode="decimal" enterkeyhint="next" class="form-control erp-score" id="id_score_103">
+    </div>
+    <div class="erp-toggles erp-toggles-3">
+      <input type="radio" name="status_103" value="" id="id_status_103_0" checked><label for="id_status_103_0" class="erp-toggle is-blank">Not entered</label><input type="radio" name="status_103" value="MARKED" id="id_status_103_1"><label for="id_status_103_1" class="erp-toggle is-marked">Marked</label><input type="radio" name="status_103" value="ABSENT" id="id_status_103_2"><label for="id_status_103_2" class="erp-toggle is-absent">Absent</label>
+    </div>
+    <span id="erp-base-103"><input type="hidden" name="base_status_103" value=""><input type="hidden" name="base_score_103" value=""></span>
+    <div class="erp-row-status" data-erp-row-status></div>
+  </fieldset>
+  <div class="erp-actionbar">
+    <span id="erp-hint" class="erp-actionbar-status" data-erp-hint>3 not entered</span>
+    <span class="erp-autosave-state" data-erp-autosave-state role="status" aria-live="polite" hidden>Changes save automatically</span>
+    <button type="submit" class="btn btn-primary" data-erp-once data-erp-save-fallback>Save draft</button>
+  </div>
+  <p class="visually-hidden" role="status" aria-live="polite" data-erp-autosave-announce></p>
+  <p class="visually-hidden" role="status" data-erp-done-announce></p>
+</div>
+</form>
+<script src="/static/vendor/htmx/2.0.4/htmx.min.js" defer></script>
+<script src="/static/js/erp.js" defer></script>
+</body>
+</html>
