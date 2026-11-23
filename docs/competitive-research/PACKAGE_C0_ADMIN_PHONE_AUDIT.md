@@ -11,6 +11,15 @@
   10 teachers, 182 assessments, 333 timetable slots), plus one draft assessment and one draft
   register. Staging was not used. Each page was measured by script (§6), and the worst pages
   were also checked by eye from screenshots.
+- **Recheck (same day):** four routes the first pass missed were checked on a second throwaway
+  database. It started with no school (for `school-create`), was then seeded, and had one student
+  and one teacher deactivated through the app's own forms (for the two reactivate pages). Both
+  throwaway databases were dropped afterwards.
+- **Counting terms:**
+  - a **route** is one name in `core/tests/route_permissions.json`;
+  - a **page check** is one URL loaded at all three widths;
+  - a **route variant** is a second page check of the same route in a different data state. There
+    are two: the draft states of assessment detail and register detail, marked `#draft`.
 - **Not a real-device test.** Emulated Chromium only. Safari, Android browsers and real phones
   were not used.
 
@@ -20,28 +29,30 @@ What was checked, and how far each check went:
 
 | Check | Coverage |
 | --- | --- |
-| **Page rendering and layout measurement** | **142 admin routes** loaded at 360, 390 and 1366 px. All of them rendered a page (HTTP 200): 126 their own page and 16 a redirect target. |
-| **Workflows completed** (forms submitted) | **3 workflows**, at 360 px only: submit an attendance register, accept an applicant, preview and publish an announcement. |
+| **Page rendering and layout measurement** | **146 page checks** of **144 unique admin routes** (2 route variants), loaded at 360, 390 and 1366 px. All of them rendered a page (HTTP 200): 130 their own page and 16 a redirect target. |
+| **Workflows completed** (forms submitted) | **5 workflows**, at 360 px only: submit an attendance register; accept an applicant; preview and publish an announcement; deactivate a student, including the guardian-access review step; deactivate a teacher login. The last two were done while setting up the recheck. |
 | **Inspected from templates** | Pages whose tables were empty in the demo data (access reviews, stale publications, bulk imports); judged from the template markup. |
 | **Not functionally exercised** | Every other page. They were rendered and measured, but their forms and actions were not submitted. "Works" in the inventory means no layout problem was found, not that the workflow was completed. |
 
 - **No page scrolls sideways** at 360, 390 or 1366 px. Earlier work fixed page-level overflow
   everywhere (the `.erp-content table` phone rule, phone cards, the drawer).
-- **No blocker was found in what was exercised.** The three workflows above finished without
+- **No blocker was found in what was exercised.** The five workflows above finished without
   problems. The drawer has all 22 desktop sidebar links, each at least 40 px tall.
-- **The remaining problem is inside tables.** On 12 pages a table scrolls inside its own box
+- **The remaining problem is inside tables.** On 13 page checks (12 unique routes) a table
+  scrolls sideways inside its own box
   and hides the column that matters: the section that tells assessments apart, the marks on a
   report card, or the row's action button. Nothing on screen says more is to the right.
 - After removing duplicates there are **9 findings**: 2 High (C0-01, C0-02), 4 Medium (C0-03 to
   C0-06) and 3 Low (C0-07 to C0-09). Some Medium findings have Low parts, and C0-02 has one
   Medium part.
 
-| Status (at 360 px) | Routes | Meaning |
+| Status (at 360 px) | Page checks | Meaning |
 | --- | --- | --- |
-| Works | 101 | No layout problem found (rendered and measured; not functionally exercised unless listed above). |
+| Works | 105 | No layout problem found (rendered and measured; not functionally exercised unless listed above). |
 | Usable | 13 | Only Low findings. |
 | Problem | 12 | At least one High or Medium finding. |
 | Redirects | 16 | The URL is a POST action, needs a precondition, or is the home redirect. The page it lands on is counted. |
+| **Total** | **146** | 144 unique routes. Both variants of assessment detail are Problem, and both variants of register detail are Works. By unique route: 104 Works, 13 Usable, 11 Problem, 16 Redirects. |
 
 **Functional blockers vs visual inconvenience.** No finding stops a task that was exercised. The two High findings are
 functional all the same: on a phone an administrator can open the wrong assessment (C0-01), or
@@ -145,6 +156,9 @@ you choose.
   don't crowd each other, so the WCAG spacing exception applies.
 - **Low:** class detail puts "Rename" and red "Archive" side by side as 52 × 21 px links. Archive
   opens a confirmation page, so a mis-tap does no damage.
+- **Low:** radio choices on School create (Messages to guardians) and on the student-deactivation
+  access-review step (Retain access / Revoke access) use the browser's small radio, with the text
+  label as the tap target, about 20 px tall. Found in the recheck.
 
 ### C0-07 Low: wrapping
 
@@ -168,7 +182,7 @@ the right edge. The screenshot doesn't show whether it scrolls. Confirm in the P
 
 | Root cause | Findings | Fix direction (details in the spec) |
 | --- | --- | --- |
-| **R1. Wide tables fall back to in-box scrolling** (`static/css/erp.css:1324-1331`). That rule prevents page overflow, but on 12 pages it hides the key value or the action column, with no visual cue. | C0-01, C0-02, C0-03, C0-07 (grading), C0-08 | Give each affected table a phone layout that shows every column without sideways scrolling: one stacked-row table pattern, or phone cards as on Students. |
+| **R1. Wide tables scroll inside their wrapper.** Every affected table sits in `<div class="erp-table-scroll" role="region" tabindex="0">`. That wrapper scrolls sideways at every width (`overflow-x: auto`, `static/css/erp.css:1058-1067`). On phones, the generic rule `erp.css:1324-1331` also makes tables without `erp-keep` wide (`width: max-content`). Tables with `erp-keep` (grading scales, calendar) skip that rule but still overflow their wrapper. Either way, page overflow is prevented, but on 13 page checks (12 unique routes) the key value or the action column ends up out of view, with no visual cue. | C0-01, C0-02, C0-03, C0-07 (grading), C0-08 | Give each affected table, and its wrapper, an opt-in phone layout that shows every column without sideways scrolling (the approved `erp-table--stack` pattern, spec §4). |
 | **R2. Filter forms are one field per row on every width.** | C0-05 | Compact the filter layout on phones. |
 | **R3. Long lists have no grouping or jump on phones.** | C0-04 | Group by Class/Grade with collapsible sections, as `academic_year_class_teachers.html` already does. |
 | **R4. Inline icon links have no minimum size.** | C0-06 | Give the pencil links a 24 × 24 px minimum. |
@@ -204,8 +218,15 @@ R1 accounts for both High findings and most Medium ones, so it is the main lever
   grid, where the day tabs hold the other days' buttons; it was checked by eye and is not a
   defect.
 
-**Exercised with form submission at 360 px:** attendance register submit, applicant accept, and
-announcement preview + publish. All succeeded, with no overflow on the result pages.
+**Exercised with form submission at 360 px:** attendance register submit, applicant accept,
+announcement preview + publish, student deactivation (including the guardian-access review step,
+which has no route of its own; it is the reply to the status POST), and teacher deactivation. All
+succeeded, with no overflow on the result pages.
+
+**Recheck routes.** `school-create` (no school present), `student-reactivate-confirm` (inactive
+student), `teacher-reactivate` (inactive teacher) and `timetable-slot-create` (the Add slot form
+for an empty period) all rendered at 360, 390 and 1366 px with no page overflow, no table, no
+console errors and no control under 24 px on phones.
 
 **Not exercised:**
 
@@ -221,7 +242,8 @@ announcement preview + publish. All succeeded, with no overflow on the result pa
 (`test_ui_student_phone_cards`, `test_ui_teacher_cards`, `test_ui_year_assignments_phone`,
 `test_ui_year_cards`, `test_ui_student_history_phone`, `test_ui_guardian_attendance_phone`,
 `test_ui_hamburger` and others). No test measures layout at phone width. The browser tests
-under ADR 0028 cover JavaScript behaviour only and exclude template and visual testing
+under ADR 0028 cover JavaScript behaviour; the ADR scopes out full template and visual-regression
+testing
 (`docs/adr/0028-javascript-behaviour-testing.md:76`).
 
 **Evidence.** Seven screenshots are in `docs/ui-reviews/package-c0/`. They show only seeded demo
@@ -251,6 +273,7 @@ status from §1, and the finding. The path is the URL checked with demo IDs.
 | Route | Path checked | 360 / 390 / 1366 | Status | Finding |
 |---|---|---|---|---|
 | `core:school-detail` | `/school/` | 200 / 200 / 200 | Works | - |
+| `core:school-create` | `/school/create/` (no school present; recheck database) | 200 / 200 / 200 | Works | - |
 | `core:school-update` | `/school/edit/` | 200 / 200 / 200 | Works | - |
 | `core:school-logo-remove` | `/school/logo/remove/` | 200 / 200 / 200 | Works | - |
 | `core:academic-year-list` | `/academic-years/` | 200 / 200 / 200 | Works | - |
@@ -305,6 +328,7 @@ status from §1, and the finding. The path is the URL checked with demo IDs.
 | `core:teacher-username` | `/teachers/2/username/` | 200 / 200 / 200 | Works | - |
 | `core:teacher-reset-password` | `/teachers/2/reset-password/` | 200 / 200 / 200 | Works | - |
 | `core:teacher-deactivate` | `/teachers/2/deactivate/` | 200 / 200 / 200 | Works | - |
+| `core:teacher-reactivate` | `/teachers/3/reactivate/` (inactive teacher; recheck database) | 200 / 200 / 200 | Works | - |
 
 #### Timetable
 
@@ -317,6 +341,7 @@ status from §1, and the finding. The path is the URL checked with demo IDs.
 | `core:timetable-period-delete` | `/timetable/periods/1/delete/` | 200 / 200 / 200 | Works | - |
 | `core:timetable-sections` | `/academic-years/1/timetable/sections/` | 200 / 200 / 200 | Works | - |
 | `core:timetable-grid` | `/academic-years/1/timetable/sections/1/` | 200 / 200 / 200 | Works | - |
+| `core:timetable-slot-create` | `/academic-years/1/timetable/sections/1/slots/add/4/1/?date=2026-11-23` (empty period; recheck database) | 200 / 200 / 200 | Works | - |
 | `core:timetable-issues` | `/academic-years/1/timetable/issues/` | 200 / 200 / 200 | Usable | C0-05 (L) |
 | `core:timetable-slot-change` | `/timetable/slots/1/change/` | 200 / 200 / 200 | Works | - |
 | `core:timetable-slot-end` | `/timetable/slots/1/end/` | 200 / 200 / 200 | Works | - |
@@ -347,6 +372,7 @@ status from §1, and the finding. The path is the URL checked with demo IDs.
 | `core:student-admission-number` | `/students/1/admission-number/` | 200 / 200 / 200 | Works | - |
 | `core:student-status-change` | `/students/1/status/` | 200 / 200 / 200 | Redirects (action needs POST or a precondition) | - |
 | `core:student-deactivate-confirm` | `/students/1/deactivate/` | 200 / 200 / 200 | Works | - |
+| `core:student-reactivate-confirm` | `/students/1/reactivate/` (inactive student; recheck database) | 200 / 200 / 200 | Works | - |
 | `core:student-enroll` | `/students/1/enroll/` | 200 / 200 / 200 | Works | - |
 | `core:student-attendance` | `/students/1/attendance/` | 200 / 200 / 200 | Usable | C0-05 (L) |
 | `core:report-student-results` | `/students/1/results/` | 200 / 200 / 200 | Works | - |
@@ -439,7 +465,7 @@ status from §1, and the finding. The path is the URL checked with demo IDs.
   notification dismiss/sent/WhatsApp;
 - file responses: `document-pdf`, `document-report-card-pdf`, `import-issues-csv`,
   `import-template`, `school-logo`;
-- `import-detail` (no data);
+- `import-detail` (no import batch in the demo data; out of Package C scope, see the spec);
 - framework and plumbing routes: `admin`, `login`, `logout`, `pwa-manifest`, `session-status`,
   `usage-beacon`;
 - teacher-only and guardian-only routes.

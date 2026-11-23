@@ -17,7 +17,7 @@ and `static/css/erp.css`, and the tests that pin them.
 
 | Finding | Level | Outcome |
 | --- | --- | --- |
-| C0-01 Assessment list | High | Each assessment on a phone shows name, subject, section, date, status and progress without sideways scrolling. |
+| C0-01 Assessment list | High | Each assessment on a phone shows every column the row already has (name, status, subject, section, date, term, maximum and pass marks) without sideways scrolling. The existing Progress filter is unchanged; progress is not added to the row. |
 | C0-02 Result tables | High (result sheet Medium) | Assessment detail, term report card, published report card and result sheet show marks, %, grade and pass/fail, plus the Correct action where it exists, without sideways scrolling. |
 | C0-03 Off-screen row actions | Medium | Calendar, student record guardians, access reviews and stale publications show every row action inside the row on phones. |
 | C0-04 Teacher assignments length | Medium | An administrator can reach one Class/Grade's slots on a phone without scrolling past every other grade. |
@@ -35,11 +35,14 @@ and `static/css/erp.css`, and the tests that pin them.
 - Document PDFs and letterhead templates (`templates/documents/`), CSV and XLSX downloads, Django
   admin.
 - Import batch detail/preview (not exercised in C0; needs its own look with real batches).
-- PWA, service worker, offline behaviour and JavaScript changes. `static/js/erp.js` is not
-  touched, so the ADR 0028 `js` job does not apply.
-- A CI layout or visual test. ADR 0028 keeps browser tests to JavaScript behaviour and rules out
-  template and visual tests (`docs/adr/0028-javascript-behaviour-testing.md:76`); a layout test
-  would need its own ADR.
+- PWA, service worker, offline behaviour and JavaScript changes (`static/js/` is not touched).
+  This does **not** take Package C out of the ADR 0028 `js` job. That job's path filter
+  (`.github/workflows/ci.yml:157`) includes `static/css/`. So any PR that edits
+  `static/css/erp.css` (C1, C5, C7, and C8 if it touches CSS) runs the browser tests, and they
+  must pass on the final approved head (§8).
+- A CI layout or visual test. ADR 0028 keeps browser tests to JavaScript behaviour and scopes out
+  full template and visual-regression testing (`docs/adr/0028-javascript-behaviour-testing.md:76`);
+  a layout test would need its own ADR.
 - Turning on usage measurement (operational, OD-B9) and desktop redesign.
 - Low findings with no action: text links in table rows (spacing exception), and class detail
   Rename/Archive links (Archive opens a confirmation page).
@@ -74,8 +77,30 @@ All six were approved by the product owner on 23 November 2026.
 | **OD-C2** | How should tall filters shrink? | **Approved: CSS-only compaction.** On phones, short fields (selects and dates) sit two to a row, and the buttons share a row. Every field stays visible with its label, and tap targets don't shrink. No hidden or collapsible filters in this package. |
 | **OD-C3** | How should Teacher assignments be navigable on phones? | **Approved: group the cards by Class/Grade, with a short grade jump list at the top** (links to each grade's heading). Template only. The view already orders rows by `class_grade.display_order`, then subject, then section (`core/views.py:2573`), and `display_order` is unique (`classgrade_unique_display_order`), so each grade's slots are contiguous and `{% regroup %}` groups them correctly. If implementation finds that grouping needs a view or queryset change, stop and ask. |
 | **OD-C4** | Which page is the Ponytail pilot? | **Approved: Grading scales**, PR C1 (§5). Ponytail is used for review only. |
-| **OD-C5** | Which risk tier applies? | **Approved: Medium** for all Package C PRs, because the work is presentation-only. **Staging acceptance by the product owner is required** for pages with marks or results, correction links, or guardian-access actions and decisions: C3, C4, C5 and C6. |
+| **OD-C5** | Which risk tier applies? | **Approved: Medium** for all Package C PRs, because the work is presentation-only. **Staging acceptance by the product owner is required** for pages with marks or results, correction links, or guardian-access actions and decisions: C3, C4, C5 and C6. This is a deliberate exception to `IMPLEMENTATION_WORKFLOW.md` §3 (see §3.1). |
 | **OD-C6** | Commit the C0 audit sweep as a developer tool? | **Approved: no.** The one-off script stays out of the repository. The audit report and route inventory are the lasting evidence. Each PR does its own browser check (§8). |
+
+### 3.1 Workflow exception for C3–C6 (OD-C5)
+
+`IMPLEMENTATION_WORKFLOW.md` §3 says: "Pick the tier from the most sensitive thing the change
+touches. When unsure, go one higher." Its High row covers "Attendance, marks and results,
+publication, guardian access and anything guardians can see, roles and permissions". C3–C6 touch
+templates in that list, so by that rule they would be High. The product owner set them to
+**Medium** because they change presentation only: no view, permission, query, model or route.
+
+All Medium gates apply, quoted from §3: "Written spec or plan. Targeted tests for the new
+behaviour. Independent review. Full CI on the final head. Staging check."
+
+The High gates, quoted exactly from §3, and how C3–C6 treat each one:
+
+| High-tier gate (verbatim) | C3–C6 |
+| --- | --- |
+| "Approved spec that names the ADRs it relies on." | **Retained.** This spec, once approved. It names ADR 0028 and relies on the existing authorization ADRs without changing them. |
+| "Tests for each permission boundary (allowed, refused, and the edge dates)." | **Not retained as new tests.** No permission boundary changes. The existing guard tests for the touched routes are rerun (§8) to confirm nothing moved. |
+| "Route inventory updated." | **Not applicable.** No route is added or changed. The route-inventory test is rerun to confirm `route_permissions.json` is unchanged. |
+| "Review focused on authorization and history rules." | **Retained.** The independent review confirms that no guard, permission check or history record changed, and that actions still appear only for users who could use them before (§7). |
+| "Owner acceptance on staging before closeout." | **Retained** for C3, C4, C5 and C6. |
+| "Rollback written down before merge." | **Retained.** Rollback is in §9 and is repeated in each PR body before merge. |
 
 ## 4. Design: `erp-table--stack` (OD-C1)
 
@@ -87,7 +112,8 @@ column is added, removed or hidden by permission.
 **Markup (desktop unchanged):**
 
 ```html
-<table class="table erp-table--stack ...existing classes">
+<div class="erp-table-scroll erp-table-scroll--stack" role="region" aria-label="…existing label…" tabindex="0">
+<table class="…existing classes… erp-table--stack">
   <thead>...unchanged...</thead>
   <tbody>
     <tr>
@@ -95,16 +121,46 @@ column is added, removed or hidden by permission.
       <td data-label="Result">Marked</td>
       <td data-label="Score">72.00 / 100</td>
       ...
-      <td class="erp-stack-actions"><a ...>Correct<span class="visually-hidden"> Half-Yearly Exam for Ganesh Rao</span></a></td>
+      <td class="erp-stack-actions"><a ...>Correct<span class="erp-sr-only"> Half-Yearly Exam for Ganesh Rao</span></a></td>
     </tr>
+    <tr><td colspan="7">No results yet.</td></tr>   <!-- empty-state row: no data-label (§4.1 item 3) -->
   </tbody>
 </table>
+</div>
 ```
+
+**Class rules.**
+- New elements and attributes use only `erp-` classes (`docs/DESIGN_SYSTEM.md` rule 1).
+- Screen-reader text uses `erp-sr-only` (`static/css/erp.css:1409`), never `visually-hidden`.
+  When a PR edits an existing `visually-hidden` span, it switches that span to `erp-sr-only`.
+- A table that a PR only converts (adding the modifier, labels and action cell) keeps its existing
+  classes, including Bootstrap's `table`, under the phase-out rule ("Removing Bootstrap from a
+  template beyond the markup a PR rewrites" is out of scope, §1). A table the PR rebuilds uses
+  `erp-` classes only.
+
+**What actually scrolls today.** Every affected table sits in an `.erp-table-scroll` wrapper
+(`role="region"`, an `aria-label`, `tabindex="0"`). The wrapper scrolls sideways at every width
+(`overflow-x: auto` with `contain: inline-size paint`, `static/css/erp.css:1058-1067`). Inside it,
+the generic phone rule (`erp.css:1324-1331`) makes tables without `erp-keep` `width: max-content`.
+Tables with `erp-keep` skip that rule, but still overflow the wrapper when their columns don't
+fit. So the fix must change the wrapper as well as the table.
+
+**Opt-in on both elements.** A converted table carries `erp-table--stack`, and its wrapper carries
+`erp-table-scroll--stack`. Neither class changes anything on its own at 576 px and wider. Tables
+and wrappers without the modifiers keep today's behaviour at every width.
+
+**`erp-keep`.** `erp-table--stack` works with or without `erp-keep`. A converted table keeps
+`erp-keep` if it had it. The stack rules must win over
+`.erp-table-scroll > table:not(.erp-keep)` (`width: max-content`) for tables without `erp-keep`.
 
 **Phone CSS (under 576 px only):**
 
-- Undo the in-box scroll for this table (`.erp-content table.erp-table--stack` keeps
-  `overflow: visible` and is not `width: max-content`), so the table never scrolls sideways.
+- `.erp-table-scroll--stack`: no sideways scrolling and no paint containment that would clip the
+  stacked rows (`overflow-x: visible`, `contain: none`, the same values the print rule uses at
+  `erp.css:2157`). Stacked content must fit the viewport with no horizontal scroll inside the
+  wrapper or on the page.
+- `table.erp-table--stack`: `width: 100%`, never `max-content`, `display` set so the rows can
+  stack.
 - `thead` is visually hidden, not `display: none`, so it is still in the accessibility tree.
 - Each `tr` is a block with the card border and spacing tokens already used by `.erp-student-card`.
 - The row `th` is the block title (semibold, full width).
@@ -114,6 +170,13 @@ column is added, removed or hidden by permission.
   (§4.1).
 - The existing `.erp-row-context` spans are hidden inside stacked rows, because the row title
   already names the record.
+
+**The labelled region.** The wrapper keeps `role="region"`, its `aria-label` and `tabindex="0"`,
+so desktop keyboard users can still focus it and scroll a wide table with the arrow keys (that
+behaviour is unchanged at 576 px and wider). On phones nothing scrolls, so the region is one
+extra tab stop. It must not trap focus: Tab moves into the region and then on to the first control
+inside it, and Shift+Tab moves back out. Every value inside must be exposed to assistive
+technology (checked in the accessibility tree, §4.1 item 2). The C1 PR records this check.
 
 ### 4.1 Accessibility requirements (every converted table)
 
@@ -126,8 +189,9 @@ column is added, removed or hidden by permission.
    explicit ARIA table roles (`role="table"`, `row`, `columnheader`, `rowheader`, `cell`) to
    stacked tables only, and record this in `DESIGN_SYSTEM.md`.
 3. **Every stacked value has a visible label** from its cell's `data-label`. The label repeats
-   the column header text exactly. A cell without a label is allowed only for the row header and
-   the actions cell.
+   the column header text exactly. A cell without a label is allowed only for the row header, the
+   actions cell, and an empty-state row whose single cell spans the table (`colspan`), such as "No
+   results yet". That row shows as one full-width message on phones.
 4. **Action names say what and whom.** Each link or button has an accessible name with the action,
    the record and the person, for example "Correct Half-Yearly Exam for Ganesh Rao" or "End
    relationship with Anitha Varma". Use a visually hidden suffix where the visible text is short.
@@ -197,9 +261,9 @@ reviewed, and merged only on the product owner's word for that head. All are Med
 | PR | Findings | Templates and files | Staging acceptance | Pinned UI tests to update or extend |
 | --- | --- | --- | --- | --- |
 | **C1 Pilot: stack pattern + Grading scales** | C0-07 (grading) | `static/css/erp.css`; `core/templates/core/grading_scales.html`; `docs/DESIGN_SYSTEM.md` (Table row) | No (staging check only) | `test_ui_admin_desktop_d1_5a_grading_scales`, `test_ui_admin_structure_s3`; new `test_ui_phone_tables.py`; CSS guards |
-| **C2 Assessment list** | C0-01 | `core/templates/core/assessment_list.html` | No (staging check; real Android check per §7) | `test_ui_admin_desktop_d1_5b_assessments`, `test_ui_admin_desktop_d1_5c_result_reports`, `test_ui_admin_structure_s3`, `test_ui_year_selector_context`, `test_ui_year_selector_ui`; `test_ui_phone_tables` |
-| **C3 Assessment results + result sheet** | C0-02 | `core/templates/core/_assessment_results.html` (both tables; included only by `assessment_detail.html:60`), `core/templates/core/report_result_sheet.html` | **Yes** (marks, Correct links) | `test_ui_admin_desktop_d1_5b_assessments`, `test_ui_admin_desktop_d1_5c_result_reports`, `test_ui_admin_home_tabs`; `test_ui_phone_tables` |
-| **C4 Report card + published report card** | C0-02 | `core/templates/core/report_term_report_card.html`, `core/templates/core/publication_detail.html` (both tables) | **Yes** (marks, results) | `test_ui_admin_desktop_d1_5c_result_reports`, `test_ui_admin_desktop_d1_5d_term_publication`; `test_ui_phone_tables` |
+| **C2 Assessment list** | C0-01 | `core/templates/core/assessment_list.html` | No (staging check). **Real Android check by the release operator** (§7 item 12). | `test_ui_admin_desktop_d1_5b_assessments`, `test_ui_admin_desktop_d1_5c_result_reports`, `test_ui_admin_structure_s3`, `test_ui_year_selector_context`, `test_ui_year_selector_ui`; `test_ui_phone_tables` |
+| **C3 Assessment results + result sheet** | C0-02 | `core/templates/core/_assessment_results.html` (both tables; included only by `assessment_detail.html:60`), `core/templates/core/report_result_sheet.html` | **Yes** (marks, Correct links). **Real Android check by the release operator** (§7 item 12). | `test_ui_admin_desktop_d1_5b_assessments`, `test_ui_admin_desktop_d1_5c_result_reports`, `test_ui_admin_home_tabs`; `test_ui_phone_tables` |
+| **C4 Report card + published report card** | C0-02 | `core/templates/core/report_term_report_card.html`, `core/templates/core/publication_detail.html` (both tables) | **Yes** (marks, results). **Real Android check by the release operator** (§7 item 12). | `test_ui_admin_desktop_d1_5c_result_reports`, `test_ui_admin_desktop_d1_5d_term_publication`; `test_ui_phone_tables` |
 | **C5 Student record** | C0-03 (guardians), C0-06, C0-09 | `core/templates/core/student_detail.html`; `static/css/erp.css` (pencil link minimum size) | **Yes** (guardian relationship and access actions) | `test_ui_student_phone_cards`, `test_ui_student_history_phone`, `test_ui_tables_a11y`, `test_ui_admin_desktop_d1_3d1_guardian_forms`, `test_ui_admin_phase2`, `test_ui_wording` and the others listed by `grep -l "core:student-detail" core/tests/test_ui*.py` |
 | **C6 Calendar, access reviews, stale publications** | C0-03 | `core/templates/core/academic_year_calendar.html`, `core/templates/core/guardian_access_reviews.html`, `core/templates/core/publications_stale.html` | **Yes** (access decisions, republish review) | `test_ui_admin_structure_s2`, `test_ui_year_cards`, `test_ui_admin_desktop_d1_3c_access_reviews`, `test_ui_admin_desktop_d1_5d_term_publication`, `test_ui_admin_phase3e`, `test_ui_admin_phase3f`, `test_ui_empty_states` |
 | **C7 Filters + Teacher assignments** | C0-05, C0-04 | `static/css/erp.css` (phone filter grid); `core/templates/core/assessment_list.html`, `core/templates/core/attendance_register_list.html` (filter markup hooks, if needed); `core/templates/core/teacher_assignments.html` (grade groups with a jump list, template only per OD-C3) | No (staging check only) | `test_ui_admin_desktop_d1_4a_attendance_list`, `test_ui_admin_desktop_d1_5b_assessments`, `test_ui_year_assignments_phone`, `test_ui_admin_desktop_d1_2b`, `test_ui_admin_phase3d`, `test_ui_admin_setup_checklist`; CSS guards |
@@ -235,8 +299,13 @@ C7 can split into two PRs (filters; teacher assignments) if the diff grows past 
     controls.
 12. **Real-device acceptance for the high-consequence pages in C2–C4:** Chromium at 360, 390 and
     1366 px, plus one check on a real Android phone. The check confirms no hidden values or
-    actions, no desktop regression and no console errors. If no iPhone is available, record
-    Safari/iPhone as a known limitation in the PR.
+    actions, no desktop regression and no console errors.
+    - **Owner:** the release operator (the agent running the PR).
+    - **How:** an Android phone connected for Chrome remote debugging. If no device is connected,
+      the release operator asks the product owner to connect one or to run the check, and records
+      who ran it.
+    - **Record:** the result goes in the PR body, with the device and browser version.
+    - **iPhone:** if no iPhone is available, record Safari/iPhone as a known limitation in the PR.
 
 ## 8. Test plan
 
@@ -254,14 +323,16 @@ python manage.py test --pattern="test_ui*.py" --parallel 4 --noinput   # after a
 phone tests:
 
 - each converted page renders its table with `erp-table--stack`;
-- every `<td>` in the table body has a non-empty `data-label`, except the actions cell, which has
-  `erp-stack-actions`;
+- every `<td>` in the table body has a non-empty `data-label`, except the actions cell (which has
+  `erp-stack-actions`) and an empty-state cell with `colspan` spanning the table;
+- the wrapper of each converted table has `erp-table-scroll--stack` and keeps `role="region"`,
+  its `aria-label` and `tabindex="0"`;
 - the row header is a `<th scope="row">`;
 - for C3, the Correct link is inside `erp-stack-actions`, and its accessible name includes the
   action, the assessment and the student;
 - each `data-label` equals the text of its column header (no position-based labels);
-- a CSS test pins the `erp-table--stack` rules inside `@media (max-width: 575.98px)`, and that no
-  `erp-table--stack` rule appears outside it.
+- a CSS test pins the `erp-table--stack` and `erp-table-scroll--stack` rules inside
+  `@media (max-width: 575.98px)`, and checks that no rule for either class appears outside it.
 
 **Permission regression.** No guard changes, so no new permission tests. C3, C4, C5 and C6 rerun
 the existing guard and route-inventory tests for their routes to confirm nothing moved,
@@ -272,13 +343,29 @@ seeded database (the C0 method). Record page overflow, hidden table width (must 
 tables) and tap-target sizes in the PR body, with screenshots. For C1, also check the accessibility
 tree. For C3 and C4, also check print preview.
 
+**Screenshot safety (every PR).** Before/after screenshots in a PR or committed under `docs/`
+must:
+- come from a throwaway database seeded with the demo seeders (synthetic names only), never from
+  staging or a school's data;
+- show no passwords, password slips or reset links;
+- show no session IDs, CSRF tokens, cookies, URLs carrying tokens, or developer tools or request
+  headers;
+- have usernames blacked out wherever they appear (for example "Finalized by"), because the demo
+  seeder's usernames also exist on staging.
+
+The PR author checks each image by eye before attaching it, and says so in the PR body.
+
 **Staging:** after merge, check every touched page on staging at phone width. The product owner
 accepts C3, C4, C5 and C6 on staging (OD-C5).
 
-**CI:** targeted tests and browser checks locally; the full PostgreSQL suite runs in CI once the
-PR is marked Ready, on its final approved head. The JavaScript `js` job runs under its own path
-rules (ADR 0028). Package C does not touch `static/js/`, so its test step is expected to be
-skipped. A skipped step is not required (AGENTS.md).
+**CI:** targeted tests and browser checks locally. The full PostgreSQL suite runs in CI once the
+PR is marked Ready, on its final approved head. The JavaScript `js` job's path filter
+(`.github/workflows/ci.yml:157`) includes `static/css/`:
+- **CSS PRs (C1, C5, C7, and C8 if it edits CSS):** the `js` test step runs, and the PR is verified
+  only when the `js` job passes on the exact approved head (AGENTS.md; `IMPLEMENTATION_WORKFLOW.md`
+  §11).
+- **Template-only PRs (C2, C3, C4, C6):** the step is skipped, and a skipped step is not required.
+  If any of these PRs ends up editing CSS, the first rule applies.
 
 ## 9. Risks
 
@@ -295,8 +382,12 @@ migration to undo.
 
 ## 10. Definition of done for Package C
 
-- C1–C7 merged with full CI green on each final head, owner staging acceptance recorded for C3–C6,
-  and the C1 Ponytail comparison recorded (§5).
+- C1–C7 merged with full CI green on each final head, and with the `js` job passing on the final
+  head of each CSS PR.
+- Owner staging acceptance recorded for C3–C6.
+- The real Android check recorded by the release operator for C2, C3 and C4 (§7 item 12), with
+  Safari/iPhone listed as a limitation if no iPhone was available.
+- The C1 Ponytail comparison recorded (§5).
 - The C0 route inventory re-run at 360 and 390 px shows no High or Medium finding left.
 - ADM-08 and MOB-01 can then move from Partial to Implemented in a closeout note, with C8 and any
   measurement-led follow-ups listed as remaining.
