@@ -19,6 +19,7 @@ from browser_tests.support.usage import (
     BEACON,
     BEACON_HEADERS,
     BEACON_METHOD,
+    CHROMIUM_HEADERS,
     CLIENT_EVENTS,
     CLIENT_SIZED_EVENTS,
     DEVICES,
@@ -67,21 +68,31 @@ class UsagePage(FixturePage):
 
     def setUp(self):
         super().setUp()
-        # Every request the page makes, served, held, failed or blocked, with its body.
+        # Every request the page makes, served, held, failed or blocked, as Chromium saw it.
         self.request_log = []
         self.context.on("request", self._log_request)
-        self.fetches = []  # every fetch call the page made, from FETCH_SPY, across page loads
-        self.allowed = set(STATIC_FILES)  # (method, path) the test may request with no body, besides /u/
+        self.fetches = []  # every fetch or XHR the page itself made (FETCH_SPY), across page loads
+        self.allowed = set(STATIC_FILES)  # (method, path) requested with no body and no page-set headers
         self.expected = {}  # (method, path) -> the exact bodies this test's functional requests may carry
         self.context.expose_binding("btRecordFetch", lambda source, record: self.fetches.append(record))
 
     def _log_request(self, request):
         try:
-            body = request.post_data
-        except Exception:  # a binary body is never a beacon
-            body = None
-        self.request_log.append({"request": request, "url": request.url, "method": request.method, "body": body,
-                                 "content_type": request.headers.get("content-type", "")})
+            raw = request.post_data_buffer
+        except Exception:
+            raw = b"?"  # unreadable: treated as a binary body, never as none
+        try:
+            frame_url = request.frame.url
+        except Exception:
+            frame_url = None
+        try:
+            text = raw.decode("utf-8") if raw else None
+        except UnicodeDecodeError:
+            text = None  # binary
+        self.request_log.append({
+            "request": request, "url": request.url, "method": request.method, "headers": dict(request.headers),
+            "frame_url": frame_url, "raw": raw or b"", "body": text,
+        })
 
     # --- functional requests: each test declares exactly what its requests may carry ----------
 
@@ -110,95 +121,131 @@ class UsagePage(FixturePage):
     def expect_image(self):
         self.expect("GET", "/held/hero.png", "empty", None)
 
-    def functional_violation(self, entry, specs):
-        """Why a declared request's body is not one the test sent, or None."""
-        kind = specs[0][0]
-        body, content_type = entry["body"], entry["content_type"]
-        if kind == "empty":
-            return None if not body else "a body on a request that has none"
-        if kind == "form":
-            if not content_type.startswith("application/x-www-form-urlencoded"):
-                return f"wrong content type {content_type!r}"
-            fields = form_fields(body)
-            names = [name for name, _ in fields]
-            if len(names) != len(set(names)):
-                return f"duplicate fields in {sorted(names)}"
-            sent = dict(fields)
-            if any(sent == value for _, value in specs):
-                return None
-            return f"fields {sent} are not what the test entered"
-        if not content_type.startswith("multipart/form-data"):
-            return f"wrong content type {content_type!r}"
-        parts = multipart_parts(body, content_type)
-        if not parts or any(name != "enrollment" or filename is not None for name, filename, _ in parts):
-            return f"unexpected parts {[(n, f) for n, f, _ in (parts or [])]}"
-        sent = Counter(value for _, _, value in parts)
-        if any(sent == value for _, value in specs):
-            return None
-        return f"enrollments {dict(sent)} are not what the test sent"
-
     def open(self, fixture, wait_until="load"):
         self.allowed.add(("GET", f"/fixtures/{fixture}"))
         self.page.goto(f"{ORIGIN}/fixtures/{fixture}", wait_until=wait_until)
 
+    # --- the privacy-egress audit (one check per request, in tearDown) ----------------------
+
     def tearDown(self):
-        # Every beacon-shaped request the test produced, wherever it was sent and whether it
-        # arrived or was lost, passes the full privacy check exactly once. A violation fails the
-        # test (through the harness's guard) and is written to its failure records; when the test
-        # has already failed, its own failure is the one reported.
+        # Every request the page made gets exactly one check against the fixed matrix:
+        # destination, method, page-set headers, content type, body kind, multipart framing,
+        # values, undeclared requests, and /u/ through the beacon check. A violation fails the test
+        # (the harness guard) and is written to its failure records; when the test has already
+        # failed, its own failure is the one reported.
         try:
-            self.guard_violations.extend(self.beacon_violations())
+            self.guard_violations.extend(self.egress_violations())
         except Exception as error:  # for example a crashed page
-            self.guard_violations.append(f"the beacon privacy check could not run: {error!r}")
+            self.guard_violations.append(f"the privacy audit could not run: {error!r}")
         super().tearDown()
 
     def collect_reports(self):
-        """Wait until the test has received every fetch report the page has made (a handshake)."""
+        """Wait until the test has received every request report the page has made (a handshake)."""
         self.page.evaluate("() => Promise.all(window.btReports || []).then(() => true)")
 
-    def beacon_pairs(self):
-        """Each beacon-shaped request with the fetch call that made it: the n-th request with a
-        given body pairs with the n-th fetch of that body (both are in the order the page sent)."""
+    def request_pairs(self):
+        """Each request with the page's own fetch or XHR record that made it, or None (a document,
+        script or image). The n-th request to a URL pairs with the n-th record for that URL."""
         self.collect_reports()
         unmatched = list(self.fetches)
         pairs = []
         for entry in self.request_log:
-            if entry["url"] != ORIGIN + BEACON:
-                continue  # anything else goes through the request audit in beacon_violations
-            record = next((f for f in unmatched if f["body"] == entry["body"]), None)
+            record = next((r for r in unmatched if r["method"] == entry["method"]
+                           and r["href"].split("#")[0] == entry["url"]), None)
             if record is not None:
                 unmatched.remove(record)
             pairs.append((entry, record))
-        return pairs, [f for f in unmatched if f["href"] == ORIGIN + BEACON]
+        return pairs, unmatched
 
-    def beacon_violations(self):
-        pairs, without_request = self.beacon_pairs()
+    def measured(self):
+        """Whether the page measures: the server's attribute is on and GPC is off."""
+        on = self.page.locator("body").get_attribute("data-erp-usage") == "1"
+        return on and not self.page.evaluate("window.btGpc === true")
+
+    def egress_violations(self):
+        pairs, without_request = self.request_pairs()
         if without_request:
             # A report can reach the test before its request event: one more handshake, then look again.
-            pairs, without_request = self.beacon_pairs()
+            pairs, without_request = self.request_pairs()
+        measured = self.measured()
         violations = []
         for entry, record in pairs:
             try:
-                self.check_beacon(entry, record)
+                self.check_request(entry, record, measured)
             except AssertionError as error:
                 violations.append(f"{entry['method']} {entry['url']}: {error}")
         for record in without_request:
-            violations.append(f"a beacon fetch to {record['href']} made no request")
-        beacon_requests = {id(entry) for entry, _ in pairs}
-        for entry in self.request_log:
-            if id(entry) in beacon_requests:
-                continue
-            path = entry["url"][len(ORIGIN):] if entry["url"].startswith(ORIGIN) else entry["url"]
-            key = (entry["method"], path)
-            if key in self.expected:
-                problem = self.functional_violation(entry, self.expected[key])
-                if problem:
-                    violations.append(f"{entry['method']} {path}: {problem}")
-            elif key not in self.allowed:
-                violations.append(f"unexpected application request: {entry['method']} {entry['url']}")
-            elif entry["body"]:
-                violations.append(f"a body on {entry['method']} {path}")
+            violations.append(f"a {record['api']} to {record['href']} made no request")
         return violations
+
+    def check_headers(self, entry, record, expected):
+        """The page-set headers are exactly `expected`; every other header is one Chromium adds."""
+        page_set = dict(record["headers"]) if record else {}
+        self.assertEqual(page_set, expected, "headers the page set")
+        allowed = CHROMIUM_HEADERS | {name.lower() for name in page_set}
+        self.assertEqual(set(entry["headers"]) - allowed, set(), "headers the page set without the observer")
+        for name, value in page_set.items():
+            self.assertEqual(entry["headers"].get(name.lower()), value, f"the {name} header as sent")
+
+    def expect_client_header(self, expected, record, measured):
+        """The device header: present with allow-listed values only when measuring, else absent."""
+        sent = (record["headers"] if record else {}).get("X-ERP-Client")
+        if measured:
+            self.assertRegex(sent or "", CLIENT_HEADER)
+            return {**expected, "X-ERP-Client": sent}
+        self.assertIsNone(sent, "no device header when off or under GPC")
+        return expected
+
+    def content_type(self, entry):
+        return entry["headers"].get("content-type", "").split(";")[0].strip()
+
+    def check_request(self, entry, record, measured):
+        url, method = entry["url"], entry["method"]
+        path = url[len(ORIGIN):] if url.startswith(ORIGIN) else url
+        key = (method, path)
+        if url == ORIGIN + BEACON:
+            self.check_beacon(entry, record)
+        elif key in self.expected:
+            self.check_functional(entry, record, self.expected[key], measured)
+        elif key in self.allowed:
+            self.assertFalse(entry["raw"], "no body on a page or static file request")
+            self.check_headers(entry, record, {})
+        else:
+            self.fail("an undeclared application request")
+
+    def check_functional(self, entry, record, specs, measured):
+        kind = specs[0][0]
+        if kind == "empty":
+            self.assertFalse(entry["raw"], "no body on this request")
+            self.check_headers(entry, record, {})
+            return
+        self.assertIsNotNone(record, "sent by the page's own fetch or XHR")
+        if kind == "form":  # an HTMX row save
+            self.assertEqual(record["bodyKind"], "[object String]", "the body is form text")
+            expected = {"HX-Request": "true", "HX-Current-URL": entry["frame_url"],
+                        "X-CSRFToken": "test-token", "Content-Type": "application/x-www-form-urlencoded"}
+            self.check_headers(entry, record, self.expect_client_header(expected, record, measured))
+            self.assertEqual(self.content_type(entry), "application/x-www-form-urlencoded")
+            self.assertIsNotNone(entry["body"], "a text body")
+            fields = form_fields(entry["body"])
+            names = [name for name, _ in fields]
+            self.assertEqual(len(names), len(set(names)), f"duplicate fields in {sorted(names)}")
+            sent = dict(fields)
+            self.assertTrue(any(sent == value for _, value in specs), f"fields {sent} are not what the test entered")
+            return
+        # multipart: bulk present
+        self.assertEqual(record["bodyKind"], "[object FormData]", "the body is form data")
+        expected = {"X-CSRFToken": "test-token", "X-Requested-With": "XMLHttpRequest"}
+        self.check_headers(entry, record, self.expect_client_header(expected, record, measured))
+        self.assertEqual(self.content_type(entry), "multipart/form-data")
+        self.assertIsNotNone(entry["body"], "a text body")
+        try:
+            parts = multipart_parts(entry["body"], entry["headers"].get("content-type", ""))
+        except ValueError as error:
+            self.fail(f"multipart framing: {error}")
+        self.assertEqual({name for name, _ in parts}, {"enrollment"}, "only enrollment parts")
+        sent = Counter(value for _, value in parts)
+        self.assertTrue(any(sent == value for _, value in specs), f"enrollments {dict(sent)} are not what the test sent")
 
     def assert_only_requests(self, allowed):
         """The page made no application request beyond the fixture, static and listed ones."""
@@ -217,7 +264,8 @@ class UsagePage(FixturePage):
     def spied(self):
         """Every fetch to the beacon path in this test, including ones that never arrived."""
         self.collect_reports()
-        return [f for f in self.fetches if re.sub(r"[?#].*$", "", f["href"]) == ORIGIN + BEACON]
+        return [f for f in self.fetches
+                if f["api"] == "fetch" and re.sub(r"[?#].*$", "", f["href"]) == ORIGIN + BEACON]
 
     def hide(self):
         """The page is hidden (switching app or tab): erp.js flushes on visibilitychange."""
@@ -281,20 +329,17 @@ class UsagePage(FixturePage):
         self.assertEqual(entry["url"], ORIGIN + BEACON, "a beacon goes only to /u/ on this origin, with no query")
         self.assertEqual(entry["method"], BEACON_METHOD)
         self.assertIsNotNone(record, "the beacon was sent by the page's fetch")
+        self.assertEqual(record["api"], "fetch")
         self.assertEqual(record["href"], ORIGIN + BEACON, "no query or fragment on the beacon URL")
-        self.assertEqual(record["method"], BEACON_METHOD)
-        # The headers the page itself set, compared exactly (Chromium's own are not).
-        self.assertEqual(record["headers"], BEACON_HEADERS)
-        held = next((h for h in self.held if h.request is entry["request"]), None)
-        if held is not None:  # it arrived: the headers as sent
-            for name, value in BEACON_HEADERS.items():
-                self.assertEqual(held.headers.get(name.lower()), value)
-            self.assertNotIn("x-erp-client", held.headers)
+        self.assertEqual(record["bodyKind"], "[object String]", "the body is JSON text")
+        self.check_headers(entry, record, BEACON_HEADERS)
+        self.assertEqual(self.content_type(entry), "application/json")
+        self.assertIsNotNone(entry["body"], "a text body")
         self.assert_payload(entry["body"])
 
     def assert_allowed(self, held):
-        """The full check on one held beacon, inside a test (tearDown checks every beacon again)."""
-        pairs, _ = self.beacon_pairs()
+        """The full check on one held beacon, inside a test (tearDown checks every request again)."""
+        pairs, _ = self.request_pairs()
         entry, record = next((e, r) for e, r in pairs if e["request"] is held.request)
         self.check_beacon(entry, record)
 

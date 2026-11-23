@@ -60,6 +60,8 @@ PAYLOAD_KEYS = {"d", "x", "p", "r", "a", "e"}
 EVENT_KEYS = {"w", "s", "b", "z"}  # workflow, step, duration bucket, size bucket
 
 BEACON = "/u/"
+CHROMIUM_HEADERS = {"accept", "accept-language", "content-type", "origin", "referer", "user-agent",
+                    "sec-ch-ua", "sec-ch-ua-mobile", "sec-ch-ua-platform", "upgrade-insecure-requests"}
 BEACON_METHOD = "POST"
 # The headers the page itself sets on a beacon (Chromium adds its own, which are not compared).
 BEACON_HEADERS = {"Content-Type": "application/json", "X-CSRFToken": "test-token",
@@ -71,28 +73,54 @@ GPC_SWITCH = (
     "Object.defineProperty(Navigator.prototype, 'globalPrivacyControl', {"
     " configurable: true, get() { return window.btGpc === true; } });"
 )
-# Test-only observer: records how the page called fetch (URL, method, the headers the page set,
-# keepalive, body) without changing the call, because Playwright does not report keepalive and
-# cannot tell the page's own headers from the browser's.
+# Test-only observer of the page's own requests: for every fetch and XMLHttpRequest it records the
+# method, the exact URL (fragment included), the headers the page itself set, the body's type and a
+# text body, and reports each record to the test (window.btReports holds a promise per report, so
+# the test can wait for them: a handshake, not a sleep). It never changes a request. Chromium's own
+# headers are not in a record, which is how the audit tells them apart.
 FETCH_SPY = """
 (() => {
-  const real = window.fetch;
   window.btFetches = [];
-  window.fetch = function (url, init) {
-    const record = {
-      url: String(url),
-      href: new URL(String(url), location.href).href, // the exact destination, fragment included
-      method: (init && init.method) || "GET",
-      headers: Object.assign({}, (init && init.headers) || {}),
-      keepalive: !!(init && init.keepalive),
-      body: init && typeof init.body === "string" ? init.body : null,
-    };
+  window.btReports = window.btReports || [];
+  function report(record) {
     window.btFetches.push(record);
-    // To the test, across page loads. Each report is a promise the test can wait for (a handshake,
-    // not a sleep): window.btReported resolves once the test has received every report so far.
-    window.btReports = window.btReports || [];
     if (window.btRecordFetch) window.btReports.push(window.btRecordFetch(record));
-    return real.apply(this, arguments);
+  }
+  function kind(body) {
+    return body === undefined || body === null ? "none" : Object.prototype.toString.call(body);
+  }
+  const realFetch = window.fetch;
+  window.fetch = function (url, init) {
+    init = init || {};
+    report({
+      api: "fetch",
+      url: String(url),
+      href: new URL(String(url), location.href).href,
+      method: init.method || "GET",
+      headers: Object.assign({}, init.headers || {}),
+      keepalive: !!init.keepalive,
+      bodyKind: kind(init.body),
+      body: typeof init.body === "string" ? init.body : null,
+    });
+    return realFetch.apply(this, arguments);
+  };
+  const xhr = XMLHttpRequest.prototype, open = xhr.open, setHeader = xhr.setRequestHeader, send = xhr.send;
+  xhr.open = function (method, url) {
+    this.btRecord = {api: "xhr", url: String(url), href: new URL(String(url), location.href).href,
+                     method: String(method).toUpperCase(), headers: {}, keepalive: false};
+    return open.apply(this, arguments);
+  };
+  xhr.setRequestHeader = function (name, value) {
+    if (this.btRecord) this.btRecord.headers[name] = String(value);
+    return setHeader.apply(this, arguments);
+  };
+  xhr.send = function (body) {
+    if (this.btRecord) {
+      this.btRecord.bodyKind = kind(body);
+      this.btRecord.body = typeof body === "string" ? body : null;
+      report(this.btRecord);
+    }
+    return send.apply(this, arguments);
   };
 })();
 """
@@ -128,16 +156,29 @@ def form_fields(body):
 
 
 def multipart_parts(body, content_type):
-    """A multipart/form-data body as a list of (name, filename or None, value), or None."""
-    match = re.search(r"boundary=([^;]+)", content_type or "")
+    """A multipart/form-data body as a list of (name, value), parsed strictly; ValueError if not.
+
+    The body must start with the first boundary and end with the closing one (no preamble or
+    epilogue); each part has exactly one header, Content-Disposition with a name and nothing else;
+    values are kept exactly (no trimming).
+    """
+    match = re.fullmatch(r"multipart/form-data; boundary=([0-9A-Za-z'()+_,./:=?-]{1,70})", content_type or "")
     if not match:
-        return None
+        raise ValueError(f"not a multipart content type with one boundary: {content_type!r}")
+    boundary = "--" + match.group(1)
+    body = body or ""
+    if not body.startswith(boundary + "\r\n"):
+        raise ValueError("text before the first part (a preamble)")
+    if not body.endswith("\r\n" + boundary + "--\r\n"):
+        raise ValueError("text after the closing boundary (an epilogue), or no closing boundary")
+    inner = body[len(boundary) + 2:len(body) - len(boundary) - 6]
     parts = []
-    for chunk in (body or "").split("--" + match.group(1))[1:]:
-        if chunk.startswith("--"):
-            break  # the closing boundary
-        head, _, value = chunk.strip("\r\n").partition("\r\n\r\n")
-        name = re.search(r'name="([^"]*)"', head)
-        filename = re.search(r'filename="([^"]*)"', head)
-        parts.append((name.group(1) if name else None, filename.group(1) if filename else None, value))
+    for chunk in inner.split("\r\n" + boundary + "\r\n"):
+        head, separator, value = chunk.partition("\r\n\r\n")
+        if not separator:
+            raise ValueError("a part without a header block")
+        header = re.fullmatch(r'Content-Disposition: form-data; name="([^"\r\n]*)"', head)
+        if not header:
+            raise ValueError(f"part headers other than one Content-Disposition with a name: {head!r}")
+        parts.append((header.group(1), value))
     return parts
