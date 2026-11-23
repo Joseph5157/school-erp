@@ -9,7 +9,7 @@
 <p class="erp-note-text" role="status">The filters were not applied; showing all assessments.</p>
 {% endif %}
 <search aria-label="Filter assessments">
-<form method="get" action="{% url 'core:academic-year-assessments' academic_year.pk %}" class="erp-toolbar erp-toolbar--inline erp-assessment-toolbar">
+<form method="get" action="{% url 'core:academic-year-assessments' academic_year.pk %}" class="erp-toolbar erp-toolbar--inline erp-toolbar--compact erp-assessment-toolbar">
     {% if table.sort_param %}<input type="hidden" name="sort" value="{{ table.sort_param }}">{% endif %}
     {% include "partials/_form_field.html" with field=form.term only %}
     {% include "partials/_form_field.html" with field=form.section only %}

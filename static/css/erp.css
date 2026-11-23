@@ -1407,6 +1407,19 @@ body.has-tabbar .erp-messages {
 /* Package C5: a small inline Edit link beside a value (student record) still gets a 24 x 24px tap target. */
 .erp-edit-link { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; min-height: 24px; }
 
+/* Package C7: an opt-in compact filter form. On phones short fields sit two to a row and errors and buttons take the
+   whole row, so the first result is no longer a screen down; wider screens keep the inline toolbar. */
+@media (max-width: 575.98px) {
+  .erp-toolbar--inline.erp-toolbar--compact { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; }
+  .erp-toolbar--compact > .erp-form-errors, .erp-toolbar--compact > .erp-form-actions { grid-column: 1 / -1; }
+}
+/* Package C7: Teacher assignments on phones, one collapsible group per Class/Grade under a jump list. */
+.erp-assign-grade + .erp-assign-grade { margin-top: var(--erp-space-3); }
+.erp-assign-grade > summary { padding-block: .625rem; cursor: pointer; font-weight: 600; }
+.erp-assign-grade-count { font-weight: 400; font-size: var(--erp-text-sm); color: var(--erp-ink-soft); }
+/* A jump lands on the group's card list; this extra margin keeps the group's summary in view above it. */
+.erp-assign-grade > .erp-assign-cards { scroll-margin-top: 3rem; }
+
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }

@@ -68,8 +68,21 @@
 </div>
 </div>
 {% if slots %}
-<ul class="erp-assign-cards d-md-none d-print-none" role="list">
-    {% for slot in slots %}
+{% regroup slots by offering.class_grade as grade_groups %}
+<div class="erp-assign-grades d-md-none d-print-none">
+{% if grade_groups|length > 1 %}<nav class="erp-section-nav" aria-label="Jump to a Class/Grade">
+    <ul>
+        {% for group in grade_groups %}<li><a href="#assign-grade-{{ group.grouper.pk }}">{{ group.grouper }}</a></li>
+        {% endfor %}
+    </ul>
+</nav>{% endif %}
+{% for group in grade_groups %}{% with count=group.list|length %}
+{# The jump target is the list inside the group, so following a link opens a collapsed group (Chromium, Firefox). #}
+{# Open the first group and any group holding a warning card, so no gap is hidden; ifchanged prints " open" once. #}
+<details class="erp-assign-grade"{% if forloop.first %} open{% else %}{% for slot in group.list %}{% if slot.inactive or not slot.current %}{% ifchanged %} open{% endifchanged %}{% endif %}{% endfor %}{% endif %}>
+<summary>{{ group.grouper }} <span class="erp-assign-grade-count">{{ count }} subject slot{{ count|pluralize }}</span></summary>
+<ul class="erp-assign-cards" id="assign-grade-{{ group.grouper.pk }}" role="list">
+    {% for slot in group.list %}
     <li class="erp-assign-card{% if slot.inactive or not slot.current %} erp-assign-card--warn{% endif %}">
         <div class="erp-assign-card-title">{{ slot.offering.class_grade }} {{ slot.section.name }} &middot; {{ slot.offering.subject }}</div>
         <div class="erp-assign-card-teacher">{% if slot.current %}{{ slot.current.teacher.get_full_name|default:slot.current.teacher.username }}{% else %}No current teacher{% endif %}</div>
@@ -110,6 +123,9 @@
     </li>
     {% endfor %}
 </ul>
+</details>
+{% endwith %}{% endfor %}
+</div>
 {% else %}
 <p class="erp-assign-cards-empty d-md-none d-print-none">No teachers assigned in this Academic Year yet.</p>
 {% endif %}

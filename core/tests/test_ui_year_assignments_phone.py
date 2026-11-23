@@ -17,6 +17,9 @@ from core import assignments
 from core.tests.test_phase5_assignment_workflows import TODAY, AssignmentFixture
 
 CARDS_OPEN = '<ul class="erp-assign-cards d-md-none d-print-none" role="list">'
+# Teacher assignments: the phone wrapper holds one card list per Class/Grade group (Package C7).
+GROUPED_CARDS_OPEN = '<ul class="erp-assign-cards" id="assign-grade-'
+GROUPED_WRAP = '<div class="erp-assign-grades d-md-none d-print-none">'
 TERM_CARDS_OPEN = '<ul class="erp-term-cards d-md-none d-print-none" role="list">'
 TABLE_WRAP = '<div class="d-none d-md-block d-print-block">'
 CSS = Path(__file__).resolve().parents[2] / "static" / "css" / "erp.css"
@@ -40,8 +43,8 @@ class AssignmentCardTests(AssignmentFixture, TestCase):
 
     def test_assignment_cards_show_section_subject_teacher_date_and_actions(self):
         page = self.client.get(reverse("core:academic-year-teacher-assignments", args=[self.year.pk]))
-        self.assertContains(page, CARDS_OPEN)
-        card = next(c for c in cards_in(page) if "Mathematics" in text_of(c))
+        self.assertContains(page, GROUPED_WRAP)
+        card = next(c for c in cards_in(page, GROUPED_CARDS_OPEN) if "Mathematics" in text_of(c))
         words = text_of(card)
         self.assertIn("Grade 6 A", words)
         self.assertIn("iyer", words)
@@ -84,6 +87,9 @@ class AssignmentCardTests(AssignmentFixture, TestCase):
             with self.subTest(page=name):
                 html = self.client.get(reverse(f"core:{name}", args=[self.year.pk])).content.decode()
                 self.assertIn(TABLE_WRAP, html)
+                if name == "academic-year-teacher-assignments":
+                    self.assertIn(GROUPED_WRAP, html)
+                    continue
                 self.assertIn(' d-md-none d-print-none" role="list"', html)
                 self.assertNotRegex(html, r'<ul class="erp-(?:assign|term)-cards"')
 
