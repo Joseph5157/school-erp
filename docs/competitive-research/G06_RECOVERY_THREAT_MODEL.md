@@ -1,12 +1,12 @@
 # G-06 threat model: guardian account recovery
 
-- **Status:** draft r2 for review (r2: independent security review of PR #301, findings F1–F13 applied; r3: re-check N-A to N-D).
-  Docs only. Approves no code.
+- **Status:** **Accepted**, 2026-11-23. Independently reviewed on PR #301 (findings F1–F13 applied in r2,
+  re-check N-A to N-D in r3). The product owner accepted the residual risks recorded in ADR 0029. Docs only:
+  it approves no code.
 - **Baseline:** `origin/main` c6aad3d.
 - **Risk tier:** Critical ("password and account recovery", "authentication and sessions",
   `docs/engineering/IMPLEMENTATION_WORKFLOW.md` §3). This document is the written threat model that tier
-  requires before code. The accepted ADR is still missing: [ADR 0029](../adr/0029-guardian-account-recovery.md)
-  is **Proposed**.
+  requires before code. Its ADR, [ADR 0029](../adr/0029-guardian-account-recovery.md), is **Accepted**.
 - **Current state:** [G06_PHASE0_GUARDIAN_ACCESS_RESEARCH.md](G06_PHASE0_GUARDIAN_ACCESS_RESEARCH.md).
 
 ## 1. Scope

@@ -1,9 +1,10 @@
 # ADR 0029: Guardian account recovery
 
-Status: **Proposed**, 2026-11-23 (G-06 Phase 0; r2 applies the independent security review of PR #301,
-findings F1–F13; r3 applies its re-check, N-A to N-D). Not accepted. No recovery code may be written on the strength of this document.
-Acceptance needs the product owner's decisions below and the conditions in "What would make this
-acceptable".
+Status: **Accepted**, 2026-11-23. The product owner approved OD-G1 to OD-G16 as recommended and
+accepted the threat model's residual risks (see "Recorded decisions"). History: proposed in G-06 Phase 0;
+r2 applied the independent security review of PR #301 (findings F1–F13); r3 applied its re-check
+(N-A to N-D). Accepting this ADR approves the **design**, not code: each implementation still needs its
+own Critical-tier spec and the remaining gates in "What would make this acceptable" (items 3–6).
 
 ## Context
 
@@ -132,6 +133,16 @@ will address, outside this ADR.
 | OD-G15 | Starting rate limits | Accept R6 numbers; set others | Accept R6 as starting values; tune on staging |
 | OD-G16 | Reset note | Method choice only; choice plus free note; choice plus short note in a separate deletable table | Method choice only; a note only for "Other", max 100 characters, no personal data, in a separate deletable table |
 
+### Recorded decisions (2026-11-23)
+
+The product owner approved **every recommendation above, as written** ("approve all as recommended"):
+OD-G1 to OD-G16 take the value in the Recommendation column. In particular: the A + G design, no
+channel for now (OD-G2), identity by (a) in person or (b) a callback that only books a visit, never (c)
+or (d) (OD-G3), and the 72-hour / 14-day temporary password expiry (OD-G5).
+
+The product owner also accepted in writing the threat model's top residual risks under this design:
+T10 High (no owner notification until a channel exists); T7, T1, T20 and T12 Medium; T13 and T22 Medium.
+
 ## Consequences
 
 - No provider, cost or new contact channel. The office keeps doing resets, with a better record.
@@ -147,9 +158,10 @@ will address, outside this ADR.
 
 ## What would make this acceptable
 
-1. The product owner records OD-G1 to OD-G16.
+1. The product owner records OD-G1 to OD-G16. **Done** (2026-11-23, "Recorded decisions").
 2. The threat model is reviewed by someone other than its author, and its top residual risks (T10 High;
-   T7, T1, T20, T12 Medium) are accepted in writing.
+   T7, T1, T20, T12 Medium) are accepted in writing. **Done**: independent security review on PR #301
+   (two rounds), risks accepted by the product owner on 2026-11-23.
 3. A security-focused review of the spec that follows, in addition to the normal review
    (`IMPLEMENTATION_WORKFLOW.md` §3, Critical).
 4. A migration and data-recovery plan, and a staged rollout with a tested rollback.

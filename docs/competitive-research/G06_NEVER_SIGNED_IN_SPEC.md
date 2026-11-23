@@ -1,7 +1,8 @@
 # G-06 spec: guardians who have never signed in (ANA-05)
 
-- **Status:** draft r2, awaiting product-owner approval. Not approved for build. r2 applies the security
-  review of PR #301 (N1–N4): no reset link in v1, chip renamed, teacher-parent note, exact permission check.
+- **Status:** **Approved for build**, 2026-11-23. The product owner approved OD-N1 to OD-N5 as recommended
+  (§ decisions). r2 applied the security review of PR #301 (N1–N4): no reset link in v1, chip renamed,
+  teacher-parent note, exact permission check.
 - **Baseline:** `origin/main` c6aad3d.
 - **Risk tier:** **High** (guardian access and roles and permissions, `IMPLEMENTATION_WORKFLOW.md` §3).
 - **Independent of recovery.** This list uses only existing data and existing actions. It does not depend
@@ -173,7 +174,7 @@ added (that is an ADR 0027 enum change and out of scope).
 
 ## 12. Acceptance checklist
 
-- [ ] Spec approved and OD-N1 to OD-N4 recorded.
+- [x] Spec approved and OD-N1 to OD-N5 recorded (2026-11-23, all as recommended).
 - [ ] Page lists exactly the §2 accounts; both chips work.
 - [ ] Class and section filters work with `view_student` and are ignored without it.
 - [ ] Rows link to the existing guardian profile only; no reset link; nothing is changed from this page.
