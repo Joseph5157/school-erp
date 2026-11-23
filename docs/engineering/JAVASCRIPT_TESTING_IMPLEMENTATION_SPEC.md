@@ -1135,3 +1135,10 @@ by the author.
 | 2 | Fixtures gained the session box (attendance) and replies for a 403 row fragment and bulk present (saved and 401), all pinned by the contract test | Section 7.5 |
 | 3 | Two equivalent mutants: removing the marks `htmx:timeout` listener (afterRequest with status 0 shows the same words) and the last-row Enter trigger (the sign-in "Next" helper's focus move already fires `change`, F-JS4). The string check for the Enter trigger is kept for that reason | `test_marks_autosave.py` |
 | 4 | Review fix: the 600 ms row-103 timeout and its contract exception are gone. `page.clock` cannot move a native XHR timeout, so an opt-in test-only init script runs the page's own timeout on `setTimeout` (only `timeout` then `loadend` reach the page, as in a browser). Tests that hold replies cannot be overtaken by a slow runner, and answering a request the page already closed fails with a clear assertion | `browser_tests/support/page.py`; section 7.5 |
+
+### 19.5 JS3 notes (2026-11-22)
+
+| # | Note | Where |
+| --- | --- | --- |
+| 1 | Commit A added A1 alone (three tests); the draft `js` run failed on exactly those three, proving the defect. Commit B fixed the attendance block and A1 passes | PR description |
+| 2 | Fix: a reply to an older change (`row._sent !== row._seq`) is not swapped into the row and does not change its state or announcement, whether it succeeded or failed; the newer reply decides. A stale 401 still tells the session box (`erp:signed-out`), since sign-out is about the whole session. No timeout added | `erp.js` attendance block |
