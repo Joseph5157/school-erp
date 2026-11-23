@@ -1,7 +1,8 @@
 from django import forms
 from django.contrib.admin.forms import AdminAuthenticationForm
 from django.contrib.auth import authenticate
-from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm
+from django.core.exceptions import ValidationError
 
 from accounts import security
 from accounts.models import SecurityEvent
@@ -81,3 +82,21 @@ class ThrottledAdminAuthenticationForm(ThrottledLoginMixin, AdminAuthenticationF
     AdminAuthenticationForm.confirm_login_allowed still refuses non-staff logins; the mixin
     turns that refusal into a counted, audited failure with the generic message.
     """
+
+
+SAME_PASSWORD_ERROR = "Choose a new password that is different from your current one."
+
+
+class SamePasswordRefusingChangeForm(PasswordChangeForm):
+    """Refuses a 'new' password equal to the current one (ADR 0029 R19).
+
+    Without this, a forced change could be met by re-entering the temporary password, which
+    then stays valid and is still printed on the slip.
+    """
+
+    def clean(self):
+        cleaned = super().clean()
+        new = cleaned.get("new_password2")
+        if new and "new_password2" not in self.errors and self.user.check_password(new):
+            self.add_error("new_password2", ValidationError(SAME_PASSWORD_ERROR, code="password_unchanged"))
+        return cleaned

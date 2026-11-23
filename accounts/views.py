@@ -9,6 +9,7 @@ from django.urls import reverse, reverse_lazy
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods
 
+from accounts.forms import SamePasswordRefusingChangeForm
 from accounts.middleware import seconds_left
 from accounts.models import SecurityEvent
 from accounts.return_path import return_path
@@ -108,6 +109,7 @@ class PasswordChangeView(auth_views.PasswordChangeView):
     """
 
     template_name = "registration/password_change_form.html"
+    form_class = SamePasswordRefusingChangeForm
     success_url = reverse_lazy("home")
 
     def get_context_data(self, **kwargs):

@@ -16,6 +16,7 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
 
+from accounts import security
 from accounts.models import SecurityEvent
 from accounts.usernames import clean_new_username
 from core.academic_years import current_academic_year
@@ -169,6 +170,7 @@ def reset_teacher_password(*, user, actor):
         locked.save(update_fields=["password", "must_change_password"])
         locked.end_all_sessions()
         SecurityEvent.record(Event.TEACHER_PASSWORD_RESET, actor=actor, subject_user=locked)
+        security.clear_lockout_on_reset(locked, actor)
     return password
 
 
