@@ -23,6 +23,34 @@ CLIENT_EVENTS = frozenset({
     *((workflow, step) for workflow in ("attendance_capture", "marks_entry")
       for step in ("attempt", "network", "server", "csrf", "retry_tapped", "retry_succeeded")),
 })
+# Only marks started and completed may carry a size bucket (core/usage.py CLIENT_SIZED_EVENTS).
+CLIENT_SIZED_EVENTS = frozenset({("marks_entry", "started"), ("marks_entry", "completed")})
+# Routes a page may report and the area each belongs to (core/usage.py PAGE_ROUTE_AREAS); any other
+# route is reported as "other".
+PAGE_ROUTE_AREAS = {
+    **{name: "admin" for name in (
+        "core:admin-overview", "core:student-list", "core:student-detail",
+        "core:student-attendance", "core:attendance-register-list",
+        "core:attendance-register-detail", "core:attendance-reports",
+        "core:report-missing-attendance", "core:report-daily-absentees",
+        "core:announcement-list", "core:announcement-detail", "core:guardian-list",
+        "core:guardian-detail", "core:teacher-list", "core:teacher-detail",
+        "core:applicant-list", "core:applicant-detail", "core:timetable-index",
+        "core:notifications-to-send", "core:publications-stale", "core:import-list",
+    )},
+    **{name: "teacher" for name in (
+        "core:my-home", "core:my-attendance", "core:my-attendance-history",
+        "core:my-assessments", "core:assessment-marks-entry", "core:my-students",
+        "core:my-student-detail", "core:my-timetable", "core:my-gradebook", "core:my-results",
+    )},
+    **{name: "guardian" for name in (
+        "portal:home", "portal:child", "portal:attendance", "portal:notices", "portal:notice",
+        "portal:report-cards", "portal:report-card",
+    )},
+    "root:login": "public",
+}
+OTHER_ROUTE = "other"
+PAGE_ROUTES = tuple(PAGE_ROUTE_AREAS) + (OTHER_ROUTE,)
 # What the beacon view accepts (core/usage_views.py), pinned by the contract test.
 MAX_EVENTS = 20
 MAX_BODY_BYTES = 2048
@@ -30,6 +58,10 @@ PAYLOAD_KEYS = {"d", "x", "p", "r", "a", "e"}
 EVENT_KEYS = {"w", "s", "b", "z"}  # workflow, step, duration bucket, size bucket
 
 BEACON = "/u/"
+BEACON_METHOD = "POST"
+# The headers the page itself sets on a beacon (Chromium adds its own, which are not compared).
+BEACON_HEADERS = {"Content-Type": "application/json", "X-CSRFToken": "test-token",
+                  "X-Requested-With": "XMLHttpRequest"}
 
 # Test-only switch for Global Privacy Control (Chromium has no setting for it): the page reads
 # navigator.globalPrivacyControl, which follows window.btGpc.
@@ -37,19 +69,39 @@ GPC_SWITCH = (
     "Object.defineProperty(Navigator.prototype, 'globalPrivacyControl', {"
     " configurable: true, get() { return window.btGpc === true; } });"
 )
-# Test-only observer: records how the page called fetch (URL, keepalive, body) without changing
-# the call, because Playwright does not report a request's keepalive flag.
+# Test-only observer: records how the page called fetch (URL, method, the headers the page set,
+# keepalive, body) without changing the call, because Playwright does not report keepalive and
+# cannot tell the page's own headers from the browser's.
 FETCH_SPY = """
 (() => {
   const real = window.fetch;
   window.btFetches = [];
   window.fetch = function (url, init) {
-    window.btFetches.push({
+    const record = {
       url: String(url),
+      method: (init && init.method) || "GET",
+      headers: Object.assign({}, (init && init.headers) || {}),
       keepalive: !!(init && init.keepalive),
       body: init && typeof init.body === "string" ? init.body : null,
-    });
+    };
+    window.btFetches.push(record);
+    if (window.btRecordFetch) window.btRecordFetch(record); // to the test, across page loads
     return real.apply(this, arguments);
+  };
+})();
+"""
+
+
+# Test-only: the installed app (display-mode: standalone) as the page's media query sees it.
+STANDALONE_DISPLAY = r"""
+(() => {
+  const real = window.matchMedia.bind(window);
+  window.matchMedia = function (query) {
+    if (/display-mode:\s*standalone/.test(query)) {
+      return { matches: true, media: query, onchange: null, addListener() {}, removeListener() {},
+               addEventListener() {}, removeEventListener() {} };
+    }
+    return real(query);
   };
 })();
 """

@@ -8,14 +8,18 @@ held by the harness and checked against the ADR 0027 allow-list (browser_tests/s
 pinned to core/usage.py). Page hide is simulated by the visibilitychange event erp.js listens for.
 """
 
+import json
 import re
 
 from browser_tests.support.autosave import FRAGMENT, HTML, JSON
-from browser_tests.support.page import FIXTURES, FixturePage, reply
+from browser_tests.support.page import FIXTURES, ORIGIN, FixturePage, reply
 from browser_tests.support.usage import (
     AREAS,
     BEACON,
+    BEACON_HEADERS,
+    BEACON_METHOD,
     CLIENT_EVENTS,
+    CLIENT_SIZED_EVENTS,
     DEVICES,
     DISPLAYS,
     DURATION_BUCKETS,
@@ -24,9 +28,13 @@ from browser_tests.support.usage import (
     GPC_SWITCH,
     MAX_BODY_BYTES,
     MAX_EVENTS,
+    OTHER_ROUTE,
+    PAGE_ROUTE_AREAS,
+    PAGE_ROUTES,
     PAYLOAD_KEYS,
     PLATFORMS,
     SIZE_BUCKETS,
+    STANDALONE_DISPLAY,
     events,
     payload,
 )
@@ -34,6 +42,9 @@ from browser_tests.support.usage import (
 MARKS_SAVE = "/marks/autosave/"
 ATTENDANCE_SAVE = "/attendance/autosave/"
 ATTENDANCE_BULK = "/attendance/present/"
+# The fixture and static files each page needs; the off and GPC tests allow nothing else.
+MARKS_PAGE = {"/fixtures/marks.html", "/static/vendor/htmx/2.0.4/htmx.min.js", "/static/js/erp.js"}
+ATTENDANCE_PAGE = {"/fixtures/attendance.html", "/static/vendor/htmx/2.0.4/htmx.min.js", "/static/js/erp.js"}
 CLIENT_HEADER = re.compile(r"^device=(phone|tablet|desktop);display=(browser|installed);platform=(android|ios|other)$")
 ANDROID = "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Mobile Safari/537.36"
 IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1"
@@ -46,6 +57,32 @@ class UsagePage(FixturePage):
     clock = True
     init_scripts = (GPC_SWITCH, FETCH_SPY)
 
+    def setUp(self):
+        super().setUp()
+        self.requests = []  # every request the page made to the app, by path (served, held or failed)
+        self.fetches = []  # every fetch call the page made, from FETCH_SPY, across page loads
+        self.context.expose_binding("btRecordFetch", lambda source, record: self.fetches.append(record))
+        self.context.on("request", lambda request: self.requests.append(
+            request.url[len(ORIGIN):] if request.url.startswith(ORIGIN) else request.url))
+
+    def tearDown(self):
+        # Every beacon a test produced, held or lost on the way, passes the full privacy check,
+        # whatever the test itself was about.
+        try:
+            if not self._failed():
+                for held in self.beacons():
+                    self.assert_allowed(held)
+                for sent in self.spied():
+                    self.assert_payload(sent["body"])
+                    self.assertEqual(sent["headers"], BEACON_HEADERS)
+                    self.assertEqual(sent["method"], BEACON_METHOD)
+        finally:
+            super().tearDown()
+
+    def assert_only_requests(self, allowed):
+        """The page made no application request beyond the fixture, static and listed ones."""
+        self.assertEqual(set(self.requests) - set(allowed), set(), "unexpected application requests")
+
     # --- beacons ----------------------------------------------------------------------------
 
     def beacons(self):
@@ -56,8 +93,9 @@ class UsagePage(FixturePage):
         return self.beacons()[already]
 
     def spied(self):
-        """Every fetch the page made to the beacon URL, including ones that never arrived."""
-        return [f for f in self.page.evaluate("window.btFetches") if f["url"].endswith(BEACON)]
+        """Every fetch to the beacon URL in this test, including ones that never arrived."""
+        self.pump(0.05)  # take in the observer's latest reports
+        return [f for f in self.fetches if f["url"].split("?")[0].endswith(BEACON)]
 
     def hide(self):
         """The page is hidden (switching app or tab): erp.js flushes on visibilitychange."""
@@ -86,14 +124,19 @@ class UsagePage(FixturePage):
             sent.extend(events(held))
         return sent
 
-    def assert_allowed(self, held):
-        """One beacon carries only ADR 0027 values: no person, record, value, URL or free text."""
-        body = payload(held)
+    def assert_payload(self, text):
+        """A beacon body carries only ADR 0027 values: no person, record, value, URL or free text."""
+        body = json.loads(text)
         self.assertEqual(set(body), PAYLOAD_KEYS)
         self.assertIn(body["d"], DEVICES)
         self.assertIn(body["x"], DISPLAYS)
         self.assertIn(body["p"], PLATFORMS)
         self.assertIn(body["a"], AREAS)
+        # The server's own route rules: an allow-listed route (or none), in its own area.
+        if body["r"]:
+            self.assertIn(body["r"], PAGE_ROUTES)
+            if body["r"] != OTHER_ROUTE:
+                self.assertEqual(PAGE_ROUTE_AREAS[body["r"]], body["a"], "the route belongs to another area")
         # Route and area come only from the attributes the server put on <body>.
         page_body = self.page.locator("body")
         self.assertEqual(body["r"], page_body.get_attribute("data-erp-route"))
@@ -101,17 +144,30 @@ class UsagePage(FixturePage):
         self.assertTrue(body["e"])
         for event in body["e"]:
             self.assertLessEqual(set(event), EVENT_KEYS)
-            self.assertIn((event["w"], event["s"]), CLIENT_EVENTS)
+            pair = (event["w"], event["s"])
+            self.assertIn(pair, CLIENT_EVENTS)
             if "b" in event:
                 self.assertIn(event["b"], DURATION_BUCKETS)
             if "z" in event:
+                self.assertIn(pair, CLIENT_SIZED_EVENTS, "only marks started and completed carry a size")
                 self.assertIn(event["z"], SIZE_BUCKETS)
-        for text in NEVER_SENT:
-            self.assertNotIn(text, held.body, f"{text!r} must never be sent")
-        self.assertEqual(held.headers.get("content-type"), "application/json")
-        self.assertEqual(held.headers.get("x-requested-with"), "XMLHttpRequest")
-        self.assertEqual(held.headers.get("x-csrftoken"), "test-token")
-        self.assertEqual(held.method, "POST")
+        for canary in NEVER_SENT:
+            self.assertNotIn(canary, text, f"{canary!r} must never be sent")
+
+    def assert_allowed(self, held):
+        """The full check on one held beacon: its envelope, then its body."""
+        self.assertEqual(held.path, BEACON, "exactly the beacon path, with no query string")
+        self.assertEqual(held.url, ORIGIN + BEACON)
+        self.assertEqual(held.method, BEACON_METHOD)
+        # The headers the page itself set, compared exactly (Chromium's own are not).
+        page_set = [f["headers"] for f in self.spied() if f["body"] == held.body]
+        self.assertTrue(page_set, "the beacon was sent by the page's fetch")
+        for headers in page_set:
+            self.assertEqual(headers, BEACON_HEADERS)
+        for name, value in BEACON_HEADERS.items():
+            self.assertEqual(held.headers.get(name.lower()), value)
+        self.assertNotIn("x-erp-client", held.headers)
+        self.assert_payload(held.body)
 
     # --- page helpers -----------------------------------------------------------------------
 
@@ -144,6 +200,7 @@ class OffAndPrivacyControlTests(UsagePage):
         self.page.clock.run_for(31_000)
         self.no_request(BEACON)
         self.assertEqual(self.spied(), [])
+        self.assert_only_requests(MARKS_PAGE | {MARKS_SAVE})
 
     def test_u1_with_gpc_on_nothing_is_queued_or_sent(self):
         self.context.add_init_script("window.btGpc = true;")
@@ -156,6 +213,8 @@ class OffAndPrivacyControlTests(UsagePage):
         self.page.clock.run_for(31_000)
         self.no_request(BEACON)
         self.assertEqual(self.spied(), [])
+        self.assert_only_requests({"/fixtures/usage_marks.html", "/static/vendor/htmx/2.0.4/htmx.min.js",
+                                   "/static/js/erp.js", MARKS_SAVE})
 
     def test_u1_gpc_turned_on_after_queueing_empties_the_queue_without_sending(self):
         self.open("usage.html")  # "page viewed" is queued
@@ -166,6 +225,35 @@ class OffAndPrivacyControlTests(UsagePage):
         self.hide()
         self.no_request(BEACON)
         self.assertEqual(self.spied(), [], "the queued event was dropped, not kept for later")
+        self.assert_only_requests({"/fixtures/usage.html", "/static/js/erp.js"})
+
+    # The bulk "Mark unanswered as present" request is the other way the device header is sent.
+    def mark_present(self, fixture):
+        self.open(fixture)
+        self.page.click("[data-erp-mark-present]")
+        bulk = self.next_request(ATTENDANCE_BULK)
+        bulk.respond(200, reply("attendance_bulk_saved.json"), JSON)
+        return bulk
+
+    def test_bulk_present_carries_the_device_header_when_measured(self):
+        bulk = self.mark_present("usage_attendance.html")
+        self.assertEqual(bulk.headers.get("x-erp-client"), "device=phone;display=browser;platform=other")
+
+    def test_bulk_present_has_no_device_header_with_measurement_off(self):
+        bulk = self.mark_present("attendance.html")
+        self.assertNotIn("x-erp-client", bulk.headers)
+        self.hide()
+        self.no_request(BEACON)
+        self.assert_only_requests(ATTENDANCE_PAGE | {ATTENDANCE_BULK})
+
+    def test_bulk_present_has_no_device_header_under_gpc(self):
+        self.context.add_init_script("window.btGpc = true;")
+        bulk = self.mark_present("usage_attendance.html")
+        self.assertNotIn("x-erp-client", bulk.headers)
+        self.hide()
+        self.no_request(BEACON)
+        self.assert_only_requests({"/fixtures/usage_attendance.html", "/static/vendor/htmx/2.0.4/htmx.min.js",
+                                   "/static/js/erp.js", ATTENDANCE_BULK})
 
 
 class FlushTests(UsagePage):
@@ -272,6 +360,19 @@ class DeviceTests(UsagePage):
         self.assertEqual((payload(beacon)["p"], payload(beacon)["x"]), ("android", "installed"))
         self.assert_allowed(beacon)
         self.assertNotIn("Pixel", beacon.body, "the user agent itself is never sent")
+
+    def test_display_installed_from_the_standalone_display_mode(self):
+        # Before erp.js runs: the page's media query reports the installed app (no navigator.standalone).
+        self.context.add_init_script(STANDALONE_DISPLAY)
+        self.open("usage_install.html")
+        self.page.evaluate(
+            "() => { const e = new Event('beforeinstallprompt'); e.prompt = () => {};"
+            " e.userChoice = Promise.resolve({outcome: 'accepted'}); window.dispatchEvent(e); }")
+        self.assertTrue(self.page.locator("[data-erp-install-bar]").is_hidden(), "no install bar in the installed app")
+        self.hide()
+        beacon = self.next_beacon(0)
+        self.assertEqual(payload(beacon)["x"], "installed")
+        self.assertEqual([e for e in events(beacon) if e[0] == "install"], [], "no install events in the installed app")
 
     def test_platform_iphone_in_the_browser(self):
         self.context.add_init_script(f"Object.defineProperty(Navigator.prototype, 'userAgent', {{get: () => {IPHONE!r}}});")

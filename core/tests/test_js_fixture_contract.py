@@ -312,6 +312,10 @@ class UsageAllowListContractTests(SimpleTestCase):
                      "CLIENT_EVENTS"):
             with self.subTest(name):
                 self.assertEqual(set(getattr(browser_usage, name)), set(getattr(usage, name)))
+        self.assertEqual(browser_usage.CLIENT_SIZED_EVENTS, usage.CLIENT_SIZED_EVENTS)
+        self.assertEqual(browser_usage.PAGE_ROUTE_AREAS, usage.PAGE_ROUTE_AREAS)
+        self.assertEqual(browser_usage.OTHER_ROUTE, usage.OTHER_ROUTE)
+        self.assertEqual(set(browser_usage.PAGE_ROUTES), set(usage.PAGE_ROUTES))
         self.assertEqual(browser_usage.PAYLOAD_KEYS, usage_views.SHARED_KEYS)
         self.assertEqual(browser_usage.EVENT_KEYS, usage_views.EVENT_KEYS)
         self.assertEqual(browser_usage.MAX_EVENTS, usage_views.MAX_EVENTS)
