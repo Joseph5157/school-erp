@@ -5,7 +5,7 @@
 {% if perms.core.view_attendanceentry %}{% url 'core:attendance-reports' as attendance_reports_url %}{% endif %}
 {% include "partials/_page_header.html" with eyebrow="Daily operations" title="Attendance" purpose="Open registers, review completion, and find recent attendance by section or date." primary_url=attendance_create_url primary_label="Open register" secondary_url=attendance_reports_url secondary_label="View reports" only %}
 <search aria-label="Filter attendance registers">
-<form method="get" action="{% url 'core:attendance-register-list' %}" class="erp-toolbar erp-toolbar--inline">
+<form method="get" action="{% url 'core:attendance-register-list' %}" class="erp-toolbar erp-toolbar--inline erp-toolbar--compact">
     {% if form.errors %}
     <div class="erp-form-errors" role="alert">
         {% for error in form.non_field_errors %}<p class="mb-1">{{ error }}</p>{% endfor %}
