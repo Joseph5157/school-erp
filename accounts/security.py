@@ -117,3 +117,17 @@ def locked_usernames(now=None):
 
 def clear_lockout(username):
     return LoginFailure.objects.filter(username_key=normalize_username(username)).delete()[0]
+
+
+def clear_lockout_on_reset(user, actor):
+    """An office reset must not hand over a password the lockout still refuses (ADR 0029 R16).
+
+    Failures for the login are always wiped; LOCKOUT_CLEARED is recorded only when it was locked.
+    """
+    from accounts.models import SecurityEvent
+
+    was_locked = normalize_username(user.username)[:150] in locked_usernames()
+    clear_lockout(user.username)
+    if was_locked:
+        SecurityEvent.record(SecurityEvent.EventType.LOCKOUT_CLEARED, actor=actor,
+                             subject_user=user, detail={"username": user.username})

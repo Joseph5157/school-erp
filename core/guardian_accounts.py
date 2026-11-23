@@ -15,6 +15,7 @@ from django.db import IntegrityError, transaction
 from django.db.models.functions import Lower
 from django.utils import timezone
 
+from accounts import security
 from accounts.models import SecurityEvent
 from accounts.usernames import clean_new_username, normalize_username
 from core.models import (
@@ -232,6 +233,7 @@ def reset_guardian_password(*, account, actor):
         user.end_all_sessions()
         SecurityEvent.record(Event.PASSWORD_RESET_BY_ADMIN, actor=actor, subject_user=user,
                              guardian=account.guardian)
+        security.clear_lockout_on_reset(user, actor)
     return password
 
 
