@@ -48,11 +48,11 @@ What was checked, and how far each check went:
 
 | Status (at 360 px) | Page checks | Meaning |
 | --- | --- | --- |
-| Works | 105 | No layout problem found (rendered and measured; not functionally exercised unless listed above). |
-| Usable | 13 | Only Low findings. |
+| Works | 104 | No layout problem found (rendered and measured; not functionally exercised unless listed above). |
+| Usable | 14 | Only Low findings. |
 | Problem | 12 | At least one High or Medium finding. |
 | Redirects | 16 | The URL is a POST action, needs a precondition, or is the home redirect. The page it lands on is counted. |
-| **Total** | **146** | 144 unique routes. Both variants of assessment detail are Problem, and both variants of register detail are Works. By unique route: 104 Works, 13 Usable, 11 Problem, 16 Redirects. |
+| **Total** | **146** | 144 unique routes. Both variants of assessment detail are Problem, and both variants of register detail are Works. By unique route: 103 Works, 14 Usable, 11 Problem, 16 Redirects. |
 
 **Functional blockers vs visual inconvenience.** No finding stops a task that was exercised. The two High findings are
 functional all the same: on a phone an administrator can open the wrong assessment (C0-01), or
@@ -199,7 +199,8 @@ R1 accounts for both High findings and most Medium ones, so it is the main lever
   submit bar. Submitting a whole register worked.
 - Timetable grid: day tabs, one period per row, Change/End/Add slot buttons at touch size.
 - Every form page (create, edit, rename, confirm, end, revoke, reset): single column, no overflow,
-  no control below 24 px.
+  and no measured control below 24 px. Radios and checkboxes were not measured (§6). Small radios
+  were seen on two pages (C0-06, Low).
 - Desktop at 1366 px: no page overflows.
 
 ## 6. Method details and limits
@@ -210,8 +211,9 @@ R1 accounts for both High findings and most Medium ones, so it is the main lever
 - elements past the right edge that are not inside a scroll box;
 - each visible table: column count, whether it scrolls, hidden width, and the header labels of
   columns that start outside the visible box;
-- visible interactive controls under 24 px in either dimension (ignoring links inside paragraphs,
-  checkboxes and radios), and under 40 px tall;
+- visible interactive controls under 24 px in either dimension, and under 40 px tall. Links
+  inside paragraphs, checkboxes and radios are **not** measured, so small radios are found only by
+  eye (C0-06);
 - buttons and headers taller than about 2.5 lines (excessive wrapping);
 - height of the first GET form (filters) and of the whole page;
 - buttons visible at 1366 px but not at 360 px (hidden actions). The only hit was the timetable
@@ -226,7 +228,9 @@ succeeded, with no overflow on the result pages.
 **Recheck routes.** `school-create` (no school present), `student-reactivate-confirm` (inactive
 student), `teacher-reactivate` (inactive teacher) and `timetable-slot-create` (the Add slot form
 for an empty period) all rendered at 360, 390 and 1366 px with no page overflow, no table, no
-console errors and no control under 24 px on phones.
+console errors and no measured control under 24 px on phones. Radios aren't measured: by eye,
+School create's radios have about 20 px tall labels as their tap target (C0-06, Low), so that page
+is Usable. The other three are Works.
 
 **Not exercised:**
 
@@ -273,7 +277,7 @@ status from §1, and the finding. The path is the URL checked with demo IDs.
 | Route | Path checked | 360 / 390 / 1366 | Status | Finding |
 |---|---|---|---|---|
 | `core:school-detail` | `/school/` | 200 / 200 / 200 | Works | - |
-| `core:school-create` | `/school/create/` (no school present; recheck database) | 200 / 200 / 200 | Works | - |
+| `core:school-create` | `/school/create/` (no school present; recheck database) | 200 / 200 / 200 | Usable | C0-06 (L) |
 | `core:school-update` | `/school/edit/` | 200 / 200 / 200 | Works | - |
 | `core:school-logo-remove` | `/school/logo/remove/` | 200 / 200 / 200 | Works | - |
 | `core:academic-year-list` | `/academic-years/` | 200 / 200 / 200 | Works | - |
