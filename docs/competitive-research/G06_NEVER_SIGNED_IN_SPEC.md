@@ -183,6 +183,12 @@ added (that is an ADR 0027 enum change and out of scope).
 - [ ] Route inventory updated; targeted tests and `ruff check .` pass; full CI green on the final head.
 - [ ] Owner acceptance on staging; rollback (revert the squash commit; no data to undo) written in the PR.
 
+## 12a. Role in the ADR 0029 rollout
+
+If ADR 0029 is accepted with temporary-password expiry, this list is the tool for its deploy step: before
+the expiry ships, the office runs both views and re-issues slips or contacts families, so unused slips do
+not expire silently 14 days after deploy (ADR 0029 R3). This list does not wait for that ADR.
+
 ## 13. Out of scope
 
 - Sending any message, reminder or invitation (WhatsApp, SMS, email).
