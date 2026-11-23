@@ -32,7 +32,7 @@ The engineering work that followed (ENG-WORKFLOW-01 #285, ENG-CI-01 #286, ENG-JS
 | ANA-03 | Incomplete assessment or marks | Partial | Implemented | A3: the admin count opens the matching list. |
 | TEA-04 | Consecutive-absence insight | Partial | Implemented | A2: consecutive runs over instructional days, with an admin report and a class-teacher card. Recording a follow-up action was outside Option A's scope (spec §1), and subject teachers are excluded by decision OD-5. A follow-up workflow would need its own decision. |
 | ANA-02 | Consecutive or repeated absence | Partial | Implemented | Same root as TEA-04. |
-| TEA-07 | Mobile repetitive-task quality | Partial | Implemented | B1 gives marks the attendance save model. B3 can measure task time and failures, but no data has been collected yet (see §3.2). |
+| TEA-07 | Mobile repetitive-task quality | Partial | Implemented | B1 gives marks the attendance save model. B3 can measure task time and failures. No operational measurement data was available to this closeout; deployment enablement was not inspected (see §3.2). |
 | ANA-05 | Guardian account inactive | Missing | Partial | The Parents tab shows how many parents signed in this month, and which sections have students with no portal parent. There is still no per-account list of guardians who never signed in. |
 
 **ACA-03** (fast repetitive grade entry) stays **Partial**: autosave and conflict detection are done, but there is no bulk fill. Its priority moves from P1 to Research, because spec §9.6 makes further speed work depend on marks-entry evidence.
@@ -66,6 +66,8 @@ All other candidate IDs are unchanged.
 | Research | 18 | 19 | +1 (ACA-03) |
 | Deferred | 13 | 13 | 0 |
 | **Total** | **68** | **68** | |
+
+The three remaining P1 candidate rows are ADM-08 and MOB-01 under G-04, and GUA-01 under G-06. That is why there are three P1 rows but only two open P1 gap groups.
 
 ### 2.4 Gap register
 
@@ -124,7 +126,7 @@ These are unchanged and are not gaps:
 | --- | --- | --- | --- |
 | 1 | **G-04 Admin phone coverage** (ADM-08, MOB-01) | Admins are expected to work fully on phones. Apart from the new home, admin pages are converted one by one and nothing proves coverage. | None to start a static inventory. Measurement (spec §9.5) would rank the conversion work once approved. |
 | 2 | **G-06 Guardian activation and recovery** (GUA-01, ANA-05) | Every forgotten guardian password is still an office task, and the office cannot see which families never activated. | Identity rules for self-service reset. There is no email or SMS channel (Phase 7 plan), so recovery needs a channel decision first. |
-| 3 | **Turning the evidence pipeline on** (operational, not a gap ID) | Mobile decisions (MOB-04, MOB-06 to MOB-10) and ACA-03 speed work are evidence-gated, and the evidence is not being collected. | Documented school approval under OD-B9, then the variable set per deployment. |
+| 3 | **Turning the evidence pipeline on** (operational, not a gap ID) | Mobile decisions (MOB-04, MOB-06 to MOB-10) and ACA-03 speed work are evidence-gated. No operational measurement data was available to this closeout; deployment enablement was not inspected. | Documented school approval under OD-B9, then the variable set per deployment. |
 
 G-01 remains the largest benchmark gap by count. It is still a research item with no product decision, so it is not ranked as build work.
 
