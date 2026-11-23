@@ -91,6 +91,27 @@ class LatestChoiceWinsTests(AttendancePage):
         self.wait_for_status(201, "✓ Saved")
         self.assertEqual(self.announced(), "Saved Student A.")
 
+    def test_a1_an_older_409_never_replaces_a_newer_change(self):
+        newer = self.newer_after(self.change_twice(), 409, reply("attendance_closed.html"), HTML)
+        newer.respond(200, reply("attendance_saved.html"), HTML)
+        self.wait_for_status(201, "✓ Saved")
+        self.assertEqual(self.announced(), "Saved Student A.")
+
+    def test_a1_an_older_422_never_replaces_a_newer_change(self):
+        newer = self.newer_after(self.change_twice(), 422, reply("attendance_refused.html"), HTML)
+        newer.respond(200, reply("attendance_saved.html"), HTML)
+        self.wait_for_status(201, "✓ Saved")
+        self.assertEqual(self.announced(), "Saved Student A.")
+
+    def test_a1_an_older_401_reaches_the_session_box_but_the_newer_reply_decides_the_row(self):
+        newer = self.newer_after(self.change_twice(), 401, reply("signed_out.json"), JSON)
+        self.assert_session_box_signed_out()  # sign-out is about the whole session
+        self.assertEqual(self.signed_out_events(), 1)
+        self.assertEqual(self.row_status(201), "Saving…")
+        newer.respond(401, reply("signed_out.json"), JSON)
+        self.wait_for_status(201, SIGNED_OUT_ROW)
+        self.assertEqual(self.announced(), "Could not save Student A. Use Retry or Save draft.")
+
     def test_a1_the_newer_reply_decides_what_the_row_shows(self):
         newer = self.newer_after(self.change_twice(), 200, reply("attendance_saved.html"), HTML)
         newer.respond(500, "Server error", HTML)

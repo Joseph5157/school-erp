@@ -25,7 +25,7 @@ from django.urls import reverse
 from core.models import SectionClassTeacher
 from core.tests.phase4_fixtures import Phase4Fixture
 from core.tests.test_marks_autosave import AutosaveFixture
-from core.tests.test_phase5_teacher_attendance import MONDAY, on
+from core.tests.test_phase5_teacher_attendance import MONDAY, on, press_confirm
 
 FIXTURES = settings.BASE_DIR / "browser_tests" / "fixtures"
 VOID = {"input", "br", "img", "meta", "link", "hr"}
@@ -252,6 +252,22 @@ class AttendanceFixtureContractTests(ContractMixin, Phase4Fixture, TestCase):
                                      HTTP_HX_REQUEST="true")
         self.assertEqual(response.status_code, 200)
         self.assert_reply_matches("attendance_saved.html", response)
+
+    def test_the_refused_reply_fixture_matches(self):
+        pk = self.asha.pk
+        response = self.teacher.post(self.autosave, {"enrollment": pk, f"status_{pk}": "PRESENT", f"note_{pk}": "Fever"},
+                                     HTTP_HX_REQUEST="true")
+        self.assertEqual(response.status_code, 422)
+        self.assert_reply_matches("attendance_refused.html", response)
+
+    def test_the_submitted_register_reply_fixture_matches(self):
+        data = {"action": "submit", **{f"status_{e.pk}": "PRESENT" for e in (self.asha, self.ravi, self.mina)}}
+        press_confirm(self.teacher, self.teacher.post(self.url, data, follow=True))
+        pk = self.asha.pk
+        response = self.teacher.post(self.autosave, {"enrollment": pk, f"status_{pk}": "ABSENT", f"note_{pk}": ""},
+                                     HTTP_HX_REQUEST="true")
+        self.assertEqual(response.status_code, 409)
+        self.assert_reply_matches("attendance_closed.html", response)
 
     def test_the_signed_out_reply_fixture_matches(self):
         response = Client().post(self.autosave, HTTP_HX_REQUEST="true")

@@ -14,7 +14,7 @@ ROOT = settings.BASE_DIR
 BROWSER_TESTS = ROOT / "browser_tests"
 # Each listed browser test file must exist with at least this many test methods, so tests cannot
 # be emptied or removed quietly. Later PRs add their files here.
-EXPECTED_BROWSER_TESTS = {"bt_harness.py": 17, "bt_marks_autosave.py": 14, "bt_attendance_autosave.py": 8}
+EXPECTED_BROWSER_TESTS = {"bt_harness.py": 17, "bt_marks_autosave.py": 14, "bt_attendance_autosave.py": 11}
 # Any way to skip a test or expect it to fail: unittest's skip, skipIf, skipUnless, skipTest,
 # SkipTest and expectedFailure, pytest's skip and xfail marks, and similar spellings. Matched
 # anywhere in browser_tests/, case-insensitively, without word boundaries (so self.skipTest and
