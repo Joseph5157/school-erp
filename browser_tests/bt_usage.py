@@ -36,7 +36,6 @@ from browser_tests.support.usage import (
     PLATFORMS,
     SIZE_BUCKETS,
     STANDALONE_DISPLAY,
-    beacon_shaped,
     events,
     form_fields,
     multipart_parts,

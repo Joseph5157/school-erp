@@ -113,17 +113,6 @@ STANDALONE_DISPLAY = r"""
 """
 
 
-def beacon_shaped(body):
-    """A request body that looks like a usage beacon, whatever its destination."""
-    if not body:
-        return False
-    try:
-        data = json.loads(body)
-    except (TypeError, ValueError):
-        return False
-    return isinstance(data, dict) and ("e" in data or len(set(data) & PAYLOAD_KEYS) >= 2)
-
-
 def payload(held):
     return json.loads(held.body)
 
