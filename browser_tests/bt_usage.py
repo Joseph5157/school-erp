@@ -10,6 +10,7 @@ pinned to core/usage.py). Page hide is simulated by the visibilitychange event e
 
 import json
 import re
+from collections import Counter
 
 from browser_tests.support.autosave import FRAGMENT, HTML, JSON
 from browser_tests.support.page import FIXTURES, ORIGIN, FixturePage, reply
@@ -37,6 +38,8 @@ from browser_tests.support.usage import (
     STANDALONE_DISPLAY,
     beacon_shaped,
     events,
+    form_fields,
+    multipart_parts,
     payload,
 )
 
@@ -69,7 +72,8 @@ class UsagePage(FixturePage):
         self.request_log = []
         self.context.on("request", self._log_request)
         self.fetches = []  # every fetch call the page made, from FETCH_SPY, across page loads
-        self.allowed = set(STATIC_FILES)  # (method, path) the test may request, besides /u/
+        self.allowed = set(STATIC_FILES)  # (method, path) the test may request with no body, besides /u/
+        self.expected = {}  # (method, path) -> the exact bodies this test's functional requests may carry
         self.context.expose_binding("btRecordFetch", lambda source, record: self.fetches.append(record))
 
     def _log_request(self, request):
@@ -77,11 +81,62 @@ class UsagePage(FixturePage):
             body = request.post_data
         except Exception:  # a binary body is never a beacon
             body = None
-        self.request_log.append({"request": request, "url": request.url, "method": request.method, "body": body})
+        self.request_log.append({"request": request, "url": request.url, "method": request.method, "body": body,
+                                 "content_type": request.headers.get("content-type", "")})
 
-    def allow(self, method, path):
-        """Declare a functional request this test makes (exact method and path, no query)."""
-        self.allowed.add((method, path))
+    # --- functional requests: each test declares exactly what its requests may carry ----------
+
+    def expect(self, method, path, kind, value):
+        self.expected.setdefault((method, path), []).append((kind, value))
+
+    def expect_marks(self, pk, score, status="MARKED", base=("", "")):
+        """A marks row save: exactly this row's fields, with the values the test entered."""
+        self.expect("POST", MARKS_SAVE, "form", {
+            "enrollment": str(pk), f"status_{pk}": status, f"score_{pk}": score,
+            f"base_status_{pk}": base[0], f"base_score_{pk}": base[1]})
+
+    def expect_attendance(self, enrollment, statuses, notes=None):
+        """An attendance row save: the whole form as the test left it (HTMX sends the form)."""
+        fields = {"csrfmiddlewaretoken": "test-token", "enrollment": str(enrollment)}
+        for pk in (201, 202, 203):
+            if pk in statuses:
+                fields[f"status_{pk}"] = statuses[pk]
+            fields[f"note_{pk}"] = (notes or {}).get(pk, "")
+        self.expect("POST", ATTENDANCE_SAVE, "form", fields)
+
+    def expect_bulk(self, *pks):
+        """Bulk present: exactly these enrollments, as multipart parts named enrollment."""
+        self.expect("POST", ATTENDANCE_BULK, "multipart", Counter(str(pk) for pk in pks))
+
+    def expect_image(self):
+        self.expect("GET", "/held/hero.png", "empty", None)
+
+    def functional_violation(self, entry, specs):
+        """Why a declared request's body is not one the test sent, or None."""
+        kind = specs[0][0]
+        body, content_type = entry["body"], entry["content_type"]
+        if kind == "empty":
+            return None if not body else "a body on a request that has none"
+        if kind == "form":
+            if not content_type.startswith("application/x-www-form-urlencoded"):
+                return f"wrong content type {content_type!r}"
+            fields = form_fields(body)
+            names = [name for name, _ in fields]
+            if len(names) != len(set(names)):
+                return f"duplicate fields in {sorted(names)}"
+            sent = dict(fields)
+            if any(sent == value for _, value in specs):
+                return None
+            return f"fields {sent} are not what the test entered"
+        if not content_type.startswith("multipart/form-data"):
+            return f"wrong content type {content_type!r}"
+        parts = multipart_parts(body, content_type)
+        if not parts or any(name != "enrollment" or filename is not None for name, filename, _ in parts):
+            return f"unexpected parts {[(n, f) for n, f, _ in (parts or [])]}"
+        sent = Counter(value for _, _, value in parts)
+        if any(sent == value for _, value in specs):
+            return None
+        return f"enrollments {dict(sent)} are not what the test sent"
 
     def open(self, fixture, wait_until="load"):
         self.allowed.add(("GET", f"/fixtures/{fixture}"))
@@ -135,10 +190,15 @@ class UsagePage(FixturePage):
             if id(entry) in beacon_requests:
                 continue
             path = entry["url"][len(ORIGIN):] if entry["url"].startswith(ORIGIN) else entry["url"]
-            if (entry["method"], path) not in self.allowed:
+            key = (entry["method"], path)
+            if key in self.expected:
+                problem = self.functional_violation(entry, self.expected[key])
+                if problem:
+                    violations.append(f"{entry['method']} {path}: {problem}")
+            elif key not in self.allowed:
                 violations.append(f"unexpected application request: {entry['method']} {entry['url']}")
-            elif beacon_shaped(entry["body"]):
-                violations.append(f"a beacon-shaped body through {entry['method']} {path}")
+            elif entry["body"]:
+                violations.append(f"a body on {entry['method']} {path}")
         return violations
 
     def assert_only_requests(self, allowed):
@@ -261,7 +321,7 @@ class UsagePage(FixturePage):
 
 class OffAndPrivacyControlTests(UsagePage):
     def test_u2_with_measurement_off_nothing_is_ever_sent(self):
-        self.allow("POST", MARKS_SAVE)
+        self.expect_marks(101, "12")
         self.open("marks.html")  # no data-erp-usage on <body>
         self.enter_score(101, "12")
         save = self.next_request(MARKS_SAVE)
@@ -274,7 +334,7 @@ class OffAndPrivacyControlTests(UsagePage):
         self.assert_only_requests(MARKS_PAGE | {MARKS_SAVE})
 
     def test_u1_with_gpc_on_nothing_is_queued_or_sent(self):
-        self.allow("POST", MARKS_SAVE)
+        self.expect_marks(101, "12")
         self.context.add_init_script("window.btGpc = true;")
         self.open("usage_marks.html")
         self.enter_score(101, "12")
@@ -308,12 +368,12 @@ class OffAndPrivacyControlTests(UsagePage):
         return bulk
 
     def test_bulk_present_carries_the_device_header_when_measured(self):
-        self.allow("POST", ATTENDANCE_BULK)
+        self.expect_bulk(201, 202, 203)
         bulk = self.mark_present("usage_attendance.html")
         self.assertEqual(bulk.headers.get("x-erp-client"), "device=phone;display=browser;platform=other")
 
     def test_bulk_present_has_no_device_header_with_measurement_off(self):
-        self.allow("POST", ATTENDANCE_BULK)
+        self.expect_bulk(201, 202, 203)
         bulk = self.mark_present("attendance.html")
         self.assertNotIn("x-erp-client", bulk.headers)
         self.hide()
@@ -321,7 +381,7 @@ class OffAndPrivacyControlTests(UsagePage):
         self.assert_only_requests(ATTENDANCE_PAGE | {ATTENDANCE_BULK})
 
     def test_bulk_present_has_no_device_header_under_gpc(self):
-        self.allow("POST", ATTENDANCE_BULK)
+        self.expect_bulk(201, 202, 203)
         self.context.add_init_script("window.btGpc = true;")
         bulk = self.mark_present("usage_attendance.html")
         self.assertNotIn("x-erp-client", bulk.headers)
@@ -350,7 +410,7 @@ class FlushTests(UsagePage):
         self.assertEqual([f["keepalive"] for f in self.spied()], [True], "the send must survive the page closing")
 
     def test_u3_the_queue_keeps_only_the_newest_20_events(self):
-        self.allow("POST", MARKS_SAVE)
+        self.expect_marks(101, "12")
         self.open("usage_marks.html")
         expected = [("page", "viewed", None, None), ("marks_entry", "started", None, "1-20")]
         self.fail_on_arrival(MARKS_SAVE)
@@ -407,7 +467,8 @@ class FlushTests(UsagePage):
 
 class DeviceTests(UsagePage):
     def test_u6_u7_each_event_keeps_its_device_and_each_send_has_one_set(self):
-        self.allow("POST", MARKS_SAVE)
+        self.expect_marks(101, "12")
+        self.expect_marks(102, "14")
         self.open("usage_marks.html")  # page viewed and marks started at 390 px: phone
         self.page.set_viewport_size({"width": 1280, "height": 800})
         self.enter_score(101, "12")  # desktop
@@ -462,7 +523,7 @@ class DeviceTests(UsagePage):
 
 class PersonalDataTests(UsagePage):
     def test_u8_a_beacon_holds_only_allowed_values_and_no_personal_data(self):
-        self.allow("POST", MARKS_SAVE)
+        self.expect_marks(101, "12")
         self.open("usage_marks.html")
         self.enter_score(101, "12")
         save = self.next_request(MARKS_SAVE)
@@ -488,7 +549,7 @@ class DurationBucketTests(UsagePage):
                   (180_000, "3-10m"), (600_000, "10-30m"), (1_800_000, ">30m"))
 
     def test_u9_teacher_home_completed_carries_the_bucket_of_the_load_time(self):
-        self.allow("GET", "/held/hero.png")
+        self.expect_image()
         self.page.clock.pause_at(1_800_000_000_000)  # only the test moves time
         for millis, bucket in self.BOUNDARIES:
             with self.subTest(seconds=millis / 1000):
@@ -506,7 +567,7 @@ class DurationBucketTests(UsagePage):
                                  [("teacher_home", "started", None, None), ("teacher_home", "completed", bucket, None)])
 
     def test_u9_marks_completed_carries_the_bucket_and_size(self):
-        self.allow("POST", MARKS_SAVE)
+        self.expect_marks(101, "12")
         self.page.clock.pause_at(1_800_000_000_000)
         for millis, bucket in ((4_900, "<5s"), (5_000, "5-15s"), (1_800_000, ">30m")):
             with self.subTest(seconds=millis / 1000):
@@ -542,7 +603,8 @@ class WorkflowTests(UsagePage):
             self.assert_allowed(beacon)
 
     def test_marks_entry_starts_with_work_left_and_completes_once(self):
-        self.allow("POST", MARKS_SAVE)
+        self.expect_marks(101, "12")
+        self.expect_marks(102, "14")
         self.open("usage_marks.html")
         self.enter_score(101, "12")
         self.next_request(MARKS_SAVE).respond(200, reply("marks_saved_last.html"), FRAGMENT)
@@ -554,7 +616,7 @@ class WorkflowTests(UsagePage):
                          [("marks_entry", "started", None, "1-20"), ("marks_entry", "completed", bucket, "1-20")])
 
     def test_a_sheet_with_no_work_left_neither_starts_nor_completes(self):
-        self.allow("POST", MARKS_SAVE)
+        self.expect_marks(101, "12")
         # The server leaves out data-erp-usage-size when nothing is left to enter.
         html = (FIXTURES / "usage_marks.html").read_text(encoding="utf-8").replace(' data-erp-usage-size="1-20"', "")
         self.page.route("**/fixtures/usage_marks.html", lambda route: route.fulfill(
@@ -567,7 +629,9 @@ class WorkflowTests(UsagePage):
         self.assertIn(("marks_entry", "attempt", None, None), sent)
 
     def test_marks_save_outcomes_are_counted_and_a_success_sends_at_once(self):
-        self.allow("POST", MARKS_SAVE)
+        self.expect_marks(101, "12")
+        self.expect_marks(102, "14")
+        self.expect_marks(103, "15")
         self.open("usage_marks.html")
         self.fail_on_arrival(MARKS_SAVE)
         self.enter_score(101, "12")
@@ -595,8 +659,9 @@ class WorkflowTests(UsagePage):
             self.assert_allowed(beacon)
 
     def test_attendance_save_outcomes_are_counted_and_a_success_sends_at_once(self):
-        self.allow("POST", ATTENDANCE_SAVE)
-        self.allow("POST", ATTENDANCE_BULK)
+        self.expect_attendance(201, {201: "PRESENT"})
+        self.expect_attendance(202, {201: "PRESENT", 202: "PRESENT"})
+        self.expect_bulk(203)
         self.open("usage_attendance.html")
         self.fail_on_arrival(ATTENDANCE_SAVE)
         self.page.check("#id_status_201_0")

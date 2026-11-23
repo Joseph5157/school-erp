@@ -6,6 +6,8 @@ value the server would refuse (or miss one it allows).
 """
 
 import json
+import re
+from urllib.parse import parse_qsl
 
 # ADR 0027 allow-list, as the browser may send it (pinned to core/usage.py by the contract test).
 DEVICES = ("phone", "tablet", "desktop")
@@ -129,3 +131,24 @@ def payload(held):
 def events(held):
     """The events in one beacon as (workflow, step, duration bucket or None, size bucket or None)."""
     return [(e["w"], e["s"], e.get("b"), e.get("z")) for e in payload(held)["e"]]
+
+
+def form_fields(body):
+    """An application/x-www-form-urlencoded body as an ordered list of (name, value)."""
+    return parse_qsl(body or "", keep_blank_values=True)
+
+
+def multipart_parts(body, content_type):
+    """A multipart/form-data body as a list of (name, filename or None, value), or None."""
+    match = re.search(r"boundary=([^;]+)", content_type or "")
+    if not match:
+        return None
+    parts = []
+    for chunk in (body or "").split("--" + match.group(1))[1:]:
+        if chunk.startswith("--"):
+            break  # the closing boundary
+        head, _, value = chunk.strip("\r\n").partition("\r\n\r\n")
+        name = re.search(r'name="([^"]*)"', head)
+        filename = re.search(r'filename="([^"]*)"', head)
+        parts.append((name.group(1) if name else None, filename.group(1) if filename else None, value))
+    return parts
