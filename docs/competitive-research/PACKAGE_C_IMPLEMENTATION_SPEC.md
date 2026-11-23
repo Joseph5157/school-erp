@@ -162,12 +162,17 @@ and wrappers without the modifiers keep today's behaviour at every width.
 - `table.erp-table--stack`: `width: 100%`, never `max-content`, `display` set so the rows can
   stack.
 - `thead` is visually hidden, not `display: none`, so it is still in the accessibility tree.
-- Each `tr` is a block with the card border and spacing tokens already used by `.erp-student-card`.
+- Each `tr` is a block inside the table's existing panel: the panel is the card's outer border,
+  and stacked rows are separated by a divider (`--erp-rule`), using the spacing tokens of
+  `.erp-student-card`. With a mouse on a narrow window, hover tints the whole row block.
 - The row `th` is the block title (semibold, full width).
-- Each `td` is a two-column grid: `attr(data-label)` in soft ink on the left, the value on the
-  right, wrapping with `overflow-wrap: anywhere`.
-- `.erp-stack-actions` spans the full width. Its links and buttons are at least 44 px tall
-  (§4.1).
+- Each `td` shows `attr(data-label)` in soft ink in a fixed 7rem column on the left (a float in the
+  cell's left padding) and the value beside it, wrapping with `overflow-wrap: anywhere`. A value
+  made of several children (text plus a badge or link) flows as one block beside the label, and a
+  label longer than its value stays inside the cell. The generated label has empty alternative
+  text (`content: attr(data-label) / ""`), so screen readers hear the column header once.
+- `.erp-stack-actions` spans the full width, with its controls wrapping in a row. Its links and
+  buttons are at least 44 px tall (§4.1), and a lone action fills the row width.
 - The existing `.erp-row-context` spans are hidden inside stacked rows, because the row title
   already names the record.
 
