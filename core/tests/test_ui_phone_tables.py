@@ -12,14 +12,19 @@ from datetime import date
 from html import unescape
 
 from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
 from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
-from core.models import AcademicYear, GradingScale, Section, TermPublication
+from core.models import AcademicYear, GradingScale, SchoolCalendarDay, Section, TermPublication
+from core.tests.test_phase6_access_boundary import BoundaryFixture
+from core.tests.test_ui_admin_desktop_d1_3c_access_reviews import AccessReviewsD13CBase
 from core.tests.test_ui_admin_desktop_d1_5a_grading_scales import ScaleFixture
 from core.tests.test_ui_admin_desktop_d1_5b_assessments import AssessmentFixture
 from core.tests.test_ui_admin_desktop_d1_5c_result_reports import ReportFixture
 from core.tests.test_ui_admin_desktop_d1_5d_term_publication import UiFixture
+from core.tests.test_ui_admin_structure_s2 import Fixture as StructureFixture
 
 PHONE_QUERY = "@media (max-width: 575.98px)"
 MODIFIERS = ("erp-table--stack", "erp-table-scroll--stack", "erp-stack-actions")
@@ -40,7 +45,7 @@ def header_texts(table):
 def stacked_tables(page):
     """(wrapper open tag, table html) for each stacked table on the page."""
     return re.findall(
-        r'(<div class="erp-table-scroll erp-table-scroll--stack"[^>]*>)\s*(<table class="[^"]*\berp-table--stack\b[^"]*">.*?</table>)',
+        r'(<div class="erp-table-scroll erp-table-scroll--stack(?: [^"]*)?"[^>]*>)\s*(<table class="[^"]*\berp-table--stack\b[^"]*">.*?</table>)',
         page,
         re.S,
     )
@@ -431,6 +436,189 @@ class PublicationDetailStackedTests(StackedTableContractMixin, UiFixture, TestCa
         self.assertNotIn(reverse("core:publication-withdraw", args=[self.pub.pk]), page)
 
 
+def limited_client(test, username, *codenames):
+    user = get_user_model().objects.create_user(username=username, password="pass-12345")
+    user.user_permissions.add(*Permission.objects.filter(codename__in=codenames))
+    client = test.client_class()
+    client.login(username=username, password="pass-12345")
+    return client
+
+
+def guardians_table(page):
+    (table,) = [t for w, t in stacked_tables(page) if 'aria-label="Guardians"' in w]
+    return table
+
+
+class StudentRecordGuardiansStackedTests(StackedTableContractMixin, BoundaryFixture, TestCase):
+    """C5: the Guardians table on the student record; its actions keep their permission gates."""
+
+    VIEW = ("view_student", "view_guardian")
+
+    def page(self, client=None, student=None):
+        url = reverse("core:student-detail", args=[(student or self.asha).pk])
+        response = (client or self.client).get(url)
+        self.assertEqual(response.status_code, 200)
+        return response.content.decode()
+
+    def test_guardians_table_is_stacked_with_named_actions(self):
+        page = self.page()
+        self.assert_stacked_contract(page)
+        self.assertEqual(len(stacked_tables(page)), 1)  # the history tables already have phone cards
+        table = guardians_table(page)
+        self.assertIn('<table class="table erp-row-heads-plain erp-table--stack">', table)
+        self.assertEqual(header_texts(table), ["Guardian", "Relationship", "Actions"])
+        edit = reverse("core:student-guardian-edit", args=[self.asha_link.pk])
+        end = reverse("core:student-guardian-end", args=[self.asha_link.pk])
+        self.assertIn(
+            f'<td class="erp-stack-actions"><a href="{edit}">Change relationship'
+            '<span class="erp-sr-only"> with Meena Rao</span></a>'
+            f'<a class="ms-3 text-danger" href="{end}">End'
+            '<span class="erp-sr-only"> relationship with Meena Rao</span></a></td>',
+            table,
+        )
+        self.assertIn('data-label="Relationship">Mother<', table)
+
+    def test_change_without_end_permission_keeps_only_change(self):
+        client = limited_client(self, "changer", *self.VIEW, "change_studentguardian")
+        table = guardians_table(self.page(client))
+        self.assertIn(reverse("core:student-guardian-edit", args=[self.asha_link.pk]), table)
+        self.assertNotIn(reverse("core:student-guardian-end", args=[self.asha_link.pk]), table)
+        self.assertIn('<td class="erp-stack-actions">', table)
+
+    def test_viewer_gets_no_actions_column(self):
+        page = self.page(limited_client(self, "viewer", *self.VIEW))
+        self.assert_stacked_contract(page)
+        table = guardians_table(page)
+        self.assertEqual(header_texts(table), ["Guardian", "Relationship"])
+        self.assertNotIn("erp-stack-actions", table)
+        self.assertNotIn(reverse("core:student-guardian-edit", args=[self.asha_link.pk]), page)
+
+    def test_empty_state_spans_every_column_for_each_role(self):
+        newcomer, _ = self.make_student("Nia Rao")
+        viewer = limited_client(self, "viewer", *self.VIEW)
+        for client, columns in ((self.client, 3), (viewer, 2)):
+            with self.subTest(columns=columns):
+                page = self.page(client, newcomer)
+                self.assert_stacked_contract(page)
+                self.assertIn(f'<td colspan="{columns}">No Guardians associated yet.</td>', page)
+
+    def test_edit_links_get_the_tap_target_class(self):
+        page = self.page()
+        admission = reverse("core:student-admission-number", args=[self.asha.pk])
+        roll = reverse("core:enrollment-roll-number", args=[self.asha_e.pk])
+        self.assertIn(f'<a class="ms-2 small erp-edit-link" href="{admission}">Edit', page)
+        # The desktop table and the phone card each carry the roll number link.
+        self.assertEqual(page.count(f'<a class="ms-2 small erp-edit-link" href="{roll}">Edit'), 2)
+
+
+class CalendarStackedTests(StackedTableContractMixin, StructureFixture, TestCase):
+    """C6: calendar exceptions; Edit label and Remove stay behind their permissions."""
+
+    def setUp(self):
+        super().setUp()
+        SchoolCalendarDay.objects.create(
+            academic_year=self.year, date=date(2026, 9, 12), is_instructional=True, label="Make-up day"
+        )
+        self.url = reverse("core:academic-year-calendar", args=[self.year.pk])
+
+    def page(self, client=None):
+        return (client or self.administrator).get(self.url).content.decode()
+
+    def test_exceptions_table_is_stacked_with_header_labels(self):
+        page = self.page()
+        self.assert_stacked_contract(page)
+        ((wrapper, table),) = stacked_tables(page)
+        self.assertIn('role="region" aria-label="Calendar exceptions" tabindex="0"', wrapper)
+        self.assertIn('<table class="table erp-keep erp-row-heads-plain erp-table--stack">', table)
+        self.assertEqual(header_texts(table), ["Date", "Day", "Type", "Label", "Actions"])
+        self.assertEqual(len(body_rows(table)), 2)
+        self.assertIn('data-label="Type">Extra instructional day<', table)
+        self.assertIn('data-label="Label">Holiday<', table)
+
+    def test_actions_cell_names_the_date(self):
+        ((_, table),) = stacked_tables(self.page())
+        update = reverse("core:calendar-day-update", args=[self.day.pk])
+        delete = reverse("core:calendar-day-delete", args=[self.day.pk])
+        self.assertRegex(
+            table,
+            rf'<td class="text-end erp-stack-actions">\s*<a class="btn btn-link btn-sm" href="{update}">'
+            r'Edit label<span class="erp-sr-only"> for [^<]+</span></a>\s*'
+            rf'<a class="btn btn-outline-danger btn-sm" href="{delete}">Remove<span class="erp-sr-only"> [^<]+</span></a>',
+        )
+
+    def test_viewer_gets_no_actions(self):
+        page = self.page(limited_client(self, "viewer", "view_schoolcalendarday"))
+        self.assert_stacked_contract(page)
+        self.assertNotIn(reverse("core:calendar-day-update", args=[self.day.pk]), page)
+        self.assertNotIn(reverse("core:calendar-day-delete", args=[self.day.pk]), page)
+
+    def test_empty_state_spans_every_column(self):
+        SchoolCalendarDay.objects.all().delete()
+        page = self.page()
+        self.assert_stacked_contract(page)
+        self.assertIn('<td colspan="5">No exceptions.', page)
+
+
+class AccessReviewsStackedTests(StackedTableContractMixin, AccessReviewsD13CBase, TestCase):
+    """C6: pending access reviews; the Decision form sits in the stacked row's actions cell."""
+
+    def test_reviews_table_is_stacked_with_decision_form_in_the_row(self):
+        grant = self.pending("Asha Rao", "Meena Rao")
+        page = self.client.get(self.url).content.decode()
+        self.assert_stacked_contract(page)
+        ((wrapper, table),) = stacked_tables(page)
+        self.assertIn('role="region" aria-label="Pending access reviews" tabindex="0"', wrapper)
+        self.assertEqual(header_texts(table), ["Student", "Guardian", "Last placement", "Decision"])
+        (row,) = body_rows(table)
+        self.assertIn('<th scope="row" class="text-break">Asha Rao</th>', row)
+        self.assertIn('data-label="Last placement"><span class="text-muted">No enrollment</span>', row)
+        actions = re.search(r'<td class="erp-stack-actions">(.*?)</td>', row, re.S).group(1)
+        decide = reverse("core:guardian-access-review-decide", args=[grant.pk])
+        self.assertIn(f'action="{decide}"', actions)
+        self.assertIn('name="csrfmiddlewaretoken"', actions)
+        self.assertIn('aria-label="Record decision for Asha Rao and guardian Meena Rao">Record</button>', actions)
+
+    def test_viewer_gets_an_empty_decision_cell_and_no_form(self):
+        self.pending("Asha Rao", "Meena Rao")
+        page = self.client_with("view_guardianaccessreview").get(self.url).content.decode()
+        self.assert_stacked_contract(page)
+        ((_, table),) = stacked_tables(page)
+        self.assertNotIn("<form", table)
+        self.assertRegex(table, r'<td class="erp-stack-actions">\s*</td>')
+
+    def test_empty_state_spans_every_column(self):
+        page = self.client.get(self.url).content.decode()
+        self.assert_stacked_contract(page)
+        self.assertIn('<tr><td colspan="4">', page)
+
+
+class StalePublicationsStackedTests(StackedTableContractMixin, UiFixture, TestCase):
+    def test_stale_table_is_stacked_with_named_review_link(self):
+        self.publish()
+        self.correct()
+        pub = self.pub_for(self.asha)
+        page = self.client.get(reverse("core:publications-stale")).content.decode()
+        self.assert_stacked_contract(page)
+        ((wrapper, table),) = stacked_tables(page)
+        self.assertIn('role="region" aria-label="Stale publications" tabindex="0"', wrapper)
+        self.assertIn('<table class="table erp-publication-table erp-table--stack">', table)
+        self.assertEqual(header_texts(table), ["Student", "Term", "Version", "Status", "Reason", "Review"])
+        row = row_for(table, "Asha Rao")
+        self.assertIn('data-label="Version">Version 1<', row)
+        self.assertIn(f'data-label="Reason">{pub.status_reason}<', row)
+        detail = reverse("core:publication-detail", args=[pub.pk])
+        self.assertIn(
+            f'<td class="erp-stack-actions"><a href="{detail}">Review'
+            '<span class="erp-sr-only"> Asha Rao, Term 1 version 1</span></a></td>',
+            row,
+        )
+
+    def test_empty_state_spans_every_column(self):
+        page = self.client.get(reverse("core:publications-stale")).content.decode()
+        self.assert_stacked_contract(page)
+        self.assertIn('<tr><td colspan="6">', page)
+
+
 class StackedTableContractCheckTests(StackedTableContractMixin, SimpleTestCase):
     """The contract check itself must not pass vacuously (rows with attributes, short colspans)."""
 
@@ -594,3 +782,10 @@ class StackedTableCssTests(SimpleTestCase):
         for media, body in hover:
             self.assertIn("(hover: hover)", media)
             self.assertIn("background:", body)
+
+    def test_edit_link_has_a_24px_tap_target(self):
+        # C5: global on purpose (the target applies at every width); the box grows only to 24px.
+        (body,) = [b for _, s, b in self.rules() if s.strip() == ".erp-edit-link"]
+        self.assertIn("display: inline-flex", body)
+        self.assertIn("min-width: 24px", body)
+        self.assertIn("min-height: 24px", body)

@@ -13,6 +13,7 @@ from core.tests.phase4_fixtures import Phase4Fixture
 from core.tests.test_authorization import AuthorizationClientsMixin
 
 VH = '<span class="visually-hidden">'
+SR = '<span class="erp-sr-only">'  # spans rewritten since (Package C5/C6)
 
 
 def tables(page):
@@ -44,7 +45,7 @@ class StudentDetailTests(AuthorizationClientsMixin, Phase4Fixture, TestCase):
     def test_row_headers_keep_the_look_of_a_normal_cell(self):
         for table in tables(self.page):
             if "<caption" in table and "Sections" not in table:
-                self.assertIn('class="table erp-row-heads-plain"', table)
+                self.assertRegex(table, r'class="table erp-row-heads-plain(?: erp-table--stack)?"')
         css = Path(settings.BASE_DIR, "static", "css", "erp.css").read_text(encoding="utf-8")
         self.assertIn('.erp-row-heads-plain > tbody th[scope="row"] { font-weight: inherit; text-align: start; }', css)
 
@@ -53,10 +54,10 @@ class StudentDetailTests(AuthorizationClientsMixin, Phase4Fixture, TestCase):
         self.assertIn(f'<th scope="col">{VH}Actions</span></th>', guardians)
 
     def test_desktop_edit_and_relationship_links_name_their_row(self):
-        self.assertIn(f">Edit{VH} admission number</span></a>", self.page)
+        self.assertIn(f">Edit{SR} admission number</span></a>", self.page)
         enrollments = [t for t in tables(self.page) if ">Enrollment history</caption>" in t][0]
-        self.assertIn(f">Edit{VH} roll number, {self.enrollment.academic_year}</span></a>", enrollments)
-        self.assertIn(f">Change relationship{VH} with Meena Rao</span></a>", self.page)
+        self.assertIn(f">Edit{SR} roll number, {self.enrollment.academic_year}</span></a>", enrollments)
+        self.assertIn(f">Change relationship{SR} with Meena Rao</span></a>", self.page)
         self.assertNotRegex(self.page, r">(Edit|Change relationship)</a>")
 
 
@@ -68,8 +69,8 @@ class TemplateNameTests(SimpleTestCase):
 
     def test_calendar_actions_name_the_date(self):
         page = self.read("academic_year_calendar.html")
-        self.assertIn(f">Edit label{VH} for {{{{ day.date }}}}</span></a>", page)
-        self.assertIn(f">Remove{VH} {{{{ day.date }}}}</span></a>", page)
+        self.assertIn(f">Edit label{SR} for {{{{ day.date }}}}</span></a>", page)
+        self.assertIn(f">Remove{SR} {{{{ day.date }}}}</span></a>", page)
 
     def test_teacher_assignment_actions_name_the_assignment(self):
         page = self.read("teacher_assignments.html")

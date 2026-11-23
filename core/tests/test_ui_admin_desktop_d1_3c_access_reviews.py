@@ -189,8 +189,8 @@ class DecisionFormTests(AccessReviewsD13CBase, TestCase):
         _, content = self.get()
         self.assertRegex(content, r'<div class="[^"]*\bpb-md-0\b[^"]*\berp-panel-head\b[^"]*"><h2 class="h5" id="pending-reviews-heading">')
         self.assertIn("erp-review-table", content)
-        self.assertIn('<td class="text-break">Asha Rao</td>', content)
-        self.assertRegex(content, r'<td class="text-break"><a class="text-break" href="[^"]+">Meena Rao</a></td>')
+        self.assertIn('<th scope="row" class="text-break">Asha Rao</th>', content)
+        self.assertRegex(content, r'<td class="text-break" data-label="Guardian"><a class="text-break" href="[^"]+">Meena Rao</a></td>')
 
     def test_controls_have_row_context_accessible_names(self):
         self.pending("Asha Rao", "Meena Rao")
@@ -226,7 +226,7 @@ class DecisionFormTests(AccessReviewsD13CBase, TestCase):
         self.pending("Ravi Nair", "Sunil Nair")
         _, content = self.get()
         panel = self.panel(content, "pending-reviews-heading")
-        cells = re.findall(r"<td>\s*<span class=\"erp-row-context[^>]*>.*?</td>", panel)
+        cells = re.findall(r"<td class=\"erp-stack-actions\">\s*<span class=\"erp-row-context[^>]*>.*?</td>", panel)
         self.assertEqual(len(cells), 2)
         for cell, (student, guardian) in zip(sorted(cells), sorted([("Asha Rao", "Meena Rao"), ("Ravi Nair", "Sunil Nair")]), strict=False):
             self.assertRegex(cell, rf'<span class="erp-row-context text-break">Student: {student}</span>')
