@@ -1142,3 +1142,12 @@ by the author.
 | --- | --- | --- |
 | 1 | Commit A added A1 alone (three tests); the draft `js` run failed on exactly those three, proving the defect. Commit B fixed the attendance block and A1 passes | PR description |
 | 2 | Fix: a reply to an older change (`row._sent !== row._seq`) is not swapped into the row and does not change its state or announcement, whether it succeeded or failed; the newer reply decides. A stale 401 still tells the session box (`erp:signed-out`), since sign-out is about the whole session. No timeout added | `erp.js` attendance block |
+
+### 19.6 JS4 notes (2026-11-23)
+
+| # | Note | Where |
+| --- | --- | --- |
+| 1 | `browser_tests/bt_usage.py` covers U1-U10 plus page-hide `keepalive`, platform and display classification, the teacher home, missing-attendance and marks workflows, marks and attendance save outcomes (a successful save sends at once) and the install events. Every beacon is checked against the ADR 0027 allow-list in `browser_tests/support/usage.py`, which the contract test pins to `core/usage.py` and `core/usage_views.py` | Section 8.3 |
+| 2 | Measured fixtures (`usage_*.html`) carry the attributes the server renders only with measurement on; the contract test renders the real pages with `USAGE_MEASUREMENT_ENABLED=True` to compare them, and checks measurement is off by default and absent under GPC. Nothing in the product turns measurement on | `core/tests/test_js_fixture_contract.py` |
+| 3 | Test-only page scripts: a switch for `navigator.globalPrivacyControl` (Chromium has no setting) and a `fetch` observer for the `keepalive` flag (Playwright does not report it). Page hide is simulated with the `visibilitychange` event `erp.js` listens for | `browser_tests/support/usage.py` |
+| 4 | No product or privacy defect found. A full 20-event batch stays within the beacon's 2048-byte limit | U3 |
