@@ -166,13 +166,18 @@ class GuardianProfileTests(BoundaryFixture, TestCase):
 class StudentDetailPanelTablesTests(BoundaryFixture, TestCase):
     def test_three_tables_are_labelled_panel_regions(self):
         html = self.client.get(reverse("core:student-detail", args=[self.asha.pk])).content.decode()
-        for label in ("Status history", "Enrollment history", "Guardians"):
+        # Guardians uses the Package C stacked layout on phones; the history tables have phone cards.
+        for label, wrapper, table in (
+            ("Status history", "erp-table-scroll", "table erp-row-heads-plain"),
+            ("Enrollment history", "erp-table-scroll", "table erp-row-heads-plain"),
+            ("Guardians", "erp-table-scroll erp-table-scroll--stack", "table erp-row-heads-plain erp-table--stack"),
+        ):
             with self.subTest(label=label):
                 self.assertRegex(
                     html,
-                    r'<div class="erp-panel mb-4">\s*<div class="erp-table-scroll" role="region" '
-                    rf'aria-label="{label}" tabindex="0">\s*<table class="table erp-row-heads-plain">',
+                    rf'<div class="erp-panel mb-4">\s*<div class="{wrapper}" role="region" '
+                    rf'aria-label="{label}" tabindex="0">\s*<table class="{table}">',
                 )
-        self.assertEqual(html.count('<div class="erp-table-scroll"'), 3)
+        self.assertEqual(html.count('<div class="erp-table-scroll'), 3)
         # erp-keep must be absent so the tables scroll on phones instead of squeezing.
         self.assertNotIn("erp-keep", html)

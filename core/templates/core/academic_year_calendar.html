@@ -29,30 +29,30 @@
 <section aria-labelledby="calendar-exceptions">
 <h2 class="erp-section-title" id="calendar-exceptions">Exceptions</h2>
 <div class="erp-panel">
-<div class="erp-table-scroll" role="region" aria-label="Calendar exceptions" tabindex="0">
-<table class="table erp-keep">
+<div class="erp-table-scroll erp-table-scroll--stack" role="region" aria-label="Calendar exceptions" tabindex="0">
+<table class="table erp-keep erp-row-heads-plain erp-table--stack">
     <thead>
         <tr>
             <th scope="col">Date</th>
             <th scope="col">Day</th>
             <th scope="col">Type</th>
             <th scope="col">Label</th>
-            <th scope="col"><span class="visually-hidden">Actions</span></th>
+            <th scope="col"><span class="erp-sr-only">Actions</span></th>
         </tr>
     </thead>
     <tbody>
         {% for day in calendar_days %}
         <tr>
-            <td class="text-nowrap">{{ day.date }}</td>
-            <td>{{ day.date|date:"l" }}</td>
-            <td>{{ day.is_instructional|yesno:"Extra instructional day,Holiday / closure" }}</td>
-            <td>{{ day.label }}</td>
-            <td class="text-end">
+            <th scope="row" class="text-nowrap">{{ day.date }}</th>
+            <td data-label="Day">{{ day.date|date:"l" }}</td>
+            <td data-label="Type">{{ day.is_instructional|yesno:"Extra instructional day,Holiday / closure" }}</td>
+            <td data-label="Label">{{ day.label }}</td>
+            <td class="text-end erp-stack-actions">
                 {% if perms.core.change_schoolcalendarday %}
-                    <a class="btn btn-link btn-sm" href="{% url 'core:calendar-day-update' day.pk %}">Edit label<span class="visually-hidden"> for {{ day.date }}</span></a>
+                    <a class="btn btn-link btn-sm" href="{% url 'core:calendar-day-update' day.pk %}">Edit label<span class="erp-sr-only"> for {{ day.date }}</span></a>
                 {% endif %}
                 {% if perms.core.delete_schoolcalendarday %}
-                <a class="btn btn-outline-danger btn-sm" href="{% url 'core:calendar-day-delete' day.pk %}">Remove<span class="visually-hidden"> {{ day.date }}</span></a>
+                <a class="btn btn-outline-danger btn-sm" href="{% url 'core:calendar-day-delete' day.pk %}">Remove<span class="erp-sr-only"> {{ day.date }}</span></a>
                 {% endif %}
             </td>
         </tr>
