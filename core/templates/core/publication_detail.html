@@ -32,15 +32,15 @@
 {% if show_marks %}
 <section class="erp-panel mb-4" aria-labelledby="publication-entries-heading">
 <div class="erp-panel-head p-3 pb-2"><h2 class="h5" id="publication-entries-heading">Results as released</h2></div>
-<div class="erp-table-scroll" role="region" aria-label="Results as released in version {{ pub.version }}" tabindex="0">
-<table class="table erp-publication-table">
+<div class="erp-table-scroll erp-table-scroll--stack" role="region" aria-label="Results as released in version {{ pub.version }}" tabindex="0">
+<table class="table erp-publication-table erp-table--stack">
     <caption class="visually-hidden">The results exactly as released in this version, each assessment shown separately.</caption>
     <thead><tr><th scope="col">Subject</th><th scope="col">Assessment</th><th scope="col">Date</th><th scope="col">Marks</th><th scope="col">%</th><th scope="col">Grade</th><th scope="col">Pass/Fail</th></tr></thead>
     <tbody>
     {% for e in entries %}
-        <tr><th scope="row" class="fw-semibold">{{ e.subject_label }}</th><td>{{ e.assessment_label }}</td><td class="text-nowrap">{{ e.assessment_date }}</td>
-            <td>{% if e.status == "MARKED" %}{{ e.score|floatformat:"-2" }} / {{ e.maximum_marks|floatformat:"-2" }}{% else %}Absent{% endif %}</td>
-            <td>{% if e.percentage is not None %}{{ e.percentage|floatformat:"-2" }}%{% endif %}</td><td>{{ e.grade_label|default:"Not graded" }}</td><td>{{ e.pass_fail_label|default:"" }}</td></tr>
+        <tr><th scope="row" class="fw-semibold">{{ e.subject_label }}</th><td data-label="Assessment">{{ e.assessment_label }}</td><td class="text-nowrap" data-label="Date">{{ e.assessment_date }}</td>
+            <td data-label="Marks">{% if e.status == "MARKED" %}{{ e.score|floatformat:"-2" }} / {{ e.maximum_marks|floatformat:"-2" }}{% else %}Absent{% endif %}</td>
+            <td data-label="%">{% if e.percentage is not None %}{{ e.percentage|floatformat:"-2" }}%{% endif %}</td><td data-label="Grade">{{ e.grade_label|default:"Not graded" }}</td><td data-label="Pass/Fail">{{ e.pass_fail_label|default:"" }}</td></tr>
     {% empty %}<tr><td colspan="7">No results in this version.</td></tr>{% endfor %}
     </tbody>
 </table>
@@ -66,17 +66,17 @@
 {% endif %}
 <section class="erp-panel mb-4" aria-labelledby="publication-versions-heading">
 <div class="erp-panel-head p-3 pb-2"><h2 class="h5" id="publication-versions-heading">All versions</h2></div>
-<div class="erp-table-scroll" role="region" aria-label="All versions of this report card" tabindex="0">
-<table class="table erp-publication-table">
+<div class="erp-table-scroll erp-table-scroll--stack" role="region" aria-label="All versions of this report card" tabindex="0">
+<table class="table erp-publication-table erp-table--stack">
     <caption class="visually-hidden">Every version of this Student's report card for this Term, newest first, with its status history.</caption>
     <thead><tr><th scope="col">Version</th><th scope="col">Status</th><th scope="col">Published</th><th scope="col">Status changed</th></tr></thead>
     <tbody>
     {% for v in versions %}
         <tr>
             <th scope="row" class="fw-semibold text-nowrap"><a href="{% url 'core:publication-detail' v.pk %}">Version {{ v.version }}</a>{% if v.pk == pub.pk %} <span class="text-muted fw-normal">(this version)</span>{% endif %}</th>
-            <td>{% include "core/_publication_status.html" with pub=v only %}</td>
-            <td class="text-break">{{ v.published_at|date:"j M Y, H:i" }} by {{ v.published_by }}</td>
-            <td class="text-break">{% if v.status_changed_at %}{{ v.status_changed_at|date:"j M Y, H:i" }} by {{ v.status_changed_by }}{% if v.status_reason %} ({{ v.status_reason }}){% endif %}{% else %}<span class="text-muted">Not changed</span>{% endif %}</td>
+            <td data-label="Status">{% include "core/_publication_status.html" with pub=v only %}</td>
+            <td class="text-break" data-label="Published">{{ v.published_at|date:"j M Y, H:i" }} by {{ v.published_by }}</td>
+            <td class="text-break" data-label="Status changed">{% if v.status_changed_at %}{{ v.status_changed_at|date:"j M Y, H:i" }} by {{ v.status_changed_by }}{% if v.status_reason %} ({{ v.status_reason }}){% endif %}{% else %}<span class="text-muted">Not changed</span>{% endif %}</td>
         </tr>
     {% endfor %}
     </tbody>

@@ -107,7 +107,7 @@ class ResultSheetTests(ReportFixture, NoTotalsMixin, TestCase):
         self.assertNotIn("Not graded", rows["Asha Rao"])
         self.assertIn("Absent", rows["Ravi Rao"])
         self.assertIn("Not graded", rows["Ravi Rao"])        # absent carries no grade
-        self.assertNotIn("Fail", rows["Ravi Rao"])            # absent is never a fail
+        self.assertNotIn(">Fail<", rows["Ravi Rao"])          # absent is never a fail
         self.assertNotIn("0.00 / 20.00", rows["Ravi Rao"])    # nor zero
         self.assertIn("Fail", rows["Meera Rao"])
         self.assertIn("audited corrections", page)

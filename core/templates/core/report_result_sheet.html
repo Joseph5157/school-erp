@@ -10,13 +10,13 @@
 <div class="erp-form-errors" role="status">This assessment is not finalized yet, so it has no official results.</div>
 {% else %}
 <div class="erp-panel">
-<div class="erp-table-scroll" role="region" aria-label="Result sheet for {{ assessment.name }}" tabindex="0">
-<table class="table erp-result-table">
+<div class="erp-table-scroll erp-table-scroll--stack" role="region" aria-label="Result sheet for {{ assessment.name }}" tabindex="0">
+<table class="table erp-result-table erp-table--stack">
     <caption class="visually-hidden">Official results for {{ assessment.name }}: each Student's marks, percentage, grade and pass or fail.</caption>
     <thead><tr><th scope="col">Student</th><th scope="col">Marks</th><th scope="col">%</th><th scope="col">Grade</th><th scope="col">Pass/Fail</th></tr></thead>
     <tbody>
         {% for result in results %}
-        <tr><th scope="row" class="fw-semibold">{{ result.student.full_name }}</th>{% include "core/_result_cells.html" %}</tr>
+        <tr><th scope="row" class="fw-semibold">{{ result.student.full_name }}</th>{% include "core/_result_cells.html" with stacked=True %}</tr>
         {% empty %}
         <tr><td colspan="5">No results.</td></tr>
         {% endfor %}

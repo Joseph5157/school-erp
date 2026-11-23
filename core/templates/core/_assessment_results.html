@@ -4,15 +4,15 @@
     Roster on {{ assessment.assessment_date }}: {{ rows|length }} Student(s); results entered: {{ marked_count }}.
     Each Student's result is shown to people who can view results.
 </p>
-<div class="erp-table-scroll" role="region" aria-label="Roster for {{ assessment.name }}" tabindex="0">
-<table class="table erp-assessment-table">
+<div class="erp-table-scroll erp-table-scroll--stack" role="region" aria-label="Roster for {{ assessment.name }}" tabindex="0">
+<table class="table erp-assessment-table erp-table--stack">
     <caption class="visually-hidden">Roster for {{ assessment.name }}: each Student on the roster.</caption>
     <thead><tr><th scope="col">Student</th></tr></thead>
     <tbody>
         {% for enrollment, result in rows %}
         <tr><th scope="row" class="fw-semibold">{{ enrollment.student.full_name }}</th></tr>
         {% empty %}
-        <tr><td>No Students are on this roster.</td></tr>
+        <tr><td colspan="1">No Students are on this roster.</td></tr>
         {% endfor %}
     </tbody>
 </table>
@@ -22,21 +22,21 @@
     Roster on {{ assessment.assessment_date }}: {{ rows|length }} Student(s); results entered: {{ marked_count }}.
     A Student without a result is <strong>not</strong> absent &mdash; entry is incomplete.
 </p>
-<div class="erp-table-scroll" role="region" aria-label="Results for {{ assessment.name }}" tabindex="0">
-<table class="table erp-assessment-table">
+<div class="erp-table-scroll erp-table-scroll--stack" role="region" aria-label="Results for {{ assessment.name }}" tabindex="0">
+<table class="table erp-assessment-table erp-table--stack">
     <caption class="visually-hidden">Results for {{ assessment.name }}: each Student on the roster, with the result entered, score, percentage and grade.</caption>
     <thead><tr><th scope="col">Student</th><th scope="col">Result</th><th scope="col" class="erp-num">Score</th><th scope="col" class="erp-num">%</th><th scope="col">Grade</th>{% if assessment.pass_mark is not None %}<th scope="col">Pass/Fail</th>{% endif %}<th scope="col">Entered by</th>{% if assessment.is_finalized and perms.core.correct_studentresult and not read_only %}<th scope="col"><span class="visually-hidden">Actions</span></th>{% endif %}</tr></thead>
     <tbody>
         {% for enrollment, result in rows %}
         <tr>
             <th scope="row" class="fw-semibold">{{ enrollment.student.full_name }}</th>
-            <td>{% if result %}{{ result.get_status_display }}{% else %}<span class="text-muted">Not entered</span>{% endif %}</td>
-            <td class="erp-num">{% if result and result.status == "MARKED" %}{{ result.score }} / {{ assessment.maximum_marks }}{% endif %}</td>
-            <td class="erp-num">{% if result.percentage is not None %}{{ result.percentage }}%{% endif %}</td>
-            <td>{{ result.grade|default:"Not graded" }}</td>
-            {% if assessment.pass_mark is not None %}<td>{% if result %}{{ result.pass_fail|title }}{% endif %}</td>{% endif %}
-            <td>{% if result %}{{ result.entered_by }}{% if result.corrections.all %} {% include "partials/_status_badge.html" with label="corrected" tone="info" only %}{% endif %}{% endif %}</td>
-            {% if assessment.is_finalized and perms.core.correct_studentresult and not read_only %}<td>{% if result %}<a href="{% url 'core:result-correct' result.pk %}" aria-label="Correct result for {{ enrollment.student.full_name }}">Correct</a>{% endif %}</td>{% endif %}
+            <td data-label="Result">{% if result %}{{ result.get_status_display }}{% else %}<span class="text-muted">Not entered</span>{% endif %}</td>
+            <td class="erp-num" data-label="Score">{% if result and result.status == "MARKED" %}{{ result.score }} / {{ assessment.maximum_marks }}{% endif %}</td>
+            <td class="erp-num" data-label="%">{% if result.percentage is not None %}{{ result.percentage }}%{% endif %}</td>
+            <td data-label="Grade">{{ result.grade|default:"Not graded" }}</td>
+            {% if assessment.pass_mark is not None %}<td data-label="Pass/Fail">{% if result %}{{ result.pass_fail|title }}{% endif %}</td>{% endif %}
+            <td data-label="Entered by">{% if result %}{{ result.entered_by }}{% if result.corrections.all %} {% include "partials/_status_badge.html" with label="corrected" tone="info" only %}{% endif %}{% endif %}</td>
+            {% if assessment.is_finalized and perms.core.correct_studentresult and not read_only %}<td class="erp-stack-actions">{% if result %}<a href="{% url 'core:result-correct' result.pk %}" aria-label="Correct {{ assessment.name }} result for {{ enrollment.student.full_name }}">Correct</a>{% endif %}</td>{% endif %}
         </tr>
         {% empty %}
         <tr><td colspan="{% if assessment.pass_mark is not None %}{% if assessment.is_finalized and perms.core.correct_studentresult and not read_only %}8{% else %}7{% endif %}{% elif assessment.is_finalized and perms.core.correct_studentresult and not read_only %}7{% else %}6{% endif %}">No Students are enrolled in this Section on the assessment date.</td></tr>

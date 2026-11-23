@@ -15,9 +15,11 @@ from django.conf import settings
 from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
-from core.models import AcademicYear, GradingScale
+from core.models import AcademicYear, GradingScale, Section, TermPublication
 from core.tests.test_ui_admin_desktop_d1_5a_grading_scales import ScaleFixture
 from core.tests.test_ui_admin_desktop_d1_5b_assessments import AssessmentFixture
+from core.tests.test_ui_admin_desktop_d1_5c_result_reports import ReportFixture
+from core.tests.test_ui_admin_desktop_d1_5d_term_publication import UiFixture
 
 PHONE_QUERY = "@media (max-width: 575.98px)"
 MODIFIERS = ("erp-table--stack", "erp-table-scroll--stack", "erp-stack-actions")
@@ -196,6 +198,237 @@ class AssessmentListStackedTests(StackedTableContractMixin, AssessmentFixture, T
         thead = re.search(r"<thead\b.*?</thead>", table, re.S).group(0)
         self.assertNotIn("Progress", thead)
         self.assertIn('name="progress"', page)
+
+
+def body_rows(table):
+    body = re.search(r"<tbody\b[^>]*>(.*?)</tbody>", table, re.S).group(1)
+    return re.findall(r"<tr\b[^>]*>(.*?)</tr>", body, re.S)
+
+
+def row_for(table, name):
+    """The one body row whose row header shows name."""
+    pattern = rf'<th scope="row"[^>]*>(?:<a [^>]*>)?{re.escape(name)}<'
+    (row,) = [r for r in body_rows(table) if re.search(pattern, r)]
+    return row
+
+
+class AssessmentResultsStackedTests(StackedTableContractMixin, AssessmentFixture, TestCase):
+    """Assessment detail: the results table, or the roster for viewers without marks."""
+
+    def setUp(self):
+        self.build()
+
+    def page(self, url, client=None):
+        return (client or self.client).get(url).content.decode()
+
+    def only_table(self, page):
+        ((wrapper, table),) = stacked_tables(page)
+        return wrapper, table
+
+    def empty_roster(self, *, pass_mark, finalized):
+        section = Section.objects.create(class_grade=self.grade6, name="Empty")
+        assessment = self.unique_assessment("Empty roster", section=section, pass_mark=pass_mark)
+        if finalized:
+            self.force_finalize(assessment)
+        return reverse("core:assessment-detail", args=[assessment.pk])
+
+    def test_draft_results_table_is_stacked_with_header_labels(self):
+        page = self.page(self.draft_url)
+        wrapper, table = self.only_table(page)
+        self.assert_stacked_contract(page)
+        self.assertNotIn('data-label=""', page)
+        self.assertIn('role="region" aria-label="Results for Quiz 1" tabindex="0"', wrapper)
+        self.assertIn('<table class="table erp-assessment-table erp-table--stack">', table)
+        self.assertEqual(
+            header_texts(table),
+            ["Student", "Result", "Score", "%", "Grade", "Pass/Fail", "Entered by"],
+        )
+        ravi = row_for(table, "Ravi Rao")
+        self.assertIn('<th scope="row" class="fw-semibold">Ravi Rao</th>', ravi)
+        self.assertIn('data-label="Result">Marked<', ravi)
+        self.assertIn('data-label="Score">17.00 / 20.00<', ravi)
+        self.assertIn(
+            'data-label="Result"><span class="text-muted">Not entered</span>', row_for(table, "Dev Rao")
+        )
+        self.assertIn('data-label="Result">Absent<', row_for(table, "Meera Rao"))
+        self.assertNotIn("erp-stack-actions", table)  # a draft has no Correct column
+
+    def test_correct_link_sits_in_the_actions_cell_and_names_assessment_and_student(self):
+        page = self.page(self.final_url)
+        _, table = self.only_table(page)
+        self.assert_stacked_contract(page)
+        self.assertEqual(
+            header_texts(table), ["Student", "Result", "Score", "%", "Grade", "Entered by", "Actions"]
+        )
+        correct = reverse("core:result-correct", args=[self.zoya_result.pk])
+        zoya = row_for(table, "Zoya Iyer")
+        self.assertIn('data-label="Score">40.00 / 50.00<', zoya)
+        self.assertIn(
+            f'<td class="erp-stack-actions"><a href="{correct}" '
+            'aria-label="Correct Midterm result for Zoya Iyer">Correct</a></td>',
+            zoya,
+        )
+
+    def test_viewer_without_correct_permission_gets_no_actions_column(self):
+        _, viewer = self.client_with("view_assessment", "view_studentresult")
+        page = self.page(self.final_url, viewer)
+        _, table = self.only_table(page)
+        self.assert_stacked_contract(page)
+        self.assertEqual(
+            header_texts(table), ["Student", "Result", "Score", "%", "Grade", "Entered by"]
+        )
+        self.assertNotIn("erp-stack-actions", table)
+        self.assertNotIn(reverse("core:result-correct", args=[self.zoya_result.pk]), page)
+
+    def test_empty_results_roster_spans_every_column_for_each_role(self):
+        _, viewer = self.client_with("view_assessment", "view_studentresult")
+        url = self.empty_roster(pass_mark="8", finalized=True)
+        for client, columns in ((self.client, 8), (viewer, 7)):
+            with self.subTest(columns=columns):
+                page = self.page(url, client)
+                self.assert_stacked_contract(page)
+                self.assertIn(f'<td colspan="{columns}">No Students are enrolled', page)
+
+    def test_roster_without_marks_is_stacked(self):
+        _, viewer = self.client_with("view_assessment")
+        page = self.page(self.draft_url, viewer)
+        wrapper, table = self.only_table(page)
+        self.assert_stacked_contract(page)
+        self.assertIn('role="region" aria-label="Roster for Quiz 1" tabindex="0"', wrapper)
+        self.assertIn('<table class="table erp-assessment-table erp-table--stack">', table)
+        self.assertEqual(header_texts(table), ["Student"])
+        self.assertEqual(len(body_rows(table)), 3)
+        self.assertNotIn("data-label", table)  # the row header is the only cell
+        self.assertNotIn("17.00", page)
+
+    def test_empty_roster_without_marks_spans_the_column(self):
+        _, viewer = self.client_with("view_assessment")
+        page = self.page(self.empty_roster(pass_mark=None, finalized=False), viewer)
+        self.assert_stacked_contract(page)
+        self.assertIn('<td colspan="1">No Students are on this roster.</td>', page)
+
+
+class ResultSheetStackedTests(StackedTableContractMixin, ReportFixture, TestCase):
+    def setUp(self):
+        self.build()
+
+    def test_result_sheet_is_stacked_with_header_labels(self):
+        page = self.client.get(self.sheet_url).content.decode()
+        ((wrapper, table),) = stacked_tables(page)
+        self.assert_stacked_contract(page)
+        self.assertNotIn('data-label=""', page)
+        self.assertIn('role="region" aria-label="Result sheet for UT1" tabindex="0"', wrapper)
+        self.assertIn('<table class="table erp-result-table erp-table--stack">', table)
+        self.assertEqual(header_texts(table), ["Student", "Marks", "%", "Grade", "Pass/Fail"])
+        self.assertIn('data-label="Marks">18.00 / 20.00<', row_for(table, "Asha Rao"))
+        ravi = row_for(table, "Ravi Rao")
+        self.assertIn('data-label="Marks">Absent<', ravi)
+        self.assertIn('data-label="Grade">Not graded<', ravi)
+        self.assertIn('data-label="Pass/Fail">Fail<', row_for(table, "Meera Rao"))
+
+
+class ReportCardStackedTests(StackedTableContractMixin, ReportFixture, TestCase):
+    def setUp(self):
+        self.build()
+
+    def check_card(self, page):
+        ((wrapper, table),) = stacked_tables(page)
+        self.assert_stacked_contract(page)
+        self.assertNotIn('data-label=""', page)
+        self.assertIn('role="region" aria-label="Mathematics results" tabindex="0"', wrapper)
+        self.assertIn('<table class="table erp-result-table erp-table--stack">', table)
+        self.assertEqual(
+            header_texts(table), ["Assessment", "Date", "Marks", "%", "Grade", "Pass/Fail"]
+        )
+        ut1 = row_for(table, "UT1")
+        self.assertIn('<td class="text-nowrap" data-label="Date">', ut1)
+        self.assertIn('data-label="Marks">18.00 / 20.00<', ut1)
+
+    def test_administrator_report_card_is_stacked(self):
+        self.check_card(self.client.get(self.card_url).content.decode())
+
+    def test_teacher_report_card_is_stacked(self):
+        self.class_teacher(self.rao)
+        self.check_card(self.login("rao").get(self.my_card).content.decode())
+
+    def test_no_results_state_has_no_table(self):
+        newcomer, _ = self.make_student("Nia Rao")
+        url = reverse("core:report-term-report-card", args=[newcomer.pk, self.term1.pk])
+        page = self.client.get(url).content.decode()
+        self.assertEqual(stacked_tables(page), [])
+        self.assertIn("No finalized results for this Term yet.", page)
+
+
+class SharedResultCellsTests(ReportFixture, TestCase):
+    """Callers of _result_cells.html that don't pass stacked render it exactly as before."""
+
+    def setUp(self):
+        self.build()
+
+    def test_non_stacked_callers_get_no_labels(self):
+        self.class_teacher(self.rao)
+        for client, url in (
+            (self.client, self.student_url),
+            (self.login("rao"), reverse("core:my-student-detail", args=[self.asha.pk])),
+        ):
+            with self.subTest(url=url):
+                response = client.get(url)
+                self.assertIn("core/_result_cells.html", [t.name for t in response.templates])
+                self.assertContains(response, "18.00 / 20.00")
+                self.assertNotContains(response, "data-label")
+                self.assertNotContains(response, "erp-table--stack")
+
+
+class PublicationDetailStackedTests(StackedTableContractMixin, UiFixture, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.publish()
+        self.pub = TermPublication.objects.get(student=self.asha, term=self.term1)
+        self.url = reverse("core:publication-detail", args=[self.pub.pk])
+
+    def test_both_tables_are_stacked_with_header_labels(self):
+        page = self.client.get(self.url).content.decode()
+        (entries_wrapper, entries), (versions_wrapper, versions) = stacked_tables(page)
+        self.assert_stacked_contract(page)
+        self.assertNotIn('data-label=""', page)
+        self.assertIn(
+            'role="region" aria-label="Results as released in version 1" tabindex="0"',
+            entries_wrapper,
+        )
+        self.assertIn(
+            'role="region" aria-label="All versions of this report card" tabindex="0"',
+            versions_wrapper,
+        )
+        for table in (entries, versions):
+            self.assertIn('<table class="table erp-publication-table erp-table--stack">', table)
+        self.assertEqual(
+            header_texts(entries),
+            ["Subject", "Assessment", "Date", "Marks", "%", "Grade", "Pass/Fail"],
+        )
+        self.assertEqual(
+            header_texts(versions), ["Version", "Status", "Published", "Status changed"]
+        )
+        (entry,) = body_rows(entries)
+        self.assertIn('data-label="Assessment">UT1<', entry)
+        self.assertIn('<td class="text-nowrap" data-label="Date">', entry)
+        self.assertIn('data-label="Marks">15 / 20<', entry)
+        (version,) = body_rows(versions)
+        self.assertIn(f'<a href="{self.url}">Version 1</a>', version)
+        self.assertIn(
+            '<td class="text-break" data-label="Status changed"><span class="text-muted">Not changed</span>',
+            version,
+        )
+        # The actions sit outside the tables and keep their permission gate.
+        self.assertIn(reverse("core:publication-withdraw", args=[self.pub.pk]), page)
+
+    def test_viewer_without_marks_sees_only_the_stacked_versions_table(self):
+        _, viewer = self.client_with("view_termpublication")
+        page = viewer.get(self.url).content.decode()
+        ((wrapper, _),) = stacked_tables(page)
+        self.assert_stacked_contract(page)
+        self.assertIn('aria-label="All versions of this report card"', wrapper)
+        self.assertNotIn("Results as released in version", page)
+        self.assertNotIn(reverse("core:publication-withdraw", args=[self.pub.pk]), page)
 
 
 class StackedTableContractCheckTests(StackedTableContractMixin, SimpleTestCase):

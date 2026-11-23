@@ -374,7 +374,7 @@ class DetailTests(AssessmentFixture, TestCase):
         self.assertNotIn("Delete this planned assessment", page)
         self.assertNotIn(reverse("core:assessment-update", args=[self.final.pk]), page)
         self.assertIn(reverse("core:result-correct", args=[self.zoya_result.pk]), page)
-        self.assertIn('aria-label="Correct result for Zoya Iyer">Correct</a>', page)
+        self.assertIn('aria-label="Correct Midterm result for Zoya Iyer">Correct</a>', page)
 
     def test_correct_and_result_sheet_links_are_gated(self):
         correct = reverse("core:result-correct", args=[self.zoya_result.pk])
