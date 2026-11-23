@@ -1357,11 +1357,24 @@ body.has-tabbar .erp-messages {
   .erp-content .erp-table-scroll--stack > table.erp-table--stack,
   .erp-content .erp-table-scroll--stack > table.erp-table--stack > tbody,
   .erp-content .erp-table-scroll--stack > table.erp-table--stack > tbody > tr,
-  .erp-content .erp-table-scroll--stack > table.erp-table--stack > tbody > tr > * { display: block; width: 100%; min-width: 0; }
+  .erp-content .erp-table-scroll--stack > table.erp-table--stack > tbody > tr > * { display: block; width: 100%; min-width: 0; max-width: none; }
   /* The same declarations as .erp-sr-only, which can't be used here because the header shows on desktop. */
   .erp-content .erp-table-scroll--stack > table.erp-table--stack > thead {
     position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
   }
+  /* A sortable table keeps its sort links on phones: the header row becomes a "Sort by" strip of just
+     those links (visible, so keyboard focus is too); the other headers stay visually hidden. */
+  .erp-content .erp-table-scroll--stack > table.erp-table--stack > thead:has(.erp-sort-link) {
+    position: static; display: block; width: auto; height: auto; margin: 0; overflow: visible; clip: auto; white-space: normal;
+    padding: var(--erp-space-2) var(--erp-space-4); border-bottom: 1px solid var(--erp-rule);
+  }
+  .erp-content .erp-table-scroll--stack > table.erp-table--stack > thead:has(.erp-sort-link) > tr { display: flex; flex-wrap: wrap; align-items: center; gap: var(--erp-space-1) var(--erp-space-4); }
+  .erp-content .erp-table-scroll--stack > table.erp-table--stack > thead:has(.erp-sort-link) > tr::before { content: "Sort by"; content: "Sort by" / ""; color: var(--erp-ink-soft); font-size: .875rem; }
+  .erp-content .erp-table-scroll--stack > table.erp-table--stack > thead:has(.erp-sort-link) > tr > th:has(.erp-sort-link) { display: block; padding: 0; border: 0; }
+  .erp-content .erp-table-scroll--stack > table.erp-table--stack > thead:has(.erp-sort-link) > tr > th:not(:has(.erp-sort-link)) {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+  }
+  .erp-content .erp-table-scroll--stack > table.erp-table--stack .erp-sort-link { display: inline-flex; align-items: center; min-height: 24px; }
   .erp-content .erp-table-scroll--stack > table.erp-table--stack > tbody > tr { padding: var(--erp-space-3) var(--erp-space-4); border-bottom: 1px solid var(--erp-rule); }
   .erp-content .erp-table-scroll--stack > table.erp-table--stack > tbody > tr:last-child { border-bottom: 0; }
   .erp-content .erp-table-scroll--stack > table.erp-table--stack > tbody > tr > * { padding: var(--erp-space-1, .25rem) 0; border: 0; text-align: start; }
@@ -1372,6 +1385,7 @@ body.has-tabbar .erp-messages {
      taller than its value inside the cell. */
   .erp-content .erp-table-scroll--stack > table.erp-table--stack > tbody > tr > td[data-label] {
     display: flow-root; padding-inline-start: calc(7rem + var(--erp-space-3)); overflow-wrap: anywhere;
+    white-space: normal !important; /* beats a desktop .text-nowrap, so a long value wraps instead of leaving the screen */
   }
   .erp-content .erp-table-scroll--stack > table.erp-table--stack > tbody > tr > td[data-label]::before {
     content: attr(data-label);

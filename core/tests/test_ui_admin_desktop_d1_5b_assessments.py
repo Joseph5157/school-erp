@@ -108,7 +108,7 @@ class ListTests(AssessmentFixture, TestCase):
         self.assertRegex(page, r"erp-status--finalized[^>]*><span[^>]*>Status: </span>Finalized")
         self.assertIn(reverse("core:assessment-detail", args=[self.draft.pk]), page)
         row = re.search(r"Quiz 1.*?</tr>", page, re.S).group(0)
-        self.assertIn('<td class="erp-num">20.00</td>', row)
+        self.assertIn('<td class="erp-num" data-label="Max">20.00</td>', row)
         self.assertIn("8.00", row)
         self.assertIn("&mdash;", re.search(r"Midterm.*?</tr>", page, re.S).group(0))  # no pass mark
 
@@ -286,7 +286,7 @@ class PaginationTests(AssessmentFixture, TestCase):
         self.assertIn(
             ".erp-panel .erp-assessment-list-table > thead > tr > th:nth-child(n+7) { text-align: end; }", css
         )
-        self.assertIn('class="table erp-assessment-table erp-assessment-list-table erp-rows-link"', page)
+        self.assertIn('class="table erp-assessment-table erp-assessment-list-table erp-rows-link erp-table--stack"', page)
         self.assertNotIn("th:nth-child(n+7)", css.replace("erp-assessment-list-table > thead > tr > th:nth-child(n+7)", ""))
 
     def test_detail_results_table_is_not_covered_by_the_list_alignment_rule(self):
