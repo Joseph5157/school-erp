@@ -10,6 +10,7 @@ The layout itself is checked in a browser at 360, 390, 576 and 1366px.
 import re
 from datetime import date
 
+from django.contrib.auth import get_user_model
 from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
@@ -110,6 +111,15 @@ class TeacherAssignmentGroupTests(AssignmentFixture, TestCase):
                          ["Grade 5 1 subject slot", "Grade 6 2 subject slots"])
         # The first group starts open, the rest collapsed.
         self.assertEqual([bool(is_open) for is_open, _ in groups], [True, False])
+
+    def test_a_group_with_a_warning_card_starts_open(self):
+        # A grade with a gap (here: its teacher's login is inactive) must not hide the warning behind a collapsed group.
+        # Both Grade 6 slots warn, so this also checks " open" is written once, not once per warning card.
+        get_user_model().objects.filter(pk__in=[self.iyer.pk, self.rao.pk]).update(is_active=False)
+        cards = phone_cards(self.page().content.decode())
+        groups = re.findall(r'<details class="erp-assign-grade"( open)?>\s*<summary>(.*?)</summary>', cards, re.S)
+        self.assertEqual([bool(is_open) for is_open, _ in groups], [True, True])
+        self.assertIn("erp-assign-card--warn", cards.split('<details class="erp-assign-grade"')[2])
 
     def test_jump_list_links_to_the_card_list_inside_each_group(self):
         # Targeting content inside a collapsed details element makes the browser open it on the jump.

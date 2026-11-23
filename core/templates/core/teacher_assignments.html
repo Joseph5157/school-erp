@@ -78,7 +78,8 @@
 </nav>{% endif %}
 {% for group in grade_groups %}{% with count=group.list|length %}
 {# The jump target is the list inside the group, so following a link opens a collapsed group (Chromium, Firefox). #}
-<details class="erp-assign-grade"{% if forloop.first %} open{% endif %}>
+{# Open the first group and any group holding a warning card, so no gap is hidden; ifchanged prints " open" once. #}
+<details class="erp-assign-grade"{% if forloop.first %} open{% else %}{% for slot in group.list %}{% if slot.inactive or not slot.current %}{% ifchanged %} open{% endifchanged %}{% endif %}{% endfor %}{% endif %}>
 <summary>{{ group.grouper }} <span class="erp-assign-grade-count">{{ count }} subject slot{{ count|pluralize }}</span></summary>
 <ul class="erp-assign-cards" id="assign-grade-{{ group.grouper.pk }}" role="list">
     {% for slot in group.list %}
