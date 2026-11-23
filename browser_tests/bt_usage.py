@@ -201,6 +201,10 @@ class UsagePage(FixturePage):
 
     def check_request(self, entry, record, measured):
         url, method = entry["url"], entry["method"]
+        if record is not None:
+            # The URL the page asked for, fragment included, is exactly the request's URL (Chromium
+            # drops a fragment before sending, so only the page's own record can show one).
+            self.assertEqual(record["href"], url, "the page's attempted URL, fragment included")
         path = url[len(ORIGIN):] if url.startswith(ORIGIN) else url
         key = (method, path)
         if url == ORIGIN + BEACON:
