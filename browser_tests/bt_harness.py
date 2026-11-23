@@ -150,7 +150,8 @@ class DiagnosticsTests(FixturePage):
             self.assertGreater((stem.parent / "diagnostics.png").stat().st_size, 0)
             self.assertGreater((stem.parent / "diagnostics-trace.zip").stat().st_size, 0)
             records = json.loads((stem.parent / "diagnostics-records.json").read_text(encoding="utf-8"))
-            self.assertEqual(set(records), {"page_errors", "external_requests", "route_errors", "held_requests"})
+            self.assertEqual(set(records), {"page_errors", "external_requests", "route_errors", "guard_violations",
+                                            "held_requests"})
         self.context.tracing.start(screenshots=True, snapshots=True)  # tearDown stops it again
 
 
@@ -203,6 +204,12 @@ class EnforcementTests(unittest.TestCase):
         traceback = self.only_failure(self.run_probes(probes.RouteErrorPumpProbe))
         self.assertIn("the harness could not serve a request", traceback)
         self.assertNotIn("pump() did not fail the test", traceback)
+
+    def test_a_teardown_guard_violation_fails_the_test_and_is_in_the_diagnostics(self):
+        traceback = self.only_failure(self.run_probes(probes.GuardViolationProbe))
+        self.assertIn("a tearDown guard check failed", traceback)
+        self.assertEqual(self.records("GuardViolationProbe")["guard_violations"], ["bt-probe violation"])
+        self.assert_diagnostics_saved("GuardViolationProbe")
 
     def test_a_failing_test_saves_a_screenshot_trace_and_records(self):
         self.assertIn("bt-probe failure", self.only_failure(self.run_probes(probes.FailingProbe)))

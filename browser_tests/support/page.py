@@ -166,6 +166,7 @@ class FixturePage(unittest.TestCase):
         self.external = []
         self.page_errors = []
         self.route_errors = []
+        self.guard_violations = []  # checks a subclass makes in tearDown (for example the beacon privacy check)
         self.context.route("**/*", self._route)
         self.context.on("requestfailed", self._request_failed)
         if self.xhr_timeouts_on_page_clock:
@@ -187,7 +188,7 @@ class FixturePage(unittest.TestCase):
         except Exception:  # a crashed or closed page; the test's own failure says why
             pass
         self._release_held()
-        guard_failed = bool(self.route_errors or self.page_errors or self.external)
+        guard_failed = bool(self.route_errors or self.page_errors or self.external or self.guard_violations)
         try:
             if failed or guard_failed:
                 self.save_diagnostics(self.artifacts / self.id().replace(".", "-"))
@@ -199,6 +200,7 @@ class FixturePage(unittest.TestCase):
             self.assertEqual(self.route_errors, [], "the harness could not serve a request")
             self.assertEqual(self.page_errors, [], "errors were thrown in the page")
             self.assertEqual(self.external, [], "the page tried to reach the real network")
+            self.assertEqual(self.guard_violations, [], "a tearDown guard check failed")
 
     def _release_held(self):
         """Teardown only: settle every held route the test did not answer, closed ones included.
@@ -227,6 +229,7 @@ class FixturePage(unittest.TestCase):
             "page_errors": self.page_errors,
             "external_requests": self.external,
             "route_errors": self.route_errors,
+            "guard_violations": self.guard_violations,
             "held_requests": [{"method": h.method, "path": h.path, "answered": h.answered, "closed": h.closed}
                               for h in self.held],
         }

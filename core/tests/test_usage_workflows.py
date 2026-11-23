@@ -389,13 +389,6 @@ class MarksWorkflowTests(AutosaveFixture, TestCase):
         self.assertIn("data-erp-marks", page)
         self.assertNotIn("data-erp-usage-size", page)
 
-    def test_the_page_starts_only_with_work_left_and_completes_only_after_a_start(self):
-        block = ERP_JS[ERP_JS.index("var markSize"):ERP_JS.index("var form = sheet.closest")]
-        self.assertIn('if (markSize && rows.some(function (row) { return statusOf(row) === '
-                      '"unmarked"; }))', block)
-        self.assertIn("var marksStarted = null;", block)
-        self.assertIn('!marksDone && marksStarted !== null', ERP_JS)
-
     def test_signed_out_marks_autosave_is_counted(self):
         self.post_row(self.asha, "MARKED", "12", client=Client())
         row = one(step="signed_out")
@@ -651,36 +644,17 @@ class BeaconB3Tests(Phase4Fixture, TestCase):
 
 
 class BrowserCodeTests(TestCase):
-    def test_flush_is_guarded_by_global_privacy_control_and_identifies_itself(self):
-        block = usage_block()
-        self.assertIn("navigator.globalPrivacyControl === true", block)
-        flush = block[block.index("function flush"):]
-        flush = flush[:flush.index("\n  }\n")]
-        self.assertIn("gpc()", flush)
-        self.assertIn('"X-Requested-With": "XMLHttpRequest"', flush)
-        self.assertIn('"X-CSRFToken"', flush)
-        self.assertIn("keepalive: true", flush)
-
+    # What the browser does with events (GPC, off by default, queue, flush moments, device at event
+    # time, payload keys, install and workflow events, save outcomes) is verified by execution in
+    # browser_tests/bt_usage.py. These are the checks a browser test cannot make: absences across
+    # every path and the enum-only rule for every call.
     def test_events_stay_in_page_memory_only(self):
+        # Policy guard (an absence on every path). The 20-event cap and the oldest-first drop are
+        # browser test U3 (browser_tests/bt_usage.py).
         block = usage_block()
         for word in ("localStorage", "sessionStorage", "indexedDB", "sendBeacon",
                      "document.cookie", "serviceWorker", "SyncManager"):
             self.assertNotIn(word, block)
-        self.assertIn("MAX_EVENTS = 20", block)
-        self.assertIn("queue.shift()", block)  # the oldest is dropped first
-
-    def test_flush_moments(self):
-        block = usage_block()
-        self.assertIn('document.visibilityState === "hidden"', block)
-        self.assertIn("setInterval(flush, 30000)", block)
-        # A failed flush puts its events back in memory for the next moment.
-        self.assertIn("queue = batch.concat(queue)", block)
-
-    def test_nothing_is_sent_without_the_page_attribute(self):
-        self.assertIn('getAttribute("data-erp-usage") === "1"', usage_block())
-
-    def test_client_header_only_when_measurement_is_on(self):
-        self.assertIn('if (erpUsage.on()) event.detail.headers["X-ERP-Client"]', ERP_JS)
 
     def test_events_are_built_only_from_enum_constants(self):
         calls = re.findall(r"erpUsage\.add\(([^)]*)\)", ERP_JS)
@@ -695,47 +669,10 @@ class BrowserCodeTests(TestCase):
             for extra in args[2:]:
                 self.assertIn(extra, allowed_extra, call)
 
-    def test_device_dimensions_are_taken_when_the_event_happens(self):
-        """A resize or rotation between an event and its send must not relabel it: each event
-        keeps its own device, display and platform, and one send carries one set of them."""
-        block = usage_block()
-        self.assertIn("queue.push({ e: event, d: device(), x: display(), p: platform() });", block)
-        self.assertIn("d: first.d, x: first.x, p: first.p", block)
-        self.assertNotIn("d: device(), x: display(), p: platform(), r:", block)
-
-    def test_payload_carries_only_shared_dimensions_and_events(self):
-        body = re.search(r"JSON\.stringify\(\{([^}]*)\}\)", usage_block()).group(1)
-        self.assertEqual(sorted(re.findall(r"(\w+):", body)), ["a", "d", "e", "p", "r", "x"])
-
-    def test_install_dismiss_and_installed_are_separate(self):
-        self.assertIn('erpUsage.add("install", "dismissed")', ERP_JS)
-        self.assertIn('erpUsage.add("install", "installed")', ERP_JS)
-        self.assertIn('erpUsage.add("install", "shown")', ERP_JS)
-        dismiss = ERP_JS[ERP_JS.index("dismiss.addEventListener"):]
-        dismiss = dismiss[:dismiss.index("});")]
-        self.assertNotIn("installed", dismiss)
-
-    def test_route_bound_workflows(self):
-        self.assertIn('erpUsage.route() === "core:my-home"', ERP_JS)
-        self.assertIn('erpUsage.route() === "core:report-missing-attendance"', ERP_JS)
-
     def test_missing_attendance_links_are_marked(self):
         template = (BASE_DIR / "core" / "templates" / "core"
                     / "report_missing_attendance.html").read_text(encoding="utf-8")
         self.assertEqual(template.count("data-erp-usage-act"), 2)
-
-    def test_save_handling_is_counted_by_the_client(self):
-        for event in ('"marks_entry", "retry_tapped"', '"marks_entry", "retry_succeeded"',
-                      '"marks_entry", "fallback_save_used"', '"marks_entry", "attempt"',
-                      '"marks_entry", "network"', '"marks_entry", "server"',
-                      '"marks_entry", "csrf"', '"attendance_capture", "attempt"',
-                      '"attendance_capture", "network"', '"attendance_capture", "server"',
-                      '"attendance_capture", "retry_tapped"',
-                      '"attendance_capture", "retry_succeeded"'):
-            self.assertIn(f"erpUsage.add({event}", ERP_JS)
-
-    def test_a_successful_save_flushes_so_offline_failures_are_sent_later(self):
-        self.assertGreaterEqual(ERP_JS.count("erpUsage.flush()"), 3)
 
 
 # --- the report ----------------------------------------------------------------------------------

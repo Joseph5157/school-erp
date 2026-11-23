@@ -19,9 +19,11 @@ from datetime import date
 from html.parser import HTMLParser
 
 from django.conf import settings
-from django.test import Client, TestCase
+from django.test import Client, SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 
+from browser_tests.support import usage as browser_usage
+from core import usage, usage_views
 from core.models import SectionClassTeacher
 from core.tests.phase4_fixtures import Phase4Fixture
 from core.tests.test_marks_autosave import AutosaveFixture
@@ -290,3 +292,95 @@ class AttendanceFixtureContractTests(ContractMixin, Phase4Fixture, TestCase):
         signed_out = Client().post(bulk, {"enrollment": [self.ravi.pk]}, **ajax)
         self.assertEqual(signed_out.status_code, 401)
         self.assertEqual(signed_out.json(), json.loads(fixture("replies/signed_out.json")))
+
+
+# --- Usage measurement (JS4, ADR 0027) -----------------------------------------------------------
+
+ON = override_settings(USAGE_MEASUREMENT_ENABLED=True)
+BODY_USAGE_ATTRS = ("data-erp-usage", "data-erp-usage-url", "data-erp-route", "data-erp-area")
+
+
+def body_usage(html):
+    """The measurement attributes on <body>, with the beacon URL normalised."""
+    attrs = behaviour(first(Tree(html), "data-erp-usage"))
+    return {name: attrs.get(name) for name in BODY_USAGE_ATTRS}
+
+
+class UsageAllowListContractTests(SimpleTestCase):
+    def test_the_browser_tests_allow_exactly_what_the_server_allows(self):
+        for name in ("DEVICES", "DISPLAYS", "PLATFORMS", "DURATION_BUCKETS", "SIZE_BUCKETS", "AREAS",
+                     "CLIENT_EVENTS"):
+            with self.subTest(name):
+                self.assertEqual(set(getattr(browser_usage, name)), set(getattr(usage, name)))
+        self.assertEqual(browser_usage.CLIENT_SIZED_EVENTS, usage.CLIENT_SIZED_EVENTS)
+        self.assertEqual(browser_usage.PAGE_ROUTE_AREAS, usage.PAGE_ROUTE_AREAS)
+        self.assertEqual(browser_usage.OTHER_ROUTE, usage.OTHER_ROUTE)
+        self.assertEqual(set(browser_usage.PAGE_ROUTES), set(usage.PAGE_ROUTES))
+        self.assertEqual(browser_usage.PAYLOAD_KEYS, usage_views.SHARED_KEYS)
+        self.assertEqual(browser_usage.EVENT_KEYS, usage_views.EVENT_KEYS)
+        self.assertEqual(browser_usage.MAX_EVENTS, usage_views.MAX_EVENTS)
+        self.assertEqual(browser_usage.MAX_BODY_BYTES, usage_views.MAX_BODY_BYTES)
+
+    def test_measurement_is_off_by_default(self):
+        self.assertFalse(usage.enabled())
+
+
+@ON
+class UsageMarksFixtureContractTests(ContractMixin, AutosaveFixture, TestCase):
+    def test_the_measured_marks_page_matches(self):
+        real = self.teacher.get(self.entry_url(self.test1)).content.decode()
+        self.assertEqual(body_usage(fixture("usage_marks.html")), body_usage(real))
+        self.assert_page_matches(fixture("usage_marks.html"), real, "data-erp-marks")
+        sheet = lambda html: behaviour(first(Tree(html), "data-erp-marks")).get("data-erp-usage-size")  # noqa: E731
+        self.assertEqual(sheet(fixture("usage_marks.html")), sheet(real))
+
+    def test_the_last_row_saved_reply_fixture_matches(self):
+        self.post_row(self.bina, "MARKED", "13")
+        self.post_row(self.ravi, "MARKED", "14")
+        response = self.post_row(self.asha, "MARKED", "12")  # the last row left; the fixture saves 12
+        self.assertEqual(response.status_code, 200)
+        self.assert_reply_matches("marks_saved_last.html", response)
+        # erp.js reads "nothing left" from this count in the reply text.
+        left = re.compile(r'id="erp-count-unmarked"[^>]*>(\d+)<')
+        self.assertEqual(left.search(response.content.decode()).group(1), "0")
+        self.assertEqual(left.search(fixture("replies/marks_saved_last.html")).group(1), "0")
+
+    def test_the_teacher_home_fixture_matches(self):
+        real = self.teacher.get(reverse("core:my-home")).content.decode()
+        self.assertEqual(body_usage(fixture("usage_teacher_home.html")), body_usage(real))
+
+    def test_the_install_bar_fixture_matches(self):
+        real = self.teacher.get(reverse("core:my-home")).content.decode()
+        self.assertEqual(body_usage(fixture("usage_install.html")), body_usage(real))
+        bar = lambda html: first(Tree(html), "data-erp-install-bar")  # noqa: E731
+        fixture_bar, real_bar = bar(fixture("usage_install.html")), bar(real)
+        self.assert_same(signature([fixture_bar] + descendants(fixture_bar)), signature([real_bar] + descendants(real_bar)))
+
+    def test_gpc_or_off_pages_carry_no_measurement_attributes(self):
+        gpc = self.teacher.get(self.entry_url(self.test1), HTTP_SEC_GPC="1").content.decode()
+        self.assertNotIn("data-erp-usage", gpc)
+        with override_settings(USAGE_MEASUREMENT_ENABLED=False):
+            off = self.teacher.get(self.entry_url(self.test1)).content.decode()
+        self.assertNotIn("data-erp-usage", off)
+        self.assertNotIn("data-erp-usage", fixture("marks.html"))  # the "off" fixture
+
+
+@ON
+class UsageAttendanceFixtureContractTests(AttendanceFixtureContractTests):
+    """The attendance contract again, measured, plus the body attributes of the measured pages."""
+
+    def test_the_measured_attendance_page_matches(self):
+        real = self.teacher.get(self.url).content.decode()
+        self.assertEqual(body_usage(fixture("usage_attendance.html")), body_usage(real))
+        self.assert_page_matches(fixture("usage_attendance.html"), real, "data-erp-roster")
+
+    def test_the_admin_page_fixtures_match(self):
+        office = self.client_class()
+        office.login(username="admin", password="pass-12345")
+        students = office.get(reverse("core:student-list")).content.decode()
+        self.assertEqual(body_usage(fixture("usage.html")), body_usage(students))
+        report = office.get(reverse("core:report-missing-attendance")).content.decode()
+        self.assertEqual(body_usage(fixture("usage_missing_attendance.html")), body_usage(report))
+        template = (settings.BASE_DIR / "core" / "templates" / "core" / "report_missing_attendance.html").read_text(
+            encoding="utf-8")
+        self.assertIn("data-erp-usage-act", template)  # the hook the fixture's action links use

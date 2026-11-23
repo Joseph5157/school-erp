@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Install bar fixture, measurement on</title></head>
+<body class="erp" data-erp-usage="1" data-erp-usage-url="/u/" data-erp-route="core:my-home" data-erp-area="teacher">
+<form><input type="hidden" name="csrfmiddlewaretoken" value="test-token"></form>
+<main id="main"></main>
+<section class="erp-install-bar" data-erp-install-bar aria-label="Install the app" hidden>
+    <img class="erp-install-bar-icon" src="/static/pwa/icon-192.png" alt="" width="36" height="36">
+    <p class="erp-install-bar-text"><strong>Install Everclass on your phone</strong><span>Open it from your home screen, like an app.</span></p>
+    <div class="erp-install-bar-actions">
+        <button type="button" class="btn btn-primary btn-sm" data-erp-install-bar-install hidden>Install</button>
+        <a class="btn btn-primary btn-sm" href="/install/" data-erp-install-bar-howto hidden>How to install</a>
+        <button type="button" class="btn btn-link btn-sm" data-erp-install-bar-dismiss>Not now</button>
+    </div>
+</section>
+<script src="/static/js/erp.js" defer></script>
+</body>
+</html>
