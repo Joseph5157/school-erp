@@ -48,7 +48,7 @@ Status: **Ready** = Bootstrap-free and used; **Partial** = ours, but still sits 
 | Empty state | `erp-card-empty` (a message inside a card; `--block` for a standalone dashed box), `erp-empty` (the page-level block) | none | Ready |
 | Charts | `erp-donut-*`, `erp-heat*`, `erp-class-bar*`, `erp-cols` | none | Ready |
 | Form field | `erp-field` | `form-control`, `form-select`, `form-label`, `form-check` | To build |
-| Table | `erp-rc-table`, `erp-chart-table`, `erp-keep` | `table`, `table-*` | Partial |
+| Table | `erp-rc-table`, `erp-chart-table`, `erp-keep`; phone stacked rows (opt-in): `erp-table--stack` on the table + `erp-table-scroll--stack` on its `erp-table-scroll` wrapper, a `data-label` on every body cell (the column header text), `erp-stack-actions` on the action cell. Under 576px each row is a block with every value beside its label; the real table markup and headers stay. See `docs/competitive-research/PACKAGE_C_IMPLEMENTATION_SPEC.md` §4 | `table`, `table-*` | Partial (stacked rows: Grading scales) |
 | Alert / message | none yet | `alert`, `alert-*`, `btn-close` + Bootstrap Alert JS | To build |
 | Badge / pill | `erp-pill`, `erp-status` | `badge` | Partial |
 | Layout utilities | `erp-grid`, `erp-home-grid`, `erp-stack` (to add) | `row`, `col-*`, `d-flex`, `gap-*`, `m*-*`, `p*-*` | To build |

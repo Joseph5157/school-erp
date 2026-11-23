@@ -5,8 +5,8 @@
 {% include "partials/_page_header.html" with eyebrow="Assessments" title="Grading scales" purpose=academic_year.name primary_url=create_url primary_label="Add grading scale" only %}
 <p class="erp-note-text">Marks are the official result; grades are worked out from the percentage. Each Class/Grade uses at most one scale per Academic Year. Finalized assessments keep the grade bands they were finalized with.</p>
 <div class="erp-panel">
-<div class="erp-table-scroll" role="region" aria-label="Grading scales for {{ academic_year.name }}" tabindex="0">
-<table class="table erp-keep erp-grading-table">
+<div class="erp-table-scroll erp-table-scroll--stack" role="region" aria-label="Grading scales for {{ academic_year.name }}" tabindex="0">
+<table class="table erp-keep erp-grading-table erp-table--stack">
     <caption class="visually-hidden">Grading scales for {{ academic_year.name }}, with the Class/Grades each applies to, its grade bands and whether it is complete.</caption>
     <thead>
         <tr>
@@ -20,9 +20,9 @@
         {% for scale in scales %}
         <tr>
             <th scope="row" class="fw-semibold"><a href="{% url 'core:grading-scale-detail' scale.pk %}">{{ scale.name }}</a></th>
-            <td>{% if scale.is_complete %}{% include "partials/_status_badge.html" with label="Complete" tone="finalized" only %}{% else %}{% include "partials/_status_badge.html" with label="Needs a band from 0%" tone="pending" only %}{% endif %}</td>
-            <td>{% for link in scale.class_grade_links.all %}{{ link.class_grade }}{% if not forloop.last %}, {% endif %}{% empty %}&mdash;{% endfor %}</td>
-            <td>
+            <td data-label="Status">{% if scale.is_complete %}{% include "partials/_status_badge.html" with label="Complete" tone="finalized" only %}{% else %}{% include "partials/_status_badge.html" with label="Needs a band from 0%" tone="pending" only %}{% endif %}</td>
+            <td data-label="Applies to">{% for link in scale.class_grade_links.all %}{{ link.class_grade }}{% if not forloop.last %}, {% endif %}{% empty %}&mdash;{% endfor %}</td>
+            <td data-label="Grade bands">
                 {% if scale.boundaries.all %}
                 <ul class="erp-band-list">
                     {% for band in scale.boundaries.all %}<li class="text-nowrap">{{ band.label }} &ge; {{ band.min_percentage }}%</li>{% endfor %}

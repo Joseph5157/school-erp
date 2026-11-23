@@ -1347,6 +1347,34 @@ body.has-tabbar .erp-messages {
   }
 }
 
+/* Package C: opt-in stacked tables. On phones a table with erp-table--stack (in a wrapper with
+   erp-table-scroll--stack) shows each row as a block, every value beside its column name from the
+   cell's data-label, so nothing hides off to the side. The table markup stays a real table and the
+   headers stay in the accessibility tree; wider screens are unchanged. */
+@media (max-width: 575.98px) {
+  /* Both axes: with overflow-y hidden (the base wrapper), overflow-x: visible would compute to auto. */
+  .erp-content .erp-table-scroll--stack { overflow: visible; contain: none; scrollbar-gutter: auto; }
+  .erp-content .erp-table-scroll--stack > table.erp-table--stack,
+  .erp-content .erp-table-scroll--stack > table.erp-table--stack > tbody,
+  .erp-content .erp-table-scroll--stack > table.erp-table--stack > tbody > tr,
+  .erp-content .erp-table-scroll--stack > table.erp-table--stack > tbody > tr > * { display: block; width: 100%; min-width: 0; }
+  .erp-content .erp-table-scroll--stack > table.erp-table--stack > thead {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+  }
+  .erp-content .erp-table-scroll--stack > table.erp-table--stack > tbody > tr { padding: var(--erp-space-3) var(--erp-space-4); border-bottom: 1px solid var(--erp-rule); }
+  .erp-content .erp-table-scroll--stack > table.erp-table--stack > tbody > tr:last-child { border-bottom: 0; }
+  .erp-content .erp-table-scroll--stack > table.erp-table--stack > tbody > tr > * { padding: var(--erp-space-1, .25rem) 0; border: 0; text-align: start; }
+  .erp-content .erp-table-scroll--stack > table.erp-table--stack > tbody > tr > th[scope="row"] { padding-bottom: var(--erp-space-2); font-weight: 600; }
+  .erp-content .erp-table-scroll--stack > table.erp-table--stack > tbody > tr > th[scope="row"] a { display: inline-flex; align-items: center; min-height: 24px; }
+  .erp-content .erp-table-scroll--stack > table.erp-table--stack > tbody > tr > td[data-label] {
+    display: grid; grid-template-columns: minmax(5.5rem, 38%) minmax(0, 1fr); column-gap: var(--erp-space-3); align-items: start; justify-items: start; overflow-wrap: anywhere;
+  }
+  .erp-content .erp-table-scroll--stack > table.erp-table--stack > tbody > tr > td[data-label]::before { content: attr(data-label); color: var(--erp-ink-soft); font-size: .875rem; }
+  .erp-content .erp-table-scroll--stack > table.erp-table--stack .erp-row-context { display: none; }
+  .erp-content .erp-table-scroll--stack > table.erp-table--stack .erp-stack-actions a,
+  .erp-content .erp-table-scroll--stack > table.erp-table--stack .erp-stack-actions button { display: inline-flex; align-items: center; min-height: 44px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
