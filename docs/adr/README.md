@@ -51,3 +51,4 @@ ADRs should not replace approved product requirements or domain documentation. T
 - [0026 Consecutive-absence definition](0026-consecutive-absence-definition.md): "absent N school days in a row" for the admin report and class-teacher card.
 - [0027 Privacy-safe usage measurement](0027-privacy-safe-usage-measurement.md): daily aggregate counters with no person, record or value; off by default, written school approval, 180-day purge, operator-only report.
 - [0028 Behavioural tests for JavaScript](0028-javascript-behaviour-testing.md): test-only Python Playwright browser fixture tests for `static/js/erp.js`; no Node/npm toolchain, nothing on Railway; path-aware `js` CI job.
+- [0029 Guardian account recovery](0029-guardian-account-recovery.md): **Proposed**, not accepted. Options for guardian password recovery; recommends an improved office reset plus a "can't sign in" request, with channel self-service deferred. No recovery code is approved.
