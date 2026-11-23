@@ -35,6 +35,7 @@ from browser_tests.support.usage import (
     PLATFORMS,
     SIZE_BUCKETS,
     STANDALONE_DISPLAY,
+    beacon_shaped,
     events,
     payload,
 )
@@ -59,29 +60,65 @@ class UsagePage(FixturePage):
 
     def setUp(self):
         super().setUp()
-        self.requests = []  # every request the page made to the app, by path (served, held or failed)
+        # Every request the page makes, served, held, failed or blocked, with its body.
+        self.request_log = []
+        self.context.on("request", self._log_request)
         self.fetches = []  # every fetch call the page made, from FETCH_SPY, across page loads
         self.context.expose_binding("btRecordFetch", lambda source, record: self.fetches.append(record))
-        self.context.on("request", lambda request: self.requests.append(
-            request.url[len(ORIGIN):] if request.url.startswith(ORIGIN) else request.url))
+
+    def _log_request(self, request):
+        try:
+            body = request.post_data
+        except Exception:  # a binary body is never a beacon
+            body = None
+        self.request_log.append({"request": request, "url": request.url, "method": request.method, "body": body})
 
     def tearDown(self):
-        # Every beacon a test produced, held or lost on the way, passes the full privacy check,
-        # whatever the test itself was about.
+        # Every beacon-shaped request the test produced, wherever it was sent and whether it
+        # arrived or was lost, passes the full privacy check exactly once. A violation fails the
+        # test (through the harness's guard) and is written to its failure records; when the test
+        # has already failed, its own failure is the one reported.
         try:
-            if not self._failed():
-                for held in self.beacons():
-                    self.assert_allowed(held)
-                for sent in self.spied():
-                    self.assert_payload(sent["body"])
-                    self.assertEqual(sent["headers"], BEACON_HEADERS)
-                    self.assertEqual(sent["method"], BEACON_METHOD)
-        finally:
-            super().tearDown()
+            self.guard_violations.extend(self.beacon_violations())
+        except Exception as error:  # for example a crashed page
+            self.guard_violations.append(f"the beacon privacy check could not run: {error!r}")
+        super().tearDown()
+
+    def collect_reports(self):
+        """Wait until the test has received every fetch report the page has made (a handshake)."""
+        self.page.evaluate("() => Promise.all(window.btReports || []).then(() => true)")
+
+    def beacon_pairs(self):
+        """Each beacon-shaped request with the fetch call that made it: the n-th request with a
+        given body pairs with the n-th fetch of that body (both are in the order the page sent)."""
+        self.collect_reports()
+        unmatched = list(self.fetches)
+        pairs = []
+        for entry in self.request_log:
+            if not beacon_shaped(entry["body"]):
+                continue
+            record = next((f for f in unmatched if f["body"] == entry["body"]), None)
+            if record is not None:
+                unmatched.remove(record)
+            pairs.append((entry, record))
+        return pairs, [f for f in unmatched if beacon_shaped(f["body"])]
+
+    def beacon_violations(self):
+        pairs, without_request = self.beacon_pairs()
+        violations = []
+        for entry, record in pairs:
+            try:
+                self.check_beacon(entry, record)
+            except AssertionError as error:
+                violations.append(f"{entry['method']} {entry['url']}: {error}")
+        for record in without_request:
+            violations.append(f"a beacon-shaped fetch to {record['href']} made no request")
+        return violations
 
     def assert_only_requests(self, allowed):
         """The page made no application request beyond the fixture, static and listed ones."""
-        self.assertEqual(set(self.requests) - set(allowed), set(), "unexpected application requests")
+        paths = {e["url"][len(ORIGIN):] if e["url"].startswith(ORIGIN) else e["url"] for e in self.request_log}
+        self.assertEqual(paths - set(allowed), set(), "unexpected application requests")
 
     # --- beacons ----------------------------------------------------------------------------
 
@@ -93,9 +130,9 @@ class UsagePage(FixturePage):
         return self.beacons()[already]
 
     def spied(self):
-        """Every fetch to the beacon URL in this test, including ones that never arrived."""
-        self.pump(0.05)  # take in the observer's latest reports
-        return [f for f in self.fetches if f["url"].split("?")[0].endswith(BEACON)]
+        """Every fetch to the beacon path in this test, including ones that never arrived."""
+        self.collect_reports()
+        return [f for f in self.fetches if re.sub(r"[?#].*$", "", f["href"]) == ORIGIN + BEACON]
 
     def hide(self):
         """The page is hidden (switching app or tab): erp.js flushes on visibilitychange."""
@@ -154,20 +191,27 @@ class UsagePage(FixturePage):
         for canary in NEVER_SENT:
             self.assertNotIn(canary, text, f"{canary!r} must never be sent")
 
-    def assert_allowed(self, held):
-        """The full check on one held beacon: its envelope, then its body."""
-        self.assertEqual(held.path, BEACON, "exactly the beacon path, with no query string")
-        self.assertEqual(held.url, ORIGIN + BEACON)
-        self.assertEqual(held.method, BEACON_METHOD)
+    def check_beacon(self, entry, record):
+        """The full check on one beacon request: destination, envelope, the page's headers, body."""
+        self.assertEqual(entry["url"], ORIGIN + BEACON, "a beacon goes only to /u/ on this origin, with no query")
+        self.assertEqual(entry["method"], BEACON_METHOD)
+        self.assertIsNotNone(record, "the beacon was sent by the page's fetch")
+        self.assertEqual(record["href"], ORIGIN + BEACON, "no query or fragment on the beacon URL")
+        self.assertEqual(record["method"], BEACON_METHOD)
         # The headers the page itself set, compared exactly (Chromium's own are not).
-        page_set = [f["headers"] for f in self.spied() if f["body"] == held.body]
-        self.assertTrue(page_set, "the beacon was sent by the page's fetch")
-        for headers in page_set:
-            self.assertEqual(headers, BEACON_HEADERS)
-        for name, value in BEACON_HEADERS.items():
-            self.assertEqual(held.headers.get(name.lower()), value)
-        self.assertNotIn("x-erp-client", held.headers)
-        self.assert_payload(held.body)
+        self.assertEqual(record["headers"], BEACON_HEADERS)
+        held = next((h for h in self.held if h.request is entry["request"]), None)
+        if held is not None:  # it arrived: the headers as sent
+            for name, value in BEACON_HEADERS.items():
+                self.assertEqual(held.headers.get(name.lower()), value)
+            self.assertNotIn("x-erp-client", held.headers)
+        self.assert_payload(entry["body"])
+
+    def assert_allowed(self, held):
+        """The full check on one held beacon, inside a test (tearDown checks every beacon again)."""
+        pairs, _ = self.beacon_pairs()
+        entry, record = next((e, r) for e, r in pairs if e["request"] is held.request)
+        self.check_beacon(entry, record)
 
     # --- page helpers -----------------------------------------------------------------------
 

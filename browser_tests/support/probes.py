@@ -66,3 +66,12 @@ class IsolationProbe(FixturePage):
         self.open("blank.html")
         self.assertIsNone(self.page.evaluate("localStorage.getItem('bt-isolation')"))
         self.assertEqual(self.page.evaluate("document.cookie"), "")
+
+
+class GuardViolationProbe(FixturePage):
+    def test_a_teardown_check_records_a_violation(self):
+        self.open("blank.html")
+
+    def tearDown(self):
+        self.guard_violations.append("bt-probe violation")
+        super().tearDown()

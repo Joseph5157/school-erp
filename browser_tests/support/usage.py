@@ -79,13 +79,17 @@ FETCH_SPY = """
   window.fetch = function (url, init) {
     const record = {
       url: String(url),
+      href: new URL(String(url), location.href).href, // the exact destination, fragment included
       method: (init && init.method) || "GET",
       headers: Object.assign({}, (init && init.headers) || {}),
       keepalive: !!(init && init.keepalive),
       body: init && typeof init.body === "string" ? init.body : null,
     };
     window.btFetches.push(record);
-    if (window.btRecordFetch) window.btRecordFetch(record); // to the test, across page loads
+    // To the test, across page loads. Each report is a promise the test can wait for (a handshake,
+    // not a sleep): window.btReported resolves once the test has received every report so far.
+    window.btReports = window.btReports || [];
+    if (window.btRecordFetch) window.btReports.push(window.btRecordFetch(record));
     return real.apply(this, arguments);
   };
 })();
@@ -105,6 +109,17 @@ STANDALONE_DISPLAY = r"""
   };
 })();
 """
+
+
+def beacon_shaped(body):
+    """A request body that looks like a usage beacon, whatever its destination."""
+    if not body:
+        return False
+    try:
+        data = json.loads(body)
+    except (TypeError, ValueError):
+        return False
+    return isinstance(data, dict) and ("e" in data or len(set(data) & PAYLOAD_KEYS) >= 2)
 
 
 def payload(held):
