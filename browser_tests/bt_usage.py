@@ -43,6 +43,11 @@ from browser_tests.support.usage import (
 MARKS_SAVE = "/marks/autosave/"
 ATTENDANCE_SAVE = "/attendance/autosave/"
 ATTENDANCE_BULK = "/attendance/present/"
+# The exact static files fixture pages load. Fixture pages are allowed only when the test opens
+# them; functional requests only when the test declares them (method and path); /u/ only through
+# the strict beacon check. Every other application request fails the test in tearDown.
+STATIC_FILES = {("GET", "/static/js/erp.js"), ("GET", "/static/vendor/htmx/2.0.4/htmx.min.js"),
+                ("GET", "/static/pwa/icon-192.png")}
 # The fixture and static files each page needs; the off and GPC tests allow nothing else.
 MARKS_PAGE = {"/fixtures/marks.html", "/static/vendor/htmx/2.0.4/htmx.min.js", "/static/js/erp.js"}
 ATTENDANCE_PAGE = {"/fixtures/attendance.html", "/static/vendor/htmx/2.0.4/htmx.min.js", "/static/js/erp.js"}
@@ -64,6 +69,7 @@ class UsagePage(FixturePage):
         self.request_log = []
         self.context.on("request", self._log_request)
         self.fetches = []  # every fetch call the page made, from FETCH_SPY, across page loads
+        self.allowed = set(STATIC_FILES)  # (method, path) the test may request, besides /u/
         self.context.expose_binding("btRecordFetch", lambda source, record: self.fetches.append(record))
 
     def _log_request(self, request):
@@ -72,6 +78,14 @@ class UsagePage(FixturePage):
         except Exception:  # a binary body is never a beacon
             body = None
         self.request_log.append({"request": request, "url": request.url, "method": request.method, "body": body})
+
+    def allow(self, method, path):
+        """Declare a functional request this test makes (exact method and path, no query)."""
+        self.allowed.add((method, path))
+
+    def open(self, fixture, wait_until="load"):
+        self.allowed.add(("GET", f"/fixtures/{fixture}"))
+        self.page.goto(f"{ORIGIN}/fixtures/{fixture}", wait_until=wait_until)
 
     def tearDown(self):
         # Every beacon-shaped request the test produced, wherever it was sent and whether it
@@ -95,16 +109,19 @@ class UsagePage(FixturePage):
         unmatched = list(self.fetches)
         pairs = []
         for entry in self.request_log:
-            if not beacon_shaped(entry["body"]):
-                continue
+            if entry["url"] != ORIGIN + BEACON:
+                continue  # anything else goes through the request audit in beacon_violations
             record = next((f for f in unmatched if f["body"] == entry["body"]), None)
             if record is not None:
                 unmatched.remove(record)
             pairs.append((entry, record))
-        return pairs, [f for f in unmatched if beacon_shaped(f["body"])]
+        return pairs, [f for f in unmatched if f["href"] == ORIGIN + BEACON]
 
     def beacon_violations(self):
         pairs, without_request = self.beacon_pairs()
+        if without_request:
+            # A report can reach the test before its request event: one more handshake, then look again.
+            pairs, without_request = self.beacon_pairs()
         violations = []
         for entry, record in pairs:
             try:
@@ -112,7 +129,16 @@ class UsagePage(FixturePage):
             except AssertionError as error:
                 violations.append(f"{entry['method']} {entry['url']}: {error}")
         for record in without_request:
-            violations.append(f"a beacon-shaped fetch to {record['href']} made no request")
+            violations.append(f"a beacon fetch to {record['href']} made no request")
+        beacon_requests = {id(entry) for entry, _ in pairs}
+        for entry in self.request_log:
+            if id(entry) in beacon_requests:
+                continue
+            path = entry["url"][len(ORIGIN):] if entry["url"].startswith(ORIGIN) else entry["url"]
+            if (entry["method"], path) not in self.allowed:
+                violations.append(f"unexpected application request: {entry['method']} {entry['url']}")
+            elif beacon_shaped(entry["body"]):
+                violations.append(f"a beacon-shaped body through {entry['method']} {path}")
         return violations
 
     def assert_only_requests(self, allowed):
@@ -235,6 +261,7 @@ class UsagePage(FixturePage):
 
 class OffAndPrivacyControlTests(UsagePage):
     def test_u2_with_measurement_off_nothing_is_ever_sent(self):
+        self.allow("POST", MARKS_SAVE)
         self.open("marks.html")  # no data-erp-usage on <body>
         self.enter_score(101, "12")
         save = self.next_request(MARKS_SAVE)
@@ -247,6 +274,7 @@ class OffAndPrivacyControlTests(UsagePage):
         self.assert_only_requests(MARKS_PAGE | {MARKS_SAVE})
 
     def test_u1_with_gpc_on_nothing_is_queued_or_sent(self):
+        self.allow("POST", MARKS_SAVE)
         self.context.add_init_script("window.btGpc = true;")
         self.open("usage_marks.html")
         self.enter_score(101, "12")
@@ -280,10 +308,12 @@ class OffAndPrivacyControlTests(UsagePage):
         return bulk
 
     def test_bulk_present_carries_the_device_header_when_measured(self):
+        self.allow("POST", ATTENDANCE_BULK)
         bulk = self.mark_present("usage_attendance.html")
         self.assertEqual(bulk.headers.get("x-erp-client"), "device=phone;display=browser;platform=other")
 
     def test_bulk_present_has_no_device_header_with_measurement_off(self):
+        self.allow("POST", ATTENDANCE_BULK)
         bulk = self.mark_present("attendance.html")
         self.assertNotIn("x-erp-client", bulk.headers)
         self.hide()
@@ -291,6 +321,7 @@ class OffAndPrivacyControlTests(UsagePage):
         self.assert_only_requests(ATTENDANCE_PAGE | {ATTENDANCE_BULK})
 
     def test_bulk_present_has_no_device_header_under_gpc(self):
+        self.allow("POST", ATTENDANCE_BULK)
         self.context.add_init_script("window.btGpc = true;")
         bulk = self.mark_present("usage_attendance.html")
         self.assertNotIn("x-erp-client", bulk.headers)
@@ -319,6 +350,7 @@ class FlushTests(UsagePage):
         self.assertEqual([f["keepalive"] for f in self.spied()], [True], "the send must survive the page closing")
 
     def test_u3_the_queue_keeps_only_the_newest_20_events(self):
+        self.allow("POST", MARKS_SAVE)
         self.open("usage_marks.html")
         expected = [("page", "viewed", None, None), ("marks_entry", "started", None, "1-20")]
         self.fail_on_arrival(MARKS_SAVE)
@@ -375,6 +407,7 @@ class FlushTests(UsagePage):
 
 class DeviceTests(UsagePage):
     def test_u6_u7_each_event_keeps_its_device_and_each_send_has_one_set(self):
+        self.allow("POST", MARKS_SAVE)
         self.open("usage_marks.html")  # page viewed and marks started at 390 px: phone
         self.page.set_viewport_size({"width": 1280, "height": 800})
         self.enter_score(101, "12")  # desktop
@@ -429,6 +462,7 @@ class DeviceTests(UsagePage):
 
 class PersonalDataTests(UsagePage):
     def test_u8_a_beacon_holds_only_allowed_values_and_no_personal_data(self):
+        self.allow("POST", MARKS_SAVE)
         self.open("usage_marks.html")
         self.enter_score(101, "12")
         save = self.next_request(MARKS_SAVE)
@@ -454,12 +488,13 @@ class DurationBucketTests(UsagePage):
                   (180_000, "3-10m"), (600_000, "10-30m"), (1_800_000, ">30m"))
 
     def test_u9_teacher_home_completed_carries_the_bucket_of_the_load_time(self):
+        self.allow("GET", "/held/hero.png")
         self.page.clock.pause_at(1_800_000_000_000)  # only the test moves time
         for millis, bucket in self.BOUNDARIES:
             with self.subTest(seconds=millis / 1000):
                 since = len(self.beacons())
                 images = len(self.requests_to("/held/"))
-                self.page.goto("https://erp.test/fixtures/usage_teacher_home.html", wait_until="domcontentloaded")
+                self.open("usage_teacher_home.html", wait_until="domcontentloaded")
                 image = self.next_new("/held/", images)  # holds the page's load event
                 started_at = self.page.evaluate("performance.now()")
                 self.page.clock.run_for(millis - started_at)
@@ -471,6 +506,7 @@ class DurationBucketTests(UsagePage):
                                  [("teacher_home", "started", None, None), ("teacher_home", "completed", bucket, None)])
 
     def test_u9_marks_completed_carries_the_bucket_and_size(self):
+        self.allow("POST", MARKS_SAVE)
         self.page.clock.pause_at(1_800_000_000_000)
         for millis, bucket in ((4_900, "<5s"), (5_000, "5-15s"), (1_800_000, ">30m")):
             with self.subTest(seconds=millis / 1000):
@@ -506,6 +542,7 @@ class WorkflowTests(UsagePage):
             self.assert_allowed(beacon)
 
     def test_marks_entry_starts_with_work_left_and_completes_once(self):
+        self.allow("POST", MARKS_SAVE)
         self.open("usage_marks.html")
         self.enter_score(101, "12")
         self.next_request(MARKS_SAVE).respond(200, reply("marks_saved_last.html"), FRAGMENT)
@@ -517,6 +554,7 @@ class WorkflowTests(UsagePage):
                          [("marks_entry", "started", None, "1-20"), ("marks_entry", "completed", bucket, "1-20")])
 
     def test_a_sheet_with_no_work_left_neither_starts_nor_completes(self):
+        self.allow("POST", MARKS_SAVE)
         # The server leaves out data-erp-usage-size when nothing is left to enter.
         html = (FIXTURES / "usage_marks.html").read_text(encoding="utf-8").replace(' data-erp-usage-size="1-20"', "")
         self.page.route("**/fixtures/usage_marks.html", lambda route: route.fulfill(
@@ -529,6 +567,7 @@ class WorkflowTests(UsagePage):
         self.assertIn(("marks_entry", "attempt", None, None), sent)
 
     def test_marks_save_outcomes_are_counted_and_a_success_sends_at_once(self):
+        self.allow("POST", MARKS_SAVE)
         self.open("usage_marks.html")
         self.fail_on_arrival(MARKS_SAVE)
         self.enter_score(101, "12")
@@ -556,6 +595,8 @@ class WorkflowTests(UsagePage):
             self.assert_allowed(beacon)
 
     def test_attendance_save_outcomes_are_counted_and_a_success_sends_at_once(self):
+        self.allow("POST", ATTENDANCE_SAVE)
+        self.allow("POST", ATTENDANCE_BULK)
         self.open("usage_attendance.html")
         self.fail_on_arrival(ATTENDANCE_SAVE)
         self.page.check("#id_status_201_0")
