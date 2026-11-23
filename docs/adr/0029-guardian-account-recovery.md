@@ -50,7 +50,7 @@ Option A details: verification in person with documents; a callback to the numbe
 Guardian record only confirms the request and books the visit (Appendix A); method stored as a choice; a
 one-time temporary password printed or shown **in person**, with a short expiry; forced change at first sign-in (exists); HISTORY audit shown on the guardian profile.
 
-## Proposed decision
+## Decision
 
 **Adopt A + G now. Defer B, C, D and F. Reject E.**
 

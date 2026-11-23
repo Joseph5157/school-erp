@@ -5,7 +5,7 @@
 - **Gap:** G-06 (GUA-01 activation and recovery, ANA-05 guardian account inactive), the last open P1 gap
   (`PACKAGE_C_CLOSEOUT.md` §7, `OPTION_A_B_BENCHMARK_CLOSEOUT.md` §2.4, §4).
 - **Companion documents:** [G06_RECOVERY_THREAT_MODEL.md](G06_RECOVERY_THREAT_MODEL.md),
-  [ADR 0029 (Proposed)](../adr/0029-guardian-account-recovery.md),
+  [ADR 0029 (Accepted)](../adr/0029-guardian-account-recovery.md),
   [G06_NEVER_SIGNED_IN_SPEC.md](G06_NEVER_SIGNED_IN_SPEC.md).
 - **Not found:** the brief cited `docs/audits/modern-web-05-login-password.md`. There is no `docs/audits/`
   directory and no file with that name on this tree, so it was not used.
