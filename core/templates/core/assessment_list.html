@@ -23,20 +23,20 @@
 <p class="erp-note-text">Showing assessments that match the filters. <a href="{% url 'core:academic-year-assessments' academic_year.pk %}">Clear filters</a></p>
 {% endif %}
 <div class="erp-panel">
-<div class="erp-table-scroll" role="region" aria-label="Assessments for {{ academic_year.name }}" tabindex="0">
-<table class="table erp-assessment-table erp-assessment-list-table erp-rows-link">
+<div class="erp-table-scroll erp-table-scroll--stack" role="region" aria-label="Assessments for {{ academic_year.name }}" tabindex="0">
+<table class="table erp-assessment-table erp-assessment-list-table erp-rows-link erp-table--stack">
     {% include "partials/_table_head.html" with table=table caption="Assessments for "|add:academic_year.name only %}
     <tbody>
         {% for assessment in assessments %}
         <tr>
             <th scope="row" class="fw-semibold"><a class="erp-row-link" href="{% url 'core:assessment-detail' assessment.pk %}">{{ assessment.name }}</a></th>
-            <td>{% include "partials/_status_badge.html" with label=assessment.get_status_display tone=assessment.status|lower only %}</td>
-            <td>{{ assessment.subject_display }}</td>
-            <td class="text-nowrap">{{ assessment.section }}</td>
-            <td class="text-nowrap">{{ assessment.assessment_date }}</td>
-            <td class="text-nowrap">{{ assessment.term.name }}</td>
-            <td class="erp-num">{{ assessment.maximum_marks }}</td>
-            <td class="erp-num">{{ assessment.pass_mark|default:"&mdash;" }}</td>
+            <td data-label="Status">{% include "partials/_status_badge.html" with label=assessment.get_status_display tone=assessment.status|lower only %}</td>
+            <td data-label="Subject">{{ assessment.subject_display }}</td>
+            <td class="text-nowrap" data-label="Section">{{ assessment.section }}</td>
+            <td class="text-nowrap" data-label="Date">{{ assessment.assessment_date }}</td>
+            <td class="text-nowrap" data-label="Term">{{ assessment.term.name }}</td>
+            <td class="erp-num" data-label="Max">{{ assessment.maximum_marks }}</td>
+            <td class="erp-num" data-label="Pass">{{ assessment.pass_mark|default:"&mdash;" }}</td>
         </tr>
         {% empty %}
         <tr><td colspan="8">{% if filtered %}{% include "partials/_empty.html" with icon="assessments" title="No assessments match these filters." inline=True only %}{% else %}{% include "partials/_empty.html" with icon="assessments" title="No assessments have been planned for this Academic Year yet." inline=True only %}{% endif %}</td></tr>
