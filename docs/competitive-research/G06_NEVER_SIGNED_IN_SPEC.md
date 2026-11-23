@@ -1,10 +1,13 @@
 # G-06 spec: guardians who have never signed in (ANA-05)
 
-- **Status:** draft r1, awaiting product-owner approval. Not approved for build.
+- **Status:** draft r2, awaiting product-owner approval. Not approved for build. r2 applies the security
+  review of PR #301 (N1–N4): no reset link in v1, chip renamed, teacher-parent note, exact permission check.
 - **Baseline:** `origin/main` c6aad3d.
 - **Risk tier:** **High** (guardian access and roles and permissions, `IMPLEMENTATION_WORKFLOW.md` §3).
 - **Independent of recovery.** This list uses only existing data and existing actions. It does not depend
-  on any decision in [ADR 0029](../adr/0029-guardian-account-recovery.md) and must not wait for it.
+  on any decision in [ADR 0029](../adr/0029-guardian-account-recovery.md) and must not wait for it. One
+  dependency runs the other way: the "Reset password" link is added only after the improved reset in
+  ADR 0029 lands (§5).
 - **Relies on:** ADR 0004 (authorization foundation), ADR 0013 (accounts, grants, reviews, sessions),
   ADR 0024 (ended relationships revoke access), ADR 0027 (no new measurement). **No new ADR needed.**
 - **Research:** [G06_PHASE0_GUARDIAN_ACCESS_RESEARCH.md](G06_PHASE0_GUARDIAN_ACCESS_RESEARCH.md) §5.
@@ -12,7 +15,7 @@
 ## 1. Outcome
 
 An office user can open one page that lists guardian portal accounts that were created but never used,
-filter it by class and section, and go straight to the guardian's profile or the existing password reset.
+filter it by class and section, and go straight to the guardian's profile.
 It makes activation follow-up possible today.
 
 ## 2. Which accounts count
@@ -30,9 +33,14 @@ A grant that is pending a date-based review (ADR 0013 OD-8) still counts: the ac
 The row says "Access under review" so the office does not chase a family whose access is paused
 (`core/guardian_access.py:128-155`).
 
-**Second view, same page (OD-N3):** a chip "Signed in, password not changed" lists accounts with
-`last_login` set and `must_change_password = True` (`accounts/models.py:28`). These guardians used the slip
-once but never finished activation. Same rules otherwise.
+**Second view, same page (OD-N3):** a chip "Temporary password still active" lists accounts with
+`last_login` set and `must_change_password = True` (`accounts/models.py:28`). These guardians signed in with
+a temporary password but never chose their own. It includes accounts the office reset after earlier use, not
+only new accounts. Same rules otherwise.
+
+**Teacher who is also a parent:** `last_login` belongs to the login, not the role. A teacher-parent who has
+signed in as a teacher never appears in either view, even if they never opened the Guardian Portal. This is
+by design: the list tracks unused logins, not unused portal areas.
 
 **Excluded:** revoked links; inactive logins; accounts whose only grants are revoked or whose relationships
 have ended; guardians with no account (already counted by the Parents tab's missing-accounts card,
@@ -42,7 +50,7 @@ have ended; guardians with no account (already counted by the Parents tab's miss
 
 | Filter | Values | Rule |
 | --- | --- | --- |
-| Status chip | Never signed in (default); Signed in, password not changed | §2 |
+| Status chip | Never signed in (default); Temporary password still active | §2 |
 | Class | Class grades | A linked, granted student has a current placement in that class. Same placement rule as the Parents tab (`core/home_parents.py:24-43`). |
 | Section | Sections of the chosen class | Same, by section |
 
@@ -71,18 +79,24 @@ stay one tap away on the guardian profile, where the existing permissions alread
 | Action | Target | Shown when |
 | --- | --- | --- |
 | Open guardian | `core:guardian-detail` (`core/views.py:3627-3673`) | always |
-| Reset password | `core:guardian-account-reset-password` (`core/views.py:4138-4163`), its own confirm page | viewer has `core.reset_guardian_password` |
 
-The reset link only opens the existing confirm page. The page has no POST, no bulk action and no message
-sending.
+v1 ships **without** a "Reset password" link. Today's reset records no method or reason, gives a
+never-expiring temporary password and does not clear lockouts (ADR 0029 Context). A one-tap path from a
+list of unused accounts to that reset would invite unverified resets. The link (target
+`core:guardian-account-reset-password`, shown only with `core.reset_guardian_password`) is added in a later
+PR once the improved reset in ADR 0029 has landed. Staff can still reset from the guardian profile as today.
+
+The page has no POST, no bulk action and no message sending.
 
 ## 6. Permission
 
 - **Page gate:** `core.view_guardianaccount` **and** `core.view_guardian`. Both exist.
   `view_guardianaccount` already gates the portal-account section of the guardian profile
   (`core/views.py:3632`); `view_guardian` gates guardian names (`core/data_access.py:17`;
-  `docs/PERMISSIONS.md:29`). Implement with `administrator_required` (`core/authorization.py:14-26`) for
-  one and an explicit check for the other, or a small two-permission variant used the same way.
+  `docs/PERMISSIONS.md:29`). Enforce both with the existing decorator given a tuple:
+  `@administrator_required(("core.view_guardianaccount", "core.view_guardian"))`. It wraps Django's
+  `permission_required`, which requires every permission in the tuple (`core/authorization.py:14-26`); the
+  same form already guards `student_guardian_add` (`core/views.py:3536`).
 - **Children column and class filter:** also need `core.view_student` (`core/data_access.py:18`), the
   same rule as `_without_unseen_children` (`core/views.py:3390-3398`). Without it the column is hidden and
   class or section parameters are ignored, so a filter cannot reveal which class a guardian's child is in.
@@ -128,11 +142,11 @@ added (that is an ADR 0027 enum change and out of scope).
 **Permission boundaries**
 
 - Allowed: a user with `view_guardianaccount` + `view_guardian` gets 200.
-- Refused: missing either permission gets 403; a teacher gets 403; a guardian login gets 403; anonymous is
-  redirected to sign-in.
+- Refused: a user with only `view_guardianaccount` gets 403; a user with only `view_guardian` gets 403
+  (two separate tests); a teacher gets 403; a guardian login gets 403; anonymous is redirected to sign-in.
 - Without `view_student`: no children column, and `?class=` and `?section=` are ignored (same rows as
   unfiltered).
-- The Reset password link appears only with `reset_guardian_password`.
+- No "Reset password" link is rendered for any user in v1.
 - The Parents tab link and count appear only when §6 passes.
 - POST to the route returns 405.
 
@@ -148,6 +162,8 @@ added (that is an ADR 0027 enum change and out of scope).
 - Inactive (archived) student: guardian still listed with no class filter; not matched by a class filter.
 - Guardian with two children in two sections matches either section and appears once.
 - A teacher who is also a guardian with a null `last_login` is listed once.
+- A teacher who is also a guardian and has signed in as a teacher is not listed (by design, §2).
+- An account reset by the office after earlier use appears under "Temporary password still active".
 - Query count is fixed for 1 and 25 rows (no per-row queries).
 
 **Inventory and guards**
@@ -160,7 +176,7 @@ added (that is an ADR 0027 enum change and out of scope).
 - [ ] Spec approved and OD-N1 to OD-N4 recorded.
 - [ ] Page lists exactly the §2 accounts; both chips work.
 - [ ] Class and section filters work with `view_student` and are ignored without it.
-- [ ] Links open the existing guardian profile and reset confirm page; nothing is changed from this page.
+- [ ] Rows link to the existing guardian profile only; no reset link; nothing is changed from this page.
 - [ ] No contact data, password or security event shown.
 - [ ] Parents tab and guardian list links appear only for permitted users.
 - [ ] Phone (360, 390) and desktop checked; rows stack as cards.
@@ -172,7 +188,7 @@ added (that is an ADR 0027 enum change and out of scope).
 - Sending any message, reminder or invitation (WhatsApp, SMS, email).
 - Bulk reset, bulk revoke or any bulk action.
 - Exporting the list.
-- Recovery changes of any kind (ADR 0029).
+- Recovery changes of any kind (ADR 0029), including the reset link until the improved reset lands.
 - Guardians with no account (the Parents tab already shows them by section).
 - Per-guardian activity beyond "never signed in" (ANA-06 read tracking).
 - New usage counters.
@@ -183,5 +199,6 @@ added (that is an ADR 0027 enum change and out of scope).
 | --- | --- | --- | --- |
 | OD-N1 | Permission | Existing `view_guardianaccount` + `view_guardian`; a new dedicated permission | Existing permissions |
 | OD-N2 | Inactive logins | Exclude; show behind a filter | Exclude (they cannot sign in; reactivation is a separate task) |
-| OD-N3 | "Signed in, password not changed" chip | Include; leave out | Include (no model change, closes the same follow-up gap) |
+| OD-N3 | "Temporary password still active" chip (includes reset accounts) | Include; leave out | Include (no model change, closes the same follow-up gap) |
+| OD-N5 | Reset link on the list | Add in v1; add after the improved reset (ADR 0029) lands | After the improved reset |
 | OD-N4 | Phone number column for follow-up calls | Omit; show to users with `view_guardian` | Omit in v1; the profile is one tap away |

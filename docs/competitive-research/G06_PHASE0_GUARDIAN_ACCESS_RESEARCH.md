@@ -184,4 +184,9 @@ office interview is recorded.
 | P0-4 | Account owner is not notified of a reset or password change | Yes, and needs a channel |
 | P0-5 | No guardian-facing "I can't sign in" path | Yes |
 | P0-6 | No verified contact data for any channel | Yes, plus provider and legal checks |
-| P0-7 | No global or per-source throttle | Yes, for any public recovery endpoint |
+| P0-7 | Both throttle rules are keyed on the username; no cap per source across usernames and no global cap (`accounts/security.py:71-78`) | Yes, for any public recovery endpoint |
+| P0-8 | Office reset does not clear a sign-in lockout (`core/guardian_accounts.py:223-235`), and throttled attempts keep extending it (`accounts/forms.py:44`). **Live bug** | No. Separate small fix PR (ADR 0029 R16) |
+| P0-9 | The forced change accepts the temporary password as the new one (`config/settings.py:177-190`). **Live bug** | No. Separate small fix PR (ADR 0029 R19) |
+| P0-10 | `Guardian.phone` and `email` change with no audit event (`core/views.py:3521-3532`), yet a callback relies on the phone | Yes (ADR 0029 R17, R18) |
+
+Revision r2 (security review of PR #301): P0-7 corrected, P0-8 to P0-10 added.

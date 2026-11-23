@@ -1,8 +1,9 @@
 # ADR 0029: Guardian account recovery
 
-Status: **Proposed**, 2026-11-23 (G-06 Phase 0). Not accepted. No recovery code may be written on the
-strength of this document. Acceptance needs the product owner's decisions below and the conditions in
-"What would make this acceptable".
+Status: **Proposed**, 2026-11-23 (G-06 Phase 0; r2 applies the independent security review of PR #301,
+findings F1–F13). Not accepted. No recovery code may be written on the strength of this document.
+Acceptance needs the product owner's decisions below and the conditions in "What would make this
+acceptable".
 
 ## Context
 
@@ -11,8 +12,11 @@ strength of this document. Acceptance needs the product owner's decisions below 
 - A guardian who forgets the password, or loses the slip, has one path: the office reset
   (`core/views.py:4138-4163`). It ends all sessions and forces a change (`core/guardian_accounts.py:223-235`),
   but records no reason or verification method, is a ROUTINE event purged after 365 days
-  (`accounts/models.py:102-111`), and nobody tells the account owner.
-- Temporary passwords never expire. There is no guardian-facing "I can't sign in" path.
+  (`accounts/models.py:102-111`), does not clear a sign-in lockout, and nobody tells the account owner.
+- Temporary passwords never expire, and the forced change accepts the temporary password as the new one
+  (`config/settings.py:177-190` has no rule against it). There is no guardian-facing "I can't sign in" path.
+- `Guardian.phone` can be edited by anyone with `core.change_guardian` and no event is recorded
+  (`core/views.py:3521-3532`; `accounts/models.py:72-100` has no contact-change event type).
 - There is no guardian channel. Email is off without a provider (`config/deployment_safety.py:31-42`);
   Telegram is operator-only (`config/telegram_alerts.py:1-5`); WhatsApp is staff-sent ASSIST only and SMS
   is not built (ADR 0015). Guardian phone and email are optional and unverified (`core/models.py:532-533`).
@@ -22,7 +26,7 @@ strength of this document. Acceptance needs the product owner's decisions below 
 - Option B §9.3 says a self-service design opens only when the sign-in failure rate G ≥ 20% **and** the
   office confirms resets are a recurring burden. Measurement is off by default (ADR 0027), so neither
   condition has evidence yet.
-- Risk tier is Critical. Threat model: `docs/competitive-research/G06_RECOVERY_THREAT_MODEL.md`.
+- Risk tier is Critical. Threat model: `docs/competitive-research/G06_RECOVERY_THREAT_MODEL.md` (T1–T23).
   Current state: `docs/competitive-research/G06_PHASE0_GUARDIAN_ACCESS_RESEARCH.md`.
 
 ## Options
@@ -31,108 +35,143 @@ Ratings: + good, ~ mixed, − poor.
 
 | | A. Office-assisted, improved | B. Email link or code | C. SMS OTP | D. WhatsApp OTP | E. Knowledge questions | F. Printed recovery codes | G. Hybrid: guardian request + office approval |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| **Security** | + Identity checked by a person who knows the family; risk is insider misuse (T7) | ~ Only as strong as an unverified, often shared inbox (T5, T16) | − SIM swap, interception, recycled numbers, shared phones (T3, T6) | ~ Better transport than SMS; still the phone holder (T3, T13) | − Facts known to relatives and classmates (T1, T2) | ~ Strong if kept private; a found sheet is a bearer secret | + Office still decides; the request adds a trail and rate limits |
-| **Privacy** | + No new data or processor | ~ New processor; email must be verified | − New processor; number shared with carrier and gateway | − Number and timing shared with Meta and a BSP | − Stores more family facts | + No new data | + No new data if the request carries no contact details |
+| **Security** | + Identity checked by a person; risks are insider misuse and a tampered phone record (T7, T16) | ~ Only as strong as an unverified, often shared inbox (T5, T16) | − SIM swap, interception, recycled numbers, shared phones (T3, T6) | ~ Better transport than SMS; still the phone holder (T3, T13) | − Facts known to relatives and classmates (T1, T2) | ~ Strong if kept private; a found sheet is a bearer secret | ~ Office still decides; adds an anonymous public form to defend (T18) |
+| **Privacy** | + No new data or processor | ~ New processor; email must be verified | − New processor; number shared with carrier and gateway | − Number and timing shared with Meta and a BSP | − Stores more family facts | + No new data | ~ New, short-lived personal data: a guardian name, a child's name and class from an unverified source; capped, purged, no phone field (R21) |
 | **Cost** | + Staff time only | ~ Provider fee, low (to confirm) | − Per message plus DLT setup (to confirm) | − Per message plus BSP fee (to confirm) | + None | + Paper | + Staff time |
-| **Operational burden** | − Each reset is a visit or call | ~ Bounce handling, email verification | − DLT registration, templates, number upkeep | − Business verification, template approval, number upkeep | ~ Reset disputes | ~ Reprints, lost sheets | ~ A queue to work, but less back-and-forth |
+| **Operational burden** | − Each reset is a visit or call | ~ Bounce handling, email verification | − DLT registration, templates, number upkeep | − Business verification, template approval, number upkeep | ~ Reset disputes | ~ Reprints, lost sheets | ~ A queue to work and to defend from spam |
 | **Dependency** | + None | − Email provider | − SMS gateway and DLT | − Meta and a BSP | + None | + None | + None |
-| **Accessibility** | + Talk to a person in their language | − Many guardians lack or rarely check email | ~ Works on basic phones; reading a code | + Familiar app | − Literacy, recall | ~ Must keep paper safe | + A short form, then the office calls |
+| **Accessibility** | + Talk to a person in their language | − Many guardians lack or rarely check email | ~ Works on basic phones; reading a code | + Familiar app | − Literacy, recall | ~ Must keep paper safe | + Three short fields, then the office calls |
 | **Low-literacy and shared-phone fit** | + Best | − Poor | ~ Fair, but shared phone defeats it | ~ Fair, same shared-phone flaw | − Poor | ~ Fair | + Good |
 | **Fit with today's code** | + Extends `reset_guardian_password` and the slip | − Needs channel, verified email, ADR 0013 change | − Needs channel, verified phone, ADR 0013 and 0015 change | − Needs API mode (ADR 0015 Gate 4B) | − Contradicts ADR 0013 identity rule | ~ New secret type | + Extends A |
 | **Verdict** | **Adopt first** | Defer | Defer | Defer | **Reject** | Defer; reconsider after A | **Adopt with A** |
 
-Option A details: verification in person with documents, or a callback to the number already on record;
-reason and method captured; a one-time temporary password printed or shown, with an expiry; forced change
-at first sign-in (exists); an in-portal notice to the owner after sign-in; HISTORY audit.
+Option A details: verification in person with documents, or a callback to the number already on the
+Guardian record (Appendix A); method stored as a choice; a one-time temporary password printed or shown,
+with a short expiry; forced change at first sign-in (exists); HISTORY audit shown on the guardian profile.
 
 ## Proposed decision
 
 **Adopt A + G now. Defer B, C, D and F. Reject E.**
 
-1. **Improved office reset (A).** The reset form requires a verification method (the same choices as
-   account creation, `core/models.py:3509-3512`) and a reason. The reset is recorded as a HISTORY event
-   with actor, guardian, method and reason, and appears on the guardian profile. The temporary password
-   expires (OD-G5). Sessions end and a change is forced, as today. After sign-in the guardian sees "Your
-   password was reset by the school on <date>. If this was not you, contact the school."
-2. **"Can't sign in?" request (G).** A public page linked from the sign-in form. The guardian types a name,
-   a child's name and class, and optionally a callback number. The page always answers the same way ("The
-   school will contact you using the details it already has") and never says whether an account exists.
-   Nothing is reset and no message is sent. The office sees a queue, verifies by callback to the number
-   **already on record** or in person, then uses the improved reset. Requests are throttled per source and
-   globally, purged after a short period (OD-G4), and never logged with their contents.
+1. **Improved office reset (A).** The reset form requires a verification method as a choice (OD-G16). The
+   reset is a HISTORY event with actor, guardian and method, shown on the guardian profile. If the
+   Guardian's phone changed in the last N days (OD-G13) the form warns and accepts only an in-person check.
+   The reset clears any sign-in lockout. The temporary password expires (OD-G5). Sessions end and a change
+   is forced, as today. After sign-in the guardian sees "Your password was reset by the school on <date>".
+   That notice is **informational only**: it is not detection, because an attacker who used the temporary
+   password has already changed it and the owner cannot sign in to see it (threat model T10).
+2. **"Can't sign in?" request (G).** A public page linked from the sign-in form with three short fields
+   (R21). It has **no phone field**: a number typed by an anonymous person is unverified and possibly the
+   attacker's, and calling it would hand the reset path to whoever typed it or make staff call a stranger.
+   The office already holds the number on the Guardian record; a guardian with no usable number on record
+   comes in person. The page always answers the same way ("The school will contact you using the details
+   it already has"), does no account lookup and never says whether an account exists. Nothing is reset
+   and no message is sent. Staff match requests to records offline, verify by callback to the number on
+   record or in person, then use the improved reset. Requests are throttled and purged (OD-G4).
 3. **Channel self-service (B, C, D) is deferred** until: the product owner picks a channel (OD-G2);
    provider due diligence and legal review are done (DPDP, DLT, template approval, cost); verified contact
    data exists; ADR 0013 and ADR 0015 are amended; and the Option B §9.3 evidence or an office interview
-   shows the burden is real.
+   shows the burden is real. Until then **there is no owner notification**, and T10 stays High.
 4. **Knowledge-based questions are rejected.** DOB, admission number and parent names are low-entropy and
    known to relatives and classmates (threat model T1, T2).
 
-**Rationale.** A and G remove the worst gaps (no reset record, no expiry, no guardian path, no owner
-notice) with no provider, no new personal data and no new trust boundary. They keep a person in the loop,
-which matters most for shared phones, low literacy and custody disputes. They also produce the evidence
-(request counts, reset counts) needed to justify a channel later.
+**Rationale.** A and G close the clearest gaps (no reset record, no expiry, no guardian path, an
+unaudited phone number) with no provider and no new trust boundary beyond a small public form. They keep a
+person in the loop, which matters most for shared phones, low literacy and custody disputes. They also
+produce the evidence (request and reset counts) needed to justify a channel later. They do not solve owner
+notification; only a channel does.
 
 ## Security requirements for any implementation
 
-Each must have a test before merge.
+Each must have a test before merge. "Live bug" marks a defect in today's code that a separate small fix PR
+will address, outside this ADR.
 
 | # | Requirement |
 | --- | --- |
-| R1 | **No account-existence leak.** Same response, status, page and close timing for known and unknown input, and for throttled requests. |
+| R1 | **No account-existence leak.** For known, unknown and throttled input: the same response body, status and page, and the same database queries and writes. Tests assert query and write counts and the response, not wall-clock timing. |
 | R2 | **Entropy.** Generated with `secrets`. Temporary passwords at least the current 12 characters over 31 symbols (`core/guardian_accounts.py:63-66`). Any link token ≥128 bits. Any short code only with ≤5 attempts and expiry ≤15 minutes. |
-| R3 | **Expiry.** Temporary passwords and any recovery secret expire (OD-G5). An expired temporary password fails like a wrong password. |
+| R3 | **Expiry of temporary passwords.** Separate limits for office resets and account-creation slips (OD-G5). Store the issue time on the login. Enforce in `NormalizedUsernameBackend.authenticate` (`accounts/backends.py:15-33`) after the password check: an expired temporary password returns `None`, so the sign-in form shows the same generic error (`accounts/forms.py:10`). Backfill: logins with `must_change_password` set and no issue time get the deploy time as issue time, so existing slips expire one creation window after deploy; logins without the flag need nothing. |
 | R4 | **Single use.** A secret works once; issuing a new one invalidates older ones. |
 | R5 | **Hashed at rest.** Secrets stored only as a hash; shown once with `no-store` (as `core/views.py:4007-4016`). |
-| R6 | **Rate limits.** Per account, per hashed source (`accounts/security.py:61-63`) and global, on every public recovery endpoint. |
+| R6 | **Rate limits, starting numbers to tune on staging (OD-G15), each with a test.** Sign-in per account: keep Rule A (5 per username + source in 15 min) and Rule B (20 per username in 15 min) (`accounts/security.py:26-29`). Sign-in per hashed source across usernames: 30 failures in 15 min. Request page per hashed source: 5 per hour. Request page global: 200 per day, then the same generic answer and an office notice. Trade-off: mobile carriers put many people behind few addresses, so per-source caps can block a whole carrier area; keep them loose and watch them. Per-source limits depend on `DJANGO_TRUSTED_PROXIES` (`config/settings.py:163`): if the proxy is not configured, every request looks like the proxy's address and a per-source cap becomes a global one. |
 | R7 | **Generic responses** in the UI and messages; no "no such user" or "number not found". |
 | R8 | **Session revocation.** Every reset or recovery calls `end_all_sessions()` (`accounts/models.py:54-57`); forced change after any temporary credential. |
-| R9 | **Owner notification** after every reset and password change: in-portal now; on a channel when one exists. |
-| R10 | **Audit events** (HISTORY class): request received (no contents), request handled or refused, reset issued (method, reason), first sign-in after reset, secret expired. Never the secret, typed values or contact data. |
+| R9 | **Reset notice is informational.** After sign-in, a guardian whose password was reset sees the date. It is not owner notification and must not be described as detection. Owner notification needs a channel (OD-G2). |
+| R10 | **Audit events** (HISTORY class): request handled or refused, reset issued (method as a choice), first sign-in after reset, temporary password expired, lockout cleared by reset, contact field changed. Never the secret, typed values or contact data. Any note is short and structured (OD-G16), contains no personal data beyond what the record already holds, and lives where a retention rule can delete it. |
 | R11 | **No grant changes.** Recovery never creates, restores or alters a `GuardianStudentAccess` grant. |
-| R12 | **CSRF** on every POST; `Referrer-Policy: no-referrer` on pages carrying a token. |
-| R13 | **Logging hygiene.** Nothing secret or personal in logs, crash reports, Telegram alerts or usage counters (ADR 0027, Security Gate 4A). |
-| R14 | **Route inventory.** New routes in `core/tests/route_permissions.json`; the public request page is the only anonymous one. |
+| R12 | **CSRF and clickjacking.** Already handled site-wide: `X_FRAME_OPTIONS = "DENY"` (`config/settings.py:158`), `CsrfViewMiddleware` (`config/settings.py:58`) and the custom failure view (`config/settings.py:144`). Tests pin both on every new route. `Referrer-Policy: no-referrer` on any page carrying a token. |
+| R13 | **Logging hygiene.** Nothing secret or personal in logs, crash reports, Telegram alerts or usage counters (ADR 0027, Security Gate 4A), with a test on the reset and request paths. |
+| R14 | **Route inventory.** New routes in `core/tests/route_permissions.json`; the request page is the only anonymous one. |
 | R15 | **Privileged logins excluded.** Keep `is_portal_manageable` (`core/guardian_accounts.py:43-60`) on every path. |
+| R16 | **Reset clears lockout.** The office reset calls `security.clear_lockout` and records `LOCKOUT_CLEARED`. Today it does not (`core/guardian_accounts.py:223-235`). **Live bug.** |
+| R17 | **Contact changes are audited.** A change to `Guardian.phone` or `Guardian.email` writes a HISTORY event naming the field and actor, never the old or new value. No such event type exists today (`accounts/models.py:72-100`). |
+| R18 | **Callback rules.** Staff call only the number on the Guardian record, using Appendix A. If that number changed in the last N days (OD-G13), the reset form warns and accepts only an in-person check. "Known to staff" is not accepted as proof (OD-G3). |
+| R19 | **New password differs from the current one.** The password change rejects a new password equal to the current one, with a test. Today `PasswordChangeForm` allows it. **Live bug.** |
+| R20 | **Future codes.** Cap issues per account per day (start: 3). Re-issuing does not grant extra attempts: the attempt count is per account per window, not per code. |
+| R21 | **Request page fields and purge.** Exactly three fields: guardian's full name (max 100 characters), child's full name (max 100), child's class and section (max 30). No phone, email or free-text message. Stored with a received time and the hashed source only. The submit path does **no account lookup**; staff match requests offline. Rendered to staff with Django autoescape, pinned by a test that submitted HTML shows as text. A daily purge job deletes requests older than OD-G4's period, with an expiry test. |
+| R22 | **Request queue permission.** A dedicated permission (OD-G14); teachers and guardians get 403; queue previews show no child data beyond what the guardian list already shows to that viewer (`core/views.py:3390-3398`). |
 
 ## Decisions for the product owner
 
 | ID | Decision | Options | Recommendation |
 | --- | --- | --- | --- |
 | OD-G1 | First recovery design | A only; A + G; a channel option now | A + G |
-| OD-G2 | Channel for later self-service | None for now; email; SMS; WhatsApp API | None for now; revisit with evidence |
-| OD-G3 | Accepted proof at the office | In person with documents only; also callback to the number on record; also "known to staff" | In person or callback to the number on record; "known to staff" only with a note |
-| OD-G4 | "Can't sign in?" request page | Build; skip (office phone number on the sign-in page instead) | Build, with request contents purged after 30 days (period to confirm) |
-| OD-G5 | Temporary password expiry | None (today); 7 days; 14 days; 30 days | 14 days, so slips sent home still work |
+| OD-G2 | Channel for later self-service | None for now; email; SMS; WhatsApp API | None for now; revisit with evidence. Note: without one there is no owner notification (T10 High). |
+| OD-G3 | Accepted proof at the office | In person with documents; callback to the number on record; "known to staff" | In person, or callback to the number on record; drop "known to staff" |
+| OD-G4 | "Can't sign in?" request page | Build (three fields, no phone); skip and print the office number on the sign-in page | Build, purge after 30 days (period to confirm with counsel) |
+| OD-G5 | Temporary password expiry | None (today); one limit for all; separate limits | Separate: 72 hours for office resets, 14 days for account-creation slips; backfill per R3 |
 | OD-G6 | Expiry for any future link or code | 15, 30 or 60 minutes | 15 minutes for codes, 30 for links |
 | OD-G7 | Who may reset | Any holder of `reset_guardian_password`; named staff only; two-person approval | Named staff only; two-person approval as a later option |
-| OD-G8 | Reset event class | Keep ROUTINE (365 days); make HISTORY (permanent) | HISTORY, as for account creation |
-| OD-G9 | Owner notice before a channel exists | In-portal notice after sign-in; none | In-portal notice |
+| OD-G8 | Reset event class | Keep ROUTINE (365 days); make HISTORY (permanent) | HISTORY, as for account creation, subject to the DPDP retention check |
+| OD-G9 | In-portal reset notice | Show (informational only); none | Show, labelled informational; it is not owner notification |
 | OD-G10 | Collect verified contact data now | No; yes, with verified-at fields and recorded consent | No, until OD-G2 picks a channel |
-| OD-G11 | Legal and provider review | Before any channel work; skip | Before any channel work |
-| OD-G12 | Amend ADR 0013 | Narrow amendment for A + G only; full rewrite later | Narrow amendment if A + G need it (expiry and reset fields do not change the "no self-service" rule; the request page does not reset anything) |
+| OD-G11 | Legal and provider review | Before any channel work; skip | Before any channel work, and before HISTORY retention of reset records |
+| OD-G12 | Amend ADR 0013 | Narrow amendment for A + G only; full rewrite later | Narrow amendment if A + G need it (expiry and reset fields keep "no self-service"; the request page resets nothing) |
+| OD-G13 | Phone-change window N for R18 | 14, 30 or 90 days | 30 days |
+| OD-G14 | Request queue permission | Reuse `reset_guardian_password`; a dedicated permission | Dedicated: the request model's own view and change permissions, given to named staff |
+| OD-G15 | Starting rate limits | Accept R6 numbers; set others | Accept R6 as starting values; tune on staging |
+| OD-G16 | Reset note | Method choice only; choice plus free note; choice plus short note in a separate deletable table | Method choice only; a note only for "Other", max 100 characters, no personal data, in a separate deletable table |
 
 ## Consequences
 
-- No provider, cost or new contact data. The office keeps doing resets, with a better record and fewer
-  wasted visits.
-- A model change is likely: a temporary-password issue time on `User`, reset method and reason, and a
-  request model for G. Each needs its own migration and a spec at Critical tier.
+- No provider, cost or new contact channel. The office keeps doing resets, with a better record.
+- Owner notification stays absent until a channel exists. That is the main residual risk (T10, High).
+- Model changes are likely: a temporary-password issue time and kind on `User`, the reset method, a
+  request model, and new `SecurityEvent` types. Each needs a migration and a spec at Critical tier.
 - Moving `PASSWORD_RESET_BY_ADMIN` to HISTORY changes `SecurityEvent.ROUTINE_TYPES`; existing events keep
   their class.
-- Guardians still cannot recover alone at night or on holidays. That stays true until a channel decision.
+- R16 and R19 are live bugs. A separate small fix PR addresses them; it does not wait for this ADR.
+- Guardians still cannot recover alone at night or on holidays until a channel decision.
 - The never-signed-in list (`docs/competitive-research/G06_NEVER_SIGNED_IN_SPEC.md`) does not depend on
-  this ADR and can proceed at High tier.
+  this ADR. Its reset link waits for the improved reset.
 
 ## What would make this acceptable
 
-1. The product owner records OD-G1 to OD-G12.
-2. The threat model is reviewed by someone other than its author, and its top five residual risks are
-   accepted in writing.
+1. The product owner records OD-G1 to OD-G16.
+2. The threat model is reviewed by someone other than its author, and its top residual risks (T10 High;
+   T7, T1, T20, T12 Medium) are accepted in writing.
 3. A security-focused review of the spec that follows, in addition to the normal review
    (`IMPLEMENTATION_WORKFLOW.md` §3, Critical).
 4. A migration and data-recovery plan, and a staged rollout with a tested rollback.
-5. For any channel option later: written provider due diligence and legal confirmation of the items marked
-   "to confirm" in the threat model §6.
+5. Counsel confirms the DPDP retention and children's-data items marked "to confirm" in the threat model §6.
+6. For any channel option later: written provider due diligence and legal confirmation of the provider
+   items in the threat model §6.
+
+## Appendix A: callback script
+
+For staff verifying a guardian by phone before a reset.
+
+1. Open the guardian's profile. If the phone number changed in the last N days (OD-G13), stop: the guardian
+   must come in person.
+2. Call **only** the number on the Guardian record. Never a number given in a request, by the caller, or
+   by anyone else.
+3. Say: "This is <name> from <school>. We received a request to help with your parent portal sign-in. Did
+   you ask for this?"
+4. If they did not ask, do not reset. Record "refused: not requested".
+5. If they did, ask them to come to the office, or, if the school accepts callbacks (OD-G3), reset and read
+   the temporary password only to the person on that call. Never send it by message.
+6. Record the method "Callback to number on record". Do not write the number or personal details in any
+   note.
 
 ## Related
 
