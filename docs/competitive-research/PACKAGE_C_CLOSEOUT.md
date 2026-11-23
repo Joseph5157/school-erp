@@ -9,11 +9,15 @@
 - **Source audit:** `PACKAGE_C0_ADMIN_PHONE_AUDIT.md` (findings C0-01 to C0-09, 146 page checks).
   It is kept unchanged as the historical record. Status changes are recorded here.
 - **Checked against:** `main` at `226fe23` (23 November 2026).
-- **Method:** the existing per-PR evidence (CI, browser measurements, screenshots, Android and
-  staging checks, recorded in each PR), plus a staging spot-check of the changed pages (§3).
-  The 146-page audit was **not** repeated: the product owner decided that a spot-check of the
-  changed pages is enough, because every other page was already rated Works or Usable and no
-  shared layout rule changed except the opt-in classes below.
+- **Method:** the existing per-PR evidence (CI, browser measurements, screenshots and Android
+  checks, recorded in each PR), the owner staging acceptances (recorded here, §1), and a staging
+  spot-check of the changed pages (§3). The 146-page audit was **not** repeated. By product-owner
+  decision the spot-check replaces the spec §10 item "C0 route inventory re-run at 360 and
+  390 px". The pages Package C did not touch were rated Works, Usable or Redirects in the audit,
+  and the only shared CSS added is opt-in (`erp-table--stack`, `erp-toolbar--compact`,
+  `erp-edit-link`, the `erp-assign-grade` rules), so no untouched page changes layout. The draft
+  variant of assessment detail was not re-measured in a browser; its markup is covered by
+  `test_ui_phone_tables`.
 
 ## 1. What Package C delivered
 
@@ -22,15 +26,27 @@
 | C0 #294 | `2a01ad4` | Audit and spec (docs only) | `b988a35` | n/a |
 | C1 #295 | `8f29147` | Opt-in stacked phone table (`erp-table--stack`), piloted on Grading scales; Ponytail review pilot | `bde7107` (lint, test, js pass) | Chromium checks |
 | C2 #296 | `bba9c24` | Assessments list stacked; three generic stack additions (no 10rem cap, wrap beats `.text-nowrap`, visible "Sort by" strip) | `8197e4b` (lint, test, js pass) | Real Android: Redmi Note 12, Android 14, Chrome (version not supplied), run by the product owner over LAN |
-| C3+C4 #297 | `c1f1dd4` | Assessment results, result sheet, term report card, publication detail stacked; Correct link in the row actions | `dcd91a2` (lint, test, js pass) | Real Android PASS (product owner, LAN; device details not supplied); owner staging acceptance PASS |
-| C5+C6 #298 | `8107695` | Student record Guardians table, calendar, guardian access reviews, stale publications stacked; 24 × 24 px Edit links (`erp-edit-link`) | `3256906` (lint, test, js pass) | Owner staging acceptance PASS; screenshots in the PR |
-| C7 #299 | `226fe23` | Compact phone filters (`erp-toolbar--compact`) on Assessments and Attendance; Teacher assignments grouped by Class/Grade with a jump list | `afa4152` (lint, test, js pass) | Staging check PASS (§3); screenshots in the PR |
+| C3+C4 #297 | `c1f1dd4` | Assessment results, result sheet, term report card, publication detail stacked; Correct link in the row actions | `dcd91a2` (lint, test, js pass) | Real Android PASS (product owner, LAN; device details not supplied); owner staging acceptance PASS (below) |
+| C5+C6 #298 | `8107695` | Student record Guardians table, calendar, guardian access reviews, stale publications stacked; 24 × 24 px Edit links (`erp-edit-link`) | `3256906` (lint, test, js pass) | Owner staging acceptance PASS (below); screenshots in the PR |
+| C7 #299 | `226fe23` | Compact phone filters (`erp-toolbar--compact`) on Assessments and Attendance; Teacher assignments grouped by Class/Grade with a jump list | `afa4152` (lint, test, js pass) | Staging check PASS (§3; no owner acceptance needed for C7); screenshots in the PR |
 
-`main` CI was green after every merge (`2a01ad4`, `8f29147`, `bba9c24`, `c1f1dd4`, `8107695`,
-`226fe23`). Every merge was a squash merge guarded on the exact head that CI tested. No PR changed
-a view, form, URL, permission, model or migration; the route inventory and migration checks
-passed on each. Each PR had an independent review; the CSS PRs (C1, C5, C7) also had a Ponytail
-review-only pass. The C1 Ponytail comparison (spec §5) is recorded in the body of #295.
+**Owner staging acceptance (spec OD-C5, required for C3–C6).** The product owner accepted both
+packages on staging on 23 November 2026, at phone width. The acceptances were given to the
+release operator during the work and are recorded here and in a comment on each PR:
+
+- **C3+C4 (#297, deployed `c1f1dd4`):** the result pages changed in the PR (assessment detail
+  with the Correct link, result sheet, term report card, publication detail). PASS.
+- **C5+C6 (#298, deployed `8107695`):** student record (Guardians actions, Edit links), academic
+  calendar, guardian access reviews and stale publications (empty states acceptable on staging).
+  PASS, with Safari/iPhone and large text recorded as non-blocking limitations.
+
+**CI and reviews.** `main` CI was green after every merge (`2a01ad4`, `8f29147`, `bba9c24`,
+`c1f1dd4`, `8107695`, `226fe23`). Every merge was a squash merge. Every code PR (C1–C7, #295–#299)
+was merged on the exact head on which lint, test and js passed. #294 was docs only and ran no CI.
+No PR changed a view, form, URL, permission, model or migration; the route inventory and
+migration checks passed on each code PR. Each PR had an independent review, and every code PR
+also had a Ponytail review-only pass. C1, C2, C5+C6 and C7 changed CSS. The C1 Ponytail
+comparison (spec §5) is recorded in the body of #295.
 
 ## 2. Findings: final status
 
@@ -42,7 +58,7 @@ is still open and listed for optional C8. **Deferred** means no work is planned,
 | C0-01 Assessment rows can't be told apart | High | **Fixed** | C2: every row shows Section, Date, Term, Max and Pass on phones. C7: the filter form above it is 290 px instead of 466 px. |
 | C0-02 Result tables hide marks and Correct | High (result sheet Medium) | **Fixed** | C3+C4: assessment detail (finalized and draft), result sheet, term report card and publication detail show every value; the Correct link sits in each row's actions with a name that includes the assessment and student. Print preview unchanged. |
 | C0-03 Row actions off screen | Medium | **Fixed** | C5+C6: Guardians (Change relationship, End), calendar (Edit label, Remove), access reviews (Decision form), stale publications (Review). Hidden table width at 360 px went from 143–465 px to 0. |
-| C0-04 Long assignment pages, no jump | Medium (two pages Low) | **Fixed** (Teacher assignments); **Deferred** (Class teachers 3,710 px, Assignment overview 9,899 px) | C7: Teacher assignments grouped by grade with a jump list; 20,553 px → about 3,400 px on the seeded data. Grades holding a "No current teacher" or "Login inactive" card start open. The two Low pages are readable and were not in any PR. |
+| C0-04 Long assignment pages, no jump | Medium (two pages Low) | **Fixed** (Teacher assignments); **Deferred** (Class teachers 3,710 px, Assignment overview 9,899 px) | C7: Teacher assignments grouped by grade with a jump list; on the seeded data at 360 px, 20,577 px → 3,408 px (the audit's 20,553 px was at 390 px). Grades holding a "No current teacher" or "Login inactive" card start open. The two Low pages are readable, were not in the spec's C8 row, and no work is planned on them. |
 | C0-05 Filter forms take the first screen | Medium (six pages Low) | **Fixed** (Assessments, Attendance); **Remaining** (six Low pages) | C7: two fields to a row on phones (466 → 290 px; 422 → 246 px). Offerings, Student attendance, Students, Timetable issues, Applicants and Announcements are C8 candidates; the class is opt-in, so they are unchanged. |
 | C0-06 Small tap targets | Medium (parts Low) | **Fixed** (pencil links); **Remaining** (radio labels); **Deferred** (in-row text links, Rename/Archive) | C5: admission and roll number Edit links are 24 × 24 px. The radio labels on School create and the student-deactivation access-review step (about 20 px) are C8. In-row text links (21 px) meet the WCAG 2.2 spacing exception; Archive opens a confirmation page. |
 | C0-07 Wrapping | Low | **Fixed** (Grading scales); **Remaining** (admin home button) | C1 stacked Grading scales, so the Grade bands column is visible. The three-line "Open Applicants awaiting decision" button is C8. |
@@ -97,8 +113,7 @@ Smaller follow-ups noted in reviews, also optional:
 
 - blank values in a stacked row show a bare label (C3+C4 review; needs a CSS rule);
 - the access-review Decision form keeps its 15rem width inside the stacked row, and a viewer
-  without the decide permission sees an empty actions strip (C5+C6 review; cosmetic);
-- Class teachers and Assignment overview grouping (C0-04, Low; deferred above).
+  without the decide permission sees an empty actions strip (C5+C6 review; cosmetic).
 
 ## 5. Known limitations
 
@@ -137,19 +152,27 @@ G-06 is the only open P1 gap.
 forgotten guardian password is still an office task, and the office cannot see which families
 never activated their portal account.
 
-It is not ready to build. As `OPTION_A_B_BENCHMARK_CLOSEOUT.md` §4 notes, it first needs:
+It is not ready to build. `OPTION_A_B_BENCHMARK_CLOSEOUT.md` §4 names two blocking decisions:
 
 1. **a recovery-channel decision.** There is no email or SMS channel today (Phase 7 plan), so
    self-service reset needs a channel or an office-assisted alternative;
 2. **identity rules for self-service reset** (what proves a guardian is who they say, and what
-   happens for shared phones and siblings);
-3. **the privacy and security review** that guardian access changes require (High tier).
+   happens for shared phones and siblings).
+
+Risk tiers (`docs/engineering/IMPLEMENTATION_WORKFLOW.md`):
+
+- **Self-service password or account recovery is Critical** ("password and account recovery",
+  "authentication and sessions"). It needs a written threat model and an accepted ADR **before**
+  any code, and a security-focused review in addition to the normal one.
+- **An office view of guardian accounts that never signed in is High** (guardian access): an
+  approved spec naming its ADRs, and tests for each permission boundary.
 
 Suggested shape: a short docs-only G-06 research and decision step (options, risks, the decisions
-the product owner must make), then a spec. One part needs no channel decision and could be
-specified first: an office view of guardian accounts that have **never signed in**, built on the
-existing guardian and session data. It addresses ANA-05 and makes activation follow-up possible
-while recovery is decided.
+the product owner must make, and the threat model the recovery part needs), then a spec. The
+office view needs no channel decision and could be specified first. It can use the existing
+account sign-in data: `User.last_login`, reached through `GuardianAccount.user`, which the admin
+home Parents tab already queries (`core/home_parents.py`). It addresses ANA-05 and makes activation
+follow-up possible while recovery is decided.
 
 In parallel (operational, no code): documented school approval to switch usage measurement on
 for the pilot deployment (OD-B9), so later mobile decisions can rest on evidence.

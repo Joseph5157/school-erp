@@ -3,8 +3,9 @@
 - **Status:** Approved implementation specification. Product-owner decisions OD-C1 to OD-C6 were
   approved on 23 November 2026 (§3), with the clarifications in §2, §4, §5 and §7. The independent
   documentation review is complete and the findings the product owner selected are resolved.
-  **Delivered:** C0–C7 merged (main `226fe23`); C8 optional, not started. See
-  `PACKAGE_C_CLOSEOUT.md`.
+  **Delivered:** C0–C7 merged (main `226fe23`); C8 optional, not started. The §10 route
+  inventory re-run was replaced by a staging spot-check of the changed pages (owner decision).
+  See `PACKAGE_C_CLOSEOUT.md`.
 - **Gap:** G-04 (ADM-08, MOB-01), recommended next in `OPTION_A_B_BENCHMARK_CLOSEOUT.md` §5.
 - **Source audit:** `PACKAGE_C0_ADMIN_PHONE_AUDIT.md` (findings C0-01 to C0-09, route inventory).
 - **Baseline:** `main` at `16e2341`. Line numbers refer to that commit.
