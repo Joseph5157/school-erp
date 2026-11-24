@@ -1,9 +1,9 @@
 # G-06 spec: improved office password reset (ADR 0029, option A)
 
-- **Status:** **Draft r2**, 2026-11-24. The product owner approved OD-R1 to OD-R5 as recommended and chose
-  the review options in §12 (S-01 (a), S-03 option A, S-07 one-hour grace). r2 applies the security-focused
-  review of r1 on PR #304 (S-01 to S-19, N-1 to N-4; ADR 0029 "What would make this acceptable", item 3).
-  Approves no code until the owner accepts r2.
+- **Status:** **Approved for build (r2)**, 2026-11-24. The product owner approved OD-R1 to OD-R5 as
+  recommended, chose the review options in §12 (S-01 (a), S-03 option A, S-07 one-hour grace) and accepted
+  r2. r2 applies the security-focused review of r1 on PR #304 (S-01 to S-19, N-1 to N-4; ADR 0029 "What
+  would make this acceptable", item 3). Each build PR is still Critical tier.
 - **Baseline:** `origin/main` 06d8eeb (never-signed-in list, PR #303, merged).
 - **Risk tier:** **Critical** (password and account recovery, authentication and sessions,
   `docs/engineering/IMPLEMENTATION_WORKFLOW.md` §3).
@@ -374,7 +374,7 @@ full CI on the final head.
 
 - [x] Owner decisions OD-R1 to OD-R5 and review choices S-01, S-03, S-07 recorded (§12).
 - [x] Security-focused review of r1 done; findings applied in r2.
-- [ ] Owner accepts r2.
+- [x] Owner accepts r2 (2026-11-24).
 - [ ] PR 1 merged; contact edits appear in guardian history on staging.
 - [ ] Two staff named; PR 2 merged after a backward-migration rehearsal; membership set on staging; reset form
       checked at 360, 390 and desktop.
