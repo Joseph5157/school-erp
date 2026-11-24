@@ -18,7 +18,8 @@ from core.portal_views import NOTICES_PER_PAGE
 from core.tests.test_phase7_announcements import SECTION, AnnouncementFixture
 
 # Measured after the change, so any extra repeated lookup fails here first.
-CEILINGS = {"home": 17, "child": 16, "attendance": 17, "report-cards": 13, "notices": 15, "notice": 14}
+# Home +1 (G-06 reset spec §4.5): one indexed lookup for the "password reset by the school" notice.
+CEILINGS = {"home": 18, "child": 16, "attendance": 17, "report-cards": 13, "notices": 15, "notice": 14}
 
 
 class PortalQueryBudgetTests(AnnouncementFixture, TestCase):
