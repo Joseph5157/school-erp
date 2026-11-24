@@ -30,6 +30,7 @@ from core import (
     duplicate_checks,
     guardian_access,
     guardian_accounts,
+    guardian_activation,
     home_academics,
     home_parents,
     home_today,
@@ -1103,6 +1104,9 @@ def admin_overview(request):
             decide_links=user.has_perm("core.add_guardianaccessreview"),
             guardians_link=user.has_perm(data_access.GUARDIAN),
             show_missing=user.has_perm(data_access.GUARDIAN),
+            show_never_signed_in=user.has_perms(
+                ("core.view_guardianaccount", data_access.GUARDIAN)
+            ),
         )
     else:
         context["today"] = _today_tab(
@@ -3457,6 +3461,120 @@ def guardian_list(request):
     )
 
 
+NEVER_SIGNED_IN_COLUMNS = (
+    Column("Guardian", "name", ("guardian__full_name",)),
+    Column("Username"),
+    Column("Account created", "created", ("created_at",)),
+    Column("Created by"),
+    Column("Children with access"),
+)
+
+
+@administrator_required(("core.view_guardianaccount", "core.view_guardian"))
+@require_safe
+def guardian_never_signed_in(request):
+    """Guardian portal accounts created but not yet used (G-06 spec). Links only; changes nothing.
+
+    Children and the class filter need view_student too: without it the column is hidden and the
+    class and section parameters are ignored, so a filter cannot reveal a child's class.
+    """
+    today = business_today()
+    chip = parse_choice(request, "chip", guardian_activation.CHIPS) or guardian_activation.NEVER
+    can_see_students = request.user.has_perm(data_access.STUDENT)
+    class_choices, section_choices = [], []
+    class_filter = section_filter = student_ids = None
+    if can_see_students:
+        placements = home_parents.placements(today)
+        class_choices = list(ClassGrade.objects.all())
+        section_choices = list(
+            Section.objects.select_related("class_grade").order_by(
+                "class_grade__display_order", "name"
+            )
+        )
+        class_filter = _parse_id(request, "class", {c.pk for c in class_choices})
+        section_filter = _parse_id(request, "section", {s.pk for s in section_choices})
+        if class_filter is not None or section_filter is not None:
+            class_of = {s.pk: s.class_grade_id for s in section_choices}
+            student_ids = [
+                student_id
+                for student_id, (section_id, *_) in placements.items()
+                if section_filter in (None, section_id)
+                and class_filter in (None, class_of.get(section_id))
+            ]
+
+    accounts = guardian_activation.unused_accounts(chip, student_ids).select_related(
+        "user", "guardian", "created_by"
+    )
+    columns = NEVER_SIGNED_IN_COLUMNS
+    if can_see_students:
+        accounts = accounts.prefetch_related(
+            Prefetch(
+                "guardian__student_links",
+                queryset=StudentGuardian.objects.current()
+                .select_related("student")
+                .order_by("student__full_name")
+                .prefetch_related(
+                    Prefetch(
+                        "access_grants",
+                        queryset=GuardianStudentAccess.objects.filter(revoked_at__isnull=True),
+                        to_attr="active_grants",
+                    )
+                ),
+                to_attr="granted_links",
+            )
+        )
+    else:
+        columns = columns[:-1]
+    table = build_table(request, accounts, columns, "created")
+
+    for account in table.page:
+        account.days_waiting = (today - timezone.localdate(account.created_at)).days
+    if can_see_students:
+        grants = [
+            link.active_grants[0]
+            for account in table.page
+            for link in account.guardian.granted_links
+            if link.active_grants
+        ]
+        pending = guardian_access.pending_map(grants, today)
+        for account in table.page:
+            account.children = []
+            for link in account.guardian.granted_links:
+                if not link.active_grants:
+                    continue
+                placement = placements.get(link.student_id)
+                account.children.append({
+                    "name": link.student.full_name.split(maxsplit=1)[0],
+                    "placement": f"{placement[2]} {placement[1]}" if placement else "",
+                    "under_review": pending[link.active_grants[0].pk][0],
+                })
+
+    filtered = class_filter is not None or section_filter is not None
+    any_accounts = bool(table.paginator.count) or GuardianAccount.objects.filter(
+        revoked_at__isnull=True
+    ).exists()
+    return render(
+        request,
+        "core/guardian_never_signed_in.html",
+        {
+            "accounts": table.page,
+            "table": table,
+            "chips": _student_chips(
+                request, chip, sort_param=table.sort_param, choices=guardian_activation.CHIPS
+            ),
+            "chip": chip,
+            "can_see_students": can_see_students,
+            "class_choices": class_choices,
+            "section_choices": section_choices,
+            "class_filter": class_filter,
+            "section_filter": section_filter,
+            "filtered": filtered,
+            "any_accounts": any_accounts,
+            "clear_url": f"{request.path}?chip={chip}",
+        },
+    )
+
+
 def _guardian_lookup_return_url(request):
     """The add-Guardian page that sent the user to create someone, if it is one they can use.
 
@@ -4271,7 +4389,10 @@ def _parse_id(request, name, valid_ids):
     return value if value in valid_ids else None
 
 
-def _student_chips(request, chip, include_absent=True, sort_param="", include_no_portal=True):
+def _student_chips(
+    request, chip, include_absent=True, sort_param="", include_no_portal=True,
+    choices=STUDENT_CHIP_CHOICES,
+):
     """Chip links: each keeps the other filters and the chosen sort; only the active one is marked.
 
     ``sort_param`` is the table's whitelisted sort token, never the raw GET value (audit 13 SF-04).
@@ -4282,7 +4403,7 @@ def _student_chips(request, chip, include_absent=True, sort_param="", include_no
     if sort_param:
         base["sort"] = sort_param
     chips = []
-    for key, label in STUDENT_CHIP_CHOICES:
+    for key, label in choices:
         if key == "absent" and not include_absent:
             continue
         if key == "no_portal" and not include_no_portal:

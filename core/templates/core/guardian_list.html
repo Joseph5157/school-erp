@@ -16,6 +16,7 @@
     </div>
 </form>
 </search>
+{% if perms.core.view_guardianaccount %}<p class="small"><a href="{% url 'core:guardian-never-signed-in' %}">Guardians who have not signed in</a></p>{% endif %}
 {% if perms.core.view_guardianaccessreview %}<p class="small"><a href="{% url 'core:guardian-access-reviews' %}">Guardian access reviews</a>{% if perms.accounts.clear_login_lockout %} &middot; <a href="{% url 'core:login-lockouts' %}">Sign-in lockouts</a>{% endif %}</p>{% endif %}
 {% if table.paginator.count %}{% include "partials/_card_sort.html" with table=table label="Sort guardians" only %}{% endif %}
 {# A4 portrait is narrower than the md breakpoint, so printing must pick the table explicitly. #}

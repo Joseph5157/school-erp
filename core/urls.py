@@ -381,6 +381,11 @@ urlpatterns = [
     ),
     path("guardians/", views.guardian_list, name="guardian-list"),
     path("guardians/create/", views.guardian_create, name="guardian-create"),
+    path(
+        "guardians/never-signed-in/",
+        views.guardian_never_signed_in,
+        name="guardian-never-signed-in",
+    ),
     path("guardians/<int:pk>/", views.guardian_detail, name="guardian-detail"),
     path("guardians/<int:pk>/edit/", views.guardian_edit, name="guardian-edit"),
     path(

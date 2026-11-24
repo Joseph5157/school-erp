@@ -31,6 +31,7 @@
             <li class="erp-stage"><span class="erp-stage-count">{% if e.parents_pct is None %}&ndash;{% else %}{{ e.parents_pct }}%{% endif %}</span><span class="erp-stage-label">Parents who logged in this month</span><span class="erp-stage-meta">{% if e.parents_pct is None %}No parents on the portal yet{% else %}{{ e.parents_active }} of {{ e.parents }}{% endif %}</span></li>
         </ul>
         <p class="erp-analytics-sub">Notice reads aren't tracked yet.</p>
+        {% if p.never_signed_in %}<p><a href="{{ p.never_signed_in.url }}">{{ p.never_signed_in.count }} account{{ p.never_signed_in.count|pluralize }} never signed in</a></p>{% endif %}
         {% if p.guardians_url %}<p><a href="{{ p.guardians_url }}">Guardians</a></p>{% endif %}
     </article>
 

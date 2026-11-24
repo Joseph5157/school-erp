@@ -110,6 +110,7 @@
       "core.view_classgrade",
       "core.view_guardian",
       "core.view_guardianaccessreview",
+      "core.view_guardianaccount+core.view_guardian",
       "core.view_student",
       "core.view_studentresult",
       "core.view_termpublication"
@@ -759,6 +760,19 @@
     ],
     "route": "guardians/",
     "view": "views.guardian_list"
+  },
+  "core:guardian-never-signed-in": {
+    "flags": [
+      "require_safe"
+    ],
+    "inner": [
+      "core.view_student"
+    ],
+    "perms": [
+      "core.view_guardianaccount+core.view_guardian"
+    ],
+    "route": "guardians/never-signed-in/",
+    "view": "views.guardian_never_signed_in"
   },
   "core:import-commit": {
     "flags": [

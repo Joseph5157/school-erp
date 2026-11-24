@@ -9,7 +9,7 @@ import datetime
 from django.urls import reverse
 from django.utils import timezone
 
-from core import guardian_access
+from core import guardian_access, guardian_activation
 from core.forms import AnnouncementForm
 from core.models import AcademicEnrollment, Announcement, GuardianAccount
 from core.notification_producers import portal_grants_for_students
@@ -21,7 +21,7 @@ def _percent(part, whole):
     return round(part * 100 / whole) if whole else None
 
 
-def _placements(today):
+def placements(today):
     """One current placement per student: {student_id: (section_id, class, section, order)}.
 
     Same rule as the announcements audience: effective today and inside the academic year. A
@@ -53,8 +53,8 @@ def portal_student_ids(student_ids, today):
 
 def _portal_state(today):
     """(placements, ids of students on the portal): computed once and shared by both cards."""
-    placements = _placements(today)
-    return placements, portal_student_ids(placements, today)
+    current = placements(today)
+    return current, portal_student_ids(current, today)
 
 
 def engagement(today, *, state=None):
@@ -133,12 +133,13 @@ def sent_notices(limit=NOTICE_LIMIT):
 
 def parents_tab_context(
     today, *, notice_form, show_sent, invite_links, include_reviews, review_names, decide_links,
-    guardians_link, show_missing=True,
+    guardians_link, show_missing=True, show_never_signed_in=False,
 ):
     """Everything the Parents tab shows. Each flag is the viewer's permission for one part.
 
     `show_missing` is the guardian permission: per-section counts would reveal whether a given
-    child has a portal parent, so without it `missing` is None.
+    child has a portal parent, so without it `missing` is None. `show_never_signed_in` is the
+    never-signed-in page's own permission (view_guardianaccount and view_guardian).
     """
     state = _portal_state(today)
     return {
@@ -148,6 +149,13 @@ def parents_tab_context(
         "all_notices_url": reverse("core:announcement-list") if show_sent else None,
         "engagement": engagement(today, state=state),
         "guardians_url": reverse("core:guardian-list") if guardians_link else None,
+        "never_signed_in": (
+            {
+                "count": guardian_activation.unused_accounts().count(),
+                "url": reverse("core:guardian-never-signed-in"),
+            }
+            if show_never_signed_in else None
+        ),
         "missing": (
             missing_accounts(today, invite_links=invite_links, state=state) if show_missing else None
         ),
