@@ -209,7 +209,7 @@ class NamedStaffTests(Fixture, TestCase):
     def test_role_permission_gaps_lists_who_can_reset(self):
         out = StringIO()
         call_command("role_permission_gaps", stdout=out)
-        self.assertIn("Who can reset guardian passwords:", out.getvalue())
+        self.assertIn("Who can reset guardian passwords (plus every active superuser):", out.getvalue())
         self.assertIn("admin (Portal password resets group)", out.getvalue())
 
 

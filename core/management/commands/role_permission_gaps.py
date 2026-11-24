@@ -54,15 +54,14 @@ class Command(BaseCommand):
 
     def _reset_section(self):
         """Who can reset guardian passwords (G-06 reset spec §6), for the periodic access review."""
-        holders = checks.reset_holders().order_by("username")
-        self.stdout.write("Who can reset guardian passwords:")
+        # Superusers hold everything and are never named in this report (see the module docstring).
+        holders = checks.reset_holders().filter(is_superuser=False).order_by("username")
+        self.stdout.write("Who can reset guardian passwords (plus every active superuser):")
         if not holders:
-            self.stdout.write("  nobody (add staff on the Password reset staff page)")
+            self.stdout.write("  no staff yet (add them on the Password reset staff page)")
         for user in holders:
-            how = "superuser" if user.is_superuser else (
-                "direct permission" if user.user_permissions.filter(
-                    codename="reset_guardian_password").exists() else "Portal password resets group"
-            )
+            how = "direct permission" if user.user_permissions.filter(
+                codename="reset_guardian_password").exists() else "Portal password resets group"
             self.stdout.write(f"  {user.get_username()} ({how})")
         self.stdout.write("")
 
