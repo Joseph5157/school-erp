@@ -57,7 +57,9 @@
 </div>
 {% else %}
 <p class="text-muted">No active portal account. Recording a Guardian grants no access.</p>
-{% if perms.core.add_guardianaccount %}
+{% if replacement_locked %}
+<p class="small">This guardian's earlier login was revoked. Only staff who can reset parent passwords can give them a new one.</p>
+{% elif perms.core.add_guardianaccount %}
 <div class="d-flex flex-wrap gap-2 mb-3">
     <a class="btn btn-primary btn-sm" href="{% url 'core:guardian-account-create' guardian.pk %}">Create portal account</a>
     <a class="btn btn-outline-primary btn-sm" href="{% url 'core:guardian-account-link' guardian.pk %}">Link an existing login</a>
@@ -139,7 +141,7 @@
 <section id="history" aria-labelledby="history-heading" class="erp-panel p-3 p-md-4 mb-4">
 <h2 class="h5" id="history-heading">Account and access history</h2>
 <ul class="small mb-0">
-    {% for event in events %}<li>{{ event.occurred_at|date:"j M Y, H:i" }} &middot; {{ event.get_event_type_display }}{% if event.actor %} by {{ event.actor }}{% endif %}</li>{% empty %}<li class="text-muted">None.</li>{% endfor %}
+    {% for event in events %}<li>{{ event.occurred_at|date:"j M Y, H:i" }} &middot; {{ event.get_event_type_display }}{% if event.detail.method %} ({% if event.detail.method == "IN_PERSON_DOCUMENTS" %}in person, with identity documents{% else %}other{% endif %}){% endif %}{% if event.actor %} by {{ event.actor }}{% endif %}{% if event.reset_note %}: {{ event.reset_note.note }}{% endif %}</li>{% empty %}<li class="text-muted">None.</li>{% endfor %}
 </ul>
 {% if history_table.paginator.num_pages > 1 %}{% include "partials/_table_footer.html" with table=history_table fragment="history" only %}{% endif %}
 </section>

@@ -728,6 +728,7 @@
   "core:guardian-detail": {
     "flags": [],
     "inner": [
+      "<dynamic>",
       "accounts.view_securityevent",
       "core.add_guardiancontactconsent",
       "core.view_guardianaccount",

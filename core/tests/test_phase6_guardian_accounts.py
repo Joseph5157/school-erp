@@ -34,7 +34,8 @@ class GuardianFixture:
     def setUp(self):
         super().setUp()
         self.admin = User.objects.create_user(username="admin", password="pass-12345")
-        self.admin.groups.add(Group.objects.get(name="School Administrators"))
+        self.admin.groups.add(Group.objects.get(name="School Administrators"),
+                              Group.objects.get(name="Portal password resets"))  # reset staff (G-06 reset spec §6)
         self.client.login(username="admin", password="pass-12345")
         self.guardian = Guardian.objects.create(full_name="Meena Rao", phone="98450-12345")
         self.asha = self.student("Asha Rao")
@@ -252,7 +253,7 @@ class RevocationAndSessionTests(GuardianFixture, TestCase):
     def test_password_reset_ends_sessions_and_forces_change(self):
         account, client = self.guardian_client()
         url = reverse("core:guardian-account-reset-password", args=[account.pk])
-        response = self.client.post(url)
+        response = self.client.post(url, {"method": "IN_PERSON_DOCUMENTS", "confirmed": "on"})
         self.assertIn("no-store", response["Cache-Control"])
         self.assertFalse(self.signed_in(client))
         account.user.refresh_from_db()
@@ -265,7 +266,8 @@ class RevocationAndSessionTests(GuardianFixture, TestCase):
         account, _ = self.guardian_client()
         ga.revoke_account_link(account=account, actor=self.admin, reason="x")
         with self.assertRaises(ValidationError):
-            ga.reset_guardian_password(account=account, actor=self.admin)
+            ga.reset_guardian_password(account=account, actor=self.admin,
+                              method="IN_PERSON_DOCUMENTS")
         with self.assertRaises(ValidationError):
             ga.change_guardian_username(account=account, new_username="new.name",
                                         actor=self.admin)
@@ -407,7 +409,8 @@ class SecurityEventTests(GuardianFixture, TestCase):
         account, _ = self.create_account()
         grant = ga.grant_student_access(student_guardian=self.asha_link, actor=self.admin)
         ga.revoke_student_access(grant=grant, actor=self.admin, reason="x")
-        ga.reset_guardian_password(account=account, actor=self.admin)
+        ga.reset_guardian_password(account=account, actor=self.admin,
+                              method="IN_PERSON_DOCUMENTS")
         ga.revoke_account_link(account=account, actor=self.admin, reason="x")
         classes = dict(SecurityEvent.objects.values_list("event_type", "event_class"))
         self.assertEqual(classes, {

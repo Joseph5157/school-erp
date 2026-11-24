@@ -31,6 +31,7 @@ from core import (
     guardian_access,
     guardian_accounts,
     guardian_activation,
+    guardian_records,
     home_academics,
     home_parents,
     home_today,
@@ -99,6 +100,7 @@ from core.forms import (
     GuardianAccountCreateForm,
     GuardianAccountLinkForm,
     GuardianForm,
+    GuardianResetForm,
     GuardianUsernameForm,
     MissingAttendanceForm,
     MonthlySectionSummaryForm,
@@ -3758,6 +3760,12 @@ def guardian_detail(request, pk):
         context["active_account"] = next(
             (account for account in context["accounts"] if account.is_active), None
         )
+        # Replacing a revoked login needs the reset permission (G-06 reset spec §4.8).
+        context["replacement_locked"] = (
+            context["active_account"] is None
+            and any(not account.is_active for account in context["accounts"])
+            and not request.user.has_perm(guardian_accounts.RESET_PERMISSION)
+        )
     if request.user.has_perm("core.view_guardianstudentaccess"):
         relationships = []
         for link in guardian.student_links.select_related("student", "ended_by").prefetch_related(
@@ -3781,7 +3789,7 @@ def guardian_detail(request, pk):
         events = SecurityEvent.objects.filter(guardian_id_ref=guardian.pk).filter(
             Q(event_class=SecurityEvent.EventClass.HISTORY)
             | Q(event_type__in=SecurityEvent.GUARDIAN_HISTORY_ROUTINE_TYPES)
-        ).select_related("actor", "subject_user")
+        ).select_related("actor", "subject_user", "reset_note")
         context["history_table"] = build_table(request, events, GUARDIAN_HISTORY_COLUMNS, "-when")
         context["events"] = context["history_table"].page
     if request.user.has_perm("core.view_guardiancontactconsent"):
@@ -4265,9 +4273,13 @@ def guardian_account_username(request, pk):
 
 @administrator_required("core.reset_guardian_password")
 def guardian_account_reset_password(request, pk):
+    """G-06 reset spec §4.1. The form is validated before the one-time token is used up, so a
+    form error never turns the corrected resubmit into "already reset"."""
     account = get_object_or_404(GuardianAccount.objects.select_related("guardian", "user"), pk=pk)
     purpose = f"guardian-account-reset-{account.pk}"
-    if request.method == "POST":
+    history = guardian_records.phone_changed_recently(account.guardian)
+    form = GuardianResetForm(request.POST or None, in_person_only=history.recent)
+    if request.method == "POST" and form.is_valid():
         if one_time_forms.is_repeat(request, purpose):
             messages.info(
                 request,
@@ -4277,16 +4289,23 @@ def guardian_account_reset_password(request, pk):
             return redirect("core:guardian-detail", pk=account.guardian_id)
         try:
             password = guardian_accounts.reset_guardian_password(
-                account=account, actor=request.user
+                account=account, actor=request.user,
+                method=form.cleaned_data["method"], note=form.cleaned_data.get("note", ""),
             )
         except ValidationError as error:
-            messages.error(request, " ".join(error.messages))
-            return redirect("core:guardian-detail", pk=account.guardian_id)
-        return _credential_slip(request, account, password, heading="Password reset")
+            form.add_error(None, error)
+        else:
+            return _credential_slip(request, account, password, heading="Password reset")
     return render(
         request,
         "core/guardian_reset_confirm.html",
-        {"account": account, "one_time_token": one_time_forms.token_for(request, purpose)},
+        {
+            "account": account,
+            "form": form,
+            "history": history,
+            "changed_by_you": history.changed_by is not None and history.changed_by == request.user,
+            "one_time_token": one_time_forms.token_for(request, purpose),
+        },
     )
 
 

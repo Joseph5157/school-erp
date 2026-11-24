@@ -70,7 +70,8 @@ class ResetClearsLockoutTests(GuardianFixture, TestCase):
         account, _ = self.create_account()
         lock("meena.rao")
         self.assertIn("meena.rao", security.locked_usernames())
-        new = ga.reset_guardian_password(account=account, actor=self.admin)
+        new = ga.reset_guardian_password(account=account, actor=self.admin,
+                              method="IN_PERSON_DOCUMENTS")
         self.assertNotIn("meena.rao", security.locked_usernames())
         event = SecurityEvent.objects.get(event_type=Event.LOCKOUT_CLEARED)
         self.assertEqual((event.actor, event.subject_user), (self.admin, account.user))
@@ -79,7 +80,8 @@ class ResetClearsLockoutTests(GuardianFixture, TestCase):
     def test_reset_without_a_lockout_records_no_lockout_event(self):
         account, _ = self.create_account()
         security.record_failure("meena.rao", "source-1")  # one failure is not a lockout
-        ga.reset_guardian_password(account=account, actor=self.admin)
+        ga.reset_guardian_password(account=account, actor=self.admin,
+                              method="IN_PERSON_DOCUMENTS")
         self.assertFalse(SecurityEvent.objects.filter(event_type=Event.LOCKOUT_CLEARED).exists())
         self.assertNotIn("meena.rao", security.locked_usernames())
 

@@ -3,6 +3,7 @@
 {% block content %}
 {# No visible title: the children's cards start the page. Screen readers still get a page heading. #}
 <h1 class="visually-hidden">Home</h1>
+{% if reset_notice %}<p class="erp-note-text" role="status">Your password was reset by the school on {{ reset_notice|date:"j M Y" }}. If you did not ask for this, contact the school office.</p>{% endif %}
 {% if children %}
 {% if summaries %}
 <div class="erp-child-grid">

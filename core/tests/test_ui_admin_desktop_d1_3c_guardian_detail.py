@@ -40,7 +40,8 @@ class GuardianDetailD13CBase:
     def setUp(self):
         super().setUp()
         self.admin = User.objects.create_user(username="admin", password="pass-12345")
-        self.admin.groups.add(Group.objects.get(name="School Administrators"))
+        self.admin.groups.add(Group.objects.get(name="School Administrators"),
+                              Group.objects.get(name="Portal password resets"))  # reset staff (G-06 reset spec §6)
         self.client.login(username="admin", password="pass-12345")
         self.guardian = Guardian.objects.create(full_name="Meena Rao", phone="98450-12345", email="meena@example.test")
         self.asha = self.student("Asha Rao")

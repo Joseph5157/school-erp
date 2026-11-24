@@ -1,5 +1,7 @@
 """Guardian Portal views (ADR 0013, ADR 0014). Read-only."""
 
+from datetime import timedelta
+
 from django.core.paginator import Paginator
 from django.http import Http404
 from django.shortcuts import render
@@ -80,6 +82,24 @@ def _context(request, switch_route="portal:child", **extra):
     }
 
 
+def _reset_notice(user, now=None):
+    """Date of an office reset in the last 30 days, shown for information only (G-06 reset spec
+    §4.5, ADR 0029 R9). It is not detection: someone who misused the reset has already changed
+    the password, so the owner never sees this."""
+    from accounts.models import SecurityEvent
+
+    latest = (
+        SecurityEvent.objects.filter(
+            event_type=SecurityEvent.EventType.PASSWORD_RESET_BY_ADMIN, subject_user=user,
+            occurred_at__gte=(now or timezone.now()) - timedelta(days=30),
+        )
+        .order_by("-occurred_at")
+        .values_list("occurred_at", flat=True)
+        .first()
+    )
+    return latest
+
+
 @require_safe
 @guardian_required
 def home(request):
@@ -92,6 +112,7 @@ def home(request):
             children=children,
             notices=list(visible_announcements(request.user, children)[:3]),  # LIMIT 3 in SQL
             summaries=child_summaries(children),
+            reset_notice=_reset_notice(request.user),
         ),
     )
 
