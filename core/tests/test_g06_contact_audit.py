@@ -6,6 +6,7 @@ from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.core.management import call_command
+from django.db import transaction
 from django.test import TestCase
 from django.urls import reverse
 
@@ -75,6 +76,36 @@ class ModelAuditTests(AdminClientMixin, TestCase):
         stale.save()
         self.assertEqual(contact_events(event_type=Event.GUARDIAN_PHONE_CHANGED).count(), 2)
 
+    def test_deferred_instance_saves_without_a_false_event(self):
+        guardian = Guardian.objects.create(full_name="Meena Rao", phone="1", email="a@example.com")
+        before = contact_events().count()
+        partial = Guardian.objects.only("full_name").get(pk=guardian.pk)
+        partial.full_name = "Meena R. Rao"
+        partial.save()
+        self.assertEqual(contact_events().count(), before)
+
+    def test_unsaved_phone_change_outside_update_fields_is_not_audited(self):
+        guardian = Guardian.objects.create(full_name="Meena Rao", phone="1")
+        before = contact_events().count()
+        guardian.phone = "2"
+        guardian.full_name = "Renamed"
+        guardian.save(update_fields=["full_name"])
+        self.assertEqual(contact_events().count(), before)
+        guardian.refresh_from_db()
+        self.assertEqual(guardian.phone, "1")
+
+    def test_get_or_create_with_a_phone_is_audited(self):
+        Guardian.objects.get_or_create(full_name="Via Get Or Create", defaults={"phone": "98450 1"})
+        self.assertEqual(contact_events(event_type=Event.GUARDIAN_PHONE_CHANGED).count(), 1)
+
+    def test_event_rolls_back_with_the_save(self):
+        guardian = Guardian.objects.create(full_name="Meena Rao")
+        with self.assertRaises(RuntimeError), transaction.atomic():
+            guardian.phone = "98450 12345"
+            guardian.save()
+            raise RuntimeError("caller fails after saving")
+        self.assertFalse(contact_events().exists())
+
     def test_audit_false_records_nothing(self):
         Guardian(full_name="Demo", phone="98450 12345").save(audit=False)
         self.assertFalse(contact_events().exists())
@@ -142,6 +173,8 @@ class HistoryTests(AdminClientMixin, TestCase):
         # The reset is older than every phone edit, so it is on the last page, not lost.
         last = self.client.get(url, {"page": 2})
         self.assertContains(last, "Password reset by administrator")
+        # Page links keep the reader on the history section.
+        self.assertContains(first, "page=2#history")
 
 
 class GuardsTests(TestCase):
