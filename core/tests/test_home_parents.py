@@ -225,6 +225,6 @@ class HomeParentsDataTests(MarksFixture, TestCase):
             notice_form=False, show_sent=False, invite_links=True, include_reviews=False,
             review_names=False, decide_links=False, guardians_link=False,
         )
-        with mock.patch.object(home_parents, "_placements", wraps=home_parents._placements) as spy:
+        with mock.patch.object(home_parents, "placements", wraps=home_parents.placements) as spy:
             home_parents.parents_tab_context(TODAY, **kwargs)
         self.assertEqual(spy.call_count, 1)

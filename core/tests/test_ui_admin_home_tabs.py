@@ -360,7 +360,7 @@ class HomeTabsTests(MarksFixture, TestCase):
     def test_parents_tab_computes_placements_once(self):
         from core import home_parents
 
-        with mock.patch.object(home_parents, "_placements", wraps=home_parents._placements) as spy:
+        with mock.patch.object(home_parents, "placements", wraps=home_parents.placements) as spy:
             self.parents_page()
         self.assertEqual(spy.call_count, 1)
 

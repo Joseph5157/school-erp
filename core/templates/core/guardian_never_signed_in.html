@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Guardians who have not signed in{% endblock %}
+{% block content %}
+{% include "partials/_page_header.html" with eyebrow="People" title="Guardians who have not signed in" purpose="Portal accounts that were created but never used, or still use the temporary password. Open a guardian to follow up." only %}
+{% if can_see_students and class_choices %}
+<search aria-label="Filter guardians">
+<form method="get" action="{% url 'core:guardian-never-signed-in' %}" class="erp-toolbar erp-toolbar--inline erp-toolbar--compact">
+    {% if table.sort_param %}<input type="hidden" name="sort" value="{{ table.sort_param }}">{% endif %}
+    <input type="hidden" name="chip" value="{{ chip }}">
+    <div class="erp-field">
+        <label for="unused-class">Class</label>
+        <select id="unused-class" name="class" class="form-select">
+            <option value="">All classes</option>
+            {% for c in class_choices %}<option value="{{ c.pk }}"{% if c.pk == class_filter %} selected{% endif %}>{{ c.name }}</option>{% endfor %}
+        </select>
+    </div>
+    <div class="erp-field">
+        <label for="unused-section">Section</label>
+        <select id="unused-section" name="section" class="form-select" data-erp-depends-on="unused-class">
+            <option value="">All sections</option>
+            {% for s in section_choices %}<option value="{{ s.pk }}" data-parent="{{ s.class_grade_id }}"{% if s.pk == section_filter %} selected{% endif %}>{{ s.class_grade.name }} {{ s.name }}</option>{% endfor %}
+        </select>
+    </div>
+    <div class="erp-form-actions"><button type="submit" class="btn btn-outline-secondary">Filter</button></div>
+</form>
+</search>
+{% endif %}
+<nav class="erp-chips mb-3" aria-label="Sign-in status">
+    {% for c in chips %}
+    <a href="{{ c.url }}"{% if c.active %} class="active" aria-current="page"{% endif %}>{{ c.label }}</a>
+    {% endfor %}
+</nav>
+{% if filtered %}
+<p class="erp-note-text">Showing guardians in the chosen class or section. <a href="{{ clear_url }}">Clear filters</a></p>
+{% endif %}
+<div class="erp-panel">
+<div class="erp-table-scroll erp-table-scroll--stack" role="region" aria-label="Guardians who have not signed in" tabindex="0">
+<table class="table erp-rows-link erp-table--stack">
+    {% include "partials/_table_head.html" with table=table caption="Guardians who have not signed in" only %}
+    <tbody>
+        {% for account in accounts %}
+        <tr>
+            <th scope="row" class="text-break"><a class="erp-row-link" href="{% url 'core:guardian-detail' account.guardian_id %}">{{ account.guardian.full_name }}</a></th>
+            <td class="text-break" data-label="Username">{{ account.user.username }}</td>
+            <td data-label="Account created"><span class="text-nowrap">{{ account.created_at|date:"j M Y" }}</span> <span class="text-muted">&middot; {% if account.days_waiting <= 0 %}today{% else %}{{ account.days_waiting }} day{{ account.days_waiting|pluralize }} ago{% endif %}</span></td>
+            <td data-label="Created by">{{ account.created_by.get_full_name|default:account.created_by.username }}</td>
+            {% if can_see_students %}
+            <td data-label="Children with access">{% for child in account.children %}<div>{{ child.name }}{% if child.placement %} <span class="text-muted">&middot; {{ child.placement }}</span>{% endif %}{% if child.under_review %} {% include "partials/_status_badge.html" with label="Access under review" tone="pending" only %}{% endif %}</div>{% endfor %}</td>
+            {% endif %}
+        </tr>
+        {% empty %}
+        <tr><td colspan="{% if can_see_students %}5{% else %}4{% endif %}">{% if not any_accounts %}{% url 'core:guardian-list' as guardians_url %}{% include "partials/_empty.html" with icon="guardians" title="No guardian portal accounts yet." action_url=guardians_url action_label="Guardians" inline=True only %}{% elif filtered %}{% include "partials/_empty.html" with icon="guardians" title="No guardians in this class or section are waiting to sign in." clear_url=clear_url clear_label="Clear filters" inline=True only %}{% elif chip == "temporary" %}{% include "partials/_empty.html" with icon="guardians" title="No guardian is still using a temporary password." inline=True only %}{% else %}{% include "partials/_empty.html" with icon="guardians" title="Every guardian with portal access has signed in at least once." inline=True only %}{% endif %}</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+</div>
+{% if table.paginator.count %}{% include "partials/_table_footer.html" with table=table only %}{% endif %}
+{% endblock %}
