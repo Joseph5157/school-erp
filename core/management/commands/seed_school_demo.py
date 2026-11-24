@@ -22,7 +22,6 @@ from core.models import (
     Applicant,
     AssessmentTeacherAssignment,
     ClassGrade,
-    Guardian,
     GuardianAccount,
     RelationshipType,
     Section,
@@ -172,7 +171,7 @@ class Command(seed_demo.Command):
         ):
             first = self.rng.choice(first_names)
             guardians.append((
-                Guardian.objects.create(
+                seed_demo._demo_guardian(
                     full_name=f"{first} {family}",
                     phone=f"+91 9{self.rng.randint(100000000, 999999999)}",
                     email=f"{first.lower()}.{family.lower()}{self.rng.randint(10, 99)}@example.com",

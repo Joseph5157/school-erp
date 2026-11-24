@@ -8,6 +8,7 @@ import re
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
+from django.db.models import Q
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -451,7 +452,9 @@ class StudentAccessTests(GuardianDetailD13CBase, TestCase):
 
 class HistoryAndConsentTests(GuardianDetailD13CBase, TestCase):
     def test_history_empty_state(self):
-        section = self.section(self.get(), "history")
+        # A guardian created without phone or email has no contact events (G-06 reset spec §3).
+        quiet = Guardian.objects.create(full_name="Quiet Guardian")
+        section = self.section(self.get(guardian=quiet), "history")
         self.assertIn("None.", section)
 
     def test_history_events_in_view_order_with_actor(self):
@@ -462,8 +465,9 @@ class HistoryAndConsentTests(GuardianDetailD13CBase, TestCase):
         self.assertIn("Guardian account created", section)
         self.assertIn("Student access granted", section)
         self.assertIn("by admin", section)
-        events = SecurityEvent.objects.filter(
-            guardian_id_ref=self.guardian.pk, event_class=SecurityEvent.EventClass.HISTORY
+        events = SecurityEvent.objects.filter(guardian_id_ref=self.guardian.pk).filter(
+            Q(event_class=SecurityEvent.EventClass.HISTORY)
+            | Q(event_type__in=SecurityEvent.GUARDIAN_HISTORY_ROUTINE_TYPES)
         )
         self.assertEqual(section.count("<li"), events.count())
         # Rendered order follows the view's (context) event order.

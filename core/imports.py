@@ -776,9 +776,11 @@ def _apply(batch, plan, user):
         if entry["existing_id"]:
             guardians.append(Guardian.objects.get(pk=entry["existing_id"]))
         else:
-            guardians.append(Guardian.objects.create(
+            guardian = Guardian(
                 full_name=entry["full_name"], phone=entry["phone"], email=entry["email"]
-            ))
+            )
+            guardian.save(actor=user)
+            guardians.append(guardian)
             created_guardians += 1
 
     academic_year = batch.academic_year

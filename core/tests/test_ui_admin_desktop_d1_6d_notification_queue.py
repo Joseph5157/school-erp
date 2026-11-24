@@ -39,7 +39,9 @@ def queue_section(page):
 class Base(AlertFixture):
     def setUp(self):
         super().setUp()
-        Guardian.objects.update(phone="98765 43210")                       # synthetic, usable number
+        for changed in Guardian.objects.all():                       # synthetic, usable number
+            changed.phone = "98765 43210"
+            changed.save()
 
     def client_with(self, *codenames):
         self._viewers = getattr(self, "_viewers", 0) + 1
@@ -284,7 +286,9 @@ class StateTests(Base, TestCase):
     def test_missing_phone_shows_a_labelled_state_and_a_gated_fix_link(self):
         self.register()
         [message] = list(notifications.to_send())
-        Guardian.objects.filter(pk=message.guardian_id).update(phone="N/A")
+        changed = Guardian.objects.get(pk=message.guardian_id)
+        changed.phone = "N/A"
+        changed.save()
         page = html(self.client.get(URL))
         self.assertIn("Phone number missing or not usable", page)
         self.assertIn("erp-status--stale", page)

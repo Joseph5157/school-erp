@@ -3575,6 +3575,9 @@ def guardian_never_signed_in(request):
     )
 
 
+GUARDIAN_HISTORY_COLUMNS = (Column("When", "when", ("occurred_at",)),)
+
+
 def _guardian_lookup_return_url(request):
     """The add-Guardian page that sent the user to create someone, if it is one they can use.
 
@@ -3622,7 +3625,8 @@ def guardian_create(request):
             if "confirm_new" not in request.POST:
                 matches = _guardian_duplicate_matches(request.user, form.cleaned_data)
             if not matches:
-                guardian = form.save()
+                guardian = form.save(commit=False)
+                guardian.save(actor=request.user)
                 messages.success(request, "Guardian created.")
                 if return_url:
                     return redirect(f"{return_url}?guardian={guardian.pk}")
@@ -3643,7 +3647,7 @@ def guardian_edit(request, pk):
     if request.method == "POST":
         form = GuardianForm(request.POST, instance=guardian)
         if form.is_valid():
-            form.save()
+            form.save(commit=False).save(actor=request.user)
             messages.success(request, "Guardian updated.")
             return redirect("core:guardian-detail", pk=guardian.pk)
     else:
@@ -3772,9 +3776,14 @@ def guardian_detail(request, pk):
             )
         context["relationships"] = relationships
     if request.user.has_perm("accounts.view_securityevent"):
-        context["events"] = SecurityEvent.objects.filter(
-            guardian_id_ref=guardian.pk, event_class=SecurityEvent.EventClass.HISTORY
-        ).select_related("actor", "subject_user")[:50]
+        # HISTORY events plus the guardian's own ROUTINE ones (resets, contact changes), in pages
+        # so many contact edits cannot push a reset out of view (G-06 reset spec §3).
+        events = SecurityEvent.objects.filter(guardian_id_ref=guardian.pk).filter(
+            Q(event_class=SecurityEvent.EventClass.HISTORY)
+            | Q(event_type__in=SecurityEvent.GUARDIAN_HISTORY_ROUTINE_TYPES)
+        ).select_related("actor", "subject_user")
+        context["history_table"] = build_table(request, events, GUARDIAN_HISTORY_COLUMNS, "-when")
+        context["events"] = context["history_table"].page
     if request.user.has_perm("core.view_guardiancontactconsent"):
         context["consents"] = list(guardian.contact_consents.select_related("recorded_by"))
         if request.user.has_perm("core.add_guardiancontactconsent"):

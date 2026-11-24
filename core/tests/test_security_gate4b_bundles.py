@@ -16,7 +16,7 @@ from django.urls import reverse
 
 from accounts.models import SecurityEvent
 from core import guardian_accounts as ga
-from core.models import Applicant, Guardian, Student
+from core.models import Applicant, Student
 from core.tests.gate4b_support import GUARDIAN_EMAIL, GUARDIAN_PHONE, holders
 from core.tests.test_phase7_alerts import AlertFixture
 
@@ -28,9 +28,9 @@ SECRET_STUDENT_PHONE = "9000011111"
 class BundleFixture(AlertFixture):
     def setUp(self):
         super().setUp()
-        Guardian.objects.filter(pk=self.meena.pk).update(
-            phone=GUARDIAN_PHONE, email=GUARDIAN_EMAIL
-        )
+        # One audited save: bulk writes refuse contact fields (G-06 reset spec §3).
+        self.meena.phone, self.meena.email = GUARDIAN_PHONE, GUARDIAN_EMAIL
+        self.meena.save()
         Student.objects.filter(pk=self.asha.pk).update(
             admission_number=SECRET_ADMISSION, email=SECRET_STUDENT_EMAIL,
             phone=SECRET_STUDENT_PHONE, date_of_birth="2013-02-14",

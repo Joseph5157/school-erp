@@ -36,7 +36,9 @@ LOST_ACCESS = "Guardian no longer has portal access"
 class RecheckFixture(AnnouncementFixture):
     def setUp(self):
         super().setUp()
-        Guardian.objects.update(phone="98765 43210")  # synthetic, usable number
+        for changed in Guardian.objects.all():  # synthetic, usable number
+            changed.phone = "98765 43210"
+            changed.save()
 
     def prepared_alert(self):
         """Meena's absence alert for Asha, prepared while everything is valid."""
@@ -476,7 +478,9 @@ class OpenWhatsAppTests(RecheckFixture, TestCase):
 
     def test_unusable_phone_is_refused_without_redirect(self):
         alert = self.prepared_alert()
-        Guardian.objects.filter(pk=self.meena.pk).update(phone="N/A")
+        changed = Guardian.objects.get(pk=self.meena.pk)
+        changed.phone = "N/A"
+        changed.save()
         self.assert_stays_in_erp(self.press(alert))
         self.assertEqual(self.fresh(alert).status, PREPARED)
 
