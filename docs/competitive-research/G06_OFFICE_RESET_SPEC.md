@@ -482,13 +482,20 @@ full CI on the final head.
 - [x] Owner decisions OD-R1 to OD-R5 and review choices S-01, S-03, S-07 recorded (§12).
 - [x] Security-focused review of r1 done; findings applied in r2.
 - [x] Owner accepts r2 (2026-11-24).
-- [ ] PR 1 merged; contact edits appear in guardian history on staging.
-- [ ] PR 2 merged after a backward-migration rehearsal; reset form checked at 360, 390 and desktop.
-- [ ] PR 2b merged; a superuser adds reset staff on staging from the page; page checked at 360, 390 and
-      desktop.
-- [ ] PR 3 merged with expiry off after a rehearsal and backup; never-signed-in run done; switch set in
-      staging; expiry checked.
-- [ ] PR 4 merged; link shown only to group members and superusers.
+- [ ] PR 1 merged (#306, 248b050). **Open:** contact edits not yet seen in guardian history on staging
+      (no phone or email edit made there yet).
+- [ ] PR 2 merged (#307, 2d84afc) after a backward-migration rehearsal on a copy of the local demo
+      database; reset form checked at 360 and 1280 (local SQLite copy). **Open:** 390 not recorded; no reset made on staging yet.
+- [ ] PR 2b merged (#308, a508ab8); page checked at 360 and 1280. **Open:** a staging superuser exists
+      since 2026-11-24 but has not yet added reset staff from the page; 390 not recorded.
+- [ ] PR 3 merged (#309, 4eee758) with expiry off, after a backward-migration rehearsal on a local copy;
+      switch set in staging 2026-11-24 (`TEMP_PASSWORD_EXPIRY_FROM=2026-11-24T21:45:00+05:30`); expiry
+      checked on the staging server (14-day slip, 72-hour reset, one-hour grace, missing data never
+      expires). Staging had no logins on a temporary password, so the never-signed-in run had nothing to
+      clear. **Open (owner to accept or not):** no separate pre-deploy backup was recorded; staging's
+      daily backups were on.
+- [x] PR 4 merged (#310, 0240bc2); on staging the link shows to a superuser and not to a plain School
+      Administrator; a reset-group member saw it in a rolled-back server check (the group is still empty); checked at 360, 390 and 1280 locally.
 
 ## 12. Decisions for the product owner
 
