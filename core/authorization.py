@@ -128,6 +128,26 @@ def teacher_required(view_func):
     return login_required(wrapped)
 
 
+def superuser_required(view_func):
+    """Require a signed-in, active superuser (G-06 reset spec §6a, OD-R6).
+
+    A check on the login, not a permission: any permission can be put in a group, and a School
+    Administrators grant would let admins add themselves to the reset staff. Anonymous users are
+    redirected to sign in; everyone else gets 403.
+    """
+    from functools import wraps
+
+    from django.core.exceptions import PermissionDenied
+
+    @wraps(view_func)
+    def wrapped(request, *args, **kwargs):
+        if not (request.user.is_active and request.user.is_superuser):
+            raise PermissionDenied
+        return view_func(request, *args, **kwargs)
+
+    return login_required(wrapped)
+
+
 def can_write_term_remarks(user, term, section):
     """Administrators, or the Section's class teacher for the Term (ADR 0012 D10).
 

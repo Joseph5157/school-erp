@@ -101,6 +101,8 @@ class SecurityEvent(models.Model):
         GUARDIAN_PHONE_CHANGED = "GUARDIAN_PHONE_CHANGED", "Guardian phone changed"
         GUARDIAN_EMAIL_CHANGED = "GUARDIAN_EMAIL_CHANGED", "Guardian email changed"
         CONTACT_AUDIT_STARTED = "CONTACT_AUDIT_STARTED", "Guardian contact audit started"
+        RESET_STAFF_ADDED = "RESET_STAFF_ADDED", "Added to password reset staff"
+        RESET_STAFF_REMOVED = "RESET_STAFF_REMOVED", "Removed from password reset staff"
 
     # G-06 reset spec §9 (owner choice S-03): events it adds stay ROUTINE until counsel confirms
     # longer retention. HISTORY rows can never be deleted, so nothing goes there by default.
@@ -115,6 +117,8 @@ class SecurityEvent(models.Model):
             EventType.GUARDIAN_PHONE_CHANGED,
             EventType.GUARDIAN_EMAIL_CHANGED,
             EventType.CONTACT_AUDIT_STARTED,
+            EventType.RESET_STAFF_ADDED,
+            EventType.RESET_STAFF_REMOVED,
         }
     )
 

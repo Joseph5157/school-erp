@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Password reset staff{% endblock %}
+{% block content %}
+{% include "partials/_page_header.html" with eyebrow="Access and security" title="Password reset staff" purpose="These staff can reset parent portal passwords. Only a superuser can change this list." only %}
+
+{% if can_manage and add_form %}
+<section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="reset-staff-add-heading">
+<h2 class="h5" id="reset-staff-add-heading">Add staff</h2>
+{% if add_form.fields.user.queryset.exists %}
+<form method="post" action="{% url 'core:reset-staff-add' %}" class="erp-toolbar erp-toolbar--inline erp-toolbar--compact">
+    {% csrf_token %}
+    {% include "partials/_form_field.html" with field=add_form.user only %}
+    <div class="erp-form-actions"><button type="submit" class="btn btn-primary">Add</button></div>
+</form>
+{% else %}
+<p class="erp-card-empty mb-0">No one else can be added. Only active School Administrators who are not superusers and have no parent login can be added.</p>
+{% endif %}
+</section>
+{% endif %}
+
+<section class="erp-panel mb-4" aria-labelledby="reset-staff-members-heading">
+<div class="p-3 p-md-4 pb-0 pb-md-0 erp-panel-head"><h2 class="h5" id="reset-staff-members-heading">Staff who can reset</h2></div>
+{% if members %}
+<div class="erp-table-scroll erp-table-scroll--stack mt-3" role="region" aria-label="Password reset staff" tabindex="0">
+<table class="table mb-0 erp-row-heads-plain erp-table--stack">
+    <caption class="visually-hidden">Password reset staff</caption>
+    <thead><tr><th scope="col">Name</th><th scope="col">Username</th><th scope="col">Added</th>{% if can_manage %}<th scope="col"><span class="visually-hidden">Remove</span></th>{% endif %}</tr></thead>
+    <tbody>
+    {% for row in members %}
+        <tr>
+            <th scope="row" class="text-break">{{ row.user.get_full_name|default:row.user.username }}{% for mark in row.marks %} {% include "partials/_status_badge.html" with label=mark tone="pending" only %}{% endfor %}</th>
+            <td class="text-break" data-label="Username">{{ row.user.username }}</td>
+            <td data-label="Added">{% if row.added %}{{ row.added.occurred_at|date:"j M Y" }}{% if row.added.actor %} by {{ row.added.actor.get_full_name|default:row.added.actor.username }}{% endif %}{% else %}<span class="text-muted">Added more than a year ago or outside this page</span>{% endif %}</td>
+            {% if can_manage %}
+            <td class="erp-stack-actions">
+                <form method="post" action="{% url 'core:reset-staff-remove' row.user.pk %}" class="d-flex flex-wrap gap-2">
+                    {% csrf_token %}
+                    <label class="visually-hidden" for="reason-{{ row.user.pk }}">Reason for removing {{ row.user.username }}</label>
+                    <select id="reason-{{ row.user.pk }}" name="reason" class="form-select form-select-sm" required>
+                        <option value="">Reason…</option>
+                        {% for value, label in reasons.items %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+                    </select>
+                    <button type="submit" class="btn btn-outline-danger btn-sm">Remove<span class="visually-hidden"> {{ row.user.username }}</span></button>
+                </form>
+            </td>
+            {% endif %}
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+{% else %}
+<p class="p-3 p-md-4 mb-0">No staff can reset parent passwords. Only superusers can, until you add someone.</p>
+{% endif %}
+</section>
+
+<section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="reset-staff-also-heading">
+<h2 class="h5" id="reset-staff-also-heading">Can also reset</h2>
+<ul class="small mb-0">
+    {% for user in also.superusers %}<li>{{ user.get_full_name|default:user.username }} ({{ user.username }}) &middot; superuser</li>{% endfor %}
+    {% for user in also.direct %}<li>{{ user.get_full_name|default:user.username }} ({{ user.username }}) &middot; granted outside this page. Remove it in the Django admin.</li>{% endfor %}
+    {% for group in also.groups %}<li>Group "{{ group.name }}" &middot; granted outside this page. Remove it in the Django admin.</li>{% endfor %}
+    {% if not also.superusers and not also.direct and not also.groups %}<li class="text-muted">No one else.</li>{% endif %}
+</ul>
+</section>
+
+<section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="reset-staff-changes-heading">
+<h2 class="h5" id="reset-staff-changes-heading">Recent changes</h2>
+<ul class="small mb-0">
+    {% for event in changes %}<li>{{ event.occurred_at|date:"j M Y, H:i" }} &middot; {{ event.get_event_type_display }}: {{ event.subject_user.username|default:"(deleted login)" }}{% if event.reason_label %} ({{ event.reason_label }}){% endif %}{% if event.actor %} by {{ event.actor.username }}{% endif %}</li>{% empty %}<li class="text-muted">None yet.</li>{% endfor %}
+</ul>
+</section>
+{% endblock %}

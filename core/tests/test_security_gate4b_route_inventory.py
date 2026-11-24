@@ -25,7 +25,8 @@ INTENTIONALLY_UNPERMISSIONED = {
 }
 # Django-owned routes (admin, stock sign-in/out/password views) are listed with a reason in
 # route_inventory.FRAMEWORK_OWNED and flagged `framework_owned`.
-SCOPED_BY_OTHER_MEANS = {"teacher_required", "guardian_required", "framework_owned"}
+# superuser_required: G-06 reset spec §6a (the reset staff page); a login check, not a permission.
+SCOPED_BY_OTHER_MEANS = {"teacher_required", "guardian_required", "framework_owned", "superuser_required"}
 
 # Pages that embed another class of data must declare its permission in the view body.
 DECLARED_DATA_PERMISSIONS = {

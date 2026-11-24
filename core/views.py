@@ -41,6 +41,7 @@ from core import (
     progress_steps,
     publication,
     reports,
+    reset_staff,
     school_logo,
     setup_checklist,
     teacher_accounts,
@@ -63,6 +64,7 @@ from core.authorization import (
     historical_teacher_assignments,
     is_teacher,
     sole_class_teacher_duty,
+    superuser_required,
     teacher_required,
     teacher_result_windows,
     teacher_student_scope,
@@ -106,6 +108,8 @@ from core.forms import (
     MonthlySectionSummaryForm,
     OfferedSubjectsLookupForm,
     RecordCorrectionForm,
+    ResetStaffAddForm,
+    ResetStaffRemoveForm,
     ResultCorrectionForm,
     ResultEntryForm,
     RevocationForm,
@@ -3806,6 +3810,58 @@ def guardian_detail(request, pk):
         )
     )
     return render(request, "core/guardian_detail.html", context)
+
+
+# --- G-06 reset spec §6a: who may reset guardian passwords -------------------
+
+
+@administrator_required("core.view_guardianaccount")
+@require_safe
+def reset_staff_list(request):
+    """Administrators see the list; only superusers get the controls (OD-R6)."""
+    can_manage = request.user.is_superuser
+    reasons = dict(reset_staff.REMOVE_REASONS)
+    changes = reset_staff.recent_changes()
+    for event in changes:
+        event.reason_label = reasons.get(event.detail.get("reason"), "")
+    return render(request, "core/reset_staff.html", {
+        "members": reset_staff.members(),
+        "also": reset_staff.also_can_reset(),
+        "changes": changes,
+        "can_manage": can_manage,
+        "add_form": ResetStaffAddForm() if can_manage else None,
+        "remove_form": ResetStaffRemoveForm() if can_manage else None,
+        "reasons": reasons,
+    })
+
+
+@superuser_required
+@require_POST
+def reset_staff_add(request):
+    form = ResetStaffAddForm(request.POST)
+    if form.is_valid():
+        try:
+            user = reset_staff.add(form.cleaned_data["user"], actor=request.user)
+        except ValidationError as error:
+            messages.error(request, " ".join(error.messages))
+        else:
+            messages.success(request, f"{user.get_full_name() or user.username} can now reset parent passwords.")
+    else:
+        messages.error(request, "Choose a staff member who can be added.")
+    return redirect("core:reset-staff")
+
+
+@superuser_required
+@require_POST
+def reset_staff_remove(request, user_id):
+    # Only current members: any other id (a superuser, a direct grant) is "not found".
+    user = get_object_or_404(reset_staff.reset_group().user_set, pk=user_id)
+    form = ResetStaffRemoveForm(request.POST)
+    if not form.is_valid():
+        messages.error(request, "Choose a reason.")
+    elif reset_staff.remove(user, actor=request.user, reason=form.cleaned_data["reason"]):
+        messages.success(request, f"{user.get_full_name() or user.username} can no longer reset parent passwords.")
+    return redirect("core:reset-staff")
 
 
 # --- Phase 6 Gate 7: sign-in lockouts (ADR 0013) ----------------------------

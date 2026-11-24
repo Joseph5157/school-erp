@@ -1193,6 +1193,37 @@
     "route": "students/<int:pk>/report-card/<int:term_pk>/",
     "view": "views.report_term_report_card"
   },
+  "core:reset-staff": {
+    "flags": [
+      "require_safe"
+    ],
+    "inner": [],
+    "perms": [
+      "core.view_guardianaccount"
+    ],
+    "route": "access/reset-staff/",
+    "view": "views.reset_staff_list"
+  },
+  "core:reset-staff-add": {
+    "flags": [
+      "require_POST",
+      "superuser_required"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "access/reset-staff/add/",
+    "view": "views.reset_staff_add"
+  },
+  "core:reset-staff-remove": {
+    "flags": [
+      "require_POST",
+      "superuser_required"
+    ],
+    "inner": [],
+    "perms": [],
+    "route": "access/reset-staff/<int:user_id>/remove/",
+    "view": "views.reset_staff_remove"
+  },
   "core:result-correct": {
     "flags": [],
     "inner": [],

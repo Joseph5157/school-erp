@@ -343,6 +343,13 @@ urlpatterns = [
     path("terms/<int:pk>/publication/", views.term_publication, name="term-publication"),
     path("publications/stale/", views.publications_stale, name="publications-stale"),
     path("sign-in-lockouts/", views.login_lockouts, name="login-lockouts"),
+    path("access/reset-staff/", views.reset_staff_list, name="reset-staff"),
+    path("access/reset-staff/add/", views.reset_staff_add, name="reset-staff-add"),
+    path(
+        "access/reset-staff/<int:user_id>/remove/",
+        views.reset_staff_remove,
+        name="reset-staff-remove",
+    ),
     path(
         "sign-in-lockouts/clear/",
         views.login_lockout_clear_confirm,
