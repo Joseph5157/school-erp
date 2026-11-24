@@ -145,3 +145,46 @@ G-01 remains the largest benchmark gap by count. It is still a research item wit
 - **In parallel (operational, no code):** obtain documented school approval to switch measurement on for the pilot deployment, so the §9 triggers and the conversion order can rest on evidence.
 - **Out of scope:** new permissions, schema changes, offline or PWA changes, and fees.
 - **Why not G-06 first:** it is equally P1 but needs a recovery-channel and identity decision before any spec. A short research step on G-06 can run alongside Package C without code.
+
+## 6. Status update (24 November 2026)
+
+Sections 1–5 are kept as written on 23 November. This section records what changed since, checked
+against `main` at `0240bc2` plus this PR. It approves no feature, schema or roadmap change.
+
+### 6.1 Gap register changes
+
+| Gap | §2.4 said | Now | Evidence |
+| --- | --- | --- | --- |
+| G-04 Admin phone coverage | Open, P1 | **Closed** | `PACKAGE_C_CLOSEOUT.md` §6 (inventory of 144 routes; every High and Medium finding fixed; optional C8 Low polish left). |
+| G-06 Guardian activation and recovery | Open, P1 (narrowed) | **Open, narrowed to self-service recovery** | Never-signed-in list (#303, `G06_NEVER_SIGNED_IN_SPEC.md`) answers ANA-05. Office reset improved under ADR 0029 option A (#306–#310, `G06_OFFICE_RESET_SPEC.md`): identity method recorded, contact changes audited, named reset staff, temporary passwords expire (switched on in staging 24 November). Self-service recovery for guardians stays deferred by ADR 0029. On 24 November the product owner kept guardians on office reset. |
+| G-13 Documentation drift and demo fee text | P3, unchanged | **Closed by this PR** | `docs/ROADMAP.md` now says Term report card PDFs came in Phase 7; the demo refresh notice pool has no fee text, pinned by `test_demo_refresh.test_pool_titles_unique_and_no_fee_text`. |
+
+Four of the five baseline P1 gaps are closed (G-02, G-03, G-04, G-05). G-06 stays open only for
+guardian self-service recovery, which ADR 0029 defers. Whether to close it on that decision is a
+product owner choice.
+
+Benchmark rows (the baseline audit stays unchanged):
+
+| ID | Capability | Before | Now | Reason |
+| --- | --- | --- | --- | --- |
+| ANA-05 | Guardian account inactive | Missing (P2) | **Implemented** | Office list of guardians who never signed in or still use a temporary password, with an Expired mark and a Reset password link for reset staff. |
+| GUA-01 | Activation and recovery | Partial (P1) | **Partial (improved)** | Office reset with identity method, audit and expiry; no self-service recovery (ADR 0029). |
+
+### 6.2 Known follow-ups (not gaps)
+
+- G-06 staging acceptance items still open in `G06_OFFICE_RESET_SPEC.md` §11 (contact edit, reset
+  staff added, one reset on staging; PR 3 backup note), waiting on the product owner.
+- Temporary-password expiry is not switched on in production (no production environment yet).
+- **Staff password recovery by email** (teachers and school administrators; not superusers, not
+  guardians) is a product owner requirement before the first real school. It needs an email
+  provider decision, an ADR 0013 amendment for staff and a threat model before any code.
+
+### 6.3 Recommended next
+
+1. **Staff email recovery (decision step).** It is the only item with a stated deadline (before
+   the first real school). Shape: provider comparison, ADR (provider and ADR 0013 staff
+   amendment), threat model, then a spec. Critical tier.
+2. **G-01 research (parent-to-school channel).** Still the largest gap by count and still without
+   a product decision. Shape: school front-office interviews and a call-log sample (baseline
+   research question), then an options paper. No code.
+3. **Turning the evidence pipeline on** (§4 rank 3) remains open and operational.

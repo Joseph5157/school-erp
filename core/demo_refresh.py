@@ -292,9 +292,9 @@ NOTICE_POOL = [
     ("Annual Sports Day",
      "Our Annual Sports Day is coming up. Students should report in sports uniform "
      "and carry a water bottle."),
-    ("Fee Payment Reminder",
-     "This is a reminder that the current instalment of school fees is due. "
-     "Please pay at the school office before the due date."),
+    ("Health Check-up Camp",
+     "A free health check-up camp will be held at school next week. Students should "
+     "bring their health record card."),
     ("Holiday Notice",
      "The school will remain closed for the upcoming holiday and will reopen on the "
      "next working day."),
