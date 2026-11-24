@@ -12,7 +12,7 @@ from datetime import date
 from django.test import TestCase
 from django.urls import reverse
 
-from core.models import Applicant, ApplicantGuardian, Guardian
+from core.models import Applicant, ApplicantGuardian
 from core.tests.gate4b_support import GUARDIAN_EMAIL, GUARDIAN_PHONE, client_with, holders
 from core.tests.test_phase7_alerts import AlertFixture
 
@@ -29,9 +29,9 @@ class PeopleFixture(AlertFixture):
 
     def setUp(self):
         super().setUp()
-        Guardian.objects.filter(pk=self.meena.pk).update(
-            phone=GUARDIAN_PHONE, email=GUARDIAN_EMAIL
-        )
+        # One audited save: bulk writes refuse contact fields (G-06 reset spec §3).
+        self.meena.phone, self.meena.email = GUARDIAN_PHONE, GUARDIAN_EMAIL
+        self.meena.save()
         self.pending = Applicant.objects.create(admission_status="PENDING", full_name="Pending Child")
         ApplicantGuardian.objects.create(
             applicant=self.pending, guardian=self.meena, relationship_type="MOTHER"
