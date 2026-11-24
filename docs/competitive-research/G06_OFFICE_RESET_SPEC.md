@@ -306,6 +306,7 @@ until a superuser adds staff on the page (§6a) or, before PR 2b, in the Django 
 
 **Outcome.** A superuser chooses, in the app, who may reset guardian passwords. Every change made on the page
 is recorded. Ordinary administrators can see the list but cannot change it, so no one can add themselves.
+This page is how OD-G7's "named staff" are named; there is no deploy step for names.
 
 **Where.** Sidebar group "Access and security" (`core/navigation.py:55-59`), a new link "Password reset staff"
 after "Sign-in lockouts". Shown to holders of `core.view_guardianaccount` and to superusers.
@@ -321,11 +322,21 @@ after "Sign-in lockouts". Shown to holders of `core.view_guardianaccount` and to
 Superuser-only is a small decorator `superuser_required` in `core/authorization.py` (login required, then
 `PermissionDenied` unless `is_superuser`). It is deliberately not a permission: any permission can be put in a
 group, and a School Administrators grant would then let admins add themselves (threat model T7; OD-R6).
+Decorator order: `superuser_required` outermost, then `require_POST`, so a non-superuser gets 403 whatever
+the method.
+
+**Route inventory.** `core/tests/route_inventory.py` records the decorator as the flag `superuser_required`
+with no permission. PR 2b adds `superuser_required` to `SCOPED_BY_OTHER_MEANS`
+(`core/tests/test_security_gate4b_route_inventory.py:28`), so `test_no_route_is_public_by_accident` accepts
+it; the routes are **not** added to `INTENTIONALLY_UNPERMISSIONED` (that list is for public pages). A test
+asserts both POST routes carry the flag, so dropping the decorator fails CI.
 
 **List page.**
 
 - Members of "Portal password resets": name, username, added on and added by (from the latest
-  `RESET_STAFF_ADDED` event for that user).
+  `RESET_STAFF_ADDED` event for that user). When no such event exists (older than 365 days and purged, or
+  added in the Django admin) the row says "Added more than a year ago or outside this page". Email addresses
+  are never shown.
 - Also listed, read-only, under "Can also reset": active superusers, and any active user or group holding
   `core.reset_guardian_password` directly (the same query as `role_permission_gaps`, §6). A direct grant shows
   "Granted outside this page. Remove it in the Django admin." so nothing is hidden.
@@ -335,22 +346,40 @@ group, and a School Administrators grant would then let admins add themselves (t
 
 **Add.** One select of eligible users: active, in School Administrators, not a superuser (they can already
 reset), not already a member, and with no active guardian account (`GuardianAccount` with `revoked_at` null).
-The service `reset_staff.add(user, *, actor)` re-checks eligibility after `select_for_update` on the user,
-adds the user to the group, and records `RESET_STAFF_ADDED` (actor, subject_user), all in one transaction. A
-member who later stops being eligible (made inactive, or left School Administrators) stays in the group until
-removed; an inactive login cannot sign in, and the list marks such members "inactive" or "not an
-administrator".
+Django-admin staff (`is_staff`) are excluded too, because `is_portal_manageable` treats them as privileged
+(`core/guardian_accounts.py:43-60`). A teacher who is also a School Administrator is eligible: teacher resets
+use a different permission. The service `reset_staff.add(user, *, actor)` re-checks eligibility after
+`select_for_update` on the user, adds the user to the group, and records `RESET_STAFF_ADDED` (actor,
+subject_user), all in one transaction. If the group does not exist the service fails with a clear error and
+never creates it; only the PR 2 migration creates it.
+
+A member who later stops being eligible stays in the group until removed. The list marks them "inactive",
+"not an administrator", "Django admin staff" or "now has a parent login". Separately, `reset_guardian_password`
+refuses when the actor's own login is the account being reset, so a member linked to a guardian account later
+cannot reset their own password.
 
 **Remove.** Reason as a choice: "Left the school", "Changed role", "Other". No free text, so no personal data
-to guard. `reset_staff.remove(user, *, actor, reason)` removes the membership and records
-`RESET_STAFF_REMOVED` with `detail = {"reason": "<choice>"}`, in one transaction. Removing the last member is
-allowed; the page then shows the empty-group warning.
+to guard. The view looks `<user_id>` up **among the group's current members** and returns 404 otherwise
+(a superuser's id or a direct-grant holder's id is not a member). `reset_staff.remove(user, *, actor,
+reason)` locks the user row (`select_for_update`), re-checks membership, removes it and records
+`RESET_STAFF_REMOVED` with `detail = {"reason": "<choice>"}`, in one transaction. If the user is no longer a
+member (two superusers at once) it changes nothing and records nothing. Remove only drops the group
+membership: direct grants and superuser status are untouched. Removing the last member is allowed; the page
+then shows the empty-group warning.
 
-**Effect.** Membership changes apply from the next request (Django reads permissions per request; the role
-cache in `accounts/middleware.py` is per request). No session ending is needed.
+**Effect.** Membership changes apply from the next request: `request.user` is loaded fresh each request, so
+Django's per-object permission cache does not carry over, and `accounts/request_cache.py` caches roles for one
+request only. A removed member's open session gets 403 on the reset form at its next request, without being
+signed out. No session ending is needed.
 
-**Events.** `RESET_STAFF_ADDED` and `RESET_STAFF_REMOVED`, ROUTINE (S-03). The list page shows them as
-"Recent changes" (last 20); `role_permission_gaps` prints them too.
+**Events.** `RESET_STAFF_ADDED` and `RESET_STAFF_REMOVED`, **ROUTINE** (S-03; owner confirmed for these two on
+2026-11-24, option A). They must be added to `SecurityEvent.ROUTINE_TYPES`, because `class_for` defaults to
+HISTORY (`accounts/models.py:140-144`); a test pins their class. The list page shows them as "Recent changes"
+(last 20); `role_permission_gaps` prints them too.
+
+**Safety test.** No group shipped by a migration grants a non-superuser `auth.change_user`,
+`auth.change_group` or `auth.change_permission`, so no administrator can edit group membership in the Django
+admin.
 
 **Phone layout.** Members as stacked rows (`erp-table--stack`); the add form uses the compact filter pattern.
 No new CSS component. Checked at 360, 390 and desktop.
@@ -434,7 +463,14 @@ non-administrators, superusers, existing members and logins with an active guard
 refuses each of them even when posted directly; a just-added member can open the reset form on the next
 request and a removed one gets 403; direct grants and superusers appear under "Can also reset"; the
 empty-group warning shows; recent changes list the last 20; CSRF and frame denial on the POST routes; route
-inventory updated.
+inventory updated, both POST routes carry `superuser_required`, and `test_no_route_is_public_by_accident`
+passes without listing them as unpermissioned; remove with a non-member id, a superuser's id or a
+direct-grant holder's id returns 404 and records nothing; a second remove of the same member changes nothing;
+`is_staff` users are not offered and are refused; the service fails when the group is missing; a removed
+member's open session gets 403; the two event types are ROUTINE; "Added more than a year ago or outside this
+page" shows when no add event exists; a member who now has a parent login is marked, and the reset service
+refuses a reset of the actor's own login; no shipped group grants `auth.change_user`, `auth.change_group` or
+`auth.change_permission`.
 
 **Every PR:** `ruff check .`; `makemigrations --check --dry-run` clean after the PR's own migration (PR 1, 2
 and 3 each add one migration altering event-type choices; each names it in its PR); route inventory test;
@@ -463,6 +499,7 @@ All recorded 2026-11-24.
 | OD-R1 | Teacher temporary passwords | Expire like guardians (same fields and windows); teacher reset otherwise unchanged |
 | OD-R2 | Who is in "Portal password resets" at launch | Revised in r3: the school chooses later on the "Password reset staff" page (§6a). No names are needed before any PR; until someone is added, only superusers can reset. |
 | OD-R6 | Who can change the reset staff list | Superusers only (a check, not a permission, so it cannot be granted through a group). Administrators can view the list. |
+| OD-R7 | Retention of reset-staff add and remove events | ROUTINE, 365 days, like the rest (option A, 2026-11-24). After that the page shows "Added more than a year ago or outside this page". |
 | OD-R3 | Phone history before PR 1 | Fail closed: the first 30 days after PR 1 count as "recently changed" |
 | OD-R4 | How expiry is switched on | Behind a setting, after the never-signed-in run (now a start time, §5.3) |
 | OD-R5 | "Other" note retention | Deleted after 365 days |
