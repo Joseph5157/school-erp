@@ -87,7 +87,8 @@ class ServiceRuleTests(Fixture, TestCase):
 
     def test_other_needs_a_clean_short_note(self):
         with not_recent():
-            for bad in ("", "x" * 101, "called 9845012345", "mail a@b.in"):
+            for bad in ("", "x" * 101, "called 9845012345", "mail a@b.in", "call 98765 43210",
+                        "98765-43210", "+91 98765 43210"):
                 with self.subTest(note=bad), self.assertRaises(ValidationError):
                     self.reset(Method.OTHER, bad)
             self.reset(Method.OTHER, "Principal confirmed in the office")
@@ -243,6 +244,33 @@ class ReplacementTests(Fixture, TestCase):
             ga.link_existing_login(guardian=self.guardian, username="other.login",
                                    method=Method.IN_PERSON_DOCUMENTS, note="seen",
                                    actor=self.plain_admin())
+
+    def test_plain_admin_post_to_create_or_link_creates_nothing(self):
+        self.plain_admin()
+        client = self.client_class()
+        client.login(username="plainadmin", password="pass-12345")
+        User.objects.create_user(username="other.login")
+        posts = (
+            ("core:guardian-account-create", {"username": "meena.new"}),
+            ("core:guardian-account-link", {"username": "other.login"}),
+        )
+        for route, extra in posts:
+            with self.subTest(route=route):
+                response = client.post(reverse(route, args=[self.guardian.pk]), {
+                    **extra, "identity_verification_method": Method.IN_PERSON_DOCUMENTS,
+                    "identity_verification_note": "Aadhaar card seen",
+                })
+                self.assertContains(response, "Only staff who can reset parent passwords")
+                self.assertFalse(GuardianAccount.objects.filter(
+                    guardian=self.guardian, revoked_at__isnull=True).exists())
+
+    def test_replacement_note_is_screened_for_personal_data(self):
+        with self.assertRaises(ValidationError):
+            self.create(self.admin, note="Seen, phone 98450 12345")
+
+    def test_reset_page_for_a_revoked_link_goes_back_to_the_profile(self):
+        response = self.client.get(self.reset_url())
+        self.assertRedirects(response, reverse("core:guardian-detail", args=[self.guardian.pk]))
 
     def test_profile_hides_buttons_without_the_permission(self):
         self.plain_admin()

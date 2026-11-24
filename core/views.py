@@ -4276,6 +4276,9 @@ def guardian_account_reset_password(request, pk):
     """G-06 reset spec §4.1. The form is validated before the one-time token is used up, so a
     form error never turns the corrected resubmit into "already reset"."""
     account = get_object_or_404(GuardianAccount.objects.select_related("guardian", "user"), pk=pk)
+    if not account.is_active:
+        messages.error(request, "This guardian account link has been revoked.")
+        return redirect("core:guardian-detail", pk=account.guardian_id)
     purpose = f"guardian-account-reset-{account.pk}"
     history = guardian_records.phone_changed_recently(account.guardian)
     form = GuardianResetForm(request.POST or None, in_person_only=history.recent)

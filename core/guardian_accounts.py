@@ -34,7 +34,6 @@ Method = GuardianAccount.VerificationMethod
 # G-06 reset spec §4.1: a reset (and replacing a revoked login, §4.8) accepts only these.
 RESET_METHODS = (Method.IN_PERSON_DOCUMENTS, Method.OTHER)
 RESET_NOTE_MAX = 100
-_PERSONAL_DATA = re.compile(r"\d{6,}|@")
 RESET_PERMISSION = "core.reset_guardian_password"
 _OTHER_AUTHORITY = (
     "This login holds other authority (superuser, staff, a role other than Teachers, or "
@@ -95,15 +94,23 @@ def _check_verification(method, note):
     return note
 
 
+PERSONAL_DATA_ERROR = (
+    "Leave phone numbers, email addresses and other personal details out of the note."
+)
+
+
+def _has_personal_data(note):
+    """Six or more digits in total (a phone number however it is spaced) or an email sign."""
+    return "@" in note or len(re.sub(r"\D", "", note)) >= 6
+
+
 def _check_other_note(note, guardian):
     if not note:
         raise ValidationError('Add a short note for "Other".')
     if len(note) > RESET_NOTE_MAX:
         raise ValidationError(f"Keep the note to {RESET_NOTE_MAX} characters.")
-    if _PERSONAL_DATA.search(note):
-        raise ValidationError(
-            "Leave phone numbers, email addresses and other personal details out of the note."
-        )
+    if _has_personal_data(note):
+        raise ValidationError(PERSONAL_DATA_ERROR)
     if phone_changed_recently(guardian).recent:
         raise ValidationError(
             "This guardian's phone number changed recently, or phone changes have only just "
@@ -148,6 +155,8 @@ def _check_replacement(guardian, method, note, actor):
         raise ValidationError(
             'For a guardian whose login was revoked, check identity in person or choose "Other".'
         )
+    if _has_personal_data(note or ""):
+        raise ValidationError(PERSONAL_DATA_ERROR)
     if method == Method.OTHER:
         _check_other_note(note, guardian)
 
