@@ -3475,6 +3475,7 @@ NEVER_SIGNED_IN_COLUMNS = (
     Column("Created by"),
     Column("Children with access"),
 )
+NEVER_SIGNED_IN_RESET_COLUMN = Column("Reset password", action=True)  # reset spec PR 4
 
 
 @administrator_required(("core.view_guardianaccount", "core.view_guardian"))
@@ -3532,6 +3533,10 @@ def guardian_never_signed_in(request):
         )
     else:
         columns = columns[:-1]
+    # Reset spec PR 4: the link shows only to people the reset view itself lets in.
+    can_reset = request.user.has_perm("core.reset_guardian_password")
+    if can_reset:
+        columns = (*columns, NEVER_SIGNED_IN_RESET_COLUMN)
     table = build_table(request, accounts, columns, "created")
 
     from accounts import security
@@ -3574,6 +3579,7 @@ def guardian_never_signed_in(request):
             ),
             "chip": chip,
             "can_see_students": can_see_students,
+            "can_reset": can_reset,
             "class_choices": class_choices,
             "section_choices": section_choices,
             "class_filter": class_filter,

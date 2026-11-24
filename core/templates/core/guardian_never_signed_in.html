@@ -47,9 +47,12 @@
             {% if can_see_students %}
             <td data-label="Children with access">{% for child in account.children %}<div>{{ child.name }}{% if child.placement %} <span class="text-muted">&middot; {{ child.placement }}</span>{% endif %}{% if child.under_review %} {% include "partials/_status_badge.html" with label="Access under review" tone="pending" only %}{% endif %}</div>{% endfor %}</td>
             {% endif %}
+            {% if can_reset %}
+            <td class="erp-stack-actions"><a class="text-nowrap" href="{% url 'core:guardian-account-reset-password' account.pk %}">Reset password<span class="visually-hidden"> for {{ account.guardian.full_name }}</span></a></td>
+            {% endif %}
         </tr>
         {% empty %}
-        <tr><td colspan="{% if can_see_students %}5{% else %}4{% endif %}">{% if not any_accounts %}{% url 'core:guardian-list' as guardians_url %}{% include "partials/_empty.html" with icon="guardians" title="No guardian portal accounts yet." action_url=guardians_url action_label="Guardians" inline=True only %}{% elif filtered %}{% include "partials/_empty.html" with icon="guardians" title="No guardians in this class or section are waiting to sign in." clear_url=clear_url clear_label="Clear filters" inline=True only %}{% elif chip == "temporary" %}{% include "partials/_empty.html" with icon="guardians" title="No guardian is still using a temporary password." inline=True only %}{% else %}{% include "partials/_empty.html" with icon="guardians" title="Every guardian with portal access has signed in at least once." inline=True only %}{% endif %}</td></tr>
+        <tr><td colspan="{{ table.headers|length }}">{% if not any_accounts %}{% url 'core:guardian-list' as guardians_url %}{% include "partials/_empty.html" with icon="guardians" title="No guardian portal accounts yet." action_url=guardians_url action_label="Guardians" inline=True only %}{% elif filtered %}{% include "partials/_empty.html" with icon="guardians" title="No guardians in this class or section are waiting to sign in." clear_url=clear_url clear_label="Clear filters" inline=True only %}{% elif chip == "temporary" %}{% include "partials/_empty.html" with icon="guardians" title="No guardian is still using a temporary password." inline=True only %}{% else %}{% include "partials/_empty.html" with icon="guardians" title="Every guardian with portal access has signed in at least once." inline=True only %}{% endif %}</td></tr>
         {% endfor %}
     </tbody>
 </table>
