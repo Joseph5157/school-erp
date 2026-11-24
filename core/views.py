@@ -3,6 +3,7 @@ from datetime import timedelta
 from urllib.parse import urlencode
 
 from django.contrib import messages
+from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
@@ -3533,8 +3534,11 @@ def guardian_never_signed_in(request):
         columns = columns[:-1]
     table = build_table(request, accounts, columns, "created")
 
+    from accounts import security
+
     for account in table.page:
         account.days_waiting = (today - timezone.localdate(account.created_at)).days
+        account.expired = security.temporary_password_expired(account.user)  # spec §5.7
     if can_see_students:
         grants = [
             link.active_grants[0]
@@ -4204,10 +4208,14 @@ def guardian_access_review_decide(request, pk):
 
 def _credential_slip(request, account, password, *, heading):
     """Render the one-time temporary password; never cached, never stored."""
+    from accounts import security
+
+    issued = get_user_model().objects.get(pk=account.user_id)
     response = render(
         request,
         "core/guardian_credential_slip.html",
-        {"account": account, "password": password, "heading": heading, "school": School.objects.first()},
+        {"account": account, "password": password, "heading": heading, "school": School.objects.first(),
+         "works_until": security.temporary_password_expires_at(issued, ignore_first_use=True)},
     )
     add_never_cache_headers(response)
     response["Cache-Control"] = "no-store, no-cache, must-revalidate, private"

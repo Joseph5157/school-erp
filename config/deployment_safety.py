@@ -61,6 +61,28 @@ def parse_flag(name, raw, default=False):
     )
 
 
+def parse_start_time(name, raw):
+    """An optional switch-on moment: an ISO 8601 date-time with a time zone, or unset.
+
+    Used by TEMP_PASSWORD_EXPIRY_FROM (G-06 reset spec §5.3). Blank or unset means off. A value
+    that does not parse, or has no time zone, stops startup: a typo must never silently mean off.
+    """
+    import datetime
+
+    if raw is None or not raw.strip():
+        return None
+    try:
+        value = datetime.datetime.fromisoformat(raw.strip())
+    except ValueError:
+        raise ImproperlyConfigured(
+            f"{name} must be an ISO 8601 date and time with a time zone, "
+            "for example 2027-01-15T09:00:00+05:30."
+        ) from None
+    if value.tzinfo is None:
+        raise ImproperlyConfigured(f"{name} must include a time zone, for example +05:30.")
+    return value
+
+
 def resolve_https(raw, *, debug, testing):
     """The DJANGO_HTTPS setting for this run, so HTTPS is never silently lost in production.
 

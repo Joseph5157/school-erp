@@ -61,6 +61,7 @@ class ThrottledLoginMixin:
             raise forms.ValidationError(GENERIC_ERROR, code="invalid_login") from None
         security.clear_source_failures(username, source)
         self._event(SecurityEvent.EventType.LOGIN_SUCCEEDED, self.user_cache, source)
+        security.note_successful_sign_in(self.user_cache)
         return self.cleaned_data
 
     @staticmethod

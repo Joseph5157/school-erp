@@ -149,7 +149,8 @@ def create_teacher(*, username, first_name, last_name, email, actor):
                 email=(email or "").strip(),
             )
             user.must_change_password = True
-            user.save(update_fields=["must_change_password"])
+            security.issue_temporary_password(user, "CREATED")
+            user.save(update_fields=["must_change_password", *security.TEMPORARY_PASSWORD_FIELDS])
             group, _ = Group.objects.get_or_create(name=TEACHERS_GROUP_NAME)
             user.groups.add(group)
             SecurityEvent.record(Event.TEACHER_ACCOUNT_CREATED, actor=actor, subject_user=user)
@@ -167,7 +168,9 @@ def reset_teacher_password(*, user, actor):
             raise ValidationError("You cannot reset your own password here.")
         locked.set_password(password)
         locked.must_change_password = True
-        locked.save(update_fields=["password", "must_change_password"])
+        security.issue_temporary_password(locked, "RESET")
+        locked.save(update_fields=["password", "must_change_password",
+                                   *security.TEMPORARY_PASSWORD_FIELDS])
         locked.end_all_sessions()
         SecurityEvent.record(Event.TEACHER_PASSWORD_RESET, actor=actor, subject_user=locked)
         security.clear_lockout_on_reset(locked, actor)

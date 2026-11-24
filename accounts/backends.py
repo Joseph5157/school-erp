@@ -29,5 +29,11 @@ class NormalizedUsernameBackend(ModelBackend):
             UserModel().set_password(password)
             return None
         if user.check_password(password) and self.user_can_authenticate(user):
+            # G-06 reset spec §5.3: an expired temporary password fails like a wrong one.
+            from accounts import security
+
+            if security.temporary_password_expired(user):
+                security.record_expired_temporary_password(user)
+                return None
             return user
         return None

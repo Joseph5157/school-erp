@@ -10,6 +10,7 @@ from config.deployment_safety import (
     check_secret_key,
     mail_backend_for,
     parse_flag,
+    parse_start_time,
     parse_trusted_proxies,
     resolve_https,
     telegram_alert_settings,
@@ -128,6 +129,12 @@ LOGOUT_REDIRECT_URL = "login"
 # Global Privacy Control (Sec-GPC: 1) is always honoured, on or off.
 USAGE_MEASUREMENT_ENABLED = parse_flag(
     "USAGE_MEASUREMENT_ENABLED", os.environ.get("USAGE_MEASUREMENT_ENABLED"), default=False
+)
+
+# G-06 reset spec §5.3: temporary passwords expire from this moment (unset = off). Switch it on
+# only after the office has worked through the never-signed-in list (spec §5.6).
+TEMP_PASSWORD_EXPIRY_FROM = parse_start_time(
+    "TEMP_PASSWORD_EXPIRY_FROM", os.environ.get("TEMP_PASSWORD_EXPIRY_FROM")
 )
 
 # Phase 6 Gate 7 (ADR 0013): sessions, cookies, network source.
