@@ -40,7 +40,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='user',
             name='temporary_password_kind',
-            field=models.CharField(blank=True, choices=[('CREATED', 'Account slip'), ('RESET', 'Office reset')], max_length=10),
+            field=models.CharField(blank=True, db_default='', default='', choices=[('CREATED', 'Account slip'), ('RESET', 'Office reset')], max_length=10),
         ),
         migrations.AlterField(
             model_name='securityevent',

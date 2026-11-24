@@ -35,8 +35,9 @@ class User(AbstractUser):
     # G-06 reset spec §5.1: the current temporary password's issue time, kind and first use.
     # Cleared when the person chooses their own password.
     temporary_password_issued_at = models.DateTimeField(null=True, blank=True)
+    # db_default: rows written by code that predates this column (old migration states) get "".
     temporary_password_kind = models.CharField(
-        max_length=10, choices=TemporaryPasswordKind.choices, blank=True
+        max_length=10, choices=TemporaryPasswordKind.choices, blank=True, default="", db_default=""
     )
     temporary_password_first_used_at = models.DateTimeField(null=True, blank=True)
 
