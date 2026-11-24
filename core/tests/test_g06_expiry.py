@@ -196,6 +196,72 @@ class FirstUseAndChangeTests(Fixture, TestCase):
             SecurityEvent.objects.filter(event_type=Event.FIRST_SIGN_IN_AFTER_RESET).exists())
 
 
+class ReviewFixTests(Fixture, TestCase):
+    def test_sign_in_before_switch_on_keeps_a_grace_hour_after_switch_on(self):
+        self.sign_in_form()  # expiry off: starts the clock anyway
+        backdate(self.user, first_used=timedelta(days=3))
+        with override_settings(TEMP_PASSWORD_EXPIRY_FROM=timezone.now() - timedelta(minutes=10)):
+            self.assertTrue(self.works())
+        with override_settings(TEMP_PASSWORD_EXPIRY_FROM=timezone.now() - timedelta(hours=2)):
+            self.assertFalse(self.works())
+
+    def test_password_change_does_not_undo_a_reset_made_meanwhile(self):
+        from accounts.forms import SamePasswordRefusingChangeForm
+
+        stale = fresh(self.user)  # the login as the change request loaded it
+        ga.reset_guardian_password(account=self.account, actor=self.admin,
+                                   method="IN_PERSON_DOCUMENTS")
+        reset = fresh(self.user)
+        form = SamePasswordRefusingChangeForm(stale, {
+            "old_password": self.password, "new_password1": "Garden-Path-2026",
+            "new_password2": "Garden-Path-2026"})
+        self.assertTrue(form.is_valid(), form.errors)
+        form.save()
+        after = fresh(self.user)
+        self.assertEqual(after.session_version, reset.session_version)
+        self.assertEqual(after.temporary_password_issued_at, reset.temporary_password_issued_at)
+        self.assertTrue(after.check_password("Garden-Path-2026"))
+
+    @ON_LONG_AGO
+    def test_admin_door_refuses_expired_and_does_not_start_the_clock(self):
+        User.objects.filter(pk=self.user.pk).update(is_staff=True)  # only staff pass the admin door
+        backdate(self.user, issued=timedelta(days=15))
+        response = self.client_class().post(reverse("admin:login"), {
+            "username": self.user.username, "password": self.password})
+        self.assertEqual(response.status_code, 200)  # form shown again, not signed in
+        self.assertIsNone(fresh(self.user).temporary_password_first_used_at)
+
+    def test_non_staff_at_the_admin_door_does_not_start_the_clock(self):
+        self.client_class().post(reverse("admin:login"), {
+            "username": self.user.username, "password": self.password})
+        self.assertIsNone(fresh(self.user).temporary_password_first_used_at)
+
+    def test_client_login_does_not_start_the_clock(self):
+        self.client_class().login(username=self.user.username, password=self.password)
+        self.assertIsNone(fresh(self.user).temporary_password_first_used_at)
+
+    def test_switch_on_in_another_offset(self):
+        from datetime import timezone as tz
+        backdate(self.user, issued=timedelta(days=1))
+        on = (timezone.now() - timedelta(days=2)).astimezone(tz(timedelta(hours=5, minutes=30)))
+        with override_settings(TEMP_PASSWORD_EXPIRY_FROM=on):
+            self.assertTrue(self.works())
+
+    def test_teacher_slip_shows_works_until_when_switched_on(self):
+        root = User.objects.create_superuser("root", password="pass-12345")
+        teacher, _ = teacher_accounts.create_teacher(username="t.three", first_name="T",
+                                                     last_name="Three", email="", actor=self.admin)
+        client = self.client_class()
+        client.login(username="root", password="pass-12345")
+        url = reverse("core:teacher-reset-password", args=[teacher.pk])
+        with ON_LONG_AGO:
+            page = client.get(url)
+            token = page.context.get("one_time_token") if page.context else None
+            response = client.post(url, {"one_time_token": token} if token else {})
+        self.assertContains(response, "This password works until")
+        self.assertTrue(root)
+
+
 class BackfillTests(TestCase):
     def test_backfill_and_reverse(self):
         migration = importlib.import_module("accounts.migrations.0012_temporary_password_expiry")

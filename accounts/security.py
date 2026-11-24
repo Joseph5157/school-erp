@@ -169,7 +169,8 @@ def temporary_password_expires_at(user, *, ignore_first_use=False):
     expires = max(issued, switch_on) + window
     first_used = getattr(user, "temporary_password_first_used_at", None)
     if first_used is not None and not ignore_first_use:
-        expires = min(expires, first_used + FIRST_USE_GRACE)
+        # A sign-in before switch-on must not use up the grace in advance (review F1).
+        expires = min(expires, max(first_used, switch_on) + FIRST_USE_GRACE)
     return expires
 
 

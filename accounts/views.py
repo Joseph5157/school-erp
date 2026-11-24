@@ -132,8 +132,9 @@ class PasswordChangeView(auth_views.PasswordChangeView):
         response = super().form_valid(form)
         user = form.user
         if user.must_change_password:
-            # Filtered on the issue time read first, so a reset that lands in between is not
-            # cleared by this older request (G-06 reset spec §5.1, N-2).
+            # Filtered on the issue time read at the start of this request: if an office reset
+            # landed meanwhile, its stamp and forced change stay (the form saves only the
+            # password, so nothing else of the reset is overwritten). G-06 reset spec §5.1.
             get_user_model().objects.filter(pk=user.pk, temporary_password_issued_at=issued).update(
                 must_change_password=False, temporary_password_issued_at=None,
                 temporary_password_kind="", temporary_password_first_used_at=None,
