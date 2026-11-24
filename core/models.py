@@ -520,12 +520,38 @@ class RelationshipType(models.TextChoices):
     OTHER = "OTHER", "Other"
 
 
+GUARDIAN_CONTACT_FIELDS = ("phone", "email")
+
+
+class GuardianQuerySet(models.QuerySet):
+    """Bulk writes would skip the contact audit in `Guardian.save` (ADR 0029 R17), so they refuse."""
+
+    def update(self, **kwargs):
+        if set(kwargs) & set(GUARDIAN_CONTACT_FIELDS):
+            raise ValueError("Change a Guardian's phone or email with save(), so it is audited.")
+        return super().update(**kwargs)
+
+    def bulk_update(self, objs, fields, *args, **kwargs):
+        if set(fields) & set(GUARDIAN_CONTACT_FIELDS):
+            raise ValueError("Change a Guardian's phone or email with save(), so it is audited.")
+        return super().bulk_update(objs, fields, *args, **kwargs)
+
+    def bulk_create(self, objs, *args, **kwargs):
+        objs = list(objs)
+        if any(obj.phone or obj.email for obj in objs):
+            raise ValueError("Create Guardians with a phone or email with save(), so it is audited.")
+        return super().bulk_create(objs, *args, **kwargs)
+
+
 class Guardian(models.Model):
     """A first-class, reusable Guardian record (docs/DOMAIN_MODEL.md - Guardians).
 
     A Guardian is independent of any single Applicant or Student and may be
     associated with several of either through explicit relationships, so that
     siblings can share one Guardian record rather than duplicating it.
+
+    Every change to `phone` or `email` records a SecurityEvent naming the field, never the value
+    (ADR 0029 R17; G06_OFFICE_RESET_SPEC.md §3). `save(audit=False)` is for the demo seeds only.
     """
 
     full_name = models.CharField(max_length=255)
@@ -534,11 +560,37 @@ class Guardian(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    objects = GuardianQuerySet.as_manager()
+
     class Meta:
         ordering = ["full_name"]
 
     def __str__(self):
         return self.full_name
+
+    def save(self, *args, actor=None, audit=True, **kwargs):
+        if not audit:
+            return super().save(*args, **kwargs)
+        from accounts.models import SecurityEvent
+
+        Event = SecurityEvent.EventType
+        update_fields = kwargs.get("update_fields")
+        fields = [
+            f for f in GUARDIAN_CONTACT_FIELDS if update_fields is None or f in update_fields
+        ]
+        with transaction.atomic():
+            stored = {}
+            if fields and self.pk is not None and not self._state.adding:
+                # Read the stored values under a lock, so two edits cannot both miss a change.
+                stored = (
+                    Guardian.objects.select_for_update().filter(pk=self.pk).values(*fields).first()
+                    or {}
+                )
+            super().save(*args, **kwargs)
+            events = {"phone": Event.GUARDIAN_PHONE_CHANGED, "email": Event.GUARDIAN_EMAIL_CHANGED}
+            for field in fields:
+                if (getattr(self, field) or "") != (stored.get(field) or ""):
+                    SecurityEvent.record(events[field], actor=actor, guardian=self)
 
 
 class Applicant(models.Model):

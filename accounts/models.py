@@ -98,7 +98,12 @@ class SecurityEvent(models.Model):
         TEACHER_REACTIVATED = "TEACHER_REACTIVATED", "Teacher login reactivated"
         SCHOOL_LOGO_CHANGED = "SCHOOL_LOGO_CHANGED", "School logo changed"
         SCHOOL_LOGO_REMOVED = "SCHOOL_LOGO_REMOVED", "School logo removed"
+        GUARDIAN_PHONE_CHANGED = "GUARDIAN_PHONE_CHANGED", "Guardian phone changed"
+        GUARDIAN_EMAIL_CHANGED = "GUARDIAN_EMAIL_CHANGED", "Guardian email changed"
+        CONTACT_AUDIT_STARTED = "CONTACT_AUDIT_STARTED", "Guardian contact audit started"
 
+    # G-06 reset spec §9 (owner choice S-03): events it adds stay ROUTINE until counsel confirms
+    # longer retention. HISTORY rows can never be deleted, so nothing goes there by default.
     ROUTINE_TYPES = frozenset(
         {
             EventType.LOGIN_SUCCEEDED,
@@ -107,6 +112,18 @@ class SecurityEvent(models.Model):
             EventType.LOCKOUT_CLEARED,
             EventType.PASSWORD_CHANGED,
             EventType.PASSWORD_RESET_BY_ADMIN,
+            EventType.GUARDIAN_PHONE_CHANGED,
+            EventType.GUARDIAN_EMAIL_CHANGED,
+            EventType.CONTACT_AUDIT_STARTED,
+        }
+    )
+
+    # ROUTINE types tied to one guardian that the guardian profile history also lists.
+    GUARDIAN_HISTORY_ROUTINE_TYPES = frozenset(
+        {
+            EventType.PASSWORD_RESET_BY_ADMIN,
+            EventType.GUARDIAN_PHONE_CHANGED,
+            EventType.GUARDIAN_EMAIL_CHANGED,
         }
     )
 

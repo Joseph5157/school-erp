@@ -61,6 +61,14 @@ MOTHER_NAMES = ["Sunita", "Lakshmi", "Anjali", "Deepa", "Kavitha", "Rekha", "Mee
 ABSENCE_NOTES = ["Fever", "Family function", "Doctor's appointment", ""]
 
 
+def _demo_guardian(**fields):
+    """Demo guardians skip the contact audit: the daily demo refresh would otherwise add an
+    event for every guardian every day (G-06 reset spec §3)."""
+    guardian = Guardian(**fields)
+    guardian.save(audit=False)
+    return guardian
+
+
 class Command(BaseCommand):
     help = (
         "Create demo data (academic year, calendar, classes, students, guardians, "
@@ -196,7 +204,7 @@ class Command(BaseCommand):
             first = self.rng.choice(first_names)
             guardians.append(
                 (
-                    Guardian.objects.create(
+                    _demo_guardian(
                         full_name=f"{first} {family_name}",
                         phone=f"+91 98{self.rng.randint(10000000, 99999999)}",
                         email=f"{first.lower()}.{family_name.lower()}@example.com",

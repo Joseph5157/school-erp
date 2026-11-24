@@ -1,6 +1,6 @@
 # G-06 spec: improved office password reset (ADR 0029, option A)
 
-- **Status:** **Draft r3**, 2026-11-24. r2 was approved for build (PR #304): OD-R1 to OD-R5 as recommended,
+- **Status:** **Approved for build (r3)**, 2026-11-24 (r3 merged in PR #305 on the owner's approval). r2 was approved for build (PR #304): OD-R1 to OD-R5 as recommended,
   review choices S-01 (a), S-03 option A, S-07 one-hour grace; r2 applied the security-focused review of r1
   (S-01 to S-19, N-1 to N-4; ADR 0029 item 3). **r3** adds the "Password reset staff" page (§6a, PR 2b) so
   the school chooses reset staff in the app instead of naming them before PR 2 (OD-R2 revised, OD-R6).

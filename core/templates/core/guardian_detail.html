@@ -141,6 +141,7 @@
 <ul class="small mb-0">
     {% for event in events %}<li>{{ event.occurred_at|date:"j M Y, H:i" }} &middot; {{ event.get_event_type_display }}{% if event.actor %} by {{ event.actor }}{% endif %}</li>{% empty %}<li class="text-muted">None.</li>{% endfor %}
 </ul>
+{% if history_table.paginator.num_pages > 1 %}{% include "partials/_table_footer.html" with table=history_table only %}{% endif %}
 </section>
 {% endif %}
 {% if "messaging-consent" in profile_section_ids %}{% include "core/_guardian_consent.html" %}{% endif %}

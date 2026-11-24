@@ -253,7 +253,9 @@ class ServiceTests(NotificationFixture, TestCase):
         self.opt_in()
         notification = self.enqueue()
         for phone in ("98765 43210", "098765-43210", "+91 98765 43210"):
-            Guardian.objects.filter(pk=self.guardian.pk).update(phone=phone)
+            changed = Guardian.objects.get(pk=self.guardian.pk)
+            changed.phone = phone
+            changed.save()
             notification.guardian.refresh_from_db()
             link = notifications.whatsapp_link(notification)
             self.assertTrue(link.startswith("https://wa.me/919876543210?text="), link)
@@ -269,7 +271,9 @@ class ServiceTests(NotificationFixture, TestCase):
         self.opt_in()
         notification = self.enqueue()
         for phone in ("", "N/A", "12345"):
-            Guardian.objects.filter(pk=self.guardian.pk).update(phone=phone)
+            changed = Guardian.objects.get(pk=self.guardian.pk)
+            changed.phone = phone
+            changed.save()
             notification.guardian.refresh_from_db()
             self.assertIsNone(notifications.whatsapp_link(notification))
 
@@ -418,7 +422,9 @@ class ToSendPageTests(NotificationFixture, TestCase):
         self.assertEqual(self.message.status, Notification.Status.DISMISSED)
 
     def test_unusable_phone_shows_fix_link(self):
-        Guardian.objects.filter(pk=self.guardian.pk).update(phone="N/A")
+        changed = Guardian.objects.get(pk=self.guardian.pk)
+        changed.phone = "N/A"
+        changed.save()
         page = self.client.get(self.url)
         self.assertContains(page, "Phone number missing or not usable")
         self.assertContains(page, reverse("core:guardian-detail", args=[self.guardian.pk]))

@@ -413,7 +413,10 @@ class SecurityEventTests(GuardianFixture, TestCase):
         self.assertEqual(classes, {
             Event.ACCOUNT_CREATED: "HISTORY", Event.ACCESS_GRANTED: "HISTORY",
             Event.ACCESS_REVOKED: "HISTORY", Event.PASSWORD_RESET_BY_ADMIN: "ROUTINE",
-            Event.ACCOUNT_LINK_REVOKED: "HISTORY"})
+            Event.ACCOUNT_LINK_REVOKED: "HISTORY",
+            # The fixture guardian is created with a phone (G-06 reset spec §3).
+            Event.GUARDIAN_PHONE_CHANGED: "ROUTINE",
+            Event.CONTACT_AUDIT_STARTED: "ROUTINE"})  # written once by migration accounts 0009
 
     def test_events_are_append_only(self):
         event = SecurityEvent.record(Event.LOGIN_SUCCEEDED, subject_user=self.admin)

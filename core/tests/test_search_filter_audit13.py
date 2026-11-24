@@ -107,7 +107,9 @@ class QueueReturnTests(AlertFixture, TestCase):
 
     def setUp(self):
         super().setUp()
-        Guardian.objects.update(phone="98765 43210")
+        for changed in Guardian.objects.all():
+            changed.phone = "98765 43210"
+            changed.save()
         self.register()
         [self.message] = list(notifications.to_send())
 

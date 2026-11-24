@@ -132,9 +132,8 @@ class LookupFlowMixin:
         self.assertContains(response, "already linked")
 
     def test_results_stop_at_twenty_and_ask_for_a_narrower_search(self):
-        Guardian.objects.bulk_create(
-            Guardian(full_name=f"Common Name {i:02}", phone=f"90000{i:05}") for i in range(25)
-        )
+        for i in range(25):  # one save each: bulk writes refuse contact fields (G-06 reset spec §3)
+            Guardian.objects.create(full_name=f"Common Name {i:02}", phone=f"90000{i:05}")
         response = self.search("Common Name")
         self.assertEqual(len(response.context["results"]), 20)
         self.assertContains(response, "Showing the first 20")

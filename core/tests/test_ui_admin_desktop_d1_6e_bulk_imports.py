@@ -442,9 +442,10 @@ class LargeBatchTests(Base):
 
     def pending(self, count):
         # one existing Guardian per row with the same phone but another name: one warning per row
-        Guardian.objects.bulk_create(
-            Guardian(full_name=f"Existing {i:03d}", phone=f"9{i:09d}")
-            for i in range(count) if not Guardian.objects.filter(phone=f"9{i:09d}").exists())
+        # One save each: bulk writes refuse contact fields (G-06 reset spec §3).
+        for i in range(count):
+            if not Guardian.objects.filter(phone=f"9{i:09d}").exists():
+                Guardian.objects.create(full_name=f"Existing {i:03d}", phone=f"9{i:09d}")
         batch = self.batch_for(workbook(self.students(count)))
         self.assertEqual(batch.status, ImportBatch.Status.VALIDATED)
         return batch
