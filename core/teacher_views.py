@@ -1,6 +1,7 @@
 """Phase 3D office views: teacher logins (audit F09). Administrators only."""
 
 from django.contrib import messages
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
@@ -38,10 +39,14 @@ def teacher_columns(year):
 
 def _teacher_slip(request, user, password, *, heading):
     """Render the one-time temporary password; never cached, never stored."""
+    from accounts import security
+
+    issued = get_user_model().objects.get(pk=user.pk)
     response = render(
         request,
         "core/teacher_credential_slip.html",
-        {"teacher": user, "password": password, "heading": heading, "school": School.objects.first()},
+        {"teacher": user, "password": password, "heading": heading, "school": School.objects.first(),
+         "works_until": security.temporary_password_expires_at(issued, ignore_first_use=True)},
     )
     add_never_cache_headers(response)
     response["Cache-Control"] = "no-store, no-cache, must-revalidate, private"

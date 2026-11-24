@@ -128,10 +128,17 @@ class PasswordChangeView(auth_views.PasswordChangeView):
         return context
 
     def form_valid(self, form):
+        issued = form.user.temporary_password_issued_at  # as at the start of this request
         response = super().form_valid(form)
         user = form.user
         if user.must_change_password:
-            get_user_model().objects.filter(pk=user.pk).update(must_change_password=False)
+            # Filtered on the issue time read at the start of this request: if an office reset
+            # landed meanwhile, its stamp and forced change stay (the form saves only the
+            # password, so nothing else of the reset is overwritten). G-06 reset spec §5.1.
+            get_user_model().objects.filter(pk=user.pk, temporary_password_issued_at=issued).update(
+                must_change_password=False, temporary_password_issued_at=None,
+                temporary_password_kind="", temporary_password_first_used_at=None,
+            )
             area = usage.area_of_user(user)
             if area:
                 usage.record(self.request, area=area, workflow="sign_in",

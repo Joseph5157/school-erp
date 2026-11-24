@@ -28,6 +28,19 @@ class User(AbstractUser):
     must_change_password = models.BooleanField(default=False, db_default=False)
     session_version = models.PositiveIntegerField(default=0, db_default=0)
 
+    class TemporaryPasswordKind(models.TextChoices):
+        CREATED = "CREATED", "Account slip"
+        RESET = "RESET", "Office reset"
+
+    # G-06 reset spec §5.1: the current temporary password's issue time, kind and first use.
+    # Cleared when the person chooses their own password.
+    temporary_password_issued_at = models.DateTimeField(null=True, blank=True)
+    # db_default: rows written by code that predates this column (old migration states) get "".
+    temporary_password_kind = models.CharField(
+        max_length=10, choices=TemporaryPasswordKind.choices, blank=True, default="", db_default=""
+    )
+    temporary_password_first_used_at = models.DateTimeField(null=True, blank=True)
+
     class Meta(AbstractUser.Meta):
         swappable = "AUTH_USER_MODEL"
         permissions = [
@@ -103,6 +116,8 @@ class SecurityEvent(models.Model):
         CONTACT_AUDIT_STARTED = "CONTACT_AUDIT_STARTED", "Guardian contact audit started"
         RESET_STAFF_ADDED = "RESET_STAFF_ADDED", "Added to password reset staff"
         RESET_STAFF_REMOVED = "RESET_STAFF_REMOVED", "Removed from password reset staff"
+        FIRST_SIGN_IN_AFTER_RESET = "FIRST_SIGN_IN_AFTER_RESET", "First sign-in after reset"
+        TEMPORARY_PASSWORD_EXPIRED = "TEMPORARY_PASSWORD_EXPIRED", "Temporary password expired"
 
     # G-06 reset spec §9 (owner choice S-03): events it adds stay ROUTINE until counsel confirms
     # longer retention. HISTORY rows can never be deleted, so nothing goes there by default.
@@ -119,6 +134,8 @@ class SecurityEvent(models.Model):
             EventType.CONTACT_AUDIT_STARTED,
             EventType.RESET_STAFF_ADDED,
             EventType.RESET_STAFF_REMOVED,
+            EventType.FIRST_SIGN_IN_AFTER_RESET,
+            EventType.TEMPORARY_PASSWORD_EXPIRED,
         }
     )
 
@@ -128,6 +145,8 @@ class SecurityEvent(models.Model):
             EventType.PASSWORD_RESET_BY_ADMIN,
             EventType.GUARDIAN_PHONE_CHANGED,
             EventType.GUARDIAN_EMAIL_CHANGED,
+            EventType.FIRST_SIGN_IN_AFTER_RESET,
+            EventType.TEMPORARY_PASSWORD_EXPIRED,
         }
     )
 

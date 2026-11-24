@@ -210,7 +210,8 @@ def create_guardian_account(*, guardian, username, method, note, actor):
             _check_replacement(guardian, method, note, actor)
             user = get_user_model().objects.create_user(username=username, password=password)
             user.must_change_password = True
-            user.save(update_fields=["must_change_password"])
+            security.issue_temporary_password(user, "CREATED")
+            user.save(update_fields=["must_change_password", *security.TEMPORARY_PASSWORD_FIELDS])
             account = GuardianAccount.objects.create(
                 user=user, guardian=guardian, identity_verified_by=actor,
                 identity_verification_method=method, identity_verification_note=note,
@@ -314,7 +315,9 @@ def reset_guardian_password(*, account, actor, method, note=""):
         user = account.user
         user.set_password(password)
         user.must_change_password = True
-        user.save(update_fields=["password", "must_change_password"])
+        security.issue_temporary_password(user, "RESET")
+        user.save(update_fields=["password", "must_change_password",
+                                 *security.TEMPORARY_PASSWORD_FIELDS])
         user.end_all_sessions()
         event = SecurityEvent.record(Event.PASSWORD_RESET_BY_ADMIN, actor=actor, subject_user=user,
                                      guardian=account.guardian, detail={"method": method})

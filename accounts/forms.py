@@ -61,6 +61,7 @@ class ThrottledLoginMixin:
             raise forms.ValidationError(GENERIC_ERROR, code="invalid_login") from None
         security.clear_source_failures(username, source)
         self._event(SecurityEvent.EventType.LOGIN_SUCCEEDED, self.user_cache, source)
+        security.note_successful_sign_in(self.user_cache)
         return self.cleaned_data
 
     @staticmethod
@@ -93,6 +94,15 @@ class SamePasswordRefusingChangeForm(PasswordChangeForm):
     Without this, a forced change could be met by re-entering the temporary password, which
     then stays valid and is still printed on the slip.
     """
+
+    def save(self, commit=True):
+        """Write only the password. Django's default saves the whole login loaded at the start
+        of the request, which could undo an office reset made meanwhile (its new temporary
+        password stamp and its ended sessions). G-06 reset spec §5.1, review F2."""
+        self.user.set_password(self.cleaned_data["new_password1"])
+        if commit:
+            self.user.save(update_fields=["password"])
+        return self.user
 
     def clean(self):
         cleaned = super().clean()

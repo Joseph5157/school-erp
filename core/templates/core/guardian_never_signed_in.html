@@ -41,7 +41,7 @@
         {% for account in accounts %}
         <tr>
             <th scope="row" class="text-break"><a class="erp-row-link" href="{% url 'core:guardian-detail' account.guardian_id %}">{{ account.guardian.full_name }}</a></th>
-            <td class="text-break" data-label="Username">{{ account.user.username }}</td>
+            <td class="text-break" data-label="Username">{{ account.user.username }}{% if account.expired %} {% include "partials/_status_badge.html" with label="Expired" tone="inactive" only %}{% endif %}</td>
             <td data-label="Account created"><span class="text-nowrap">{{ account.created_at|date:"j M Y" }}</span> <span class="text-muted">&middot; {% if account.days_waiting <= 0 %}today{% else %}{{ account.days_waiting }} day{{ account.days_waiting|pluralize }} ago{% endif %}</span></td>
             <td data-label="Created by">{{ account.created_by.get_full_name|default:account.created_by.username }}</td>
             {% if can_see_students %}
