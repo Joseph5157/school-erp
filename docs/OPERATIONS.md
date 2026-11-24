@@ -301,6 +301,32 @@ passwords or personal data). Running it on a live installation is safe, and it i
 check a deployment before relying on a narrow role. A gap it reports is information, not an
 error.
 
+## Guardian password resets (ADR 0029)
+
+### Monthly: purge old security events
+
+Routine security events, and the short notes kept with "Other" password resets, are kept for
+365 days. The purge needs a named login that holds `accounts.purge_securityevent`, so it cannot run
+from cron. Once a month, from the service shell:
+
+```
+python manage.py purge_security_events --by <your username> --dry-run
+python manage.py purge_security_events --by <your username>
+```
+
+The first line only counts. The second deletes routine events older than 365 days, with their
+reset notes, and records the purge as a permanent history event. History events are never deleted.
+
+### Temporary password expiry switch
+
+Temporary passwords on slips expire only after `TEMP_PASSWORD_EXPIRY_FROM` is set on the web
+service: an ISO 8601 date-time with time zone, for example `2026-12-01T00:00:00+05:30`. Unset or
+blank means off. A value that does not parse stops start-up, so check the deploy after setting
+it. Slips already handed out get a full window counted from the switch-on time (14 days for a new
+account, 72 hours for a reset), and a slip stops working one hour after its first sign-in. To
+switch off, remove the variable; no data changes. Set it in staging first, check, then production
+([spec §7](competitive-research/G06_OFFICE_RESET_SPEC.md#7-staged-rollout-and-rollback-adr-0029-item-4)).
+
 ## Usage measurement (ADR 0027)
 
 The app can count, in daily totals, how its screens and steps are used, to guide later

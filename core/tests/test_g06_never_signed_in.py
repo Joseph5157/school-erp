@@ -2,7 +2,7 @@
 import datetime
 
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Permission
+from django.contrib.auth.models import Group, Permission
 from django.db import connection
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
@@ -10,7 +10,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from core import guardian_activation as activation
-from core import teacher_accounts
+from core import reset_staff, teacher_accounts
 from core.models import (
     AcademicEnrollment,
     ClassGrade,
@@ -184,14 +184,41 @@ class PermissionTests(Fixture, TestCase):
         self.assertNotContains(response, "Children with access")
         self.assertNotContains(response, 'name="class"')
 
-    def test_no_reset_link_in_v1(self):
-        account = self.parent(self.s1)
+    def test_reset_link_shown_to_superuser_and_opens_the_reset_form(self):
+        """Reset spec PR 4: the link appears once the improved reset has landed."""
+        account = self.parent(self.s1, name="Asha Mother")
+        reset_url = reverse("core:guardian-account-reset-password", args=[account.pk])
         response = self.superuser_client.get(URL)
-        self.assertContains(response, account.guardian.full_name)
-        self.assertNotContains(
-            response, reverse("core:guardian-account-reset-password", args=[account.pk])
-        )
-        self.assertNotContains(response, "Reset password")
+        self.assertContains(response, f'href="{reset_url}"')
+        self.assertContains(response, '<span class="visually-hidden"> for Asha Mother</span>')
+        self.assertEqual(self.superuser_client.get(reset_url).status_code, 200)
+
+    def test_reset_link_shown_to_reset_group_member(self):
+        account = self.parent(self.s1)
+        self.admin_user.groups.add(Group.objects.get(name=reset_staff.RESET_GROUP))
+        reset_url = reverse("core:guardian-account-reset-password", args=[account.pk])
+        self.assertContains(self.administrator.get(URL), f'href="{reset_url}"')
+        self.assertEqual(self.administrator.get(reset_url).status_code, 200)
+
+    def test_no_reset_link_without_reset_permission(self):
+        account = self.parent(self.s1)
+        reset_url = reverse("core:guardian-account-reset-password", args=[account.pk])
+        for client in (
+            self.administrator,
+            self.login_with("core.view_guardianaccount", "core.view_guardian"),
+        ):
+            response = client.get(URL)
+            self.assertContains(response, account.guardian.full_name)
+            self.assertNotContains(response, reset_url)
+            self.assertNotContains(response, "Reset password")
+            self.assertEqual(client.get(reset_url).status_code, 403)
+
+    def test_empty_row_spans_every_column(self):
+        self.parent(self.s1, last_login=timezone.now(), must_change=False)
+        self.assertContains(self.superuser_client.get(URL), 'colspan="6"')
+        self.assertContains(self.administrator.get(URL), 'colspan="5"')
+        client = self.login_with("core.view_guardianaccount", "core.view_guardian")
+        self.assertContains(client.get(URL), 'colspan="4"')
 
 
 class PageTests(Fixture, TestCase):

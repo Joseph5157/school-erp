@@ -767,6 +767,7 @@
       "require_safe"
     ],
     "inner": [
+      "core.reset_guardian_password",
       "core.view_student"
     ],
     "perms": [
