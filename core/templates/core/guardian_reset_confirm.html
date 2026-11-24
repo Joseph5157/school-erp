@@ -6,10 +6,27 @@
     <div><dt>Guardian</dt><dd class="text-break">{{ account.guardian.full_name }}</dd></div>
     <div><dt>Username</dt><dd class="text-break">{{ account.user.username }}</dd></div>
 </dl>
+{% if history.recent %}
+<div class="alert alert-warning" role="status">
+    {% if history.changed_at %}This guardian's phone number changed on {{ history.changed_at|date:"j M Y" }}.{% if changed_by_you %} You changed this number.{% endif %}{% else %}Phone changes are only recorded since {{ history.audit_started_at|date:"j M Y" }}.{% endif %}
+    Reset only after checking identity documents in person.
+</div>
+{% endif %}
+<section class="erp-panel p-3 mb-3" aria-labelledby="reset-checklist-heading">
+    <h2 class="h6" id="reset-checklist-heading">Before you reset</h2>
+    <ol class="small mb-0">
+        <li>The guardian is here in person, with an identity document.</li>
+        <li>If they phoned, you called back only the number on this guardian's record, and only to book this visit. Never read a password over the phone.</li>
+        <li>Hand the printed slip to the guardian yourself.</li>
+    </ol>
+</section>
 <p>A new temporary password will be shown once. Every existing session of this login ends immediately, and the guardian must choose a new password at next sign-in.</p>
 <form method="post" class="erp-form">
     {% csrf_token %}
     <input type="hidden" name="one_time_token" value="{{ one_time_token }}">
+    {% include "partials/_form_required_legend.html" %}
+    {% if form.non_field_errors %}<div class="erp-form-errors" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+    {% for field in form %}{% include "partials/_form_field.html" with field=field only %}{% endfor %}
     <div class="erp-form-actions">
         <button type="submit" class="btn btn-danger">Reset password</button>
         <a class="btn btn-link" href="{% url 'core:guardian-detail' account.guardian_id %}">Cancel</a>

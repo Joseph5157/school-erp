@@ -20,7 +20,7 @@ from django.contrib.auth.models import Group, Permission
 from django.core.management.base import BaseCommand
 from django.db.models import Count
 
-from core import permission_bundles
+from core import checks, permission_bundles
 from core.models import TEACHERS_GROUP_NAME
 
 SHIPPED_GROUPS = {"School Administrators", TEACHERS_GROUP_NAME}
@@ -35,6 +35,7 @@ class Command(BaseCommand):
     help = "Read-only: list custom groups and directly-permissioned logins with incomplete permission combinations."
 
     def handle(self, *args, **options):
+        self._reset_section()
         groups = self._group_sections()
         users = self._user_sections()
         if not groups and not users:
@@ -50,6 +51,19 @@ class Command(BaseCommand):
             self.stdout.write("Logins with directly assigned permissions and incomplete combinations:")
             for line in users:
                 self.stdout.write(line)
+
+    def _reset_section(self):
+        """Who can reset guardian passwords (G-06 reset spec §6), for the periodic access review."""
+        # Superusers hold everything and are never named in this report (see the module docstring).
+        holders = checks.reset_holders().filter(is_superuser=False).order_by("username")
+        self.stdout.write("Who can reset guardian passwords (plus every active superuser):")
+        if not holders:
+            self.stdout.write("  no staff yet (add them on the Password reset staff page)")
+        for user in holders:
+            how = "direct permission" if user.user_permissions.filter(
+                codename="reset_guardian_password").exists() else "Portal password resets group"
+            self.stdout.write(f"  {user.get_username()} ({how})")
+        self.stdout.write("")
 
     def _gap_lines(self, permissions):
         return [

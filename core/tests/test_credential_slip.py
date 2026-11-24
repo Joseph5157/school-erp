@@ -5,6 +5,7 @@ import re
 
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
+from django.contrib.auth.models import Group
 from django.contrib.messages import get_messages
 from django.test import TestCase
 from django.urls import reverse
@@ -130,6 +131,7 @@ class TeacherCreateTests(AuthorizationClientsMixin, TestCase):
 class GuardianSlipTests(AuthorizationClientsMixin, TestCase):
     def setUp(self):
         super().setUp()
+        self.admin_user.groups.add(Group.objects.get(name="Portal password resets"))  # reset staff (G-06 reset spec §6)
         self.guardian = Guardian.objects.create(full_name="Meena Rao")
 
     def existing_account(self):
@@ -141,8 +143,9 @@ class GuardianSlipTests(AuthorizationClientsMixin, TestCase):
         account, _ = self.existing_account()
         url = reverse("core:guardian-account-reset-password", args=[account.pk])
         token = token_in(self.administrator.get(url))
-        issued = password_in(self.administrator.post(url, {"one_time_token": token}))
-        refreshed = self.administrator.post(url, {"one_time_token": token})
+        form = {"one_time_token": token, "method": "IN_PERSON_DOCUMENTS", "confirmed": "on"}
+        issued = password_in(self.administrator.post(url, form))
+        refreshed = self.administrator.post(url, form)
         self.assertRedirects(refreshed, reverse("core:guardian-detail", args=[self.guardian.pk]))
         self.assertIn("no new password was made", message_in(refreshed))
         self.assertTrue(authenticate(username="meena.rao", password=issued))

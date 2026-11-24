@@ -114,7 +114,8 @@ class ExistingLinkRecheckTests(PrivilegedTargetFixture, TestCase):
     def test_password_reset_refused_after_the_login_gained_privileges(self):
         user, account = self.linked_then_promoted()
         with self.assertRaises(ValidationError):
-            ga.reset_guardian_password(account=account, actor=self.admin)
+            ga.reset_guardian_password(account=account, actor=self.admin,
+                              method="IN_PERSON_DOCUMENTS")
         user.refresh_from_db()
         self.assertTrue(user.check_password(PASSWORD))
         self.assertFalse(user.must_change_password)
@@ -134,7 +135,7 @@ class ExistingLinkRecheckTests(PrivilegedTargetFixture, TestCase):
         user, account = self.linked_then_promoted()
         self.client.post(
             reverse("core:guardian-account-reset-password", args=[account.pk]),
-            {"confirm": "on"},
+            {"method": "IN_PERSON_DOCUMENTS", "confirmed": "on"},
         )
         user.refresh_from_db()
         self.assertTrue(user.check_password(PASSWORD))
@@ -148,7 +149,8 @@ class ExistingLinkRecheckTests(PrivilegedTargetFixture, TestCase):
         teacher = self.make_login("meena.teacher")
         teacher.groups.add(Group.objects.get(name=TEACHERS_GROUP_NAME))
         account = self.link("meena.teacher")
-        password = ga.reset_guardian_password(account=account, actor=self.admin)
+        password = ga.reset_guardian_password(account=account, actor=self.admin,
+                              method="IN_PERSON_DOCUMENTS")
         teacher.refresh_from_db()
         self.assertTrue(teacher.check_password(password))
         self.assertEqual(
@@ -173,7 +175,8 @@ class EveryLaterPromotionTests(PrivilegedTargetFixture, TestCase):
                 before = User.objects.get(pk=user.pk)
 
                 with self.assertRaises(ValidationError):
-                    ga.reset_guardian_password(account=account, actor=self.admin)
+                    ga.reset_guardian_password(account=account, actor=self.admin,
+                              method="IN_PERSON_DOCUMENTS")
                 with self.assertRaises(ValidationError):
                     ga.change_guardian_username(account=account, new_username=f"renamed.{slug}",
                                                 actor=self.admin)
@@ -196,7 +199,8 @@ class EveryLaterPromotionTests(PrivilegedTargetFixture, TestCase):
         account = self.link("meena.teacher")
         self.promote(teacher, "disallowed group")
         with self.assertRaises(ValidationError):
-            ga.reset_guardian_password(account=account, actor=self.admin)
+            ga.reset_guardian_password(account=account, actor=self.admin,
+                              method="IN_PERSON_DOCUMENTS")
 
 
 class RecoveryGuidanceTests(PrivilegedTargetFixture, TestCase):
@@ -215,7 +219,8 @@ class RecoveryGuidanceTests(PrivilegedTargetFixture, TestCase):
         account = self.link("meena.parent")
         self.promote(user, "superuser")
         with self.assertRaises(ValidationError) as caught:
-            ga.reset_guardian_password(account=account, actor=self.admin)
+            ga.reset_guardian_password(account=account, actor=self.admin,
+                              method="IN_PERSON_DOCUMENTS")
         message = " ".join(caught.exception.messages)
         self.assertIn("Revoke its guardian account link first", message)
         self.assertIn("Django admin", message)

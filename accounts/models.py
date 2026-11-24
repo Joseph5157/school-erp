@@ -178,6 +178,21 @@ class SecurityEvent(models.Model):
         return f"{self.get_event_type_display()} at {self.occurred_at:%Y-%m-%d %H:%M}"
 
 
+class ResetNote(models.Model):
+    """The short note for an "Other" identity check on a password reset (G-06 reset spec §4.4).
+
+    Kept apart from the append-only event so it can be deleted on its own. Reset events are
+    ROUTINE (spec §9), so the routine purge after 365 days removes the note with its event.
+    """
+
+    event = models.OneToOneField(SecurityEvent, on_delete=models.CASCADE, related_name="reset_note")
+    note = models.CharField(max_length=100)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return f"Note for {self.event}"
+
+
 class LoginFailure(models.Model):
     """Throttling state for failed sign-ins (ADR 0013, plan §8). Operational.
 

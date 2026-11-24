@@ -1520,6 +1520,30 @@ class TeacherCreateForm(FieldAccessibilityMixin, forms.Form):
     email = forms.EmailField(required=False)
 
 
+class GuardianResetForm(forms.Form):
+    """The office reset (G-06 reset spec §4.1). The service checks the same rules again."""
+
+    method = forms.ChoiceField(
+        choices=[
+            (GuardianAccount.VerificationMethod.IN_PERSON_DOCUMENTS, "In person, with identity documents"),
+            (GuardianAccount.VerificationMethod.OTHER, "Other"),
+        ],
+        widget=forms.RadioSelect,
+        label="How was this person's identity checked?",
+    )
+    note = forms.CharField(
+        max_length=100, required=False, label="Note (only for Other)",
+        help_text="No phone numbers, addresses or other personal details.",
+    )
+    confirmed = forms.BooleanField(label="I checked this person's identity myself")
+
+    def __init__(self, *args, in_person_only=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        if in_person_only:
+            self.fields["method"].choices = self.fields["method"].choices[:1]
+            del self.fields["note"]  # notes belong to "Other", which is not offered
+
+
 class GuardianAccountCreateForm(GuardianVerificationForm):
     username = forms.CharField(max_length=30, help_text=USERNAME_HELP)
     field_order = ["username", "identity_verification_method", "identity_verification_note"]

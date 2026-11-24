@@ -134,7 +134,7 @@ class SchoolAdministratorsGroupMigrationTests(TestCase):
                 "add_guardianaccount",
                 "change_guardianaccount",
                 "view_guardianaccount",
-                "reset_guardian_password",
+                # reset_guardian_password moved to "Portal password resets" (G-06 reset spec §6).
                 "change_guardian_username",
                 "add_guardianstudentaccess",
                 "change_guardianstudentaccess",

@@ -38,6 +38,7 @@ User = get_user_model()
 class Fixture(AuthorizationClientsMixin):
     def setUp(self):
         super().setUp()
+        self.admin_user.groups.add(Group.objects.get(name="Portal password resets"))  # reset staff (G-06 reset spec §6)
         self.school = School.objects.create(name="Greenwood High")
         self.year = AcademicYear.objects.create(
             name="2026-27", start_date=datetime.date(2026, 6, 1), end_date=datetime.date(2027, 3, 31)

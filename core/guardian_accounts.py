@@ -7,6 +7,7 @@ deleted. Temporary passwords are returned to the caller once, for display on
 a printable slip, and are never stored in plain text or logged.
 """
 
+import re
 import secrets
 
 from django.contrib.auth import get_user_model
@@ -16,8 +17,9 @@ from django.db.models.functions import Lower
 from django.utils import timezone
 
 from accounts import security
-from accounts.models import SecurityEvent
+from accounts.models import ResetNote, SecurityEvent
 from accounts.usernames import clean_new_username, normalize_username
+from core.guardian_records import phone_changed_recently
 from core.models import (
     TEACHERS_GROUP_NAME,
     Guardian,
@@ -28,6 +30,11 @@ from core.models import (
 
 TEMPORARY_PASSWORD_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789"
 Event = SecurityEvent.EventType
+Method = GuardianAccount.VerificationMethod
+# G-06 reset spec §4.1: a reset (and replacing a revoked login, §4.8) accepts only these.
+RESET_METHODS = (Method.IN_PERSON_DOCUMENTS, Method.OTHER)
+RESET_NOTE_MAX = 100
+RESET_PERMISSION = "core.reset_guardian_password"
 _OTHER_AUTHORITY = (
     "This login holds other authority (superuser, staff, a role other than Teachers, or "
     "direct permissions), so the guardian workflow cannot "
@@ -87,6 +94,73 @@ def _check_verification(method, note):
     return note
 
 
+PERSONAL_DATA_ERROR = (
+    "Leave phone numbers, email addresses and other personal details out of the note."
+)
+
+
+def _has_personal_data(note):
+    """Six or more digits in total (a phone number however it is spaced) or an email sign."""
+    return "@" in note or len(re.sub(r"\D", "", note)) >= 6
+
+
+def _check_other_note(note, guardian):
+    if not note:
+        raise ValidationError('Add a short note for "Other".')
+    if len(note) > RESET_NOTE_MAX:
+        raise ValidationError(f"Keep the note to {RESET_NOTE_MAX} characters.")
+    if _has_personal_data(note):
+        raise ValidationError(PERSONAL_DATA_ERROR)
+    if phone_changed_recently(guardian).recent:
+        raise ValidationError(
+            "This guardian's phone number changed recently, or phone changes have only just "
+            "started being recorded. Check identity documents in person."
+        )
+
+
+def check_reset_method(method, note, *, guardian):
+    """The identity-check rules for a reset (G-06 reset spec §4.1, §4.3). Returns the note.
+
+    "Other" needs a short note with no personal data. A recent phone change, or the first 30
+    days of the contact audit, allows only "In person, with identity documents".
+    """
+    if method not in RESET_METHODS:
+        raise ValidationError("Choose how this person's identity was checked.")
+    note = (note or "").strip()
+    if method == Method.OTHER:
+        _check_other_note(note, guardian)
+    elif note:
+        raise ValidationError('A note is only for "Other".')
+    return note
+
+
+def has_revoked_account(guardian):
+    return GuardianAccount.objects.filter(guardian=guardian, revoked_at__isnull=False).exists()
+
+
+def _check_replacement(guardian, method, note, actor):
+    """Replacing a revoked login follows the reset rules (spec §4.8, owner choice S-01 (a)).
+
+    The create and link forms always carry a verification note, so only "Other" adds the
+    reset note rules.
+    """
+    if not has_revoked_account(guardian):
+        return
+    if not actor.has_perm(RESET_PERMISSION):
+        raise ValidationError(
+            "This guardian had a portal login that was revoked. Only staff who can reset "
+            "parent passwords may give them a new one."
+        )
+    if method not in RESET_METHODS:
+        raise ValidationError(
+            'For a guardian whose login was revoked, check identity in person or choose "Other".'
+        )
+    if _has_personal_data(note or ""):
+        raise ValidationError(PERSONAL_DATA_ERROR)
+    if method == Method.OTHER:
+        _check_other_note(note, guardian)
+
+
 def portal_state_label(guardian):
     """The Guardian's portal state in one phrase, for list cards.
 
@@ -133,6 +207,7 @@ def create_guardian_account(*, guardian, username, method, note, actor):
             guardian = _lock_guardian(guardian)
             if active_account(guardian) is not None:
                 raise ValidationError("This guardian already has an active portal account.")
+            _check_replacement(guardian, method, note, actor)
             user = get_user_model().objects.create_user(username=username, password=password)
             user.must_change_password = True
             user.save(update_fields=["must_change_password"])
@@ -159,6 +234,7 @@ def link_existing_login(*, guardian, username, method, note, actor):
             guardian = _lock_guardian(guardian)
             if active_account(guardian) is not None:
                 raise ValidationError("This guardian already has an active portal account.")
+            _check_replacement(guardian, method, note, actor)
             user = get_user_model().objects.select_for_update().get(pk=user.pk)
             require_portal_manageable(user)
             if GuardianAccount.objects.filter(user=user, revoked_at__isnull=True).exists():
@@ -221,18 +297,29 @@ def change_guardian_username(*, account, new_username, actor):
     return username
 
 
-def reset_guardian_password(*, account, actor):
-    """New temporary password, forced change, every session ended. Returns the password."""
+def reset_guardian_password(*, account, actor, method, note=""):
+    """New temporary password, forced change, every session ended. Returns the password.
+
+    G-06 reset spec §4: the identity check is a choice (and a short note for "Other"), checked
+    here so no caller can skip it. The guardian row is locked before the account, the order
+    every guardian service uses, so a phone edit cannot slip between the check and the reset.
+    """
     password = generate_temporary_password()
     with transaction.atomic():
+        _lock_guardian(account.guardian)
         account = _lock_account(account, require_manageable=True)
+        if account.user_id == getattr(actor, "pk", None):
+            raise ValidationError("You cannot reset the password of your own login.")
+        note = check_reset_method(method, note, guardian=account.guardian)
         user = account.user
         user.set_password(password)
         user.must_change_password = True
         user.save(update_fields=["password", "must_change_password"])
         user.end_all_sessions()
-        SecurityEvent.record(Event.PASSWORD_RESET_BY_ADMIN, actor=actor, subject_user=user,
-                             guardian=account.guardian)
+        event = SecurityEvent.record(Event.PASSWORD_RESET_BY_ADMIN, actor=actor, subject_user=user,
+                                     guardian=account.guardian, detail={"method": method})
+        if note:
+            ResetNote.objects.create(event=event, note=note)
         security.clear_lockout_on_reset(user, actor)
     return password
 
