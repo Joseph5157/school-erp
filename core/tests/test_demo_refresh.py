@@ -454,7 +454,7 @@ class NoticeTests(TestCase):
         titles = [t for t, _ in demo_refresh.NOTICE_POOL]
         self.assertEqual(len(titles), len(set(titles)))
         for title, body in demo_refresh.NOTICE_POOL:
-            self.assertNotIn("fee", f"{title} {body}".lower())
+            self.assertNotRegex(f"{title} {body}", r"(?i)\bfees?\b")
 
     def test_notice_posted_when_stale(self):
         now = self._newest().published_at + datetime.timedelta(days=8)

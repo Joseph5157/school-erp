@@ -120,7 +120,7 @@ Clarifications:
 - Fees are excluded while Phase 3 remains deferred; no fee placeholders.
 - Announcements move to Phase 7 Communication.
 - Phase 6 itself showed report cards on screen only. Term report card PDFs came later as
-  Phase 7 issued documents, which guardians can download from the portal.
+  Phase 7 issued documents (ADR 0016), which guardians can download from the portal.
 
 ### Phase 6B Student accounts (future)
 - not planned; requires separate decisions before any work

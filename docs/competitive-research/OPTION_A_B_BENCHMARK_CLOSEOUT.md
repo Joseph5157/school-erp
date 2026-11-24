@@ -157,7 +157,7 @@ against `main` at `0240bc2` plus this PR. It approves no feature, schema or road
 | --- | --- | --- | --- |
 | G-04 Admin phone coverage | Open, P1 | **Closed** | `PACKAGE_C_CLOSEOUT.md` §6 (inventory of 144 routes; every High and Medium finding fixed; optional C8 Low polish left). |
 | G-06 Guardian activation and recovery | Open, P1 (narrowed) | **Open, narrowed to self-service recovery** | Never-signed-in list (#303, `G06_NEVER_SIGNED_IN_SPEC.md`) answers ANA-05. Office reset improved under ADR 0029 option A (#306–#310, `G06_OFFICE_RESET_SPEC.md`): identity method recorded, contact changes audited, named reset staff, temporary passwords expire (switched on in staging 24 November). Self-service recovery for guardians stays deferred by ADR 0029. On 24 November the product owner kept guardians on office reset. |
-| G-13 Documentation drift and demo fee text | P3, unchanged | **Closed by this PR** | `docs/ROADMAP.md` now says Term report card PDFs came in Phase 7; the demo refresh notice pool has no fee text, pinned by `test_demo_refresh.test_pool_titles_unique_and_no_fee_text`. |
+| G-13 Documentation drift and demo fee text | P3, unchanged | **Closed by this PR** | `docs/ROADMAP.md` now says Term report card PDFs came in Phase 7; the demo refresh notice pool has no fee text, pinned by `test_demo_refresh.test_pool_titles_unique_and_no_fee_text`. No fee notice exists on staging (checked 24 November). |
 
 Four of the five baseline P1 gaps are closed (G-02, G-03, G-04, G-05). G-06 stays open only for
 guardian self-service recovery, which ADR 0029 defers. Whether to close it on that decision is a
@@ -167,7 +167,7 @@ Benchmark rows (the baseline audit stays unchanged):
 
 | ID | Capability | Before | Now | Reason |
 | --- | --- | --- | --- | --- |
-| ANA-05 | Guardian account inactive | Missing (P2) | **Implemented** | Office list of guardians who never signed in or still use a temporary password, with an Expired mark and a Reset password link for reset staff. |
+| ANA-05 | Guardian account inactive | Missing (P2) | **Implemented** | Office list of guardians who never signed in or still use a temporary password, with an Expired mark and a Reset password link for reset staff (superusers only until staff are added): `core/views.py` `guardian_never_signed_in`, `core/guardian_activation.py`; tests `test_g06_never_signed_in`, `test_g06_expiry`. |
 | GUA-01 | Activation and recovery | Partial (P1) | **Partial (improved)** | Office reset with identity method, audit and expiry; no self-service recovery (ADR 0029). |
 
 ### 6.2 Known follow-ups (not gaps)
