@@ -1,9 +1,10 @@
 # G-06 spec: improved office password reset (ADR 0029, option A)
 
-- **Status:** **Approved for build (r2)**, 2026-11-24. The product owner approved OD-R1 to OD-R5 as
-  recommended, chose the review options in §12 (S-01 (a), S-03 option A, S-07 one-hour grace) and accepted
-  r2. r2 applies the security-focused review of r1 on PR #304 (S-01 to S-19, N-1 to N-4; ADR 0029 "What
-  would make this acceptable", item 3). Each build PR is still Critical tier.
+- **Status:** **Draft r3**, 2026-11-24. r2 was approved for build (PR #304): OD-R1 to OD-R5 as recommended,
+  review choices S-01 (a), S-03 option A, S-07 one-hour grace; r2 applied the security-focused review of r1
+  (S-01 to S-19, N-1 to N-4; ADR 0029 item 3). **r3** adds the "Password reset staff" page (§6a, PR 2b) so
+  the school chooses reset staff in the app instead of naming them before PR 2 (OD-R2 revised, OD-R6).
+  Each build PR is still Critical tier.
 - **Baseline:** `origin/main` 06d8eeb (never-signed-in list, PR #303, merged).
 - **Risk tier:** **Critical** (password and account recovery, authentication and sessions,
   `docs/engineering/IMPLEMENTATION_WORKFLOW.md` §3).
@@ -284,8 +285,9 @@ Today `core.reset_guardian_password` is in the School Administrators group
 - Reverse: put the permission back on School Administrators; delete the group only if this migration created
   it (recorded in the migration by name and permission set) and it has no members.
 
-**Membership** is in addition to School Administrators (members still need the guardian pages). A superuser
-sets it in the Django admin (`accounts/admin.py:59`). Superusers keep every permission.
+**Membership** is in addition to School Administrators (members still need the guardian pages). It is set on
+the "Password reset staff" page (§6a, PR 2b). Until PR 2b ships, a superuser can set it in the Django admin
+(`accounts/admin.py:59`). Superusers keep every permission.
 
 **Safety checks.**
 
@@ -297,8 +299,65 @@ sets it in the Django admin (`accounts/admin.py:59`). Superusers keep every perm
 - A test asserts no group other than "Portal password resets" holds the permission.
 - `core/tests/test_authorization.py:137` pins the School Administrators permission set; PR 2 updates it.
 
-**Deploy step:** the owner names two office staff (OD-R2) before PR 2 reaches staging; right after deploy a
-superuser adds them. Until then only superusers can reset or replace a revoked login.
+**Deploy step:** none for names. After PR 2 deploys, only superusers can reset or replace a revoked login
+until a superuser adds staff on the page (§6a) or, before PR 2b, in the Django admin (OD-R2).
+
+## 6a. PR 2b: "Password reset staff" page (OD-R2, OD-R6)
+
+**Outcome.** A superuser chooses, in the app, who may reset guardian passwords. Every change made on the page
+is recorded. Ordinary administrators can see the list but cannot change it, so no one can add themselves.
+
+**Where.** Sidebar group "Access and security" (`core/navigation.py:55-59`), a new link "Password reset staff"
+after "Sign-in lockouts". Shown to holders of `core.view_guardianaccount` and to superusers.
+
+**Routes.**
+
+| Name | Path | Method | Guard |
+| --- | --- | --- | --- |
+| `core:reset-staff` | `access/reset-staff/` | GET (`require_safe`) | `core.view_guardianaccount` |
+| `core:reset-staff-add` | `access/reset-staff/add/` | POST (`require_POST`) | superuser only (403 otherwise) |
+| `core:reset-staff-remove` | `access/reset-staff/<int:user_id>/remove/` | POST (`require_POST`) | superuser only (403 otherwise) |
+
+Superuser-only is a small decorator `superuser_required` in `core/authorization.py` (login required, then
+`PermissionDenied` unless `is_superuser`). It is deliberately not a permission: any permission can be put in a
+group, and a School Administrators grant would then let admins add themselves (threat model T7; OD-R6).
+
+**List page.**
+
+- Members of "Portal password resets": name, username, added on and added by (from the latest
+  `RESET_STAFF_ADDED` event for that user).
+- Also listed, read-only, under "Can also reset": active superusers, and any active user or group holding
+  `core.reset_guardian_password` directly (the same query as `role_permission_gaps`, §6). A direct grant shows
+  "Granted outside this page. Remove it in the Django admin." so nothing is hidden.
+- Empty group: "No staff can reset parent passwords. Only superusers can, until you add someone."
+- For superusers only: an "Add staff" form and a "Remove" button per member. Others see the list without
+  controls.
+
+**Add.** One select of eligible users: active, in School Administrators, not a superuser (they can already
+reset), not already a member, and with no active guardian account (`GuardianAccount` with `revoked_at` null).
+The service `reset_staff.add(user, *, actor)` re-checks eligibility after `select_for_update` on the user,
+adds the user to the group, and records `RESET_STAFF_ADDED` (actor, subject_user), all in one transaction. A
+member who later stops being eligible (made inactive, or left School Administrators) stays in the group until
+removed; an inactive login cannot sign in, and the list marks such members "inactive" or "not an
+administrator".
+
+**Remove.** Reason as a choice: "Left the school", "Changed role", "Other". No free text, so no personal data
+to guard. `reset_staff.remove(user, *, actor, reason)` removes the membership and records
+`RESET_STAFF_REMOVED` with `detail = {"reason": "<choice>"}`, in one transaction. Removing the last member is
+allowed; the page then shows the empty-group warning.
+
+**Effect.** Membership changes apply from the next request (Django reads permissions per request; the role
+cache in `accounts/middleware.py` is per request). No session ending is needed.
+
+**Events.** `RESET_STAFF_ADDED` and `RESET_STAFF_REMOVED`, ROUTINE (S-03). The list page shows them as
+"Recent changes" (last 20); `role_permission_gaps` prints them too.
+
+**Phone layout.** Members as stacked rows (`erp-table--stack`); the add form uses the compact filter pattern.
+No new CSS component. Checked at 360, 390 and desktop.
+
+**Risk:** Critical (roles and permissions). Migration: event-type choices only; no model change.
+
+**Rollback.** Revert. Membership already set stays; a superuser can still edit it in the Django admin.
 
 ## 7. Staged rollout and rollback (ADR 0029 item 4)
 
@@ -306,6 +365,7 @@ superuser adds them. Until then only superusers can reset or replace a revoked l
 | --- | --- | --- |
 | PR 1 | Contact audit, profile history paging. | Revert. Events written stay (append-only, ROUTINE, purged after 365 days). |
 | PR 2 | Reset form, notes, notice, first-sign-in event, revoked-login rule, named-staff group. | Revert; the reverse migration restores the group permission and drops `ResetNote`. **Rehearse the backward migration on a staging copy before merge.** |
+| PR 2b | "Password reset staff" page. | Revert. Membership stays; edit it in the Django admin if needed. |
 | PR 3 code | Fields and backfill. Expiry off (`TEMP_PASSWORD_EXPIRY_FROM` unset). Issue and first-use times recorded from deploy. | Revert; the reverse migration drops the fields. **Rehearse backward on a staging copy; back up staging and, when it exists, production before deploy.** |
 | PR 3 switch-on | After the never-signed-in run: set `TEMP_PASSWORD_EXPIRY_FROM` in staging, check, then production. | Unset it. No data change. |
 | PR 4 | "Reset password" link on the never-signed-in list (that spec's §5), shown with `core.reset_guardian_password`. | Revert. |
@@ -315,7 +375,8 @@ switch-on in production.
 
 ## 8. Routes
 
-No new route. Changed guards: `core:guardian-account-reset-password` becomes a form (same guard);
+New routes only in PR 2b (§6a): `core:reset-staff`, `core:reset-staff-add` and `core:reset-staff-remove`,
+each added to `core/tests/route_permissions.json` with its guard. Changed guards: `core:guardian-account-reset-password` becomes a form (same guard);
 `core:guardian-account-create` and `core:guardian-account-link` check `core.reset_guardian_password` inside
 the view for guardians with a revoked login. Regenerate `core/tests/route_permissions.json` for the new inner
 permission.
@@ -365,6 +426,16 @@ clears all three fields and does not clear a newer reset's fields; backfill and 
 reset set the fields (OD-R1); `link_existing_login` sets nothing; signed-in session at expiry still forced to
 change; slip shows the "works until" line only when the switch is set; never-signed-in list shows "Expired".
 
+**PR 2b:** a School Administrator sees the list (200) without add or remove controls, and their POST to add
+or remove gets 403; a teacher or guardian gets 403 on the list; anonymous goes to sign-in; GET to add or
+remove gets 405; a superuser adds an eligible administrator (membership plus event with actor and subject) and
+removes them with a reason (event with the choice); the add list excludes inactive users,
+non-administrators, superusers, existing members and logins with an active guardian account, and the service
+refuses each of them even when posted directly; a just-added member can open the reset form on the next
+request and a removed one gets 403; direct grants and superusers appear under "Can also reset"; the
+empty-group warning shows; recent changes list the last 20; CSRF and frame denial on the POST routes; route
+inventory updated.
+
 **Every PR:** `ruff check .`; `makemigrations --check --dry-run` clean after the PR's own migration (PR 1, 2
 and 3 each add one migration altering event-type choices; each names it in its PR); route inventory test;
 targeted tests for accounts, guardian accounts, teacher accounts, portal home and the never-signed-in list;
@@ -376,8 +447,9 @@ full CI on the final head.
 - [x] Security-focused review of r1 done; findings applied in r2.
 - [x] Owner accepts r2 (2026-11-24).
 - [ ] PR 1 merged; contact edits appear in guardian history on staging.
-- [ ] Two staff named; PR 2 merged after a backward-migration rehearsal; membership set on staging; reset form
-      checked at 360, 390 and desktop.
+- [ ] PR 2 merged after a backward-migration rehearsal; reset form checked at 360, 390 and desktop.
+- [ ] PR 2b merged; a superuser adds reset staff on staging from the page; page checked at 360, 390 and
+      desktop.
 - [ ] PR 3 merged with expiry off after a rehearsal and backup; never-signed-in run done; switch set in
       staging; expiry checked.
 - [ ] PR 4 merged; link shown only to group members and superusers.
@@ -389,7 +461,8 @@ All recorded 2026-11-24.
 | ID | Decision | Chosen |
 | --- | --- | --- |
 | OD-R1 | Teacher temporary passwords | Expire like guardians (same fields and windows); teacher reset otherwise unchanged |
-| OD-R2 | Who is in "Portal password resets" at launch | Two named office staff, plus superusers. **Names still to be given before PR 2 reaches staging.** |
+| OD-R2 | Who is in "Portal password resets" at launch | Revised in r3: the school chooses later on the "Password reset staff" page (§6a). No names are needed before any PR; until someone is added, only superusers can reset. |
+| OD-R6 | Who can change the reset staff list | Superusers only (a check, not a permission, so it cannot be granted through a group). Administrators can view the list. |
 | OD-R3 | Phone history before PR 1 | Fail closed: the first 30 days after PR 1 count as "recently changed" |
 | OD-R4 | How expiry is switched on | Behind a setting, after the never-signed-in run (now a start time, §5.3) |
 | OD-R5 | "Other" note retention | Deleted after 365 days |
@@ -404,7 +477,8 @@ All recorded 2026-11-24.
   ADR 0029).
 - Two-person approval for resets (OD-G7 "later option"). One insider can still edit a phone and then reset
   in person; §4.3 shows "You changed this number" but does not block it (T7 Medium, accepted in ADR 0029).
-- Audit of group membership changes in the Django admin: not added; `role_permission_gaps` supports a
-  periodic review instead.
+- Membership changes made in the Django admin instead of the page are not recorded as events; the page lists
+  direct grants and `role_permission_gaps` supports a periodic review. Changes made on the page are recorded
+  (§6a).
 - Reset records older than a year are not available for disputes until counsel allows longer retention (S-03).
 - Staff logins other than teachers: managed in the Django admin (`is_portal_manageable`).
