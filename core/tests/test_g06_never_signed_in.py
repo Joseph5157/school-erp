@@ -10,6 +10,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from core import guardian_activation as activation
+from core import teacher_accounts
 from core.models import (
     AcademicEnrollment,
     ClassGrade,
@@ -118,9 +119,25 @@ class WhichAccountsCountTests(Fixture, TestCase):
         )
         self.assertEqual(self.listed(), set())
 
-    def test_login_that_signed_in_elsewhere_is_not_listed(self):
-        # A teacher-parent: last_login belongs to the login, so a teacher sign-in hides it (§2).
-        self.parent(self.s1, last_login=timezone.now(), must_change=False)
+    def test_teacher_parent_listed_once_until_signed_in_as_teacher(self):
+        # last_login belongs to the login, so a teacher sign-in hides it (§2, by design).
+        teacher, _ = teacher_accounts.create_teacher(
+            username="t.parent", first_name="Tara", last_name="Parent", email="", actor=self.admin_user
+        )
+        guardian = Guardian.objects.create(full_name="Tara Parent")
+        account = GuardianAccount.objects.create(
+            user=teacher, guardian=guardian, identity_verified_by=self.admin_user,
+            identity_verification_method="OTHER", identity_verification_note="x",
+            created_by=self.admin_user,
+        )
+        GuardianStudentAccess.objects.create(
+            student_guardian=StudentGuardian.objects.create(
+                student=self.s1.student, guardian=guardian, relationship_type="MOTHER"
+            ),
+            granted_by=self.admin_user,
+        )
+        self.assertEqual(list(activation.unused_accounts()), [account])
+        User.objects.filter(pk=teacher.pk).update(last_login=timezone.now(), must_change_password=False)
         self.assertEqual(self.listed(), set())
         self.assertEqual(self.listed(activation.TEMPORARY), set())
 
@@ -205,6 +222,14 @@ class PageTests(Fixture, TestCase):
         self.assertContains(by_section, "First Parent")
         self.assertNotContains(by_section, "Second Parent")
 
+    def test_section_from_another_class_gives_filtered_empty_state(self):
+        grade = ClassGrade.objects.create(name="Grade 2")
+        self.parent(self.s1, name="First Parent")
+        response = self.administrator.get(URL, {"class": grade.pk, "section": self.section.pk})
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "First Parent")
+        self.assertContains(response, "No guardians in this class or section are waiting to sign in.")
+
     def test_two_children_two_sections_match_either_and_appear_once(self):
         grade = ClassGrade.objects.create(name="Grade 2")
         section_b = Section.objects.create(class_grade=grade, name="B")
@@ -240,8 +265,11 @@ class PageTests(Fixture, TestCase):
         self.parent(self.s1)
         with CaptureQueriesContext(connection) as one:
             self.administrator.get(URL)
+        grade = ClassGrade.objects.create(name="Grade 2")
+        other = self.enroll_student("Other Child", grade, Section.objects.create(class_grade=grade, name="B"))
+        self.end_placement(other)  # its grants are pending review
         for _ in range(3):
-            self.parent(self.s1, self.s2)
+            self.parent(self.s1, self.s2, other)
         with CaptureQueriesContext(connection) as many:
             self.administrator.get(URL)
         self.assertEqual(len(one), len(many))

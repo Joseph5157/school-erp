@@ -3544,7 +3544,7 @@ def guardian_never_signed_in(request):
                     continue
                 placement = placements.get(link.student_id)
                 account.children.append({
-                    "name": link.student.full_name.split(maxsplit=1)[0],
+                    "name": (link.student.full_name.split() or [""])[0],
                     "placement": f"{placement[2]} {placement[1]}" if placement else "",
                     "under_review": pending[link.active_grants[0].pk][0],
                 })
