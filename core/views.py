@@ -3854,13 +3854,20 @@ def reset_staff_add(request):
 @superuser_required
 @require_POST
 def reset_staff_remove(request, user_id):
+    try:
+        group = reset_staff.reset_group()
+    except ValidationError as error:
+        messages.error(request, " ".join(error.messages))
+        return redirect("core:reset-staff")
     # Only current members: any other id (a superuser, a direct grant) is "not found".
-    user = get_object_or_404(reset_staff.reset_group().user_set, pk=user_id)
+    user = get_object_or_404(group.user_set, pk=user_id)
     form = ResetStaffRemoveForm(request.POST)
     if not form.is_valid():
         messages.error(request, "Choose a reason.")
     elif reset_staff.remove(user, actor=request.user, reason=form.cleaned_data["reason"]):
         messages.success(request, f"{user.get_full_name() or user.username} can no longer reset parent passwords.")
+    else:
+        messages.info(request, "Already removed.")
     return redirect("core:reset-staff")
 
 

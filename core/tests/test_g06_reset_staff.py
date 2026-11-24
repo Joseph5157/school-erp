@@ -1,6 +1,7 @@
 """G-06 reset spec PR 2b (§6a): the "Password reset staff" page."""
 import json
 from pathlib import Path
+from unittest import mock
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
@@ -148,6 +149,18 @@ class AddRemoveTests(Fixture, TestCase):
         reset_staff.add(self.office, actor=self.root)
         self.root_client.post(remove_url(self.office), {"reason": "because"})
         self.assertTrue(self.group.user_set.filter(pk=self.office.pk).exists())
+
+    def test_missing_group_on_remove_redirects_with_a_message(self):
+        self.group.delete()
+        response = self.root_client.post(remove_url(self.office), {"reason": "OTHER"})
+        self.assertRedirects(response, LIST)
+
+    def test_lost_remove_race_says_already_removed(self):
+        reset_staff.add(self.office, actor=self.root)
+        with mock.patch.object(reset_staff, "remove", return_value=False):
+            response = self.root_client.post(remove_url(self.office), {"reason": "OTHER"},
+                                             follow=True)
+        self.assertContains(response, "Already removed.")
 
     def test_missing_group_fails_closed(self):
         self.group.delete()
