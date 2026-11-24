@@ -1520,6 +1520,29 @@ class TeacherCreateForm(FieldAccessibilityMixin, forms.Form):
     email = forms.EmailField(required=False)
 
 
+class ResetStaffAddForm(forms.Form):
+    """Choose an eligible administrator for the password reset staff (G-06 reset spec §6a)."""
+
+    user = forms.ModelChoiceField(queryset=None, label="Staff member", empty_label="Choose…")
+
+    def __init__(self, *args, **kwargs):
+        from core import reset_staff
+
+        super().__init__(*args, **kwargs)
+        self.fields["user"].queryset = reset_staff.eligible_users()
+        self.fields["user"].label_from_instance = (
+            lambda user: f"{user.get_full_name() or user.username} ({user.username})"
+        )
+
+
+class ResetStaffRemoveForm(forms.Form):
+    def __init__(self, *args, **kwargs):
+        from core import reset_staff
+
+        super().__init__(*args, **kwargs)
+        self.fields["reason"] = forms.ChoiceField(choices=reset_staff.REMOVE_REASONS, label="Reason")
+
+
 class GuardianResetForm(forms.Form):
     """The office reset (G-06 reset spec §4.1). The service checks the same rules again."""
 
