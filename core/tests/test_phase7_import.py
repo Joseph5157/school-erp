@@ -539,8 +539,11 @@ class ImportAuthorizationTests(ImportFixture):
         page = self.client.get(reverse("core:import-detail", args=[batch.pk]))
         self.assertContains(page, "does not exist")
         self.assertNotContains(page, "Confirm import")
-        csv_text = self.client.get(reverse("core:import-issues-csv", args=[batch.pk])).content
-        self.assertIn(b"does not exist", csv_text)
+        csv_response = self.client.get(reverse("core:import-issues-csv", args=[batch.pk]))
+        self.assertIn(b"does not exist", csv_response.content)
+        # Holds student/guardian data: a shared browser must not keep a copy (audit 18 ERR-03).
+        self.assertIn("no-store", csv_response["Cache-Control"])
+        self.assertIn("private", csv_response["Cache-Control"])
 
         self.upload(workbook([student_row("Asha")]))
         pending = ImportBatch.objects.filter(status="VALIDATED").get()
