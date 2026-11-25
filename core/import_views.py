@@ -3,6 +3,7 @@
 from django.contrib import messages
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.cache import patch_cache_control
 from django.views.decorators.http import require_POST
 
 from core import data_access, imports, progress_steps
@@ -116,6 +117,9 @@ def import_issues_csv(request, pk):
     batch = get_object_or_404(ImportBatch, pk=pk)
     response = HttpResponse(imports.issues_csv(batch), content_type="text/csv; charset=utf-8")
     response["Content-Disposition"] = f'attachment; filename="import-{batch.pk}-problems.csv"'
+    # The rows can hold student and guardian names and phones; the middleware only marks HTML
+    # no-store, so a shared browser must be told not to keep this file (audit 18 ERR-03).
+    patch_cache_control(response, no_store=True, private=True)
     return response
 
 

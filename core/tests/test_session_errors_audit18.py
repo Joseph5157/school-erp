@@ -28,12 +28,12 @@ class SessionFixture(BoundaryFixture):
 
 
 class ExpiryRedirectTests(SessionFixture, TestCase):
-    def test_idle_expiry_says_why_keeps_the_query_and_clears_the_cache(self):
+    def test_idle_expiry_says_why_keeps_the_query_without_clearing_site_data(self):
         self.age(SEEN_KEY, 31 * 60)
         response = self.client.get(STUDENTS, {"q": "Asha"})
         self.assertTrue(response["Location"].startswith(reverse("login") + "?"))
         self.assertEqual(self.query(response), {"next": f"{STUDENTS}?q=Asha", "expired": "idle"})
-        self.assertEqual(response["Clear-Site-Data"], '"cache"')
+        self.assertNotIn("Clear-Site-Data", response)  # slow on phones; pages are no-store instead
 
     def test_absolute_expiry_names_the_eight_hour_limit(self):
         self.age(STARTED_KEY, 8 * 60 * 60 + 60)
@@ -142,10 +142,11 @@ class CacheTests(SessionFixture, TestCase):
         self.assertEqual(self.client.get(reverse("session-status"))["Cache-Control"],
                          "max-age=0, no-cache, no-store, must-revalidate, private")
 
-    def test_logout_clears_the_browser_cache(self):
+    def test_logout_does_not_wipe_the_browser_cache(self):
+        # Clear-Site-Data made phone sign-out stall; signed-in pages are no-store instead.
         response = self.client.post(reverse("logout"))
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response["Clear-Site-Data"], '"cache"')
+        self.assertNotIn("Clear-Site-Data", response)
 
 
 class CsrfRetryTests(SessionFixture, TestCase):

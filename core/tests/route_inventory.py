@@ -47,7 +47,7 @@ FRAMEWORK_OWNED = {
 # Module-level names that are not a plain function but are known, with the reason.
 KNOWN_NON_FUNCTION_VIEWS = {
     "account_views.password_change": "Django PasswordChangeView, which requires a login",
-    "account_views.logout": "Django LogoutView (POST only) that also sends Clear-Site-Data",
+    "account_views.logout": "Django sign-out view; POST only",
 }
 
 

@@ -89,16 +89,9 @@ def session_status(request):
     return JsonResponse(seconds_left(request.session))
 
 
-class LogoutView(auth_views.LogoutView):
-    """Log out and ask the browser to drop cached signed-in pages (audit 18 ERR-03)."""
-
-    def post(self, request, *args, **kwargs):
-        response = super().post(request, *args, **kwargs)
-        response["Clear-Site-Data"] = '"cache"'
-        return response
-
-
-logout = LogoutView.as_view()
+# No Clear-Site-Data here: signed-in pages are already no-store (middleware), and wiping the browser
+# cache made phone sign-out stall for a second or two while Chrome cleared it.
+logout = auth_views.LogoutView.as_view()
 
 
 class PasswordChangeView(auth_views.PasswordChangeView):
