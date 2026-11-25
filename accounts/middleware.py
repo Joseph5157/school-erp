@@ -84,15 +84,13 @@ def _redirects_to_login(response):
 def expired_redirect(request, reason):
     """Sign-in page that says why, and whether a submitted change was lost (audit 18 ERR-01).
 
-    Only the reason goes in the URL, never posted values. The browser is told to drop its cached
-    copies of signed-in pages (ERR-03).
+    Only the reason goes in the URL, never posted values. Signed-in pages are no-store, so there is
+    no cached copy to clear (ERR-03); Clear-Site-Data made phone sign-out stall.
     """
     params = {"next": return_path(request, reverse("home")), "expired": reason}
     if request.method not in ("GET", "HEAD", "OPTIONS"):
         params["unsaved"] = "1"
-    response = redirect(f"{reverse('login')}?{urlencode(params)}")
-    response["Clear-Site-Data"] = '"cache"'
-    return response
+    return redirect(f"{reverse('login')}?{urlencode(params)}")
 
 
 def _is_passive(request):
