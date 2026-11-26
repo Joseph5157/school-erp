@@ -22,6 +22,9 @@ from accounts.models import SecurityEvent, SignInHelpDay, SignInHelpRequest, Sig
 
 RETENTION_DAYS = 30
 PURGE_BATCH = 1000
+# Hour rows normally wait up to one cron interval (6 hours) after their hour ends; older than a day
+# means the cleanup is not running (review PR1-SR-04).
+HOUR_ROW_STALE = timedelta(days=1)
 OPEN = ""
 
 
@@ -90,6 +93,7 @@ def expired_rows_exist(now=None):
         or SignInHelpDay.objects.filter(
             day__lt=timezone.localdate(now) - timedelta(days=RETENTION_DAYS)
         ).exists()
+        or SignInHelpSourceHour.objects.filter(hour_start__lt=now - HOUR_ROW_STALE).exists()
     )
 
 

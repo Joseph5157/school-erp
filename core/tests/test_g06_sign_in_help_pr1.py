@@ -14,9 +14,10 @@ from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
 from django.core.management import CommandError, call_command
-from django.db import DatabaseError, connection
+from django.db import DatabaseError, connection, connections
 from django.db.migrations.executor import MigrationExecutor
-from django.test import Client, TestCase, TransactionTestCase
+from django.http import Http404
+from django.test import Client, TestCase, TransactionTestCase, skipUnlessDBFeature
 from django.urls import reverse
 from django.utils import timezone
 
@@ -256,6 +257,19 @@ class IndicatorTests(Fixture, TestCase):
         self.assertEqual(sign_in_help.open_count(), 1)
         self.assertEqual(nav_badges.queue_counts(self.member)["core:sign-in-help-requests"], 1)
 
+    def test_hour_rows_older_than_a_day_raise_the_cleanup_warning(self):
+        now = timezone.now()
+        SignInHelpSourceHour.objects.create(source_key="d" * 64,
+                                            hour_start=sign_in_help.hour_start(now) - timedelta(hours=6))
+        self.assertFalse(sign_in_help.expired_rows_exist(now))  # normal wait for the 6-hour cron
+        SignInHelpSourceHour.objects.create(source_key="e" * 64,
+                                            hour_start=now - timedelta(days=1, minutes=1))
+        self.assertTrue(sign_in_help.expired_rows_exist(now))
+        card = {c["key"]: c for c in dashboard.overview_cards(self.member)}["sign-in-help"]
+        self.assertIn("Old requests are waiting to be deleted. Check the cron job.", card["detail"])
+        response = self.client_for(self.member).get(LIST)
+        self.assertContains(response, "Old requests are waiting to be deleted. Check the cron job.")
+
     def test_non_holder_runs_no_badge_query(self):
         with mock.patch.object(sign_in_help, "open_count", side_effect=AssertionError):
             counts = nav_badges.queue_counts(self.office)
@@ -278,6 +292,31 @@ class IndicatorTests(Fixture, TestCase):
         self.assertIn("4 not saved today because of limits or repeats.", card["detail"])
         self.assertIn("Old requests are waiting to be deleted. Check the cron job.", card["detail"])
         self.assertNotIn("sign-in-help", {c["key"] for c in dashboard.overview_cards(self.office)})
+
+
+class RetentionBoundaryTests(Fixture, TestCase):
+    """Exactly 30 days old is expired everywhere: hidden, not counted, not handled, purged
+    (review PR1-SR-01). One microsecond younger is still live."""
+
+    def test_exact_30_day_boundary(self):
+        now = timezone.now()
+        boundary = SignInHelpRequest.objects.create(
+            guardian_name="Boundary Exact", child_name="C", child_class="1", repeat_key="k" * 64,
+            received_at=now - timedelta(days=30))
+        inside = SignInHelpRequest.objects.create(
+            guardian_name="Boundary Inside", child_name="C", child_class="1", repeat_key="k" * 64,
+            received_at=now - timedelta(days=30) + timedelta(microseconds=1))
+        with mock.patch("django.utils.timezone.now", return_value=now):
+            self.assertEqual(list(sign_in_help.open_requests()), [inside])
+            self.assertEqual(sign_in_help.open_count(), 1)
+            self.assertEqual(nav_badges.queue_counts(self.member)["core:sign-in-help-requests"], 1)
+            body = self.client_for(self.member).get(LIST).content.decode()
+            self.assertNotIn("Boundary Exact", body)
+            self.assertIn("Boundary Inside", body)
+            with self.assertRaises(Http404):
+                sign_in_help.handle(boundary.pk, actor=self.member, outcome="NO_MATCH")
+            self.assertEqual(sign_in_help.purge()["requests"], 1)
+        self.assertEqual(list(SignInHelpRequest.objects.all()), [inside])
 
 
 class ResetStaffTests(Fixture, TestCase):
@@ -508,3 +547,53 @@ class ModelMigrationRoundTripTests(TransactionTestCase):
         executor.migrate(executor.loader.graph.leaf_nodes())
         self.assertIn(SignInHelpRequest._meta.db_table, connection.introspection.table_names())
         self.assertEqual(group.permissions.filter(codename__in=[VIEW, CHANGE]).count(), 2)
+
+
+@skipUnlessDBFeature("has_select_for_update_skip_locked")
+class PurgeLockTimeoutTests(TransactionTestCase):
+    """A real PostgreSQL lock timeout fails the command (review PR1-SR-02).
+
+    Another connection holds today's gate row, so the batch waits for its 2-second lock_timeout and
+    gets a real OperationalError. The command must exit unsuccessfully, print no "Deleted" line,
+    roll the batch back and leave unrelated data alone.
+    """
+
+    def test_lock_timeout_fails_the_command_and_changes_nothing(self):
+        if connection.vendor != "postgresql":
+            self.skipTest("SET LOCAL lock_timeout is PostgreSQL only")
+        today = timezone.localdate()
+        gate = SignInHelpDay.objects.create(day=today, stored=1)
+        old_day = SignInHelpDay.objects.create(day=today - timedelta(days=40))
+        expired = make_request(name="Expired Row", age=timedelta(days=40))
+        live = make_request(name="Live Row")
+        bystander = User.objects.create_user("bystander", password="pass-12345")
+
+        other = connections.create_connection("default")
+        try:
+            other.set_autocommit(False)
+            with other.cursor() as cursor:
+                cursor.execute(
+                    f"SELECT id FROM {SignInHelpDay._meta.db_table} WHERE id = %s FOR UPDATE",
+                    [gate.pk],
+                )
+            out = io.StringIO()
+            with self.assertRaises(CommandError) as raised:
+                call_command("purge_sign_in_help_requests", stdout=out)
+        finally:
+            other.rollback()
+            other.close()
+
+        self.assertIn("OperationalError", str(raised.exception))
+        self.assertNotIn("Deleted", out.getvalue())
+        self.assertTrue(SignInHelpDay.objects.filter(pk=old_day.pk).exists())  # rolled back
+        self.assertTrue(SignInHelpRequest.objects.filter(pk=expired.pk).exists())
+        self.assertTrue(SignInHelpRequest.objects.filter(pk=live.pk).exists())
+        self.assertTrue(User.objects.filter(pk=bystander.pk).exists())
+        # Once the lock is gone, the same command succeeds.
+        self.assertIn("Deleted 1 day rows, 1 requests, 0 hour rows.",
+                      self._run_ok())
+
+    def _run_ok(self):
+        out = io.StringIO()
+        call_command("purge_sign_in_help_requests", stdout=out)
+        return out.getvalue()
