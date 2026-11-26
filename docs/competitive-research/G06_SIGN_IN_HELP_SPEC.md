@@ -1,11 +1,12 @@
 # G-06 spec: "Can't sign in?" request page (ADR 0029, option G)
 
-- **Status:** **Draft r3**, 2026-11-26. Not approved. History: r1 had the security-focused review (ADR 0029
+- **Status:** **Approved for implementation with collection disabled. Collection of real requests is not
+  approved.** r3, owner decisions OD-H1 to OD-H5 recorded 2026-11-26 (§12). Boundaries in §12. History: r1 had the security-focused review (ADR 0029
   item 3; SR-01 to SR-19); r2 applied it and the owner's conditions on OD-H1 and OD-H2, then removed staging
   test mode on the owner's condition; the focused re-check of r2 found RC-01 to RC-13; **r3 applies them**
   and the owner's six explicit points (§14). The final focused re-check approved r3 for owner decision
-  after text edits FC-01 to FC-06, applied here with no further review round (§14). Needs the owner's
-  decisions in §12 and approval before any code.
+  after text edits FC-01 to FC-06, applied here with no further review round (§14). Merging this spec and
+  starting PR 1 each still need the owner's separate approval.
 - **Baseline:** `origin/main` 0e8b946 (logout speed fix, PR #313). The office reset spec
   ([G06_OFFICE_RESET_SPEC.md](G06_OFFICE_RESET_SPEC.md)) PRs 1 to 4 are merged.
 - **Risk tier:** **Critical** (password and account recovery; a new anonymous route;
@@ -566,9 +567,10 @@ test; targeted tests for accounts, the sign-in page, reset staff and the new mod
 
 - [x] Security-focused review of r1 (ADR 0029 item 3); confirmed findings applied in r2 (§14).
 - [x] Focused re-check of r2; RC-01 to RC-13 applied in r3 (§14).
-- [ ] Final focused re-check of r3.
-- [ ] Owner decisions OD-H2 to OD-H5 recorded (§12).
-- [ ] Owner approves the spec for build.
+- [x] Final focused re-check of r3: approved for owner decision; FC-01 to FC-06 applied.
+- [x] Owner decisions OD-H1 to OD-H5 recorded (§12), 2026-11-26.
+- [x] Owner approves the spec for implementation with collection disabled (2026-11-26).
+- [ ] Spec PR #314 merged (owner's separate approval).
 - [ ] PR 1 merged after a backward-migration rehearsal; purge step added to the staging cron.
 - [ ] PR 2 merged with the switch off.
 - [ ] Local test recorded (local machine, demo data, `LOCAL` reference, made-up names), then `--all --yes`.
@@ -585,6 +587,31 @@ test; targeted tests for accounts, the sign-in page, reset staff and the new mod
 | OD-H3 | Prompt for waiting requests | (a) Sidebar badge and Overview card for holders, which also warn about requests dropped by limits or repeats and about old rows the purge missed; superusers also see "on but not accepted"; (b) none | (a). Without a prompt requests sit unseen until purged. |
 | OD-H4 | Caps | Accept as starting values, tuned after acceptance: 5 stored requests per source per clock hour (IPv6 grouped by /64), 200 per day, and a repeat of an **open** request within 7 days dropped; or set others | Accept. |
 | OD-H5 | Deviations from ADR 0029 (header list) | Accept all five: (1) R10 as ROUTINE with no event on submit, drop or failure; (2) no network identifier on request rows; (3) R14 as "the only new anonymous route"; (4) a keyed `repeat_key` and a repeat rule that reads only typed text and other open requests, never school data, invisible to the visitor; (5) per-hour limit rows kept until their hour ends and the next submit or cron run (about 6 hours with the staging schedule), with no typed value and no shared column or key with requests; at low traffic a request can be matched to its hour row by timing alone; source keys are not linkable across hours | Accept. Items (1), (2), (3) and (5) are narrower than the ADR or follow the approved reset-spec precedent; item (4) adds a stored keyed derivative and a write that depends on typed text, never on school data, which the visitor cannot observe. |
+
+### Recorded decisions (2026-11-26)
+
+The product owner decided, in writing:
+
+| ID | Decision |
+| --- | --- |
+| OD-H1 | **Option (a) approved.** Build and merge with the public page off. This does **not** approve collecting real requests. Real collection requires a later dated acceptance in this spec and in `docs/OPERATIONS.md`, plus the exact `OD-H1 YYYY-MM-DD` setting. |
+| OD-H2 | Approved as written. Dedicated queue permissions, granted to the "Portal password resets" group through the migration. |
+| OD-H3 | Approved as written. Permission-controlled sidebar count, Overview card, drop warnings and cleanup warnings. |
+| OD-H4 | Approved as starting limits: 5 per network per clock hour, 200 per day, and 7-day repeat suppression against open requests only. Tune only after real collection is approved. |
+| OD-H5 | Approved as written. The owner explicitly accepts the residual risk that low traffic may allow approximate matching by timing, although there is no shared key or column. |
+
+**Spec status:** Approved for implementation with collection disabled. Collection of real requests is not
+approved.
+
+**Boundaries recorded by the owner:**
+
+- `SIGN_IN_HELP_ENABLED` remains off by default.
+- No deployed test mode.
+- Invalid or missing acceptance fails closed.
+- Implementation and migration may merge without collecting data.
+- Enabling real collection requires a separate explicit owner decision.
+- Counsel confirmation remains preferable before that activation decision.
+- Merging this spec PR and starting each build PR need the owner's separate approval.
 
 ## 13. Out of scope and accepted residual risks
 
