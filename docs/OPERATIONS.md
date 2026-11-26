@@ -327,6 +327,31 @@ account, 72 hours for a reset), and a slip stops working one hour after its firs
 switch off, remove the variable; no data changes. Set it in staging first, check, then production
 ([spec §7](competitive-research/G06_OFFICE_RESET_SPEC.md#7-staged-rollout-and-rollback-adr-0029-item-4)).
 
+### "Can't sign in?" request queue (sign-in help spec, PR 1)
+
+The office queue **Access and security → Sign-in help requests** is built, but the public page that
+would fill it is not (spec PR 2), so the queue stays empty and **no real requests are collected**.
+Collecting real requests needs the owner's separate, dated acceptance (spec OD-H1); until then,
+test only on a local machine with made-up names.
+
+- **Who sees it:** members of "Portal password resets" (migration core 0097 gave the group
+  `accounts.view_signinhelprequest` and `accounts.change_signinhelprequest`) and superusers. The
+  "Password reset staff" page lists anyone else who holds either permission, and
+  `role_permission_gaps` prints the holders. `core.reset_guardian_password` alone does not open it.
+- **Daily routine (once requests exist):** follow the checklist at the top of the page. Call only
+  the number on the guardian's record, book a visit, reset in person. An outcome is final.
+- **Cleanup:** `python manage.py purge_sign_in_help_requests` deletes requests 30 days after they
+  arrive (handled or not), per-hour limit rows once their hour has ended, and day rows after 30
+  days. It never touches security events and prints counts only. Any database error makes it exit
+  non-zero. **Deploy step after PR 1 (needs its own approval):** add
+  `python manage.py purge_sign_in_help_requests;` to the cron start command, staging first.
+- **Wipe:** `--all` prints the counts and deletes nothing; `--all --yes` deletes every row in the
+  three tables and exits non-zero if any remain. Use it after a local test, or when retiring the
+  feature (switch the page off first). Handled-outcome events stay until the monthly
+  `purge_security_events` removes them after 365 days.
+- **Overview warning** "Old requests are waiting to be deleted. Check the cron job." means the
+  cleanup is not running.
+
 ## Usage measurement (ADR 0027)
 
 The app can count, in daily totals, how its screens and steps are used, to guide later

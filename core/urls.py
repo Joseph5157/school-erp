@@ -5,6 +5,7 @@ from core import (
     document_views,
     import_views,
     notification_views,
+    sign_in_help_views,
     teacher_views,
     timetable_views,
     views,
@@ -344,6 +345,11 @@ urlpatterns = [
     path("publications/stale/", views.publications_stale, name="publications-stale"),
     path("sign-in-lockouts/", views.login_lockouts, name="login-lockouts"),
     path("access/reset-staff/", views.reset_staff_list, name="reset-staff"),
+    # G-06 sign-in help spec §5.2: the office queue (no public page in PR 1).
+    path("access/sign-in-help/", sign_in_help_views.sign_in_help_requests,
+         name="sign-in-help-requests"),
+    path("access/sign-in-help/<int:pk>/handle/", sign_in_help_views.sign_in_help_request_handle,
+         name="sign-in-help-request-handle"),
     path("access/reset-staff/add/", views.reset_staff_add, name="reset-staff-add"),
     path(
         "access/reset-staff/<int:user_id>/remove/",

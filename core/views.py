@@ -3837,6 +3837,7 @@ def reset_staff_list(request):
     return render(request, "core/reset_staff.html", {
         "members": reset_staff.members(),
         "also": reset_staff.also_can_reset(),
+        "also_queue": reset_staff.also_can_see_queue(),
         "changes": changes,
         "can_manage": can_manage,
         "add_form": ResetStaffAddForm() if can_manage else None,
@@ -3855,7 +3856,11 @@ def reset_staff_add(request):
         except ValidationError as error:
             messages.error(request, " ".join(error.messages))
         else:
-            messages.success(request, f"{user.get_full_name() or user.username} can now reset parent passwords.")
+            messages.success(
+                request,
+                f"{user.get_full_name() or user.username} can now reset parent passwords. "
+                "This also lets them see sign-in help requests.",
+            )
     else:
         messages.error(request, "Choose a staff member who can be added.")
     return redirect("core:reset-staff")

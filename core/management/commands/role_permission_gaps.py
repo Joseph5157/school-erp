@@ -20,7 +20,7 @@ from django.contrib.auth.models import Group, Permission
 from django.core.management.base import BaseCommand
 from django.db.models import Count
 
-from core import checks, permission_bundles
+from core import checks, permission_bundles, reset_staff
 from core.models import TEACHERS_GROUP_NAME
 
 SHIPPED_GROUPS = {"School Administrators", TEACHERS_GROUP_NAME}
@@ -62,6 +62,19 @@ class Command(BaseCommand):
         for user in holders:
             how = "direct permission" if user.user_permissions.filter(
                 codename="reset_guardian_password").exists() else "Portal password resets group"
+            self.stdout.write(f"  {user.get_username()} ({how})")
+        self.stdout.write("")
+        self._queue_section()
+
+    def _queue_section(self):
+        """Who can see "Can't sign in?" requests (sign-in help spec §5.1). Superusers left out."""
+        holders = reset_staff.queue_holders().filter(is_superuser=False).order_by("username")
+        self.stdout.write("Who can see sign-in help requests (plus every active superuser):")
+        if not holders:
+            self.stdout.write("  no staff yet (members of Portal password resets see them)")
+        for user in holders:
+            how = "direct permission" if user.user_permissions.filter(
+                codename__in=reset_staff.QUEUE_CODENAMES).exists() else "group permission"
             self.stdout.write(f"  {user.get_username()} ({how})")
         self.stdout.write("")
 

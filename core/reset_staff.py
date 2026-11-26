@@ -4,7 +4,7 @@ Superusers choose the members; every change made here is recorded. The group its
 only by migration core 0096, never here.
 """
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group
+from django.contrib.auth.models import Group, Permission
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Exists, OuterRef
@@ -15,6 +15,8 @@ from core.models import GuardianAccount
 RESET_GROUP = "Portal password resets"
 ADMIN_GROUP = "School Administrators"
 CODENAME = "reset_guardian_password"
+# Sign-in help spec §5.1: group members also work the "Can't sign in?" queue (core 0097).
+QUEUE_CODENAMES = ("view_signinhelprequest", "change_signinhelprequest")
 REMOVE_REASONS = (
     ("LEFT_SCHOOL", "Left the school"),
     ("CHANGED_ROLE", "Changed role"),
@@ -99,6 +101,37 @@ def also_can_reset():
         .order_by("name")
     )
     return {"superusers": list(superusers), "direct": list(direct), "groups": list(other_groups)}
+
+
+def also_can_see_queue():
+    """Everyone outside the group who can see sign-in help requests, shown read-only: active
+    superusers, direct grants and other groups holding either queue permission (spec §5.1)."""
+    queue = {"codename__in": QUEUE_CODENAMES, "content_type__app_label": "accounts"}
+    superusers = User.objects.filter(is_active=True, is_superuser=True).order_by("username")
+    direct = (
+        User.objects.filter(is_active=True, is_superuser=False,
+                            user_permissions__in=Permission.objects.filter(**queue))
+        .distinct()
+        .order_by("username")
+    )
+    other_groups = (
+        Group.objects.filter(permissions__in=Permission.objects.filter(**queue))
+        .exclude(name=RESET_GROUP)
+        .distinct()
+        .order_by("name")
+    )
+    return {"superusers": list(superusers), "direct": list(direct), "groups": list(other_groups)}
+
+
+def queue_holders():
+    """Active logins, superusers included, that can see sign-in help requests."""
+    from django.db.models import Q
+
+    queue = Permission.objects.filter(codename__in=QUEUE_CODENAMES,
+                                      content_type__app_label="accounts")
+    return User.objects.filter(is_active=True).filter(
+        Q(is_superuser=True) | Q(groups__permissions__in=queue) | Q(user_permissions__in=queue)
+    ).distinct()
 
 
 def recent_changes(limit=20):

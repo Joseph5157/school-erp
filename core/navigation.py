@@ -56,6 +56,8 @@ OFFICE_NAV = (
         NavLink("Access reviews", "core:guardian-access-reviews",
                 "core.view_guardianaccessreview", icon="access"),
         NavLink("Sign-in lockouts", "core:login-lockouts", "accounts.clear_login_lockout", icon="lockouts"),
+        NavLink("Sign-in help requests", "core:sign-in-help-requests",
+                "accounts.view_signinhelprequest", icon="signinhelp"),
         NavLink("Password reset staff", "core:reset-staff", "core.view_guardianaccount", icon="resetstaff"),
     )),
 )

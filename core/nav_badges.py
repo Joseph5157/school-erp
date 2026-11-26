@@ -17,7 +17,7 @@ The sidebar and the Overview cards both use the helpers here, so the two
 cannot disagree.
 """
 
-from accounts import request_cache, security
+from accounts import request_cache, security, sign_in_help
 from core import publication
 from core.models import Notification
 
@@ -30,6 +30,10 @@ def locked_username_count():
     return len(security.locked_usernames())
 
 
+def sign_in_help_open_count():
+    return sign_in_help.open_count()
+
+
 def stale_publication_count():
     return publication.stale_publications().count()
 
@@ -40,6 +44,8 @@ _QUEUES = (
     ("core:notifications-to-send", "core.send_notification", lambda: prepared_notification_count()),
     ("core:login-lockouts", "accounts.clear_login_lockout", lambda: locked_username_count()),
     ("core:publications-stale", "core.view_termpublication", lambda: stale_publication_count()),
+    ("core:sign-in-help-requests", "accounts.view_signinhelprequest",
+     lambda: sign_in_help_open_count()),
 )
 
 
