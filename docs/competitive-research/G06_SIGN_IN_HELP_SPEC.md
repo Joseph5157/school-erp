@@ -3,8 +3,9 @@
 - **Status:** **Draft r3**, 2026-11-26. Not approved. History: r1 had the security-focused review (ADR 0029
   item 3; SR-01 to SR-19); r2 applied it and the owner's conditions on OD-H1 and OD-H2, then removed staging
   test mode on the owner's condition; the focused re-check of r2 found RC-01 to RC-13; **r3 applies them**
-  and the owner's six explicit points (§14). Needs a final focused re-check, then the owner's decisions in
-  §12 and approval before any code.
+  and the owner's six explicit points (§14). The final focused re-check approved r3 for owner decision
+  after text edits FC-01 to FC-06, applied here with no further review round (§14). Needs the owner's
+  decisions in §12 and approval before any code.
 - **Baseline:** `origin/main` 0e8b946 (logout speed fix, PR #313). The office reset spec
   ([G06_OFFICE_RESET_SPEC.md](G06_OFFICE_RESET_SPEC.md)) PRs 1 to 4 are merged.
 - **Risk tier:** **Critical** (password and account recovery; a new anonymous route;
@@ -28,7 +29,9 @@
      what was typed"; the repeat rule does depend on typed text, but **never on school data**, only on other
      **open** requests, and a repeat looks identical to a store to the visitor (§4.3, §4.4).
   5. Per-hour limit rows (§3.3) are kept until the next submit or cron run after their hour ends, so **up to
-     about 6 hours** with today's cron schedule, longer only if both stop. They hold no typed value.
+     about 6 hours** with the cron schedule in force on staging, longer only if both stop. They hold no typed
+     value and share no column or key with requests, but at low traffic a request and an hour row that are
+     alone in the same hour can be matched by timing alone. Source keys are not linkable across hours.
 - **Not in this spec:** any message to the guardian, any reset from the page, any channel (OD-G2 stays
   "none"), owner notification (T10 stays High, accepted).
 
@@ -95,8 +98,10 @@ the drop count (§5.3). No personal data, no source.
 
 `source_key` (CharField 64), `hour_start` (DateTimeField: the start of the clock hour, local time),
 `count` (PositiveInteger); unique `(source_key, hour_start)`. One row per source and clock hour with at
-least one **stored** request. It holds **no typed value, no request id and no exact time**, so no key joins
-it to a request. A database reader can only guess from the hour, and only while the row exists (OD-H5 (5)).
+least one **stored** request. It holds **no typed value, no request id and no exact time**, and shares no
+column or key with requests. At low traffic, a request and an hour row that are alone in the same hour can be
+matched by timing alone, while the row exists (FC-02, OD-H5 (5)). Because the hour is part of the keyed input
+(§4.3), one source's rows in different hours cannot be linked to each other.
 Deleted when its hour has ended: on the next submit, or the next cron run (§6).
 
 **Risk:** High. Migration: three new tables. Reverse drops them (§7).
@@ -133,15 +138,18 @@ time-zone error).
 | 3 | on | malformed | | start-up refused |
 | 4 | on | `LOCAL …` | `DEBUG` and `TESTING` both false | start-up refused (RC-08) |
 | 5 | on | empty or unset | | page 404, "on but not accepted" made visible (below) |
-| 6 | on | `OD-H1 …`, or `LOCAL …` with `DEBUG` or `TESTING` true | `DEBUG` false and `TRUSTED_PROXIES` empty | start-up refused (SR-03: every request would share the proxy's address) |
+| 6 | on | `OD-H1 …`, or `LOCAL …` with `DEBUG` or `TESTING` true | `DEBUG` false, `TESTING` false and `TRUSTED_PROXIES` empty | start-up refused (SR-03: every request would share the proxy's address) |
 | 7 | on | `OD-H1 …`, or `LOCAL …` with `DEBUG` or `TESTING` true | | **page served**, and the sign-in page shows the "Can't sign in?" link |
 
 `TESTING` is the existing flag (`config/settings.py:32`). With the switch off, nothing is refused (RC-09).
+**One function decides** (FC-05): `accounts.sign_in_help.gate_state(settings)` returns off, not accepted,
+refused (with the reason) or served. Settings parsing, the view, the system check and the Overview card line all
+call it, so they cannot disagree, and runtime setting overrides in tests behave like start-up.
 
-**"On but not accepted" is visible (row 5, RC-09):** a system check Warning (shown by `manage.py check` and
-`migrate`, which the deploy runs before start); one line logged at start-up from `AccountsConfig.ready`
-("Sign-in help is switched on but not accepted; the page is off."); and a line on the Overview card for
-superusers.
+**"On but not accepted" is visible (row 5, RC-09, FC-05):** one line logged at start-up from
+`AccountsConfig.ready` ("Sign-in help is switched on but not accepted; the page is off."), the guaranteed
+signal; a system check Warning tagged `Tags.database` like `core.W001` (`core/checks.py:21`), so `migrate` also
+shows it where the deploy runs `migrate`; and a line on the Overview card for superusers.
 
 When the page is off, the sign-in page keeps today's text ("Forgot your password? Ask the school office to
 reset it."). When served, it shows a **"Can't sign in?"** link in its place
@@ -232,13 +240,15 @@ a plain hash, and neither uses the key of the other or of sign-in throttling:
 
 | Value | Key | Input |
 | --- | --- | --- |
-| `source_key` (§3.3) | sub-key `HMAC(SOURCE_HASH_KEY, "everclass/sign-in-help/source/v1")` | the bucket string |
-| `repeat_key` (§3.1) | Django `salted_hmac` with salt `"everclass/sign-in-help/repeat/v1"`, keyed by `SECRET_KEY`, not by `SOURCE_HASH_KEY` | the three cleaned values, case-folded, joined with U+001F (the allow-list refuses every control character, so the join is unambiguous) |
+| `source_key` (§3.3) | sub-key `HMAC(SOURCE_HASH_KEY, "everclass/sign-in-help/source/v1")` | the bucket string, a separator and `hour_start` (ISO 8601), so one source's rows in different hours cannot be linked (FC-02) |
+| `repeat_key` (§3.1) | `salted_hmac("everclass/sign-in-help/repeat/v1", value, algorithm="sha256").hexdigest()`, keyed by `SECRET_KEY`, not by `SOURCE_HASH_KEY`. `algorithm="sha256"` is required: Django's default is SHA-1 (FC-01) | the three cleaned values, case-folded, joined with U+001F (the allow-list refuses every control character, so the join is unambiguous) |
 
 Sign-in throttling uses `HMAC(SOURCE_HASH_KEY, address)` directly (`accounts/security.py:61-63`), so neither
 value can be compared with `LoginFailure` or `SecurityEvent` source values without the keys. `repeat_key` is
 used only in the model's own repeat query: never shown, exported, logged or compared anywhere else.
-Rotating either key resets the matching counts or repeat detection; that is harmless.
+Rotating either key resets the matching counts or repeat detection; that is harmless. By default
+`SOURCE_HASH_KEY` is itself derived from `SECRET_KEY` (`config/settings.py:175`), so the two keys are separate
+derivations of one root secret unless `DJANGO_SOURCE_HASH_KEY` is set (FC-06); domain separation still holds.
 
 **Exactness (SR-01, RC-02, RC-04).** Every valid submission serialises on today's gate row (§4.4), and every
 writer that changes what the caps and the repeat rule check (submit) takes the gate first. On **PostgreSQL**,
@@ -258,7 +268,8 @@ the 30-day cutoff and `received_at` all come from this `now`. Then, in one `tran
    `SET LOCAL statement_timeout = '5s'`. `SET LOCAL` lasts only until this transaction commits or rolls
    back, so it cannot leak into later requests on the same connection (owner point). A test checks that
    after a submit, `SHOW lock_timeout` and `SHOW statement_timeout` on the same connection give the server
-   defaults.
+   defaults; it uses `TransactionTestCase`, because the outer transaction of `TestCase` would keep `SET LOCAL`
+   alive (FC-04).
 2. **Gate.** Get or create today's `SignInHelpDay` inside a savepoint (retry the read on `IntegrityError`, as
    `core/usage.py:293-296` does), then `select_for_update` it. **The `stored` and `dropped` values used below
    come only from this locking query**, never from the get-or-create result (RC-02). A request that locked
@@ -281,8 +292,10 @@ row someone else holds. The cron purge (§6) follows the same order. The handle 
 request row and nothing else, so it cannot form a cycle; if housekeeping deleted that row first, handle
 returns 404.
 
-**Failure path (owner point, RC-01).** Any `DatabaseError` in the transaction (lock timeout, statement
-timeout, deadlock, connection error) rolls it back whole: **no request, no hour row, no day counter and no
+**Failure path (owner point, RC-01).** The handler catches `DatabaseError` around the whole
+`with transaction.atomic():` statement, including its exit, so a failure at commit is caught too (FC-04). Any
+such error (lock timeout, statement timeout, deadlock, connection error, commit failure) rolls the transaction
+back whole: **no request, no hour row, no day counter and no
 audit event is written.** The view then returns one fixed page, status 503 with `Retry-After: 120`:
 
 > **The school's page is busy.** Please try again in a few minutes, or contact the school office.
@@ -438,8 +451,14 @@ rows that are not security events, like `purge_usage_counters`.
 | everything in the three tables | with `--all --yes` (after a local test, or when the feature is retired); without `--yes` it prints the three counts and stops |
 
 - **Lock order (owner point):** each batch is one short transaction with the same `SET LOCAL` timeouts as
-  §4.4: lock today's gate row, then select at most 1,000 rows of one table ordered by pk with `skip_locked`,
-  delete those pks, commit. Tables in the §4.4 order. A batch holds the gate only for its own deletes.
+  §4.4: lock today's gate row **if it exists** (cron never creates it; without it the batch proceeds, which is
+  safe because every delete uses `skip_locked` and so never waits), then select at most 1,000 rows of one table
+  ordered by pk with `skip_locked`, delete those pks, commit. Tables in the §4.4 order. A batch holds the gate
+  only for its own deletes (FC-03).
+- **Failures are not silent (FC-03):** a batch that fails (for example on a lock timeout under a flood) makes the
+  command exit non-zero. `--all --yes` loops until a pass deletes nothing, prints the remaining count and exits
+  non-zero if any rows remain. To retire the feature or wipe after a test: switch the page off first, then run
+  `--all --yes`.
 - **Never touches `SecurityEvent`.** `SIGN_IN_HELP_HANDLED` events (outcome only, no personal data) stay until
   the monthly `purge_security_events` removes them after 365 days, `--all` included.
 - **Schedule:** runs on the Railway cron service as its own `;`-separated step, each cron run (every 6 hours on
@@ -531,8 +550,10 @@ CSRF and frame denial; logs hold no typed values.
 - Failure path: a forced `DatabaseError` writes no request, hour row, counter or event, returns the fixed 503 page
   with `Retry-After`, identical for every input, and logs the exception class only.
 - Keys: IPv6 addresses in one /64 share a bucket; an IPv4-mapped address equals its IPv4; `"unknown"` writes no hour
-  row and runs the same queries; `source_key` differs from `security.source_key` for the same address; `repeat_key`
-  differs from a plain SHA-256 of the same text and from any value made with `SOURCE_HASH_KEY`; the hour row holds
+  row and runs the same queries; `source_key` differs from `security.source_key` for the same address and differs between two
+  hours for the same source; `repeat_key` is 64 hex characters, equals an independently computed HMAC-SHA-256
+  over the same derived key, and differs from a plain SHA-256 of the same text and from any value made with
+  `SOURCE_HASH_KEY`; the hour row holds
   no typed value and its `hour_start` is on the hour.
 - No change to `User`, `GuardianAccount`, `GuardianStudentAccess`, `LoginFailure` or `SecurityEvent` on submit;
   `never_cache` on the page; no session row created; CSRF and frame denial; no typed value in logs or any `Location`
@@ -563,7 +584,7 @@ test; targeted tests for accounts, the sign-in page, reset staff and the new mod
 | OD-H2 | Who sees the queue | (a) ADR 0029's dedicated permissions `accounts.view_signinhelprequest` and `accounts.change_signinhelprequest` (OD-G14), added by migration to "Portal password resets"; the views never check `reset_guardian_password` (§5.1); (b) a separate group and page | (a). One list of named staff, without reusing the reset permission. |
 | OD-H3 | Prompt for waiting requests | (a) Sidebar badge and Overview card for holders, which also warn about requests dropped by limits or repeats and about old rows the purge missed; superusers also see "on but not accepted"; (b) none | (a). Without a prompt requests sit unseen until purged. |
 | OD-H4 | Caps | Accept as starting values, tuned after acceptance: 5 stored requests per source per clock hour (IPv6 grouped by /64), 200 per day, and a repeat of an **open** request within 7 days dropped; or set others | Accept. |
-| OD-H5 | Deviations from ADR 0029 (header list) | Accept all five: (1) R10 as ROUTINE with no event on submit, drop or failure; (2) no network identifier on request rows; (3) R14 as "the only new anonymous route"; (4) a keyed `repeat_key` and a repeat rule that reads only typed text and other open requests, never school data, invisible to the visitor; (5) per-hour limit rows kept up to about 6 hours (until their hour ends and the next submit or cron run), with no typed value | Accept. Each is narrower than the ADR or follows the approved reset-spec precedent. |
+| OD-H5 | Deviations from ADR 0029 (header list) | Accept all five: (1) R10 as ROUTINE with no event on submit, drop or failure; (2) no network identifier on request rows; (3) R14 as "the only new anonymous route"; (4) a keyed `repeat_key` and a repeat rule that reads only typed text and other open requests, never school data, invisible to the visitor; (5) per-hour limit rows kept until their hour ends and the next submit or cron run (about 6 hours with the staging schedule), with no typed value and no shared column or key with requests; at low traffic a request can be matched to its hour row by timing alone; source keys are not linkable across hours | Accept. Items (1), (2), (3) and (5) are narrower than the ADR or follow the approved reset-spec precedent; item (4) adds a stored keyed derivative and a write that depends on typed text, never on school data, which the visitor cannot observe. |
 
 ## 13. Out of scope and accepted residual risks
 
@@ -575,8 +596,9 @@ test; targeted tests for accounts, the sign-in page, reset staff and the new mod
   Revisit only if automated spam appears after acceptance.
 - Spam can make staff call a real family who asked for nothing; Appendix A's script resets nothing on the call
   (T18). Repeats count only open requests, so a handled spam request never blocks the family.
-- At very low traffic, a database reader could guess which source sent a request from the clock hour, for as long as
-  the hour row exists (OD-H5 (5)).
+- At low traffic, a database reader can match a request to its hour row by timing alone when both are alone in the
+  same hour, for as long as the hour row exists (up to about 6 hours on staging). With the keys also leaked, the small
+  IPv4 space would then reveal the address. Rows of one source in different hours cannot be linked (OD-H5 (5), FC-02).
 - A deployed instance that runs with `DEBUG` on would honour a `LOCAL` reference; running a deployment with `DEBUG`
   on is already an unsafe misconfiguration (§4.1).
 - Database failures are not counted as drops (§5.3).
@@ -636,4 +658,20 @@ Verdict: "Needs changes" (text only).
 Owner points applied in r3: transaction-local timeouts that cannot leak (§4.4); a failure writes nothing and returns
 the fixed 503 page (§4.4); `LOCAL` only with `DEBUG` or `TESTING`, otherwise start-up fails while enabled (§4.1); a
 keyed, domain-separated repeat key distinct from the network and sign-in keys (§4.3); limit rows with no typed values
-that cannot be joined to requests (§3.3); one lock order for cron and submit (§4.4, §6).
+and no shared column or key with requests, matchable only by timing at low traffic, accepted in OD-H5 (5) (§3.3); one
+lock order for cron and submit (§4.4, §6).
+
+### r3 final focused re-check (2026-11-26)
+
+Verdict: "Approve r3 for owner decision" after FC-01 and FC-02, with no further review round. RC-01 to RC-13
+incorporated (RC-03 and RC-05 completed by FC-03 and FC-02). OD-H1 to OD-H4 match r3; OD-H5 needed the FC-02 and
+FC-06 wording.
+
+| ID | Sev | Finding | Resolution |
+| --- | --- | --- | --- |
+| FC-01 | Medium | `salted_hmac` defaults to SHA-1 in Django 5.2 | `algorithm="sha256"` required; 64-hex test (§4.3, §10) |
+| FC-02 | Medium | Hour rows matchable to requests by timing at low traffic; source rows linkable across hours | Honest wording everywhere; hour in the keyed input (§3.3, §4.3, §13, OD-H5 (5)) |
+| FC-03 | Low | Cron and a missing gate row; `--all` leftovers; silent batch failure | Gate locked if it exists; `--all` loops and exits non-zero; switch off first (§6) |
+| FC-04 | Low | `SET LOCAL` test needs `TransactionTestCase`; commit-time errors | Stated (§4.4) |
+| FC-05 | Low | One gate predicate; Warning visibility; row 6 under `TESTING` | `gate_state()`; `Tags.database`; start-up log line guaranteed; `TESTING` exempt (§4.1) |
+| FC-06 | Info | One root secret by default; OD-H5 "narrower" claim; cron schedule wording | Reworded (§4.3, OD-H5, header) |
