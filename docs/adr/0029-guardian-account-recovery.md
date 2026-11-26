@@ -193,4 +193,4 @@ For staff verifying a guardian by phone before a reset.
 ADR 0013, ADR 0014, ADR 0015, ADR 0024, ADR 0027; `docs/competitive-research/OPTION_B_IMPLEMENTATION_SPEC.md`
 §9.3; `docs/competitive-research/PACKAGE_C_CLOSEOUT.md` §7. Implementation specs: option A
 `docs/competitive-research/G06_OFFICE_RESET_SPEC.md`; option G
-`docs/competitive-research/G06_SIGN_IN_HELP_SPEC.md` (draft).
+`docs/competitive-research/G06_SIGN_IN_HELP_SPEC.md` (draft r2).
