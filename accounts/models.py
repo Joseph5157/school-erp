@@ -118,6 +118,7 @@ class SecurityEvent(models.Model):
         RESET_STAFF_REMOVED = "RESET_STAFF_REMOVED", "Removed from password reset staff"
         FIRST_SIGN_IN_AFTER_RESET = "FIRST_SIGN_IN_AFTER_RESET", "First sign-in after reset"
         TEMPORARY_PASSWORD_EXPIRED = "TEMPORARY_PASSWORD_EXPIRED", "Temporary password expired"
+        SIGN_IN_HELP_HANDLED = "SIGN_IN_HELP_HANDLED", "Sign-in help request handled"
 
     # G-06 reset spec §9 (owner choice S-03): events it adds stay ROUTINE until counsel confirms
     # longer retention. HISTORY rows can never be deleted, so nothing goes there by default.
@@ -136,6 +137,7 @@ class SecurityEvent(models.Model):
             EventType.RESET_STAFF_REMOVED,
             EventType.FIRST_SIGN_IN_AFTER_RESET,
             EventType.TEMPORARY_PASSWORD_EXPIRED,
+            EventType.SIGN_IN_HELP_HANDLED,  # sign-in help spec §5.4
         }
     )
 
@@ -236,3 +238,76 @@ class LoginFailure(models.Model):
             models.Index(fields=["occurred_at"], name="loginfailure_age"),
         ]
         permissions = [("clear_login_lockout", "Can clear a sign-in lockout")]
+
+
+# --- G-06 "Can't sign in?" requests (sign-in help spec §3, ADR 0029 option G) ---------------------
+# None of these is registered in the Django admin. Rows are short-lived: see
+# `accounts.sign_in_help` and the `purge_sign_in_help_requests` command.
+
+
+class SignInHelpRequest(models.Model):
+    """What a guardian typed on the "Can't sign in?" page (spec §3.1). Kept 30 days.
+
+    No network identifier, phone, email, free text or user agent is ever stored here.
+    `repeat_key` is a keyed HMAC used only by the repeat rule (spec §4.3).
+    """
+
+    class Outcome(models.TextChoices):
+        VISIT_BOOKED = "VISIT_BOOKED", "Called the number on record, visit booked"
+        NOT_REQUESTED = "NOT_REQUESTED", "Called the number on record, they did not ask for this"
+        NOT_REACHED = "NOT_REACHED", "Could not reach the number on record"
+        NO_MATCH = "NO_MATCH", "No matching guardian record"
+        NOT_GENUINE = "NOT_GENUINE", "Not a real request"
+
+    guardian_name = models.CharField(max_length=100)
+    child_name = models.CharField(max_length=100)
+    child_class = models.CharField(max_length=30)
+    repeat_key = models.CharField(max_length=64)
+    received_at = models.DateTimeField(db_index=True)
+    outcome = models.CharField(max_length=20, choices=Outcome.choices, blank=True)  # blank = open
+    handled_at = models.DateTimeField(null=True, blank=True)
+    handled_by = models.ForeignKey(
+        "accounts.User", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+
+    class Meta:
+        default_permissions = ("view", "change")  # add and delete are never granted (spec §3.1)
+        indexes = [
+            models.Index(fields=["outcome", "received_at"], name="signinhelp_open"),
+            models.Index(fields=["repeat_key", "outcome", "received_at"], name="signinhelp_repeat"),
+        ]
+
+    def __str__(self):
+        return f"Sign-in help request {self.pk}"
+
+
+class SignInHelpDay(models.Model):
+    """One row per local day with any submission: the caps' gate row and the drop count (spec §3.2)."""
+
+    day = models.DateField(unique=True)
+    stored = models.PositiveIntegerField(default=0)
+    dropped = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        default_permissions = ()
+
+    def __str__(self):
+        return f"Sign-in help day {self.day}"
+
+
+class SignInHelpSourceHour(models.Model):
+    """Stored requests per network source and clock hour (spec §3.3). No typed value, no request id."""
+
+    source_key = models.CharField(max_length=64)
+    hour_start = models.DateTimeField()
+    count = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        default_permissions = ()
+        constraints = [
+            models.UniqueConstraint(fields=["source_key", "hour_start"],
+                                    name="signinhelp_source_hour_unique"),
+        ]
+
+    def __str__(self):
+        return f"Sign-in help hour {self.hour_start:%Y-%m-%d %H:00}"

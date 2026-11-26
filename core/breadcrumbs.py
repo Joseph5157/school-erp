@@ -351,6 +351,8 @@ RULES = {
     "login-lockout-clear-confirm": Rule(
         "login-lockouts", (Crumb("Sign-in lockouts", "core:login-lockouts"),), "Clear lockout"
     ),
+    # G-06 sign-in help spec §5.2: the office queue. The handle route is a POST-only redirect.
+    "sign-in-help-requests": Rule("sign-in-help-requests", (), "Sign-in help requests"),
 }
 
 _EMPTY = {"breadcrumbs": [], "nav_section": None}

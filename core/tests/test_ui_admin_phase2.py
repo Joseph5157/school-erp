@@ -127,7 +127,9 @@ class OverviewCardTests(AuthorizationClientsMixin, AttendanceFixtureMixin, TestC
     def test_attendance_and_access_review_cards_left_the_today_cards(self):
         # Today's attendance has its own card on the Today tab; access reviews moved to Parents.
         keys = [c["key"] for c in overview_cards(self.superuser)]
-        self.assertEqual(keys, ["applicants", "publications", "notifications", "lockouts"])
+        self.assertEqual(
+            keys, ["applicants", "publications", "notifications", "lockouts", "sign-in-help"]
+        )
 
     def test_page_shows_cards_and_empty_copy(self):
         Applicant.objects.create(full_name="Pending One")  # zero cards are not shown on the page

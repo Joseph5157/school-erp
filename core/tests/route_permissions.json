@@ -1328,6 +1328,30 @@
     "route": "sections/<int:pk>/restore/",
     "view": "views.section_restore"
   },
+  "core:sign-in-help-request-handle": {
+    "flags": [
+      "require_POST"
+    ],
+    "inner": [],
+    "perms": [
+      "accounts.change_signinhelprequest"
+    ],
+    "route": "access/sign-in-help/<int:pk>/handle/",
+    "view": "sign_in_help_views.sign_in_help_request_handle"
+  },
+  "core:sign-in-help-requests": {
+    "flags": [
+      "require_safe"
+    ],
+    "inner": [
+      "accounts.change_signinhelprequest"
+    ],
+    "perms": [
+      "accounts.view_signinhelprequest"
+    ],
+    "route": "access/sign-in-help/",
+    "view": "sign_in_help_views.sign_in_help_requests"
+  },
   "core:student-admission-number": {
     "flags": [],
     "inner": [],

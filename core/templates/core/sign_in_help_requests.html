@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Sign-in help requests{% endblock %}
+{% block content %}
+{% comment %}Sign-in help spec §5.2: typed values appear only as escaped element text, each inside <bdi>; never in an attribute, a URL or a message. No search box and no "find guardian" link.{% endcomment %}
+{% include "partials/_page_header.html" with eyebrow="Access and security" title="Sign-in help requests" purpose="Parents who could not sign in and asked the school to contact them. Nothing here proves who sent a request." only %}
+
+<section class="erp-panel p-3 p-md-4 mb-4" aria-labelledby="sign-in-help-steps-heading">
+<h2 class="h6" id="sign-in-help-steps-heading">Before you call</h2>
+<ol class="small mb-0">
+    <li>Find the family in the guardian list yourself. If their phone number changed in the last 30 days, help them in person only.</li>
+    <li>Call only the number on the guardian's record, never a number from anyone else.</li>
+    <li>Book a visit to the school office.</li>
+    <li>At the visit, reset the password with "In person, with identity documents".</li>
+    <li>Never read a password aloud.</li>
+</ol>
+</section>
+
+{% if expired_waiting %}
+<p class="alert alert-warning" role="status">Old requests are waiting to be deleted. Check the cron job.</p>
+{% endif %}
+<p class="erp-note-text">Not saved because of limits or repeats: today {{ dropped_today }}, last 7 days {{ dropped_week }}.</p>
+
+<nav class="erp-chips mb-3" aria-label="Request status">
+    {% for t in tabs %}
+    <a href="{{ t.url }}"{% if t.active %} class="active" aria-current="page"{% endif %}>{{ t.label }}</a>
+    {% endfor %}
+</nav>
+
+<div class="erp-panel">
+<div class="erp-table-scroll erp-table-scroll--stack" role="region" aria-label="Sign-in help requests" tabindex="0">
+<table class="table erp-row-heads-plain erp-table--stack">
+    {% if tab == "open" %}{% include "partials/_table_head.html" with table=table caption="Open sign-in help requests" only %}{% else %}{% include "partials/_table_head.html" with table=table caption="Handled sign-in help requests" only %}{% endif %}
+    <tbody>
+        {% for row in rows %}
+        <tr>
+            <th scope="row" class="fw-normal"><span class="text-nowrap">{{ row.received_at|date:"j M Y, H:i" }}</span></th>
+            <td class="text-break" data-label="Your name"><bdi>{{ row.guardian_name }}</bdi></td>
+            <td class="text-break" data-label="Child's name"><bdi>{{ row.child_name }}</bdi></td>
+            <td class="text-break" data-label="Class and section"><bdi>{{ row.child_class }}</bdi></td>
+            {% if tab == "open" %}
+            {% if can_handle %}
+            <td class="erp-stack-actions">
+                <form method="post" action="{% url 'core:sign-in-help-request-handle' row.pk %}" class="d-flex flex-wrap gap-2">
+                    {% csrf_token %}
+                    <label class="visually-hidden" for="outcome-{{ row.pk }}">Outcome for the request received {{ row.received_at|date:"j M Y, H:i" }}</label>
+                    <select id="outcome-{{ row.pk }}" name="outcome" class="form-select form-select-sm" required>
+                        <option value="">Outcome…</option>
+                        {% for value, label in outcomes %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+                    </select>
+                    <button type="submit" class="btn btn-outline-primary btn-sm">Save</button>
+                </form>
+            </td>
+            {% endif %}
+            {% else %}
+            <td data-label="Outcome">{{ row.get_outcome_display }}</td>
+            <td data-label="Handled by">{% if row.handled_by %}{{ row.handled_by.get_full_name|default:row.handled_by.username }}{% else %}<span class="text-muted">Deleted login</span>{% endif %}</td>
+            <td data-label="Handled"><span class="text-nowrap">{{ row.handled_at|date:"j M Y, H:i" }}</span></td>
+            {% endif %}
+        </tr>
+        {% empty %}
+        <tr><td colspan="{{ table.headers|length }}">{% if tab == "open" %}{% include "partials/_empty.html" with icon="signinhelp" title="No open requests." inline=True only %}{% else %}{% include "partials/_empty.html" with icon="signinhelp" title="No handled requests in the last 30 days." inline=True only %}{% endif %}</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+</div>
+{% if table.paginator.count %}{% include "partials/_table_footer.html" with table=table only %}{% endif %}
+<p class="erp-note-text mt-3">Requests are deleted {{ retention_days }} days after they arrive, handled or not. An outcome cannot be changed once saved.</p>
+{% endblock %}

@@ -9,6 +9,7 @@ from django.contrib.auth import get_user_model
 from django.db.models import Min
 from django.urls import reverse
 
+from accounts import sign_in_help
 from core import analytics, nav_badges
 from core import models as core_models
 from core.models import (
@@ -67,12 +68,29 @@ def _lockouts(today, user):
     )
 
 
+def _sign_in_help(today, user):
+    """G-06 sign-in help spec §5.2: open requests, plus today's drops and a stalled cleanup."""
+    notes = []
+    dropped_today, _week = sign_in_help.drop_counts(today)
+    if dropped_today:
+        notes.append(f"{dropped_today} not saved today because of limits or repeats.")
+    if sign_in_help.expired_rows_exist():
+        notes.append("Old requests are waiting to be deleted. Check the cron job.")
+    return _card(
+        "sign-in-help", "Sign-in help requests",
+        nav_badges.cached_count(user, "core:sign-in-help-requests"),
+        "Parents who asked the school to contact them.",
+        reverse("core:sign-in-help-requests"), " ".join(notes),
+    )
+
+
 # (builder, permission required by the destination page)
 _CARDS = (
     (_applicants, "core.view_applicant"),
     (_publications, "core.view_termpublication"),
     (_notifications, "core.send_notification"),
     (_lockouts, "accounts.clear_login_lockout"),
+    (_sign_in_help, "accounts.view_signinhelprequest"),
 )
 
 
