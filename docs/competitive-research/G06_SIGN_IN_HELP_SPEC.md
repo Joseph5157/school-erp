@@ -1,11 +1,10 @@
 # G-06 spec: "Can't sign in?" request page (ADR 0029, option G)
 
-- **Status:** **Draft r2**, 2026-11-26. Not approved. r2 applies the security-focused review of r1
-  (ADR 0029 item 3; findings SR-01 to SR-19, §14) and the owner's two conditions on OD-H1 and OD-H2.
-  Amended the same day on the owner's condition: staging test mode removed, because the project has no
-  reliable environment marker to guard it at start-up (§4.1).
-  Needs the owner's decisions in §12 and approval before any code. The reviewer advised a short re-check
-  of r2, because SR-01 and SR-04 change the data model.
+- **Status:** **Draft r3**, 2026-11-26. Not approved. History: r1 had the security-focused review (ADR 0029
+  item 3; SR-01 to SR-19); r2 applied it and the owner's conditions on OD-H1 and OD-H2, then removed staging
+  test mode on the owner's condition; the focused re-check of r2 found RC-01 to RC-13; **r3 applies them**
+  and the owner's six explicit points (§14). Needs a final focused re-check, then the owner's decisions in
+  §12 and approval before any code.
 - **Baseline:** `origin/main` 0e8b946 (logout speed fix, PR #313). The office reset spec
   ([G06_OFFICE_RESET_SPEC.md](G06_OFFICE_RESET_SPEC.md)) PRs 1 to 4 are merged.
 - **Risk tier:** **Critical** (password and account recovery; a new anonymous route;
@@ -17,13 +16,19 @@
   off. It **cannot collect real requests** until the owner records an explicit acceptance of the retention
   and legal risk. The code enforces this (§4.1).
 - **Proposed deviations from ADR 0029, owner to confirm (§12 OD-H5):**
-  - R10 lists "request handled or refused" as HISTORY events. This spec records "handled" as **ROUTINE**
-    (365 days), as the reset spec did (S-03), and writes **no event on submit or drop**: the daily drop
-    count is the refusal record, aggregate only (R6).
-  - R21 allows "the hashed source". This spec keeps a stricter rule: request rows carry **no network
-    identifier at all**; a keyed hash lives only in rate-limit rows kept 2 hours (§3.3).
-  - R14 says "the only anonymous route". Read here as "the only **new** anonymous route": sign-in,
-    `core:school-logo` and `root:pwa-manifest` were public before.
+  1. R10 lists "request handled or refused" as HISTORY events. This spec records "handled" as **ROUTINE**
+     (365 days), as the reset spec did (S-03), and writes **no event on submit, drop or failure**: the daily
+     drop count is the refusal record, aggregate only (R6).
+  2. R21 allows "the hashed source" on request rows. This spec is stricter: request rows carry **no network
+     identifier**; a keyed hash lives only in per-hour limit rows (§3.3).
+  3. R14 says "the only anonymous route". Read here as "the only **new** anonymous route": sign-in,
+     `core:school-logo` and `root:pwa-manifest` were public before.
+  4. R21 lists "received time and hashed source only". This spec adds a **keyed repeat key** (`repeat_key`)
+     derived from the typed text, and a repeat rule. R1 tolerates differing writes because "the cap ignores
+     what was typed"; the repeat rule does depend on typed text, but **never on school data**, only on other
+     **open** requests, and a repeat looks identical to a store to the visitor (§4.3, §4.4).
+  5. Per-hour limit rows (§3.3) are kept until the next submit or cron run after their hour ends, so **up to
+     about 6 hours** with today's cron schedule, longer only if both stop. They hold no typed value.
 - **Not in this spec:** any message to the guardian, any reset from the page, any channel (OD-G2 stays
   "none"), owner notification (T10 stays High, accepted).
 
@@ -34,8 +39,8 @@ fields. The page always gives the same answer and never says whether an account 
 reset and nothing is sent. Named office staff see the request in a queue, find the family in the
 guardian list themselves, call **only the number on the record** (ADR 0029 Appendix A), book a visit,
 and reset the password in person with the existing reset form. Requests are capped per source and per
-day, repeats are not stored twice, rows are deleted after 30 days, and the office sees how many were
-dropped.
+day, an open request is not stored twice, rows are deleted after 30 days, and the office sees how many
+were dropped.
 
 ## 2. Requirements covered
 
@@ -44,12 +49,12 @@ dropped.
 | R1 no account-existence leak | §4.4; tests §10 |
 | R6 caps (5 per source per hour, 200 per day), dropped-request count | §4.3, §5.3 |
 | R7 generic responses | §4.4 |
-| R10 audit events | §5.4; deviation OD-H5 |
+| R10 audit events | §5.4; deviation OD-H5 (1) |
 | R11 no grant changes | §4.4; test |
 | R12 CSRF, frame denial | site-wide; tests on all three new routes (§8) |
 | R13 logging hygiene | §9; test |
-| R14 route inventory | §8; "only new anonymous route" (OD-H5) |
-| R21 three fields, no lookup, autoescape, daily purge | §4.2, §4.4, §5.2, §6; stricter source rule (OD-H5) |
+| R14 route inventory | §8; deviation OD-H5 (3) |
+| R21 three fields, no lookup, autoescape, daily purge | §4.2, §4.4, §5.2, §6; deviations OD-H5 (2), (4) |
 | R22 dedicated queue permission, teachers and guardians 403 | §5.1 |
 | OD-G4 build, purge after 30 days | §6; legal gate OD-H1 |
 | OD-G14 the model's own view and change permissions | §5.1, OD-H2 |
@@ -69,16 +74,16 @@ the Django admin; a test asserts each is absent from `admin.site._registry`.
 | `guardian_name` | CharField 100 | as typed, after §4.2 clean-up |
 | `child_name` | CharField 100 | as typed |
 | `child_class` | CharField 30 | as typed, for example "Class 5 B" |
-| `match_key` | CharField 64, indexed | SHA-256 of the three cleaned values, NFKC and case-folded, for repeats (§4.3) |
-| `received_at` | DateTimeField, default now, indexed | |
+| `repeat_key` | CharField 64 | keyed HMAC of the three values (§4.3) |
+| `received_at` | DateTimeField, indexed | |
 | `outcome` | CharField, choices (§5.2), blank | blank means open |
 | `handled_at` | DateTimeField, null | |
 | `handled_by` | FK `accounts.User`, `SET_NULL`, null | |
 
-Index `(outcome, received_at)` for the open count. Default permissions only (`view_signinhelprequest`,
-`change_signinhelprequest`; add and delete are never granted). **No network identifier**, phone, email,
-free text or user agent is stored on the row (SR-04). `match_key` is a plain hash of text already stored
-in clear in the same row, so it adds nothing a reader cannot already see.
+Indexes: `(outcome, received_at)` for the open count; `(repeat_key, outcome, received_at)` for the repeat
+rule. Default permissions only (`view_signinhelprequest`, `change_signinhelprequest`; add and delete are
+never granted). The outcome columns serve the queue (R22). **No network identifier**, phone, email, free
+text or user agent is stored on the row.
 
 ### 3.2 `accounts.SignInHelpDay`
 
@@ -86,55 +91,67 @@ in clear in the same row, so it adds nothing a reader cannot already see.
 (PositiveInteger). One row per day with any submission. It is the **gate row** for the caps (§4.3) and
 the drop count (§5.3). No personal data, no source.
 
-### 3.3 `accounts.SignInHelpSourceHit`
+### 3.3 `accounts.SignInHelpSourceHour`
 
-`source_key` (CharField 64) and `at` (DateTimeField), index `(source_key, at)`. One row per **stored**
-request from a known source. Deleted after 2 hours (§4.4, §6): long enough for the one-hour cap, short
-enough that no lasting network log exists (SR-04).
+`source_key` (CharField 64), `hour_start` (DateTimeField: the start of the clock hour, local time),
+`count` (PositiveInteger); unique `(source_key, hour_start)`. One row per source and clock hour with at
+least one **stored** request. It holds **no typed value, no request id and no exact time**, so no key joins
+it to a request. A database reader can only guess from the hour, and only while the row exists (OD-H5 (5)).
+Deleted when its hour has ended: on the next submit, or the next cron run (§6).
 
-**Risk:** High. Migration: three new tables. Reverse drops them (§7, SR-14).
+**Risk:** High. Migration: three new tables. Reverse drops them (§7).
 
 ## 4. PR 2: the public page
 
-### 4.1 Route, switch and legal gate (OD-H1, SR-07)
+### 4.1 Route, switch and legal gate (OD-H1, SR-07, RC-08, RC-09)
 
 | Name | Path | Methods | Guard |
 | --- | --- | --- | --- |
 | `root:sign-in-help` | `accounts/sign-in-help/` | GET, POST (`require_http_methods`) | none (anonymous by design), `never_cache` |
 
-In `config/urls.py` next to `login`, view in `accounts/views.py`.
+In `config/urls.py` next to `login`, view in `accounts/views.py`. The URL is always registered; the view
+reads the gate from `settings` on every request (so tests can override it) and returns Django's standard 404
+when the page is off.
 
-**Settings**, read in `config/settings.py`:
+**Settings**, parsed in `config/settings.py`:
 
 | Setting | Type | Meaning |
 | --- | --- | --- |
 | `SIGN_IN_HELP_ENABLED` | flag (`config/deployment_safety.parse_flag`) | master switch, off by default |
-| `SIGN_IN_HELP_RETENTION_ACCEPTED` | string, stripped | the owner's dated acceptance reference, exactly `OD-H1 YYYY-MM-DD` (a real date, not in the future); empty means not accepted |
+| `SIGN_IN_HELP_RETENTION_ACCEPTED` | string, stripped | empty, `OD-H1 YYYY-MM-DD` (the owner's real acceptance), or `LOCAL YYYY-MM-DD` (local testing only) |
 
-**The page is served only when** the switch is on **and** the acceptance holds a valid reference.
-Otherwise the route gives Django's standard 404 and the sign-in page keeps today's text ("Forgot your
-password? Ask the school office to reset it."). When served, the sign-in page shows a **"Can't sign in?"**
-link in its place (`templates/registration/login.html`, under the form, phone and desktop).
+A reference is **valid** when it matches one of the two forms exactly and the date is a real calendar date.
+There is no future-date rule (RC-09: it adds no security, and comparing dates at settings time risks a
+time-zone error).
 
-**Every combination fails closed:**
+**Every combination fails closed. First matching row wins, top to bottom:**
 
-| `ENABLED` | `RETENTION_ACCEPTED` | Result |
-| --- | --- | --- |
-| off or unset | any | page 404 |
-| on | empty or unset | page 404; a system check Warning says the page is off until acceptance |
-| on | valid reference | page served |
-| any | malformed or future date | start-up refused |
-| invalid flag value | any | start-up refused (`parse_flag`) |
-| on, `DEBUG` off, `TRUSTED_PROXIES` empty | any | start-up refused (SR-03: every request would share the proxy's address) |
+| # | `ENABLED` | `RETENTION_ACCEPTED` | Other | Result |
+| --- | --- | --- | --- | --- |
+| 1 | invalid value | any | | start-up refused (`parse_flag`) |
+| 2 | off or unset | any (even malformed) | | page 404; a malformed value gives a system check Warning only, so a leftover typo never stops the site |
+| 3 | on | malformed | | start-up refused |
+| 4 | on | `LOCAL …` | `DEBUG` and `TESTING` both false | start-up refused (RC-08) |
+| 5 | on | empty or unset | | page 404, "on but not accepted" made visible (below) |
+| 6 | on | `OD-H1 …`, or `LOCAL …` with `DEBUG` or `TESTING` true | `DEBUG` false and `TRUSTED_PROXIES` empty | start-up refused (SR-03: every request would share the proxy's address) |
+| 7 | on | `OD-H1 …`, or `LOCAL …` with `DEBUG` or `TESTING` true | | **page served**, and the sign-in page shows the "Can't sign in?" link |
 
-**No staging test mode (owner condition, 2026-11-26).** A test mode for made-up names would need a
-reliable marker that tells staging from production, enforced at start-up. The project has none: no
-setting names the environment, Railway's own environment name is set outside the code, and no production
-environment exists yet to prove the two differ. So there is **no test mode**. Pre-acceptance testing runs
-only in an isolated local environment (local Postgres in Docker, `DEBUG=True`, the phone on the same
-Wi-Fi), where the acceptance may be set to a dated local reference because the data never leaves the
-machine and is wiped afterwards with `--all`. The deployed checks that need the real proxy (two networks
-counted separately) are the first step after live switch-on (§7).
+`TESTING` is the existing flag (`config/settings.py:32`). With the switch off, nothing is refused (RC-09).
+
+**"On but not accepted" is visible (row 5, RC-09):** a system check Warning (shown by `manage.py check` and
+`migrate`, which the deploy runs before start); one line logged at start-up from `AccountsConfig.ready`
+("Sign-in help is switched on but not accepted; the page is off."); and a line on the Overview card for
+superusers.
+
+When the page is off, the sign-in page keeps today's text ("Forgot your password? Ask the school office to
+reset it."). When served, it shows a **"Can't sign in?"** link in its place
+(`templates/registration/login.html`, under the form, phone and desktop).
+
+**No deployed test mode.** A test mode would need a reliable marker telling staging from production; the
+project has none. Testing before acceptance runs only on a local machine (§7, local test), using a `LOCAL`
+reference with `DEBUG=True`. **The `OD-H1` form is never set on a local machine**, and a `LOCAL` value copied
+to a deployed instance stops its start-up while the feature is enabled (row 4), unless that instance runs with
+`DEBUG` on, which is already an unsafe misconfiguration (accepted, §13).
 
 **Signed-in visitors**, on GET and POST, are redirected to `home`, like `accounts.views.LoginView` does;
 nothing is stored. A login that must change its password is sent to the change page by the middleware first
@@ -160,13 +177,13 @@ one space.
   digits.**
 - Class field: the same, plus decimal digits (Nd), `/`, with **at most 3 digits in total** (counted after
   NFKC, so non-ASCII and split digits count too).
-- Refused everywhere: every other format character (Cf, including U+202E and U+2066 to U+2069 and U+200B),
+- Refused everywhere: every other format character (Cf, including U+202E, U+2066 to U+2069, U+200B),
   control (Cc), private use (Co), surrogates (Cs), line and paragraph separators, unassigned code points,
   and any run of more than 3 combining marks.
 
 So links, emails and phone numbers cannot be typed. Errors show per field in the existing form style.
 Validation depends only on the typed text, never on school data, so an error reveals nothing about
-accounts. A form with errors stores nothing, takes no lock and does not count toward any cap.
+accounts. A form with errors stores nothing, opens no transaction and does not count toward any cap.
 
 `autocomplete="name"` on the guardian name, `off` on the other two. `enterkeyhint` on each field.
 
@@ -187,104 +204,154 @@ accounts. A form with errors stores nothing, takes no lock and does not count to
 
 The backup sentence states the real backup period once the runbook records it (SR-19).
 
-### 4.3 Caps, repeats and the source bucket (R6, OD-G15, SR-01 to SR-04, SR-15)
+### 4.3 Caps, repeats and keys (R6, OD-G15, SR-01 to SR-04, RC-02, RC-04 to RC-07, RC-12)
 
 Constants in a new module `accounts/sign_in_help.py`:
 
 | Rule | Start value | Counted from |
 | --- | --- | --- |
-| Per source | 5 stored requests in the last 60 minutes | `SignInHelpSourceHit` rows for this bucket |
+| Per source | 5 stored requests in the current clock hour | `SignInHelpSourceHour.count` for this source and hour |
 | Global | 200 stored requests per local day | `SignInHelpDay.stored` |
-| Repeat | the same three answers within 7 days | `SignInHelpRequest.match_key` |
+| Repeat | the same three answers as an **open** request received in the last 7 days | `SignInHelpRequest` with the same `repeat_key` and `outcome = ""` |
+
+The per-source window is the fixed clock hour, not a sliding 60 minutes, so the limit rows need no exact
+time (RC-05). A source can store up to 5 just before and 5 just after the hour turns; accepted.
+
+Repeats count only against **open** requests (RC-06): once staff record an outcome, the same answers are
+stored again. A spammer who submits a family's names therefore cannot silence that family's own request
+after staff have called them.
 
 **Source bucket (SR-02, SR-03).** From `accounts.security.client_address` (`accounts/security.py:49-58`):
-an IPv4-mapped IPv6 address becomes its IPv4 address; an IPv6 address becomes its **/64 network**, so an
-attacker cannot rotate addresses inside one /64; an IPv4 address is used as is. When the address is
-`"unknown"`, there is no bucket: only the global cap and the repeat rule apply, and no hit is written.
+an IPv4-mapped IPv6 address becomes its IPv4 address; an IPv6 address becomes its **/64 network**; an IPv4
+address is used as is. When the address is `"unknown"`, the bucket is a fixed constant that never gets a
+row (RC-12): the same count query runs and finds nothing, so only the global cap and the repeat rule apply,
+and no hour row is written.
 
-**Keyed, domain-separated hash (SR-04).** A sub-key `HMAC(SOURCE_HASH_KEY, "sign-in-help/v1")`, then
-`HMAC(sub-key, bucket)`, SHA-256. Never a plain hash and never a raw address. It cannot be joined to
-`LoginFailure` or `SecurityEvent` source values without the key. With the key, IPv4 values can be
-brute-forced, which is why hits are kept only 2 hours. Rotating `DJANGO_SOURCE_HASH_KEY` or `SECRET_KEY`
-resets the per-source counts; that is harmless.
+**Keys (owner point, SR-04, RC-07).** Two separate keyed, domain-separated HMAC-SHA-256 values. Neither is
+a plain hash, and neither uses the key of the other or of sign-in throttling:
 
-**Atomic admission (SR-01, SR-05).** Count-then-insert without a lock lets N simultaneous requests all pass.
-Every valid submission therefore serialises on today's gate row (§4.4, step 1), so both caps are exact
-across workers and processes: under Postgres `SELECT ... FOR UPDATE` the second submission waits for the
-first to commit; SQLite serialises writes. At about 200 stored requests a day the lock costs nothing; under
-a flood only valid submissions queue on it.
+| Value | Key | Input |
+| --- | --- | --- |
+| `source_key` (§3.3) | sub-key `HMAC(SOURCE_HASH_KEY, "everclass/sign-in-help/source/v1")` | the bucket string |
+| `repeat_key` (§3.1) | Django `salted_hmac` with salt `"everclass/sign-in-help/repeat/v1"`, keyed by `SECRET_KEY`, not by `SOURCE_HASH_KEY` | the three cleaned values, case-folded, joined with U+001F (the allow-list refuses every control character, so the join is unambiguous) |
 
-Carrier-grade NAT can put a whole area behind one address (threat model §6); 5 per hour is a starting
-value to watch on staging.
+Sign-in throttling uses `HMAC(SOURCE_HASH_KEY, address)` directly (`accounts/security.py:61-63`), so neither
+value can be compared with `LoginFailure` or `SecurityEvent` source values without the keys. `repeat_key` is
+used only in the model's own repeat query: never shown, exported, logged or compared anywhere else.
+Rotating either key resets the matching counts or repeat detection; that is harmless.
 
-### 4.4 Submit path (R1, R7, R11)
+**Exactness (SR-01, RC-02, RC-04).** Every valid submission serialises on today's gate row (§4.4), and every
+writer that changes what the caps and the repeat rule check (submit) takes the gate first. On **PostgreSQL**,
+the production database, both caps and the repeat rule are therefore exact across workers and processes.
+SQLite is for development and tests only; its concurrent behaviour is not guaranteed and no global SQLite
+setting is changed for this feature. The concurrency tests run on PostgreSQL only (CI runs PostgreSQL 16).
 
-On a valid POST, in one `transaction.atomic`:
+Carrier-grade NAT can put a whole area behind one address (threat model §6); 5 per hour is a starting value
+to watch after acceptance.
 
-1. Get or create today's `SignInHelpDay` inside a savepoint (retry the read on `IntegrityError`, as
-   `core/usage.py:293-296` does), then lock it with `select_for_update`.
-2. Housekeeping, independent of the input: delete hits older than 2 hours; delete up to 100 requests past
-   their retention (§6), oldest first.
-3. Count this bucket's hits in the last 60 minutes (skipped, with the same query shape, when there is no
-   bucket); check for a request with the same `match_key` in the last 7 days.
-4. Stored when `day.stored < 200`, the bucket has fewer than 5 hits, and it is not a repeat: insert the
-   request and a hit, `stored += 1`. Otherwise `dropped += 1`.
-5. Render the answer page.
+### 4.4 Submit path (R1, R7, R11, RC-01 to RC-03)
 
-There is **no account lookup**: no query on `User`, `Guardian`, `Student`, `GuardianAccount` or any other
-school table. The answer is rendered with status 200 from one template whether the request was stored or
+Read `now` **once**, before the transaction. `day = localdate(now)`; the clock hour, the 7-day cutoff,
+the 30-day cutoff and `received_at` all come from this `now`. Then, in one `transaction.atomic`:
+
+1. **Timeouts (PostgreSQL).** First statements: `SET LOCAL lock_timeout = '2s'` and
+   `SET LOCAL statement_timeout = '5s'`. `SET LOCAL` lasts only until this transaction commits or rolls
+   back, so it cannot leak into later requests on the same connection (owner point). A test checks that
+   after a submit, `SHOW lock_timeout` and `SHOW statement_timeout` on the same connection give the server
+   defaults.
+2. **Gate.** Get or create today's `SignInHelpDay` inside a savepoint (retry the read on `IntegrityError`, as
+   `core/usage.py:293-296` does), then `select_for_update` it. **The `stored` and `dropped` values used below
+   come only from this locking query**, never from the get-or-create result (RC-02). A request that locked
+   the old day's row just before local midnight counts against the old day; accepted.
+3. **Housekeeping, independent of the input,** in the shared lock order (below): lock with
+   `select_for_update(skip_locked=True)` at most 100 `SignInHelpRequest` rows past retention, ordered by
+   pk, and delete those pks; then the same for `SignInHelpSourceHour` rows whose hour has ended.
+4. **Checks.** Count this bucket's row for the current hour (the same query when there is no bucket, §4.3);
+   check for an open request with the same `repeat_key` since the 7-day cutoff.
+5. **Decide and write.** Stored when `stored < 200`, the hour count is below 5, and it is not a repeat:
+   insert the request, then insert or increment the hour row (inside a savepoint for the create race), then
+   `stored += 1`. Otherwise `dropped += 1`.
+
+After the transaction **commits**, render the answer page (RC-01: the lock never covers rendering).
+
+**Shared lock order (owner point, RC-03).** Every transaction that touches these tables takes locks in this
+order: (1) today's `SignInHelpDay` gate row; (2) other `SignInHelpDay` rows, by pk; (3) `SignInHelpRequest`
+rows, by pk; (4) `SignInHelpSourceHour` rows, by pk. Deletes lock with `skip_locked`, so they never wait on a
+row someone else holds. The cron purge (§6) follows the same order. The handle service (§5.2) locks only one
+request row and nothing else, so it cannot form a cycle; if housekeeping deleted that row first, handle
+returns 404.
+
+**Failure path (owner point, RC-01).** Any `DatabaseError` in the transaction (lock timeout, statement
+timeout, deadlock, connection error) rolls it back whole: **no request, no hour row, no day counter and no
+audit event is written.** The view then returns one fixed page, status 503 with `Retry-After: 120`:
+
+> **The school's page is busy.** Please try again in a few minutes, or contact the school office.
+
+It is the same for every input, contains nothing typed, and is not the "Thank you" page, so a family never
+believes an unsaved request was sent. One log line records the failure by exception class only (never the
+exception message, which can quote values). A failure is caused by load, not by what was typed, so it reveals
+nothing about accounts.
+
+**No account lookup.** No query on `User`, `Guardian`, `Student`, `GuardianAccount` or any other school
+table. On success the answer is rendered with status 200 from one template whether the request was stored or
 dropped:
 
 > **Thank you.** The school will contact you using the details it already has. If your phone number has
 > changed, please visit the school office. · Back to Log in
 
-The answer is rendered directly (no redirect), so the page is one route and no typed value ever appears in
-a URL. Refreshing re-posts; the repeat rule then drops it.
+The answer is rendered directly (no redirect), so the page is one route and no typed value ever appears in a
+URL. Refreshing re-posts; the repeat rule then drops it while the first request is open.
 
 **R1 equality (SR-11).** Known input (names matching a real guardian and child) and unknown input give the
 same status, template, body (apart from the CSRF token), response headers (`Set-Cookie`, `Cache-Control`,
 `Vary`) and the same SQL, writes included. Throttled and repeated input give the same status, template,
-body, headers and reads; their write differs (`dropped` instead of the insert), which reveals nothing
-about accounts because the caps and the repeat rule ignore school data (ADR 0029 R1). Tests compare
-captured SQL, not timing. No session is created for an anonymous visitor (an empty session is never
-saved); GET sets only the CSRF cookie (SR-18).
+body, headers and reads; their write differs (`dropped` instead of the inserts), which reveals nothing about
+accounts because the caps ignore what was typed and the repeat rule reads only other open requests, never
+school data. **A repeat cannot be told from a store by the visitor** (RC-07). Tests compare captured SQL, not
+timing. No session is created for an anonymous visitor (an empty session is never saved); GET sets only the
+CSRF cookie (SR-18).
 
 Known differences that reveal nothing about accounts, accepted: with the page off, a POST without a CSRF
-token gets 403 (CSRF middleware runs first) and with a token gets 404; a validation error re-shows the form.
+token gets 403 (CSRF middleware runs first) and with a token gets 404; a validation error re-shows the form;
+a database failure gives the 503 page.
 
 **No grant or login change (R11).** A submission writes only to the three tables in §3; a test asserts no
 row changes in `User`, `GuardianAccount`, `GuardianStudentAccess`, `LoginFailure` or `SecurityEvent`.
 
-**Abuse outside Django (SR-18).** CSRF is not a rate limit: one GET gives a token for unlimited POSTs.
-Invalid POSTs cost only validation CPU and write nothing. Volume attacks are left to the hosting platform.
+**Abuse outside Django (SR-18, RC-01).** CSRF is not a rate limit: one GET gives a token for unlimited POSTs.
+Invalid POSTs cost only validation CPU and open no transaction. A flood of valid POSTs from many sources
+queues on the gate for at most 2 seconds each and then gets the 503 page; sustained volume is left to the
+hosting platform.
 
 **Risk:** Critical (anonymous write path).
 
 ## 5. PR 1: the office queue
 
-### 5.1 Who sees it (R22, OD-G14, OD-H2, SR-08)
+### 5.1 Who sees it (R22, OD-G14, OD-H2, SR-08, RC-13)
 
 The views check **only** the dedicated permissions `accounts.view_signinhelprequest` (list) and
 `accounts.change_signinhelprequest` (record an outcome), never `core.reset_guardian_password`.
 
-**Data migration** (depends on the model migration and `core` 0096):
+**Data migration**, placed in `core` (which already depends on `accounts`), depending on the accounts model
+migration and `core` 0096:
 
 - Creates the accounts permissions itself with `create_permissions`, as `core/migrations/0096` does
   (lines 13-19), because permissions otherwise appear only after `post_migrate`.
-- If the "Portal password resets" group (`core/reset_staff.py:15`) exists, adds both permissions to it. If
-  it does not exist, does nothing (superusers only). It never raises because the group has other
-  permissions, and running it twice changes nothing.
-- Reverse removes only these two permissions from the group.
+- If the "Portal password resets" group (`core/reset_staff.py:15`) exists, adds both permissions to it. If it
+  does not exist, does nothing (superusers only). It never raises because the group has other permissions,
+  and running it twice changes nothing.
+- Reverse removes only these two permissions from the group. Permission and content-type rows left after the
+  models are dropped are harmless.
 
 **Reset staff page and reviews** (`core/reset_staff.py`, reset spec §6a):
 
-- One line under the member list: "Members also see sign-in help requests." The add confirmation says
-  "This also lets them see sign-in help requests."
-- The read-only "Can also reset" block gains "Can also see sign-in help requests": superusers, direct
-  grants and other groups holding either queue permission (`core/reset_staff.py:83` pattern).
+- One line under the member list: "Members also see sign-in help requests." The add confirmation says "This
+  also lets them see sign-in help requests."
+- The read-only "Can also reset" block gains "Can also see sign-in help requests": superusers, direct grants
+  and other groups holding either queue permission (`core/reset_staff.py:83` pattern).
 - `role_permission_gaps` prints holders of both queue permissions.
-- `core.W001` (`core/checks.py`) is unchanged. A new Warning applies only when the page is served and no
-  active user can see the queue.
+- `core.W001` (`core/checks.py`) is unchanged. A new Warning applies only when the page is served and no active
+  user can see the queue, counting superusers the same way the reset holders check does (RC-13).
 
 School Administrators outside the group, teachers and guardians get 403. Queue rows show only what was typed
 and the received time: no matched record, no guess at a match, no source value (R22).
@@ -299,10 +366,10 @@ and the received time: no matched record, no guess at a match, no source value (
 **Sidebar and Overview (SR-06, SR-12, SR-15).** "Access and security" (`core/navigation.py:55-61`): "Sign-in
 help requests" after "Sign-in lockouts", badge from `core/nav_badges.py`. The badge counts open rows inside
 retention (`outcome = ""`, `received_at` within 30 days). The same count feeds an Overview card
-(`core/dashboard.py`). The card also shows, when non-zero, "N not saved today because of limits" and
-"Old requests are waiting to be deleted. Check the daily cron job." Both are visible only to holders of the
-view permission. `queue_counts` checks `has_perm` first and caches per request, so other users run no query;
-a test pins that.
+(`core/dashboard.py`). The card also shows, when they apply: "N not saved today because of limits or repeats";
+"Old requests are waiting to be deleted. Check the cron job."; and, to superusers, "Sign-in help is switched on
+but not accepted" (§4.1). Only holders of the view permission (and superusers) see the card. `queue_counts`
+checks `has_perm` first and caches per request, so other users run no query; a test pins that.
 
 **Page.**
 
@@ -313,10 +380,10 @@ a test pins that.
   (`core/tables.py:73`), 25 per page. Columns: received (date and time), your name, child's name, class and
   section; on Handled also outcome, by whom and when.
 - **Rendering rules (SR-17, SR-09):** typed values appear only as element text, autoescaped, each inside
-  `<bdi>`. Never in an attribute, `title`, `data-*`, `json_script`, a message built with `mark_safe`, a CSV
-  or an email. No `urlize`, no `|safe`. "Already handled by <name>" is escaped too.
-- No search box and no "find guardian" link: a prefilled search would put typed names in a URL and the
-  access logs (R13). Staff type the name into the guardian list themselves.
+  `<bdi>`. Never in an attribute, `title`, `data-*`, `json_script`, a message built with `mark_safe`, a CSV or
+  an email. No `urlize`, no `|safe`. "Already handled by <name>" is escaped too.
+- No search box and no "find guardian" link: a prefilled search would put typed names in a URL and the access
+  logs (R13). Staff type the name into the guardian list themselves.
 - Drop notice: "Not saved because of limits or repeats: today N, last 7 days M." Aggregate only (R6).
 - Footer: "Requests are deleted 30 days after they arrive, handled or not."
 - Rows past retention are never listed, even if the purge has not run.
@@ -333,30 +400,32 @@ a test pins that.
 | `NO_MATCH` | No matching guardian record |
 | `NOT_GENUINE` | Not a real request |
 
-**Handle service.** `sign_in_help.handle(request_id, *, actor, outcome)` locks the row (`select_for_update`);
-if it already has an outcome it changes nothing and the page says "Already handled by <name>." Otherwise it
-sets outcome, `handled_at`, `handled_by` and records the event (§5.4) in one transaction. The view returns
-404 for an id that does not exist (purged). **An outcome is final** (SR-16, accepted): a mis-click only means
-the office does not follow up, and the answer page tells families they can visit the office.
+**Handle service.** `sign_in_help.handle(request_id, *, actor, outcome)` locks the one row
+(`select_for_update`). It returns 404 if the row does not exist or is past retention (RC-11). If the row
+already has an outcome it changes nothing and the page says "Already handled by <name>." Otherwise it sets
+outcome, `handled_at`, `handled_by` and records the event (§5.4) in one transaction. **An outcome is final**
+(SR-16, accepted): a mis-click only means the office does not follow up, the same answers can be sent again
+(repeats count only open requests), and the answer page tells families they can visit the office.
 
 ### 5.3 Dropped-request count
 
-`SignInHelpDay.dropped` for today and the last 7 days, on the queue page and the Overview card (§5.2).
+`SignInHelpDay.dropped` for today and the last 7 days, on the queue page and the Overview card (§5.2). A
+database failure (§4.4) writes nothing, so it is not counted; accepted.
 
 ### 5.4 Event
 
-New `SecurityEvent` type `SIGN_IN_HELP_HANDLED` ("Sign-in help request handled"), **ROUTINE** (365 days),
-added to `SecurityEvent.ROUTINE_TYPES` because `class_for` defaults to HISTORY (`accounts/models.py`); a test
-pins the class. `actor` set; `detail = {"outcome": "<value>"}` only. No guardian link, no typed names, no
-request id. These events give the outcome counts a later channel decision needs
-(ADR 0029 Rationale) and outlive the 30-day rows.
+New `SecurityEvent` type `SIGN_IN_HELP_HANDLED` ("Sign-in help request handled"), **ROUTINE** (365 days), added
+to `SecurityEvent.ROUTINE_TYPES` because `class_for` defaults to HISTORY (`accounts/models.py`); a test pins
+the class. `actor` set; `detail = {"outcome": "<value>"}` only. No guardian link, no typed names, no request
+id. These events give the outcome counts a later channel decision needs (ADR 0029 Rationale) and outlive the
+30-day rows.
 
-No event is written on submit or drop: an anonymous writer must not be able to fill the append-only table
-(OD-H5).
+No event is written on submit, drop or failure: an anonymous writer must not be able to fill the append-only
+table (OD-H5 (1)).
 
 **Risk:** High. Migration: the three tables (§3), the event-type choice, the group permissions.
 
-## 6. Purge (R21, OD-G4, SR-06, SR-14)
+## 6. Purge (R21, OD-G4, SR-06, SR-14, RC-03, RC-11)
 
 New command `purge_sign_in_help_requests`. It prints only counts and needs no `--by`: it deletes short-lived
 rows that are not security events, like `purge_usage_counters`.
@@ -364,35 +433,40 @@ rows that are not security events, like `purge_usage_counters`.
 | Deletes | When |
 | --- | --- |
 | `SignInHelpRequest` | `received_at` older than 30 days, open or handled |
-| `SignInHelpSourceHit` | older than 2 hours |
+| `SignInHelpSourceHour` | hour has ended |
 | `SignInHelpDay` | older than 30 days |
-| everything in the three tables | with `--all` (after a local test, after the first live checks if the owner wants them gone, or when the feature is retired) |
+| everything in the three tables | with `--all --yes` (after a local test, or when the feature is retired); without `--yes` it prints the three counts and stops |
 
-- Runs daily on the Railway cron service as its own `;`-separated step (`docs/OPERATIONS.md`, Retention).
-  **Deploy step** after PR 1: add `python manage.py purge_sign_in_help_requests;` to the cron start command
-  in staging, later production.
-- **Defence in depth:** every stored submit also deletes up to 100 expired rows (§4.4, step 2), so
-  retention holds even if the cron step fails while the page is in use.
-- **Visible failure:** the queue never lists expired rows, and the Overview card warns holders when expired
-  rows exist (§5.2).
-- **Backups:** daily and weekly backups keep copies of deleted rows until they expire. The runbook states
-  the period and the owner's acceptance (OD-H1) covers it.
+- **Lock order (owner point):** each batch is one short transaction with the same `SET LOCAL` timeouts as
+  §4.4: lock today's gate row, then select at most 1,000 rows of one table ordered by pk with `skip_locked`,
+  delete those pks, commit. Tables in the §4.4 order. A batch holds the gate only for its own deletes.
+- **Never touches `SecurityEvent`.** `SIGN_IN_HELP_HANDLED` events (outcome only, no personal data) stay until
+  the monthly `purge_security_events` removes them after 365 days, `--all` included.
+- **Schedule:** runs on the Railway cron service as its own `;`-separated step, each cron run (every 6 hours on
+  staging today). **Deploy step** after PR 1: add `python manage.py purge_sign_in_help_requests;` to the cron
+  start command in staging, later production.
+- **Defence in depth:** every stored submit also deletes expired rows (§4.4, step 3), so retention holds even if
+  the cron step fails while the page is in use.
+- **Visible failure:** the queue never lists expired rows, and the Overview card warns holders when expired rows
+  exist (§5.2).
+- **Backups:** daily and weekly backups keep copies of deleted rows until they expire. The runbook states the
+  period before acceptance, and the owner's acceptance (OD-H1) covers it.
 
 ## 7. Staged rollout and rollback (ADR 0029 item 4)
 
 | Step | What | Rollback |
 | --- | --- | --- |
-| PR 1 | Models, queue, handle, event, purge command, group permissions, reset-staff page lines, badge, Overview card, runbook. No public page, so the queue stays empty. | Revert; the reverse migration drops the three tables (deleting any rows, which is the privacy-safe direction; it prints the row counts first, counts only) and removes the two permissions. `SIGN_IN_HELP_HANDLED` events stay (append-only); history views must show an unknown type by its raw name. **Rehearse backward on a copy of the local demo database before merge.** |
+| PR 1 | Models, queue, handle, event, purge command, group permissions, reset-staff page lines, badge, Overview card, runbook. No public page, so the queue stays empty. | Revert; the reverse migration prints the three row counts (counts only), then drops the tables (deleting any rows, the privacy-safe direction) and removes the two permissions. `SIGN_IN_HELP_HANDLED` events stay (append-only); history views show an unknown type by its raw name. **Rehearse backward on a copy of the local demo database before merge.** |
 | PR 1 deploy | Add the purge step to the staging cron start command. | Remove the step. |
-| PR 2 | Public page, caps, legal gate, sign-in link. Switch off; no acceptance set anywhere. | Revert. No migration. |
-| Local test | Isolated local environment only (§4.1): local Postgres, `DEBUG=True`, a dated local acceptance reference, made-up names. On a real phone over Wi-Fi: submit, see it in the queue, handle it; a sixth request in an hour is not stored and the drop count rises; a repeat is not stored; queue at 360, 390 and 1280. Then `--all`. | Nothing deployed. |
-| Live (staging, then production) | Only after the owner records OD-H1 acceptance in this spec and in a dated entry in `docs/OPERATIONS.md`: set `SIGN_IN_HELP_RETENTION_ACCEPTED` to that reference and `SIGN_IN_HELP_ENABLED=True`. First check on staging: mobile data and Wi-Fi are counted as separate sources. Rows from these checks are real rows under the accepted retention. Production also needs named reset staff and the cron step. | Unset `SIGN_IN_HELP_ENABLED`: page 404, old sign-in text. Run `--all` if collected requests must go at once. |
+| PR 2 | Public page, caps, legal gate, failure page, sign-in link. Switch off; no acceptance set anywhere. | Revert. No migration. |
+| Local test | On a local machine only: local PostgreSQL, `DEBUG=True`, demo data only (never a restore of real data), `SIGN_IN_HELP_RETENTION_ACCEPTED=LOCAL <date>`, made-up names, `runserver` bound to the LAN address in use. On a real phone over Wi-Fi: submit, see it in the queue, handle it; a sixth request in the hour is not stored and the drop count rises; a repeat of an open request is not stored and is stored again after it is handled; queue at 360, 390 and 1280. Then `--all --yes`; never copy that database elsewhere. | Nothing deployed. |
+| Live (staging, then production) | Only after the owner records OD-H1 acceptance in this spec and in a dated entry in `docs/OPERATIONS.md`: set `SIGN_IN_HELP_RETENTION_ACCEPTED` to that `OD-H1 <date>` reference and `SIGN_IN_HELP_ENABLED=True`. First check on staging: mobile data and Wi-Fi are counted as separate sources. Rows from these checks are real rows under the accepted retention. Production also needs named reset staff and the cron step. | Unset `SIGN_IN_HELP_ENABLED`: page 404, old sign-in text. Run `--all --yes` if collected requests must go at once. |
 
 ## 8. Routes and inventory (R12, R14)
 
 - `root:sign-in-help`: added to `INTENTIONALLY_UNPERMISSIONED`
-  (`core/tests/test_security_gate4b_route_inventory.py:15`) with the reason "the "Can't sign in?" request
-  page, anonymous by design (ADR 0029 option G); does no account lookup and serves no school data", and to
+  (`core/tests/test_security_gate4b_route_inventory.py:15`) with the reason "the "Can't sign in?" request page,
+  anonymous by design (ADR 0029 option G); does no account lookup and serves no school data", and to
   `test_the_root_application_routes_are_covered`.
 - `core:sign-in-help-requests` and `core:sign-in-help-request-handle`: pinned with their permissions in
   `core/tests/route_permissions.json` (`python core/tests/route_inventory.py --write`).
@@ -401,118 +475,165 @@ rows that are not security events, like `purge_usage_counters`.
 
 ## 9. Privacy, logging and retention (R13, SR-13)
 
-- **The application never logs, measures, alerts on or puts in a URL** the typed values or the source
-  address. POST data is masked in crash reports (`PrivacyExceptionReporterFilter`,
-  `config/error_reporting.py:30`); Telegram and email alerts use an allow-list with no values. No usage
-  counters (ADR 0027) on either page.
-- **Platform logs:** the hosting platform's access log records each request's path, status and client
-  address; the app cannot remove that and its retention is set by the host. Typed values are never in the
-  path. PR 2 confirms the web start command uses no custom access-log format that includes bodies.
-- Tests capture logs on a stored submit, a dropped submit, a form error, a handle and a forced database
-  error on insert, and assert none of the typed values appear.
-- Retention: request rows 30 days, hits 2 hours, day rows 30 days (§6);
-  `SIGN_IN_HELP_HANDLED` events 365 days (ROUTINE, monthly `purge_security_events`). Nothing is HISTORY.
-- `docs/OPERATIONS.md` gets a section: the three settings, the legal gate and where acceptance is recorded,
-  local testing and `--all`, the cron step, the backup period, and the daily queue routine (Appendix A).
-- ADR 0013 ("no self-service password recovery") needs no change: the page resets nothing (OD-G12). PR 2
-  adds a "See also ADR 0029" line to it.
+- **The application never logs, measures, alerts on or puts in a URL** the typed values, the repeat key or the
+  source address. POST data is masked in crash reports (`PrivacyExceptionReporterFilter`,
+  `config/error_reporting.py:30`); Telegram and email alerts use an allow-list with no values. The failure path
+  logs the exception class only. No usage counters (ADR 0027) on either page.
+- **Platform logs:** the hosting platform's access log records each request's path, status and client address;
+  the app cannot remove that and its retention is set by the host. Typed values are never in the path. PR 2
+  confirms the web start command uses no custom access-log format that includes bodies.
+- Tests capture logs on a stored submit, a dropped submit, a form error, a handle, a lock timeout and a forced
+  database error on insert, and assert none of the typed values appear.
+- Retention: request rows 30 days; hour rows until their hour has ended plus the next submit or cron run; day rows
+  30 days (§6); `SIGN_IN_HELP_HANDLED` events 365 days (ROUTINE, monthly `purge_security_events`). Nothing is
+  HISTORY.
+- `docs/OPERATIONS.md` gets a section: the two settings and the fail-closed table, the legal gate and where
+  acceptance is recorded, the rule that `OD-H1` is never set on a local machine, local testing and `--all --yes`,
+  the cron step, the backup period, and the daily queue routine (Appendix A).
+- ADR 0013 ("no self-service password recovery") needs no change: the page resets nothing (OD-G12). PR 2 adds a
+  "See also ADR 0029" line to it.
 
 ## 10. Tests (minimum)
 
-**PR 1:** the three models migrate forward and backward on SQLite and Postgres; the reverse prints counts
-only; the data migration creates the permissions, adds them to an existing group, does nothing without the
-group, does not raise on a group with other permissions, is idempotent, and its reverse leaves the group's
-other permissions alone; a holder of only `reset_guardian_password` gets 403 on the queue; a group member
-sees the queue (200) and handles a request; a School Administrator outside the group, a teacher and a
-guardian get 403; anonymous goes to sign-in; outcome required and limited to the five values; a second
-handle changes nothing and says who handled it; handle of a missing id returns 404; one ROUTINE
-`SIGN_IN_HELP_HANDLED` event with only `{"outcome": …}`; values with `<script>`, `'`, `&`
-and U+202E render escaped inside `<bdi>` on both tabs; expired rows hidden and the Overview warning shown;
-purge deletes each table at its own age, `--all` empties all three; drop notice shows today and the last
-7 days; badge counts only open rows inside retention; a non-holder runs no badge query; reset staff page and
-`role_permission_gaps` list queue holders; model not in the Django admin; route inventory updated; CSRF and
-frame denial; logs hold no typed values.
+**PR 1:** the three models migrate forward and backward on SQLite and PostgreSQL; the reverse prints counts only;
+the data migration creates the permissions, adds them to an existing group, does nothing without the group, does
+not raise on a group with other permissions, is idempotent, and its reverse leaves the group's other permissions
+alone; a holder of only `reset_guardian_password` gets 403 on the queue; a group member sees the queue (200) and
+handles a request; a School Administrator outside the group, a teacher and a guardian get 403; anonymous goes to
+sign-in; outcome required and limited to the five values; a second handle changes nothing and says who handled
+it; handle of a missing or expired id returns 404; one ROUTINE `SIGN_IN_HELP_HANDLED` event with only
+`{"outcome": …}`; values with `<script>`, `'`, `&` and U+202E render escaped inside `<bdi>` on both tabs; expired
+rows hidden and the Overview warning shown; purge deletes each table at its own age, in batches, never touches
+`SecurityEvent`; `--all` without `--yes` deletes nothing; drop notice shows today and the last 7 days; badge counts
+only open rows inside retention; a non-holder runs no badge query; reset staff page and `role_permission_gaps`
+list queue holders; the queue Warning counts superusers; models not in the Django admin; route inventory updated;
+CSRF and frame denial; logs hold no typed values.
 
-**PR 2:** gate: every row of the §4.1 table (page 404 when off, 404 plus the Warning when on without
-acceptance, served with a valid reference; malformed or future reference, invalid flag, and on with `DEBUG`
-off and no trusted proxies each stop start-up); no setting named test mode exists; page renders with no query on school tables;
-signed-in GET and POST redirected with nothing stored; field rules: required, lengths, NFKC, whitespace
-collapsed, Malayalam with ZWJ accepted, U+202E, U+2066, U+200B, zalgo, fullwidth digits, split digits,
-digits in a name, a fourth digit in the class, `<`, `@`, `:` refused; a form error stores nothing and takes
-no lock; R1: known, unknown, throttled and repeated input give the same status, template, body (CSRF token
-aside), headers and reads, known and unknown the same writes; per-source cap at the sixth stored request in
-60 minutes, global cap at the 201st of the day, repeat within 7 days dropped and after 7 days stored, all
-with frozen time; **Postgres concurrency: 20 parallel submissions from one source store exactly 5, and from
-20 sources with 3 slots left store exactly 3**; IPv6 addresses in one /64 share a bucket, an IPv4-mapped
-address equals its IPv4; `"unknown"` source gets only the global cap and writes no hit; the hash differs from
-`security.source_key` for the same address; hits older than 2 hours are deleted on submit; no change to
-`User`, `GuardianAccount`, `GuardianStudentAccess`, `LoginFailure` or `SecurityEvent` on submit; `never_cache`
-on the page; no session row created; CSRF and frame denial; no typed value in logs or any `Location` header.
+**PR 2:**
 
-**Every PR:** `ruff check .`; `makemigrations --check --dry-run` clean after the PR's own migration; route
-inventory test; targeted tests for accounts, the sign-in page, reset staff and the new module; full CI on the
-final head.
+- Gate: each row of the §4.1 table, including a malformed value with the switch off (Warning only, site starts),
+  `LOCAL` with `DEBUG` and `TESTING` false and the switch on (start-up refused), `LOCAL` under `TESTING` (served),
+  and "on but not accepted" (404, Warning, start-up log line, superuser card line).
+- Page renders with no query on school tables; signed-in GET and POST redirected with nothing stored.
+- Field rules: required, lengths, NFKC, whitespace collapsed, Malayalam with ZWJ accepted; U+202E, U+2066,
+  U+200B, zalgo, fullwidth digits, split digits, digits in a name, a fourth digit in the class, `<`, `@`, `:`
+  refused; a form error stores nothing and opens no transaction.
+- R1: known, unknown, throttled and repeated input give the same status, template, body (CSRF token aside),
+  headers and reads; known and unknown the same writes.
+- Caps and repeats with frozen time: per-source cap at the sixth stored request in the clock hour; global cap at the
+  201st of the day; a repeat of an open request within 7 days dropped, stored after 7 days, stored again once the
+  first is handled.
+- **PostgreSQL only:** 20 parallel submissions from one source store exactly 5; from 20 sources with 3 global slots
+  left store exactly 3; two connections, A holding the gate at `stored = 199`, B waiting, A commits, B drops; a
+  submit and a cron purge run concurrently without error; with the gate held by another connection, a submit gets
+  the 503 page within the timeout and writes nothing; after a submit, `SHOW lock_timeout` and
+  `SHOW statement_timeout` give the defaults.
+- Failure path: a forced `DatabaseError` writes no request, hour row, counter or event, returns the fixed 503 page
+  with `Retry-After`, identical for every input, and logs the exception class only.
+- Keys: IPv6 addresses in one /64 share a bucket; an IPv4-mapped address equals its IPv4; `"unknown"` writes no hour
+  row and runs the same queries; `source_key` differs from `security.source_key` for the same address; `repeat_key`
+  differs from a plain SHA-256 of the same text and from any value made with `SOURCE_HASH_KEY`; the hour row holds
+  no typed value and its `hour_start` is on the hour.
+- No change to `User`, `GuardianAccount`, `GuardianStudentAccess`, `LoginFailure` or `SecurityEvent` on submit;
+  `never_cache` on the page; no session row created; CSRF and frame denial; no typed value in logs or any `Location`
+  header.
+
+**Every PR:** `ruff check .`; `makemigrations --check --dry-run` clean after the PR's own migration; route inventory
+test; targeted tests for accounts, the sign-in page, reset staff and the new module; full CI on the final head.
 
 ## 11. Acceptance checklist
 
 - [x] Security-focused review of r1 (ADR 0029 item 3); confirmed findings applied in r2 (§14).
-- [ ] Reviewer re-check of r2 (advised for SR-01 and SR-04).
+- [x] Focused re-check of r2; RC-01 to RC-13 applied in r3 (§14).
+- [ ] Final focused re-check of r3.
 - [ ] Owner decisions OD-H2 to OD-H5 recorded (§12).
 - [ ] Owner approves the spec for build.
 - [ ] PR 1 merged after a backward-migration rehearsal; purge step added to the staging cron.
 - [ ] PR 2 merged with the switch off.
-- [ ] Local test recorded (isolated environment, made-up names), then `--all`.
+- [ ] Local test recorded (local machine, demo data, `LOCAL` reference, made-up names), then `--all --yes`.
 - [ ] **OD-H1: owner's acceptance of the retention and legal risk recorded** (this spec and a dated
-      `docs/OPERATIONS.md` entry); only then `SIGN_IN_HELP_RETENTION_ACCEPTED` is set anywhere.
+      `docs/OPERATIONS.md` entry); only then is `SIGN_IN_HELP_RETENTION_ACCEPTED=OD-H1 <date>` set on any deployed
+      instance. It is never set on a local machine.
 
 ## 12. Decisions for the product owner
 
 | ID | Decision | Options | Recommendation |
 | --- | --- | --- | --- |
-| OD-H1 | Collecting real requests before counsel confirms retention (ADR 0029 item 5). **Not approved.** | (a) Build and merge with the page off; collect real requests only after the owner records acceptance, enforced by `SIGN_IN_HELP_RETENTION_ACCEPTED` (§4.1); (b) wait for counsel before building | (a). Building is harmless with the page off; the legal decision stays open and separate. |
-| OD-H2 | Who sees the queue | (a) Dedicated permissions (OD-G14), added by migration to "Portal password resets"; the views never check `reset_guardian_password` (§5.1); (b) a separate group and page | (a). One list of named staff, without reusing the reset permission. |
-| OD-H3 | Prompt for waiting requests | (a) Sidebar badge and Overview card, with drop and stale-row notices for holders; (b) none | (a). Without a prompt requests sit unseen until purged. |
-| OD-H4 | Caps | Accept 5 per source (IPv6 per /64) per hour, 200 per day and repeats dropped for 7 days as starting values; set others | Accept; tune on staging. |
-| OD-H5 | Deviations from ADR 0029 wording (header) | Accept R10 as ROUTINE with no event on submit or drop; no network identifier on request rows; R14 as "only new anonymous route" | Accept. Each is narrower or follows the approved reset-spec precedent. |
+| OD-H1 | Collecting real requests before counsel confirms retention (ADR 0029 item 5). **Not approved; open as a legal risk.** | (a) Build and merge with the page off. Real requests are collected only after the owner records acceptance in this spec and in a dated `docs/OPERATIONS.md` entry, and `SIGN_IN_HELP_RETENTION_ACCEPTED` is set to `OD-H1 YYYY-MM-DD`. A `LOCAL YYYY-MM-DD` reference works only when `DEBUG` or `TESTING` is true and otherwise stops start-up while the feature is enabled. The `OD-H1` form is never set on a local machine. Testing before acceptance is local only, with no deployed test mode (§4.1). (b) Wait for counsel before building. | (a). Building is harmless with the page off; the legal decision stays open and separate. |
+| OD-H2 | Who sees the queue | (a) ADR 0029's dedicated permissions `accounts.view_signinhelprequest` and `accounts.change_signinhelprequest` (OD-G14), added by migration to "Portal password resets"; the views never check `reset_guardian_password` (§5.1); (b) a separate group and page | (a). One list of named staff, without reusing the reset permission. |
+| OD-H3 | Prompt for waiting requests | (a) Sidebar badge and Overview card for holders, which also warn about requests dropped by limits or repeats and about old rows the purge missed; superusers also see "on but not accepted"; (b) none | (a). Without a prompt requests sit unseen until purged. |
+| OD-H4 | Caps | Accept as starting values, tuned after acceptance: 5 stored requests per source per clock hour (IPv6 grouped by /64), 200 per day, and a repeat of an **open** request within 7 days dropped; or set others | Accept. |
+| OD-H5 | Deviations from ADR 0029 (header list) | Accept all five: (1) R10 as ROUTINE with no event on submit, drop or failure; (2) no network identifier on request rows; (3) R14 as "the only new anonymous route"; (4) a keyed `repeat_key` and a repeat rule that reads only typed text and other open requests, never school data, invisible to the visitor; (5) per-hour limit rows kept up to about 6 hours (until their hour ends and the next submit or cron run), with no typed value | Accept. Each is narrower than the ADR or follows the approved reset-spec precedent. |
 
 ## 13. Out of scope and accepted residual risks
 
 - Any reply to the requester, any channel and owner notification (OD-G2; T10 High, accepted).
-- A flood from many networks can still fill the daily cap and push real requests out; the drop count shows
-  on the Overview card (T18, M for office time, accepted in ADR 0029). No separate cap on open rows: the
-  daily cap and 30-day purge already bound the backlog at about 6,000 rows (SR-15).
-- No CAPTCHA (third-party service, accessibility cost) and no hidden extra field (R21 allows exactly three
-  fields). Revisit only if staging shows automated spam.
-- Spam can make staff call a real family who asked for nothing; repeats are dropped for 7 days and Appendix
-  A's script resets nothing on the call (T18).
+- A flood from many networks can still fill the daily cap, or make valid submissions wait and get the 503 page;
+  the drop count shows on the Overview card (T18, M for office time, accepted in ADR 0029). No separate cap on open
+  rows: the daily cap and 30-day purge bound the backlog at about 6,000 rows (SR-15).
+- No CAPTCHA (third-party service, accessibility cost) and no hidden extra field (R21 allows exactly three fields).
+  Revisit only if automated spam appears after acceptance.
+- Spam can make staff call a real family who asked for nothing; Appendix A's script resets nothing on the call
+  (T18). Repeats count only open requests, so a handled spam request never blocks the family.
+- At very low traffic, a database reader could guess which source sent a request from the clock hour, for as long as
+  the hour row exists (OD-H5 (5)).
+- A deployed instance that runs with `DEBUG` on would honour a `LOCAL` reference; running a deployment with `DEBUG`
+  on is already an unsafe misconfiguration (§4.1).
+- Database failures are not counted as drops (§5.3).
 - No deployed test before acceptance: the real-proxy check happens only after live switch-on (§7).
 - Outcomes are final (SR-16).
 - The page is in English only.
 - Matching is manual; a misspelt name may get `NO_MATCH`. The answer page tells families they can visit.
 
-## 14. Review record (r1 → r2)
+## 14. Review record
 
-Security-focused review of r1, 2026-11-26 (independent reviewer, ADR 0029 item 3). Verdict: "Approve r2
-after these changes"; a short re-check of r2 advised.
+### r1 → r2: security-focused review (2026-11-26, ADR 0029 item 3)
 
-| ID | Sev | Finding | r2 |
+Verdict: "Approve r2 after these changes".
+
+| ID | Sev | Finding | Resolution |
 | --- | --- | --- | --- |
-| SR-01 | High | Count-then-insert caps not atomic across workers | Applied: gate-row lock (§4.3, §4.4); Postgres concurrency tests |
-| SR-02 | High | IPv6 per-address lets one /64 bypass the per-source cap | Applied: /64 bucket, IPv4-mapped folded (§4.3) |
-| SR-03 | Medium | `"unknown"` and empty trusted proxies collapse sources | Applied: no bucket for unknown; start-up refusal (§4.1, §4.3) |
-| SR-04 | Medium | Same key, 30-day pseudonymous address log | Applied: sub-key; no source on request rows; hits kept 2 hours (§3.3) |
-| SR-05 | Medium | Drop-count create race breaks the outer transaction | Applied: savepoint; counts moved onto the gate row (§3.2, §4.4) |
-| SR-06 | High | Purge failure visible only on the queue page | Applied: Overview warning, purge on submit, backup note (§5.2, §6) |
-| SR-07 | High | OD-H1 enforced only by the runbook | Applied: acceptance setting checked in code, fail-closed table, `--all`; staging test mode removed (owner condition, no reliable environment marker) (§4.1, §7, §11) |
-| SR-08 | Medium | Permission migration and reset-staff interplay under-specified | Applied (§5.1) |
-| SR-09 | Medium | Bidi, format characters, split and non-ASCII digits, zalgo | Applied: category allow-list after NFKC, `<bdi>` (§4.2, §5.2) |
-| SR-10 | Medium | R10 and R14 departures not flagged | Applied: header deviations, OD-H5 |
-| SR-11 | Medium | R1 test should include headers; switch-off oracle | Applied (§4.4) |
-| SR-12 | Low | Badge filter and index | Applied (§3.1, §5.2) |
-| SR-13 | Low | "Never logged" overstated; DB error text | Applied: reworded, forced-error test (§9) |
-| SR-14 | Medium | Reverse migration deletes requests silently | Applied: stated, counts printed, `--all` (§6, §7) |
-| SR-15 | Medium | Repeat-name harassment; flood hidden | Applied: 7-day repeat rule, drop count on the card. Not applied: open-row cap (§13 reason) |
-| SR-16 | Low | Final outcome cannot be corrected | Not applied: accepted as final (§5.2) |
-| SR-17 | Low | Escaping rules beyond element text | Applied (§5.2) |
-| SR-18 | Info | Anonymous CSRF and session behaviour | Applied: stated (§4.4) |
-| SR-19 | Medium | Page notice promises not literally true | Applied: reworded (§4.2); legal question stays in OD-H1 |
+| SR-01 | High | Count-then-insert caps not atomic across workers | Gate-row lock (§4.3, §4.4); PostgreSQL concurrency tests |
+| SR-02 | High | IPv6 per-address lets one /64 bypass the per-source cap | /64 bucket, IPv4-mapped folded (§4.3) |
+| SR-03 | Medium | `"unknown"` and empty trusted proxies collapse sources | Constant bucket with no row; start-up refusal (§4.1, §4.3) |
+| SR-04 | Medium | Same key, 30-day pseudonymous address log | Sub-key; no source on request rows; short-lived hour rows (§3.3) |
+| SR-05 | Medium | Drop-count create race breaks the outer transaction | Savepoint; counts on the gate row (§3.2, §4.4) |
+| SR-06 | High | Purge failure visible only on the queue page | Overview warning, purge on submit, backup note (§5.2, §6) |
+| SR-07 | High | OD-H1 enforced only by the runbook | Acceptance setting checked in code, fail-closed table; staging test mode removed (owner condition) (§4.1, §7, §11) |
+| SR-08 | Medium | Permission migration and reset-staff interplay | §5.1 |
+| SR-09 | Medium | Bidi, format characters, split and non-ASCII digits, zalgo | Category allow-list after NFKC, `<bdi>` (§4.2, §5.2) |
+| SR-10 | Medium | R10 and R14 departures not flagged | Header deviations, OD-H5 |
+| SR-11 | Medium | R1 test should include headers; switch-off oracle | §4.4 |
+| SR-12 | Low | Badge filter and index | §3.1, §5.2 |
+| SR-13 | Low | "Never logged" overstated; DB error text | Reworded, forced-error test (§9) |
+| SR-14 | Medium | Reverse migration deletes requests silently | Stated, counts printed, `--all` (§6, §7) |
+| SR-15 | Medium | Repeat-name harassment; flood hidden | Repeat rule, drop count on the card; open-row cap not applied (§13) |
+| SR-16 | Low | Final outcome cannot be corrected | Accepted as final (§5.2) |
+| SR-17 | Low | Escaping rules beyond element text | §5.2 |
+| SR-18 | Info | Anonymous CSRF and session behaviour | Stated (§4.4) |
+| SR-19 | Medium | Page notice promises not literally true | Reworded (§4.2); legal question in OD-H1 |
+
+### r2 → r3: focused re-check (2026-11-26)
+
+Verdict: "Needs changes" (text only).
+
+| ID | Sev | Finding | Resolution in r3 |
+| --- | --- | --- | --- |
+| RC-01 | High | Gate lock without a wait limit; rendering inside the lock; failure path unspecified | `SET LOCAL` timeouts, render after commit, fixed 503 page, nothing written (§4.4) |
+| RC-02 | Medium | Stale counters before the lock; several clock reads near midnight | One `now`; counters only from the locking query (§4.4); two-connection test |
+| RC-03 | Medium | Submit housekeeping and cron purge could deadlock | Shared lock order, `skip_locked`, batched cron (§4.4, §6) |
+| RC-04 | Medium | SQLite does not queue concurrent writers | Exact on PostgreSQL only; SQLite not guaranteed; concurrency tests PostgreSQL only (§4.3) |
+| RC-05 | Medium | "2 hours" untrue; exact hit times joinable to requests | Clock-hour rows with no exact time; honest retention (§3.3, OD-H5 (5)) |
+| RC-06 | Medium | Repeat rule could silence a family after spam was handled | Repeats count open requests only (§4.3) |
+| RC-07 | Low | Repeat key join and exposure | Keyed HMAC (owner point), U+001F join, used only in its own query (§4.3) |
+| RC-08 | High | Local acceptance identical to the real one | `OD-H1` and `LOCAL` forms; `LOCAL` refused unless `DEBUG` or `TESTING` (§4.1) |
+| RC-09 | Medium | Typo outage with the switch off; future-date trap; overlapping rows; unseen Warning | Ordered table, Warning when off, no future-date rule, visible "on but not accepted" (§4.1) |
+| RC-10 | Medium | OD-H5 incomplete | Five deviations in the header and OD-H5 |
+| RC-11 | Low | `--all` scope and confirmation; handle on expired rows; local data | `--all --yes`, never `SecurityEvent`, 404 on expired, local-data rule (§5.2, §6, §7) |
+| RC-12 | Low | "Skipped, same query shape" contradictory | Constant bucket, same query (§4.3) |
+| RC-13 | Low | Queue Warning should count superusers | §5.1 |
+
+Owner points applied in r3: transaction-local timeouts that cannot leak (§4.4); a failure writes nothing and returns
+the fixed 503 page (§4.4); `LOCAL` only with `DEBUG` or `TESTING`, otherwise start-up fails while enabled (§4.1); a
+keyed, domain-separated repeat key distinct from the network and sign-in keys (§4.3); limit rows with no typed values
+that cannot be joined to requests (§3.3); one lock order for cron and submit (§4.4, §6).
