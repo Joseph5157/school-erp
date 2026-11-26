@@ -2,6 +2,8 @@
 
 - **Status:** **Draft r2**, 2026-11-26. Not approved. r2 applies the security-focused review of r1
   (ADR 0029 item 3; findings SR-01 to SR-19, §14) and the owner's two conditions on OD-H1 and OD-H2.
+  Amended the same day on the owner's condition: staging test mode removed, because the project has no
+  reliable environment marker to guard it at start-up (§4.1).
   Needs the owner's decisions in §12 and approval before any code. The reviewer advised a short re-check
   of r2, because SR-01 and SR-04 change the data model.
 - **Baseline:** `origin/main` 0e8b946 (logout speed fix, PR #313). The office reset spec
@@ -69,7 +71,6 @@ the Django admin; a test asserts each is absent from `admin.site._registry`.
 | `child_class` | CharField 30 | as typed, for example "Class 5 B" |
 | `match_key` | CharField 64, indexed | SHA-256 of the three cleaned values, NFKC and case-folded, for repeats (§4.3) |
 | `received_at` | DateTimeField, default now, indexed | |
-| `is_test` | BooleanField, default false | set in test mode (§4.1) |
 | `outcome` | CharField, choices (§5.2), blank | blank means open |
 | `handled_at` | DateTimeField, null | |
 | `handled_by` | FK `accounts.User`, `SET_NULL`, null | |
@@ -108,25 +109,32 @@ In `config/urls.py` next to `login`, view in `accounts/views.py`.
 | Setting | Type | Meaning |
 | --- | --- | --- |
 | `SIGN_IN_HELP_ENABLED` | flag (`config/deployment_safety.parse_flag`) | master switch, off by default |
-| `SIGN_IN_HELP_RETENTION_ACCEPTED` | string, stripped | the owner's dated acceptance reference, for example `OD-H1 2026-12-01`; empty means not accepted |
-| `SIGN_IN_HELP_TEST_MODE` | flag | staging tests with made-up names |
+| `SIGN_IN_HELP_RETENTION_ACCEPTED` | string, stripped | the owner's dated acceptance reference, exactly `OD-H1 YYYY-MM-DD` (a real date, not in the future); empty means not accepted |
 
-**The page is served only when** the switch is on **and** exactly one of these holds: the acceptance is
-non-empty (live mode), or test mode is on (test mode). Otherwise the route gives Django's standard 404 and
-the sign-in page keeps today's text ("Forgot your password? Ask the school office to reset it."). When
-served, the sign-in page shows a **"Can't sign in?"** link in its place (`templates/registration/login.html`,
-under the form, phone and desktop).
+**The page is served only when** the switch is on **and** the acceptance holds a valid reference.
+Otherwise the route gives Django's standard 404 and the sign-in page keeps today's text ("Forgot your
+password? Ask the school office to reset it."). When served, the sign-in page shows a **"Can't sign in?"**
+link in its place (`templates/registration/login.html`, under the form, phone and desktop).
 
-**Start-up refuses** (`ImproperlyConfigured`, like the HTTPS rule) when: test mode and an acceptance are
-both set (a contradiction); or the switch is on, `DEBUG` is off and `TRUSTED_PROXIES` is empty (SR-03:
-every request would share the proxy's address). The switch on with neither acceptance nor test mode is
-allowed and simply keeps the page off.
+**Every combination fails closed:**
 
-**Test mode** (staging only, by the runbook). The page shows at the top "Test only. Type made-up names."
-Rows are stored with `is_test = true`, labelled "Test" in the queue, and deleted after 24 hours (§6).
-Nothing in the code tells staging from production (no such setting exists), so keeping test mode out of
-production is a runbook rule; the banner limits the harm if it is ever set there. The staging address is
-not shared during a test. After each test, `purge_sign_in_help_requests --all` (§6).
+| `ENABLED` | `RETENTION_ACCEPTED` | Result |
+| --- | --- | --- |
+| off or unset | any | page 404 |
+| on | empty or unset | page 404; a system check Warning says the page is off until acceptance |
+| on | valid reference | page served |
+| any | malformed or future date | start-up refused |
+| invalid flag value | any | start-up refused (`parse_flag`) |
+| on, `DEBUG` off, `TRUSTED_PROXIES` empty | any | start-up refused (SR-03: every request would share the proxy's address) |
+
+**No staging test mode (owner condition, 2026-11-26).** A test mode for made-up names would need a
+reliable marker that tells staging from production, enforced at start-up. The project has none: no
+setting names the environment, Railway's own environment name is set outside the code, and no production
+environment exists yet to prove the two differ. So there is **no test mode**. Pre-acceptance testing runs
+only in an isolated local environment (local Postgres in Docker, `DEBUG=True`, the phone on the same
+Wi-Fi), where the acceptance may be set to a dated local reference because the data never leaves the
+machine and is wiped afterwards with `--all`. The deployed checks that need the real proxy (two networks
+counted separately) are the first step after live switch-on (§7).
 
 **Signed-in visitors**, on GET and POST, are redirected to `home`, like `accounts.views.LoginView` does;
 nothing is stored. A login that must change its password is sent to the change page by the middleware first
@@ -303,7 +311,7 @@ a test pins that.
   book a visit; reset at the visit with "In person, with identity documents"; never read a password aloud.
 - Two tabs, **Open** (oldest first) and **Handled** (newest first), paginated with `build_table`
   (`core/tables.py:73`), 25 per page. Columns: received (date and time), your name, child's name, class and
-  section, a "Test" label on test rows; on Handled also outcome, by whom and when.
+  section; on Handled also outcome, by whom and when.
 - **Rendering rules (SR-17, SR-09):** typed values appear only as element text, autoescaped, each inside
   `<bdi>`. Never in an attribute, `title`, `data-*`, `json_script`, a message built with `mark_safe`, a CSV
   or an email. No `urlize`, no `|safe`. "Already handled by <name>" is escaped too.
@@ -340,7 +348,7 @@ the office does not follow up, and the answer page tells families they can visit
 New `SecurityEvent` type `SIGN_IN_HELP_HANDLED` ("Sign-in help request handled"), **ROUTINE** (365 days),
 added to `SecurityEvent.ROUTINE_TYPES` because `class_for` defaults to HISTORY (`accounts/models.py`); a test
 pins the class. `actor` set; `detail = {"outcome": "<value>"}` only. No guardian link, no typed names, no
-request id. Not written for test rows. These events give the outcome counts a later channel decision needs
+request id. These events give the outcome counts a later channel decision needs
 (ADR 0029 Rationale) and outlive the 30-day rows.
 
 No event is written on submit or drop: an anonymous writer must not be able to fill the append-only table
@@ -355,11 +363,10 @@ rows that are not security events, like `purge_usage_counters`.
 
 | Deletes | When |
 | --- | --- |
-| `SignInHelpRequest`, live | `received_at` older than 30 days, open or handled |
-| `SignInHelpRequest`, test | older than 24 hours |
+| `SignInHelpRequest` | `received_at` older than 30 days, open or handled |
 | `SignInHelpSourceHit` | older than 2 hours |
 | `SignInHelpDay` | older than 30 days |
-| everything in the three tables | with `--all` (teardown after a staging test, or when the feature is retired) |
+| everything in the three tables | with `--all` (after a local test, after the first live checks if the owner wants them gone, or when the feature is retired) |
 
 - Runs daily on the Railway cron service as its own `;`-separated step (`docs/OPERATIONS.md`, Retention).
   **Deploy step** after PR 1: add `python manage.py purge_sign_in_help_requests;` to the cron start command
@@ -377,9 +384,9 @@ rows that are not security events, like `purge_usage_counters`.
 | --- | --- | --- |
 | PR 1 | Models, queue, handle, event, purge command, group permissions, reset-staff page lines, badge, Overview card, runbook. No public page, so the queue stays empty. | Revert; the reverse migration drops the three tables (deleting any rows, which is the privacy-safe direction; it prints the row counts first, counts only) and removes the two permissions. `SIGN_IN_HELP_HANDLED` events stay (append-only); history views must show an unknown type by its raw name. **Rehearse backward on a copy of the local demo database before merge.** |
 | PR 1 deploy | Add the purge step to the staging cron start command. | Remove the step. |
-| PR 2 | Public page, caps, legal gate, test mode, sign-in link. Switch off. | Revert. No migration. |
-| Staging test | `SIGN_IN_HELP_ENABLED=True`, `SIGN_IN_HELP_TEST_MODE=True`, made-up names only. Check on a real phone: submit, see it in the queue labelled "Test", handle it; a sixth request from the same network in an hour is not stored and the drop count rises; a repeat is not stored; mobile data and Wi-Fi are counted separately; queue at 360, 390 and 1280. Then `purge_sign_in_help_requests --all` and unset both variables. | Unset the variables; `--all`. |
-| Live (staging or production) | Only after the owner records OD-H1 acceptance in this spec and in a dated entry in `docs/OPERATIONS.md`: set `SIGN_IN_HELP_RETENTION_ACCEPTED` to that reference and `SIGN_IN_HELP_ENABLED=True`. Production also needs named reset staff and the cron step. | Unset `SIGN_IN_HELP_ENABLED`: page 404, old sign-in text. Run `--all` if collected requests must go at once. |
+| PR 2 | Public page, caps, legal gate, sign-in link. Switch off; no acceptance set anywhere. | Revert. No migration. |
+| Local test | Isolated local environment only (§4.1): local Postgres, `DEBUG=True`, a dated local acceptance reference, made-up names. On a real phone over Wi-Fi: submit, see it in the queue, handle it; a sixth request in an hour is not stored and the drop count rises; a repeat is not stored; queue at 360, 390 and 1280. Then `--all`. | Nothing deployed. |
+| Live (staging, then production) | Only after the owner records OD-H1 acceptance in this spec and in a dated entry in `docs/OPERATIONS.md`: set `SIGN_IN_HELP_RETENTION_ACCEPTED` to that reference and `SIGN_IN_HELP_ENABLED=True`. First check on staging: mobile data and Wi-Fi are counted as separate sources. Rows from these checks are real rows under the accepted retention. Production also needs named reset staff and the cron step. | Unset `SIGN_IN_HELP_ENABLED`: page 404, old sign-in text. Run `--all` if collected requests must go at once. |
 
 ## 8. Routes and inventory (R12, R14)
 
@@ -403,10 +410,10 @@ rows that are not security events, like `purge_usage_counters`.
   path. PR 2 confirms the web start command uses no custom access-log format that includes bodies.
 - Tests capture logs on a stored submit, a dropped submit, a form error, a handle and a forced database
   error on insert, and assert none of the typed values appear.
-- Retention: live request rows 30 days, test rows 24 hours, hits 2 hours, day rows 30 days (§6);
+- Retention: request rows 30 days, hits 2 hours, day rows 30 days (§6);
   `SIGN_IN_HELP_HANDLED` events 365 days (ROUTINE, monthly `purge_security_events`). Nothing is HISTORY.
 - `docs/OPERATIONS.md` gets a section: the three settings, the legal gate and where acceptance is recorded,
-  test mode and teardown, the cron step, the backup period, and the daily queue routine (Appendix A).
+  local testing and `--all`, the cron step, the backup period, and the daily queue routine (Appendix A).
 - ADR 0013 ("no self-service password recovery") needs no change: the page resets nothing (OD-G12). PR 2
   adds a "See also ADR 0029" line to it.
 
@@ -419,16 +426,16 @@ other permissions alone; a holder of only `reset_guardian_password` gets 403 on 
 sees the queue (200) and handles a request; a School Administrator outside the group, a teacher and a
 guardian get 403; anonymous goes to sign-in; outcome required and limited to the five values; a second
 handle changes nothing and says who handled it; handle of a missing id returns 404; one ROUTINE
-`SIGN_IN_HELP_HANDLED` event with only `{"outcome": …}`, none for a test row; values with `<script>`, `'`, `&`
+`SIGN_IN_HELP_HANDLED` event with only `{"outcome": …}`; values with `<script>`, `'`, `&`
 and U+202E render escaped inside `<bdi>` on both tabs; expired rows hidden and the Overview warning shown;
 purge deletes each table at its own age, `--all` empties all three; drop notice shows today and the last
 7 days; badge counts only open rows inside retention; a non-holder runs no badge query; reset staff page and
 `role_permission_gaps` list queue holders; model not in the Django admin; route inventory updated; CSRF and
 frame denial; logs hold no typed values.
 
-**PR 2:** gate: page 404 unless the switch is on with exactly one of acceptance or test mode; acceptance plus
-test mode stops start-up; switch on, `DEBUG` off and no trusted proxies stops start-up; invalid flag values
-stop start-up; test mode shows the banner and stores `is_test`; page renders with no query on school tables;
+**PR 2:** gate: every row of the §4.1 table (page 404 when off, 404 plus the Warning when on without
+acceptance, served with a valid reference; malformed or future reference, invalid flag, and on with `DEBUG`
+off and no trusted proxies each stop start-up); no setting named test mode exists; page renders with no query on school tables;
 signed-in GET and POST redirected with nothing stored; field rules: required, lengths, NFKC, whitespace
 collapsed, Malayalam with ZWJ accepted, U+202E, U+2066, U+200B, zalgo, fullwidth digits, split digits,
 digits in a name, a fourth digit in the class, `<`, `@`, `:` refused; a form error stores nothing and takes
@@ -454,7 +461,7 @@ final head.
 - [ ] Owner approves the spec for build.
 - [ ] PR 1 merged after a backward-migration rehearsal; purge step added to the staging cron.
 - [ ] PR 2 merged with the switch off.
-- [ ] Staging test in test mode recorded, then `--all`.
+- [ ] Local test recorded (isolated environment, made-up names), then `--all`.
 - [ ] **OD-H1: owner's acceptance of the retention and legal risk recorded** (this spec and a dated
       `docs/OPERATIONS.md` entry); only then `SIGN_IN_HELP_RETENTION_ACCEPTED` is set anywhere.
 
@@ -478,7 +485,7 @@ final head.
   fields). Revisit only if staging shows automated spam.
 - Spam can make staff call a real family who asked for nothing; repeats are dropped for 7 days and Appendix
   A's script resets nothing on the call (T18).
-- Test mode out of production is a runbook rule, not enforced in code (§4.1).
+- No deployed test before acceptance: the real-proxy check happens only after live switch-on (§7).
 - Outcomes are final (SR-16).
 - The page is in English only.
 - Matching is manual; a misspelt name may get `NO_MATCH`. The answer page tells families they can visit.
@@ -496,7 +503,7 @@ after these changes"; a short re-check of r2 advised.
 | SR-04 | Medium | Same key, 30-day pseudonymous address log | Applied: sub-key; no source on request rows; hits kept 2 hours (§3.3) |
 | SR-05 | Medium | Drop-count create race breaks the outer transaction | Applied: savepoint; counts moved onto the gate row (§3.2, §4.4) |
 | SR-06 | High | Purge failure visible only on the queue page | Applied: Overview warning, purge on submit, backup note (§5.2, §6) |
-| SR-07 | High | OD-H1 enforced only by the runbook | Applied: acceptance setting checked in code, test mode, `--all` (§4.1, §7, §11) |
+| SR-07 | High | OD-H1 enforced only by the runbook | Applied: acceptance setting checked in code, fail-closed table, `--all`; staging test mode removed (owner condition, no reliable environment marker) (§4.1, §7, §11) |
 | SR-08 | Medium | Permission migration and reset-staff interplay under-specified | Applied (§5.1) |
 | SR-09 | Medium | Bidi, format characters, split and non-ASCII digits, zalgo | Applied: category allow-list after NFKC, `<bdi>` (§4.2, §5.2) |
 | SR-10 | Medium | R10 and R14 departures not flagged | Applied: header deviations, OD-H5 |
